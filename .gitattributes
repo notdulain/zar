@@ -1,0 +1,6 @@
+# Keep source files consistent across macOS, Linux and Windows.
+* text=auto
+gradlew text eol=lf
+gradlew.bat text eol=crlf
+*.jar binary
+*.webp binary

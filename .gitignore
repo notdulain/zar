@@ -1,0 +1,41 @@
+# Android / Gradle generated files
+.gradle/
+.kotlin/
+**/build/
+local.properties
+.externalNativeBuild/
+.cxx/
+captures/
+*.apk
+*.aab
+*.ap_
+*.dex
+*.hprof
+
+# IDE and machine-specific files
+.idea/
+*.iml
+.vscode/
+.DS_Store
+Thumbs.db
+*.log
+
+# Local environment and signing credentials
+.env
+.env.*
+!.env.example
+*.jks
+*.keystore
+*.p12
+*.pfx
+*.pem
+*.key
+keystore.properties
+signing.properties
+secrets.properties
+
+# Local Firebase configuration and privileged service credentials
+google-services.json
+*service-account*.json
+*service_account*.json
+*firebase-adminsdk*.json
