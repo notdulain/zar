@@ -1,9 +1,4 @@
-<resources xmlns:tools="http://schemas.android.com/tools">
-    <!-- Base application theme. -->
-    <style name="Base.Theme.Zar" parent="Theme.Material3.DayNight.NoActionBar">
-        <!-- Customize your light theme here. -->
-        <!-- <item name="colorPrimary">@color/my_light_primary</item> -->
-    </style>
-
-    <style name="Theme.Zar" parent="Base.Theme.Zar" />
+<resources>
+    <!-- Window theme only. Compose screens are styled by ZarTheme. -->
+    <style name="Theme.Zar" parent="android:Theme.Material.Light.NoActionBar" />
 </resources>
