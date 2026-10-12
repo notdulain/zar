@@ -76,12 +76,17 @@ Without `app/google-services.json` the build still succeeds and prints a warning
 
 Machine paths, IDE files, build output, Firebase configuration and credentials are ignored. Privileged AI/service keys belong on the backend.
 
+## Shared domain contracts
+
+Models, repository interfaces, saving rules and total calculations shared by every feature are described in [docs/domain-contracts.md](docs/domain-contracts.md). Read it before saving or totalling money.
+
 ## Layer rules
 
 - `DomainLayerPurityTest` fails if any file under a `domain` package imports `android.*`, `androidx.*`, `com.google.firebase.*` or `dagger.*`. Use `javax.inject.Inject` in domain classes.
 - Bind each new repository interface to its implementation in `di/RepositoryModule`.
 - Inject Firebase objects (from `di/FirebaseModule`) only into `data` classes.
 - Add new destinations to `core/navigation/ZarRoutes.kt` and `ZarNavHost.kt`.
+- Firestore rules live in `firestore.rules`; run `npm install && npm test` in `firestore-tests/` (needs Java) after changing them, and deploy with `npx -y firebase-tools@latest deploy --only firestore:rules`.
 
 ## Team backlog
 
