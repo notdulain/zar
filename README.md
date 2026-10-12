@@ -4,7 +4,9 @@ Personal finance tracking for Sri Lankan users.
 
 ## Current state
 
-This repository contains the Android starter and the Clean Architecture folder scaffold. The existing entry screen still uses XML and AppCompat. Compose, Hilt, Firebase and feature implementations will be added through the team backlog.
+The app foundation is in place: Jetpack Compose with Material 3, MVVM, Hilt, Firebase (Auth, Firestore) and type-safe Navigation Compose. Minimum SDK is 26. Feature implementations are added through the team backlog.
+
+`features/settings` is a small reference slice showing the full path: `SettingsScreen` → `SettingsViewModel` → `ObserveAppPreferencesUseCase` → `AppPreferencesRepository` (domain interface) → `InMemoryAppPreferencesRepository` (data), bound in `di/RepositoryModule`. Copy this shape for new features.
 
 ## Architecture
 
@@ -56,13 +58,30 @@ Add smaller packages such as `model`, `usecase`, `repository`, `screen` and `vie
 
 ## Run locally
 
+Requirements: a recent Android Studio, JDK 17 or newer, and **Android SDK Platform 37** (SDK Manager → SDK Platforms). Compose libraries require compileSdk 37; the app still targets SDK 36 and runs on Android 8.0 (API 26) and up.
+
 1. Clone the repository and open its root folder in Android Studio.
 2. Let Android Studio configure the local Android SDK and sync Gradle.
-3. Run the `app` configuration on an emulator or device.
+3. Get the team's `google-services.json` privately and place it in `app/` (optional for building — see below).
+4. Run the `app` configuration on an emulator or device.
 
-Use the committed Gradle wrapper. A debug build can be requested with `./gradlew assembleDebug`.
+Use the committed Gradle wrapper:
 
-Machine paths, IDE files, build output, Firebase configuration and credentials are ignored. When Firebase is configured, obtain the team's `google-services.json` separately and place it in `app/`. Privileged AI/service keys belong on the backend.
+```bash
+./gradlew assembleDebug        # build
+./gradlew testDebugUnitTest    # unit tests, including the domain-purity check
+```
+
+Without `app/google-services.json` the build still succeeds and prints a warning, but Firebase is not initialised, so any screen that injects `FirebaseAuth` or `FirebaseFirestore` will crash at runtime. Never commit that file.
+
+Machine paths, IDE files, build output, Firebase configuration and credentials are ignored. Privileged AI/service keys belong on the backend.
+
+## Layer rules
+
+- `DomainLayerPurityTest` fails if any file under a `domain` package imports `android.*`, `androidx.*`, `com.google.firebase.*` or `dagger.*`. Use `javax.inject.Inject` in domain classes.
+- Bind each new repository interface to its implementation in `di/RepositoryModule`.
+- Inject Firebase objects (from `di/FirebaseModule`) only into `data` classes.
+- Add new destinations to `core/navigation/ZarRoutes.kt` and `ZarNavHost.kt`.
 
 ## Team backlog
 
