@@ -39,3 +39,9 @@ google-services.json
 *service-account*.json
 *service_account*.json
 *firebase-adminsdk*.json
+
+# Firebase emulator logs
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+node_modules/

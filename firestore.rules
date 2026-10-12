@@ -1,0 +1,406 @@
+rules_version = '2';
+
+// ===============================================================
+// Zar — Cloud Firestore Security Rules (prototype, review before launch)
+// ===============================================================
+//
+// Assumed Data Model
+// ------------------
+// All data is private to one user and lives under users/{uid}/...
+// Nothing is stored on users/{uid} itself. Instants are epoch milliseconds (int) because
+// offline writes may sync long after they were made, so request.time checks would reject
+// honest offline saves. Dates are calendar days as "yyyy-MM-dd" strings (Asia/Colombo).
+//
+// Money map:   { currency: string(2-10), kind: 'FIAT'|'CRYPTO', digits: int(0-18),
+//                minor: int (FIAT) | quantity: decimal string (CRYPTO) }
+// Conversion:  { status: 'SAME' } | { status: 'MISSING', target: Money }
+//              | { status: 'CONVERTED', amount: Money, rate: { base, quote: Money,
+//                  rate: decimal string, asOf: int, source: 'MANUAL'|'BANK_MESSAGE'|'PROVIDER' } }
+//
+// accounts/{accountId}            create, update (no delete: archive instead)
+//   id (== doc id), name (1-80), type, currency {code, kind, digits} (immutable),
+//   opening {status, amount?}, openingDate, archived (bool), updatedAt (int)
+//
+// transactions/{transactionId}    WRITE-ONCE: create only
+//   id (== doc id), accountId, type, amount (positive Money), date, conversion,
+//   source, createdAt; spendingClass (EXPENSE only, required), categoryId?, merchant?,
+//   note?, transferId (transfer legs only, required), refundOf (REFUND only, required)
+//
+// corrections/{correctionId}      WRITE-ONCE: create only
+//   id (== doc id), transactionId, changes (non-empty map of corrected fields;
+//   a null value means "cleared"), correctedAt, reason?
+//
+// voids/{transactionId}           WRITE-ONCE: create only (durable, terminal undo)
+//   transactionId (== doc id), voidedAt, reason?
+//
+// evidenceLinks/{evidenceId}      WRITE-ONCE: create only (one evidence -> one transaction)
+//   evidenceId (== doc id), transactionId, linkedAt
+//
+// expectedPayments/{id}           create, update (no delete: cancel instead; CANCELLED is final)
+//   id (== doc id), direction 'IN'|'OUT', amount (positive Money), dueDate, title (1-120),
+//   source {type, projectId?, milestoneId?, billId?, occurrenceDate?}, accountId?,
+//   status 'OPEN'|'CANCELLED', createdAt (immutable)
+//
+// paymentMatches/{expectedPaymentId_transactionId}   create, delete (no update)
+//   expectedPaymentId, transactionId, amount (positive Money), matchedAt
+//
+// drafts/{draftId}                create, update, delete (unconfirmed proposals)
+//   id (== doc id), source, status, proposals (list of maps, max 5), createdAt (immutable)
+//   Raw message text is never stored here; it stays in encrypted on-device staging.
+//
+// Why write-once: the app saves records with set() using a stable client-generated ID.
+// A replayed save on an existing document is an update, which these rules deny, so retries
+// and offline replays cannot overwrite corrections or revive an undone record.
+// ===============================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Helper functions
+    // ===============================================================
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function data() {
+      return request.resource.data;
+    }
+
+    function hasRequiredFields(fields) {
+      return data().keys().hasAll(fields);
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return data().keys().hasOnly(fields);
+    }
+
+    function areImmutableFieldsUnchanged(fields) {
+      return !data().diff(resource.data).affectedKeys().hasAny(fields);
+    }
+
+    function isId(value) {
+      return value is string && value.size() > 0 && value.size() <= 128;
+    }
+
+    function isShortString(value, maxLen) {
+      return value is string && value.size() > 0 && value.size() <= maxLen;
+    }
+
+    function isOptionalString(map, field, maxLen) {
+      return !(field in map) || isShortString(map[field], maxLen);
+    }
+
+    // Field may be absent, null (cleared) or a bounded string. Used by corrections.
+    function isClearableString(map, field, maxLen) {
+      return !(field in map) || map[field] == null || isShortString(map[field], maxLen);
+    }
+
+    function isMillis(value) {
+      return value is int && value > 0;
+    }
+
+    function isDateString(value) {
+      return value is string && value.matches('^\\d{4}-\\d{2}-\\d{2}$');
+    }
+
+    function isDecimalString(value) {
+      return value is string && value.size() <= 50 && value.matches('^\\d{1,30}(\\.\\d{1,18})?$');
+    }
+
+    function isCurrencyCode(value) {
+      return value is string && value.matches('^[A-Z0-9]{2,10}$');
+    }
+
+    // ===============================================================
+    // Shared value validators
+    // ===============================================================
+
+    function isMoney(m) {
+      return m is map
+        && m.keys().hasAll(['currency', 'kind', 'digits'])
+        && isCurrencyCode(m.currency)
+        && m.digits is int && m.digits >= 0 && m.digits <= 18
+        && (
+          (m.kind == 'FIAT' && m.keys().hasOnly(['currency', 'kind', 'digits', 'minor']) && m.minor is int)
+          || (m.kind == 'CRYPTO' && m.keys().hasOnly(['currency', 'kind', 'digits', 'quantity']) && isDecimalString(m.quantity))
+        );
+    }
+
+    function isPositiveMoney(m) {
+      return isMoney(m)
+        && ((m.kind == 'FIAT' && m.minor > 0)
+          || (m.kind == 'CRYPTO' && !m.quantity.matches('^0+(\\.0+)?$')));
+    }
+
+    function isRate(r) {
+      return r is map
+        && r.keys().hasOnly(['base', 'quote', 'rate', 'asOf', 'source'])
+        && r.keys().hasAll(['base', 'quote', 'rate', 'asOf', 'source'])
+        && isMoney(r.base) && isMoney(r.quote)
+        && isDecimalString(r.rate)
+        && isMillis(r.asOf)
+        && r.source in ['MANUAL', 'BANK_MESSAGE', 'PROVIDER'];
+    }
+
+    function isConversion(c) {
+      return c is map && (
+        (c.keys().hasOnly(['status']) && c.status == 'SAME')
+        || (c.keys().hasOnly(['status', 'target']) && c.status == 'MISSING' && isMoney(c.target))
+        || (c.keys().hasOnly(['status', 'amount', 'rate']) && c.keys().hasAll(['amount', 'rate'])
+            && c.status == 'CONVERTED' && isMoney(c.amount) && c.amount.kind == 'FIAT' && isRate(c.rate))
+      );
+    }
+
+    function isSpendingClass(value) {
+      return value in ['COMMITTED', 'DISCRETIONARY', 'UNKNOWN'];
+    }
+
+    // ===============================================================
+    // Domain validators
+    // ===============================================================
+
+    function isValidAccount(accountId) {
+      let d = data();
+      return hasOnlyAllowedFields(['id', 'name', 'type', 'currency', 'opening', 'openingDate', 'archived', 'updatedAt'])
+        && hasRequiredFields(['id', 'name', 'type', 'currency', 'opening', 'openingDate', 'archived', 'updatedAt'])
+        && d.id == accountId
+        && isShortString(d.name, 80)
+        && d.type in ['BANK', 'CASH', 'FREELANCE', 'CRYPTO']
+        && d.currency is map
+        && d.currency.keys().hasOnly(['code', 'kind', 'digits'])
+        && d.currency.keys().hasAll(['code', 'kind', 'digits'])
+        && isCurrencyCode(d.currency.code)
+        && d.currency.kind in ['FIAT', 'CRYPTO']
+        && d.currency.digits is int && d.currency.digits >= 0 && d.currency.digits <= 18
+        && d.opening is map
+        && (
+          (d.opening.keys().hasOnly(['status']) && d.opening.status == 'UNKNOWN')
+          || (d.opening.keys().hasOnly(['status', 'amount']) && d.opening.status in ['KNOWN', 'APPROXIMATE']
+              && isMoney(d.opening.amount) && d.opening.amount.currency == d.currency.code)
+        )
+        && isDateString(d.openingDate)
+        && d.archived is bool
+        && isMillis(d.updatedAt);
+    }
+
+    function isValidTransaction(transactionId) {
+      let d = data();
+      return hasOnlyAllowedFields(['id', 'accountId', 'type', 'amount', 'date', 'conversion', 'spendingClass',
+          'categoryId', 'merchant', 'note', 'source', 'transferId', 'refundOf', 'createdAt'])
+        && hasRequiredFields(['id', 'accountId', 'type', 'amount', 'date', 'conversion', 'source', 'createdAt'])
+        && d.id == transactionId
+        && isId(d.accountId)
+        && d.type in ['INCOME', 'EXPENSE', 'TRANSFER_IN', 'TRANSFER_OUT', 'REFUND', 'ADJUSTMENT_IN', 'ADJUSTMENT_OUT']
+        && isPositiveMoney(d.amount)
+        && isDateString(d.date)
+        && isConversion(d.conversion)
+        && d.source in ['MANUAL', 'SMS', 'SHARED_TEXT', 'QUICK_NOTE', 'CASH_CATCH_UP', 'RECONCILIATION']
+        && isMillis(d.createdAt)
+        // Spending class only and always on expenses.
+        && ((d.type == 'EXPENSE') == ('spendingClass' in d))
+        && (!('spendingClass' in d) || isSpendingClass(d.spendingClass))
+        // Refunds always link to the original purchase.
+        && ((d.type == 'REFUND') == ('refundOf' in d))
+        && (!('refundOf' in d) || isId(d.refundOf))
+        // Transfer legs always carry their transfer ID.
+        && ((d.type in ['TRANSFER_IN', 'TRANSFER_OUT']) == ('transferId' in d))
+        && (!('transferId' in d) || isId(d.transferId))
+        && isOptionalString(d, 'categoryId', 64)
+        && isOptionalString(d, 'merchant', 120)
+        && isOptionalString(d, 'note', 500);
+    }
+
+    function isValidCorrection(correctionId) {
+      let d = data();
+      let c = d.changes;
+      return hasOnlyAllowedFields(['id', 'transactionId', 'changes', 'correctedAt', 'reason'])
+        && hasRequiredFields(['id', 'transactionId', 'changes', 'correctedAt'])
+        && d.id == correctionId
+        && isId(d.transactionId)
+        && isMillis(d.correctedAt)
+        && isOptionalString(d, 'reason', 300)
+        && c is map
+        && c.size() > 0
+        && c.keys().hasOnly(['amount', 'conversion', 'date', 'spendingClass', 'categoryId', 'merchant', 'note'])
+        && (!('amount' in c) || isPositiveMoney(c.amount))
+        && (!('conversion' in c) || isConversion(c.conversion))
+        && (!('date' in c) || isDateString(c.date))
+        && (!('spendingClass' in c) || isSpendingClass(c.spendingClass))
+        && isClearableString(c, 'categoryId', 64)
+        && isClearableString(c, 'merchant', 120)
+        && isClearableString(c, 'note', 500);
+    }
+
+    function isValidVoid(transactionId) {
+      let d = data();
+      return hasOnlyAllowedFields(['transactionId', 'voidedAt', 'reason'])
+        && hasRequiredFields(['transactionId', 'voidedAt'])
+        && d.transactionId == transactionId
+        && isMillis(d.voidedAt)
+        && isOptionalString(d, 'reason', 300);
+    }
+
+    function isValidEvidenceLink(evidenceId) {
+      let d = data();
+      return hasOnlyAllowedFields(['evidenceId', 'transactionId', 'linkedAt'])
+        && hasRequiredFields(['evidenceId', 'transactionId', 'linkedAt'])
+        && d.evidenceId == evidenceId
+        && isId(d.transactionId)
+        && isMillis(d.linkedAt);
+    }
+
+    function isExpectedSource(s) {
+      return s is map
+        && s.keys().hasOnly(['type', 'projectId', 'milestoneId', 'billId', 'occurrenceDate'])
+        && (
+          (s.type == 'FREELANCE_MILESTONE' && s.keys().hasOnly(['type', 'projectId', 'milestoneId'])
+            && isId(s.projectId) && isId(s.milestoneId))
+          || (s.type == 'BILL_OCCURRENCE' && s.keys().hasOnly(['type', 'billId', 'occurrenceDate'])
+            && isId(s.billId) && isDateString(s.occurrenceDate))
+          || (s.type in ['QUICK_NOTE', 'MANUAL'] && s.keys().hasOnly(['type']))
+        );
+    }
+
+    function isValidExpectedPayment(expectedPaymentId) {
+      let d = data();
+      return hasOnlyAllowedFields(['id', 'direction', 'amount', 'dueDate', 'title', 'source', 'accountId', 'status', 'createdAt'])
+        && hasRequiredFields(['id', 'direction', 'amount', 'dueDate', 'title', 'source', 'status', 'createdAt'])
+        && d.id == expectedPaymentId
+        && d.direction in ['IN', 'OUT']
+        && isPositiveMoney(d.amount)
+        && isDateString(d.dueDate)
+        && isShortString(d.title, 120)
+        && isExpectedSource(d.source)
+        && (!('accountId' in d) || isId(d.accountId))
+        && d.status in ['OPEN', 'CANCELLED']
+        && isMillis(d.createdAt);
+    }
+
+    function isValidPaymentMatch(matchId) {
+      let d = data();
+      return hasOnlyAllowedFields(['expectedPaymentId', 'transactionId', 'amount', 'matchedAt'])
+        && hasRequiredFields(['expectedPaymentId', 'transactionId', 'amount', 'matchedAt'])
+        && isId(d.expectedPaymentId)
+        && isId(d.transactionId)
+        && matchId == d.expectedPaymentId + '_' + d.transactionId
+        && isPositiveMoney(d.amount)
+        && isMillis(d.matchedAt);
+    }
+
+    function isValidProposal(p) {
+      return p is map
+        && p.keys().hasOnly(['kind', 'type', 'direction', 'amount', 'sent', 'received', 'accountId', 'fromAccountId',
+            'toAccountId', 'date', 'dueDate', 'title', 'spendingClass', 'categoryId', 'merchant', 'note', 'uncertainFields'])
+        && p.kind in ['ACTUAL_TRANSACTION', 'EXPECTED', 'TRANSFER']
+        && (!('amount' in p) || isMoney(p.amount))
+        && (!('sent' in p) || isMoney(p.sent))
+        && (!('received' in p) || isMoney(p.received))
+        && isOptionalString(p, 'type', 32)
+        && isOptionalString(p, 'direction', 8)
+        && isOptionalString(p, 'accountId', 128)
+        && isOptionalString(p, 'fromAccountId', 128)
+        && isOptionalString(p, 'toAccountId', 128)
+        && (!('date' in p) || isDateString(p.date))
+        && (!('dueDate' in p) || isDateString(p.dueDate))
+        && isOptionalString(p, 'title', 120)
+        && isOptionalString(p, 'spendingClass', 32)
+        && isOptionalString(p, 'categoryId', 64)
+        && isOptionalString(p, 'merchant', 120)
+        && isOptionalString(p, 'note', 500)
+        && (!('uncertainFields' in p) || (p.uncertainFields is list && p.uncertainFields.size() <= 10));
+    }
+
+    function isValidDraft(draftId) {
+      let d = data();
+      let p = d.proposals;
+      return hasOnlyAllowedFields(['id', 'source', 'status', 'proposals', 'createdAt'])
+        && hasRequiredFields(['id', 'source', 'status', 'proposals', 'createdAt'])
+        && d.id == draftId
+        && d.source in ['QUICK_NOTE', 'SMS', 'SHARED_TEXT']
+        && d.status in ['PENDING_REVIEW', 'CONFIRMED', 'DISCARDED']
+        && isMillis(d.createdAt)
+        && p is list && p.size() > 0 && p.size() <= 5
+        && isValidProposal(p[0])
+        && (p.size() < 2 || isValidProposal(p[1]))
+        && (p.size() < 3 || isValidProposal(p[2]))
+        && (p.size() < 4 || isValidProposal(p[3]))
+        && (p.size() < 5 || isValidProposal(p[4]));
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      // No data is stored on the user document itself.
+      allow read, write: if false;
+
+      match /accounts/{accountId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidAccount(accountId);
+        // Currency is fixed once history exists; archive instead of deleting.
+        allow update: if isOwner(userId) && isValidAccount(accountId)
+          && areImmutableFieldsUnchanged(['id', 'currency']);
+        allow delete: if false;
+      }
+
+      match /transactions/{transactionId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidTransaction(transactionId);
+        allow update, delete: if false;
+      }
+
+      match /corrections/{correctionId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidCorrection(correctionId);
+        allow update, delete: if false;
+      }
+
+      match /voids/{transactionId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidVoid(transactionId);
+        allow update, delete: if false;
+      }
+
+      match /evidenceLinks/{evidenceId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidEvidenceLink(evidenceId);
+        allow update, delete: if false;
+      }
+
+      match /expectedPayments/{expectedPaymentId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidExpectedPayment(expectedPaymentId)
+          && data().status == 'OPEN';
+        // Cancelled expectations stay cancelled so history and stopped schedules are honest.
+        allow update: if isOwner(userId) && isValidExpectedPayment(expectedPaymentId)
+          && areImmutableFieldsUnchanged(['id', 'direction', 'createdAt'])
+          && (resource.data.status == 'OPEN' || data().status == 'CANCELLED');
+        allow delete: if false;
+      }
+
+      match /paymentMatches/{matchId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidPaymentMatch(matchId);
+        allow delete: if isOwner(userId);
+        allow update: if false;
+      }
+
+      match /drafts/{draftId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidDraft(draftId) && data().status == 'PENDING_REVIEW';
+        // Only pending drafts change; confirmed or discarded drafts are final.
+        allow update: if isOwner(userId) && isValidDraft(draftId)
+          && areImmutableFieldsUnchanged(['id', 'source', 'createdAt'])
+          && resource.data.status == 'PENDING_REVIEW';
+        allow delete: if isOwner(userId);
+      }
+    }
+  }
+}
