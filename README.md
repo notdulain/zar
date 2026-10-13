@@ -80,6 +80,8 @@ Machine paths, IDE files, build output, Firebase configuration and credentials a
 
 Models, repository interfaces, saving rules and total calculations shared by every feature are described in [docs/domain-contracts.md](docs/domain-contracts.md). Read it before saving or totalling money.
 
+AI quick-note hosting, cost, privacy and the draft format are documented in [docs/ai-quick-notes-feasibility.md](docs/ai-quick-notes-feasibility.md).
+
 ## Layer rules
 
 - `DomainLayerPurityTest` fails if any file under a `domain` package imports `android.*`, `androidx.*`, `com.google.firebase.*` or `dagger.*`. Use `javax.inject.Inject` in domain classes.
