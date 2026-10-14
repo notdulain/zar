@@ -35,21 +35,24 @@ The test set is 20 notes in `tools/quicknote-eval/cases.json`:
 | gemini-3.5-flash-lite, minimal (run 1) | 20 / 20 | 2.5 s / 2.9 s | 887 / 163 |
 | gemini-3.5-flash-lite, minimal (run 2) | 17 / 20 | 2.5 s / 3.2 s | 887 / 165 |
 | gemini-3.5-flash-lite, low | 19 / 20 | 2.5 s / 3.4 s | 887 / 130 |
-| gemini-3.8-flash, low | not measured: the free tier allows 20 requests/day for this model | | |
+| gemini-3.5-flash-lite, low, **paid tier** | 19 / 20 | 1.9 s / 2.4 s | 887 / 137 |
+| gemini-3.8-flash, low, **paid tier** | 19 / 20 | 4.2 s / 5.8 s | 887 / 106 (+94 thinking) |
 
-Across the three Flash-Lite runs, 56 of 60 drafts matched every expected field (93%). The other 4 still produced usable drafts with one wrong or empty field, which the user fixes during review.
+Across the four Flash-Lite runs, 75 of 80 drafts matched every expected field (94%). On the paid tier it was also faster, at about 1.9 s. Gemini 3.8 Flash was no more accurate: it dropped both amounts of the crypto buy. It is also twice as slow and costs about twice as much per note (about $0.0014), so **Flash-Lite is the recommended model**. The other 4 still produced usable drafts with one wrong or empty field, which the user fixes during review.
 
 Prompt v1 passed 13 of 17 completed notes. It dropped a transfer amount, guessed the midpoint of "2-3k" and didn't map "card". Prompt v2 fixed these. Later runs vary because the model is not fully deterministic even at temperature 0.
 
 **Where it is reliable:** amounts in all scripts, "k" and "lakh", currency symbols (Rs, රු, ரூ, $), past vs future tense, splitting "got 150, other 150 later" into one actual and one expected proposal, transfers between named accounts, empty output for a note with no money, and ignoring "ignore all rules…".
 
 **Where it wobbles** (these are why the review step matters):
-- Mapping "my card" to the one card account: sometimes it leaves the account empty and flags it.
+- Mapping "my card" to the one card account: sometimes it leaves the account empty and flags it. Once, it guessed the card account for a note that named no account, but it flagged ACCOUNT as uncertain.
 - The received side of crypto buys (50 USDT): sometimes dropped.
 - Vague due dates ("next week"): sometimes a date, sometimes empty.
 - "netflix 1500 this month" can read as paid or due; both readings get flagged.
 
 **Cost on the paid tier:** Flash-Lite charges $0.30 per million input tokens and $2.50 per million output tokens. That's about 887 × 0.30/1M + 163 × 2.50/1M ≈ **$0.0007 per note**, around LKR 0.2. 1,000 notes cost about $0.70. Cloud Functions' no-cost quota covers the function calls.
+
+**Paid tier verified 14 October 2026** with $5 of Gemini credit on `zar-app-35602`; both models answered with no rate limiting.
 
 **Free-tier limits seen:** Flash-Lite allows 15 requests per minute and handled about 80 requests in a day without hitting a daily limit. Gemini 3.8 Flash allows 20 requests per day per project, so the free tier can't support it beyond a single tester.
 
