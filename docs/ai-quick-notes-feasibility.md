@@ -6,7 +6,7 @@ The question behind this ticket: can a typed rough note ("dialog bill eka 2450 g
 
 ## Recommendation
 
-**Launch setup (needs the Blaze plan):**
+**Launch setup (decided: `zar-app-35602` moved to the Blaze plan on 14 October 2026):**
 
 1. The app calls a **callable Cloud Function** (`createQuickNoteDraft`, region `asia-south1`).
 2. The function **requires a signed-in Firebase user and App Check**. Callable functions verify both tokens automatically.
@@ -16,7 +16,9 @@ The question behind this ticket: can a typed rough note ("dialog bill eka 2450 g
 
 **Why not call Gemini straight from the app (Firebase AI Logic)?** It works, and these tests ran through it. But Firebase AI Logic can only check App Check, not which user is signed in, so it can't meet D06's "validate the user's Firebase authentication". Its AI monitoring also stores prompts in Cloud Logging by default.
 
-**Fallback if the team won't enable Blaze:** use Firebase AI Logic from the app on the free tier, with App Check enforced and the AI monitoring prompt log excluded. Use it **only with made-up demo notes**: on the free tier, Google may use prompts to improve its products, and human reviewers may read them. App Check becomes mandatory for Firebase AI Logic on 2 November 2026.
+**Gemini API billing:** new accounts are on **Prepay**, so Gemini answers only while prepaid credit is available. Buy credit in AI Studio (Billing, Buy credits; minimum $5). Until credit is added, every request fails with "prepayment credits are depleted", even on Blaze. $5 covers roughly 7,000 notes on Flash-Lite.
+
+**Fallback if billing is unavailable:** use Firebase AI Logic from the app on the free tier, with App Check enforced and the AI monitoring prompt log excluded. Use it **only with made-up demo notes**: on the free tier, Google may use prompts to improve its products, and human reviewers may read them. App Check becomes mandatory for Firebase AI Logic on 2 November 2026.
 
 ## Measured results
 
