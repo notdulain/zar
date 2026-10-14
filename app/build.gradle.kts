@@ -32,8 +32,16 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    // Debug builds can talk to the local Firebase Emulator Suite instead of the live project:
+    //   ./gradlew connectedDebugAndroidTest -Pzar.useEmulators=true
+    val useEmulators = providers.gradleProperty("zar.useEmulators").orNull == "true"
+
     buildTypes {
+        debug {
+            buildConfigField("boolean", "USE_FIREBASE_EMULATORS", useEmulators.toString())
+        }
         release {
+            buildConfigField("boolean", "USE_FIREBASE_EMULATORS", "false")
             optimization {
                 enable = false
             }
@@ -45,6 +53,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
@@ -71,8 +80,10 @@ dependencies {
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.auth)
     implementation(libs.firebase.firestore)
+    implementation(libs.kotlinx.coroutines.play.services)
 
     testImplementation(libs.junit)
+    testImplementation(libs.kotlinx.coroutines.test)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     androidTestImplementation(libs.androidx.espresso.core)
