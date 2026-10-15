@@ -2,8 +2,10 @@ package com.example.zar.di
 
 import com.example.zar.core.data.remote.FirebaseUserSessionProvider
 import com.example.zar.core.data.remote.firestore.FirestoreLedgerRepository
+import com.example.zar.core.domain.repository.AccountRepository
 import com.example.zar.core.domain.repository.LedgerRepository
 import com.example.zar.core.domain.repository.UserSessionProvider
+import com.example.zar.features.accounts.data.repository.SampleAccountRepository
 import com.example.zar.features.settings.data.repository.InMemoryAppPreferencesRepository
 import com.example.zar.features.settings.domain.repository.AppPreferencesRepository
 import dagger.Binds
@@ -24,6 +26,11 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun bindLedgerRepository(impl: FirestoreLedgerRepository): LedgerRepository
+
+    // Temporary sample accounts until D03 adds the Firestore implementation.
+    @Binds
+    @Singleton
+    abstract fun bindAccountRepository(impl: SampleAccountRepository): AccountRepository
 
     @Binds
     @Singleton
