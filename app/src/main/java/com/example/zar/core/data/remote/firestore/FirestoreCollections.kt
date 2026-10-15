@@ -15,4 +15,5 @@ object FirestoreCollections {
     const val EXPECTED_PAYMENTS = "expectedPayments"
     const val PAYMENT_MATCHES = "paymentMatches"
     const val DRAFTS = "drafts"
+    const val PROJECTS = "projects"
 }
