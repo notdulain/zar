@@ -2,7 +2,10 @@ package com.example.zar.core.presentation.theme
 
 import androidx.compose.ui.graphics.Color
 
-val ZarGreen = Color(0xFF1B6B4F)
-val ZarGreenLight = Color(0xFF8FD8B5)
-val ZarSand = Color(0xFFF6F3EC)
-val ZarInk = Color(0xFF1A1C1B)
+// Palette from the approved Figma frames: black and white with grey for secondary text and borders.
+val ZarInk = Color(0xFF0E0E0E)
+val ZarWhite = Color(0xFFFFFFFF)
+val ZarMuted = Color(0xFF757575)
+val ZarSubtle = Color(0xFFADADAD)
+val ZarBorder = Color(0xFFD6D6D6)
+val ZarTrack = Color(0xFFF2F2F2)

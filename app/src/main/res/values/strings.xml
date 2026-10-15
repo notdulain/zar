@@ -1,6 +1,5 @@
 <resources>
     <string name="app_name">Zar</string>
-    <string name="home_placeholder">Home is coming soon.</string>
     <string name="settings_title">Settings</string>
     <string name="settings_currency">Currency</string>
     <string name="action_back">Back</string>
@@ -45,4 +44,57 @@
     <string name="sign_out_unsynced_body">Your latest changes are only on this phone. If you sign out now they will be lost. Connect to the internet and wait a moment, or sign out anyway.</string>
     <string name="sign_out_anyway">Sign out anyway</string>
     <string name="action_cancel">Cancel</string>
+
+    <!-- Navigation -->
+    <string name="nav_home">Home</string>
+    <string name="nav_activity">Activity</string>
+    <string name="nav_plans">Plans</string>
+    <string name="nav_more">More</string>
+    <string name="action_close">Close</string>
+
+    <!-- Add entry sheet -->
+    <string name="add_entry">Add an entry</string>
+    <string name="add_sheet_title">Add an entry</string>
+    <string name="add_voice">Voice</string>
+    <string name="add_voice_hint">Say an income or expense</string>
+    <string name="add_quick_note">Quick note</string>
+    <string name="add_quick_note_hint">Type in your own words</string>
+    <string name="add_manual">Manual entry</string>
+    <string name="add_manual_hint">Enter amount and details</string>
+
+    <!-- Home -->
+    <string name="home_spent">Spent</string>
+    <string name="home_this_month">This month</string>
+    <string name="home_spent_this_month">Spent this month</string>
+    <string name="home_amount_placeholder">LKR 0</string>
+    <string name="home_goal">Goal</string>
+    <string name="home_goal_empty">No goal set</string>
+    <string name="home_recent_activity">Recent activity</string>
+    <string name="home_recent_empty">Nothing recorded yet. Tap + to add your first entry.</string>
+    <string name="home_bills">Bills</string>
+    <string name="home_bills_empty">None yet</string>
+    <string name="home_weekly_limit">Weekly limit</string>
+    <string name="home_weekly_limit_empty">Not set</string>
+
+    <!-- Activity -->
+    <string name="activity_based_on_records">Based on recorded transactions</string>
+    <string name="activity_empty">No transactions yet.</string>
+
+    <!-- Plans -->
+    <string name="plans_goal_empty">No goal set</string>
+    <string name="plans_allowance">Weekly allowance</string>
+    <string name="plans_allowance_empty">Not set</string>
+    <string name="plans_bills_empty">No bills added</string>
+
+    <!-- More -->
+    <string name="more_description">Accounts, privacy and settings</string>
+    <string name="more_accounts">Accounts</string>
+    <string name="more_accounts_detail">Bank, cash, freelance and crypto</string>
+    <string name="more_capture">Capture sources</string>
+    <string name="more_capture_detail">Messages Zar may read</string>
+    <string name="more_privacy">Privacy</string>
+    <string name="more_privacy_detail">Hide amounts and protect the app</string>
+    <string name="more_export">Export data</string>
+    <string name="more_export_detail">Save a copy of your records</string>
+    <string name="more_settings_detail">Currency and sign out</string>
 </resources>

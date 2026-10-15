@@ -47,7 +47,8 @@ class SignInFlowTest {
         compose.waitUntilAtLeastOneExists(hasText("Home is coming soon."), timeout)
 
         // Settings shows who is signed in; signing out returns to the sign-in screen.
-        compose.onNodeWithText("Settings").performClick()
+        compose.onNodeWithTag("nav-more").performClick()
+        compose.onNodeWithTag("open-settings").performClick()
         compose.waitUntilAtLeastOneExists(hasText(email), timeout)
         compose.onNodeWithTag("sign-out").performClick()
         compose.waitUntilAtLeastOneExists(hasTestTag("email"), timeout)
@@ -76,7 +77,8 @@ class SignInFlowTest {
         compose.onNodeWithTag("submit").performClick()
         compose.waitUntilAtLeastOneExists(hasText("Home is coming soon."), timeout)
 
-        compose.onNodeWithText("Settings").performClick()
+        compose.onNodeWithTag("nav-more").performClick()
+        compose.onNodeWithTag("open-settings").performClick()
         compose.waitUntilAtLeastOneExists(hasTestTag("sign-out"), timeout)
         compose.onNodeWithTag("sign-out").performClick()
         compose.waitUntilAtLeastOneExists(hasTestTag("to-register"), timeout)
