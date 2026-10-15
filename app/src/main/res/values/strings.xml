@@ -4,4 +4,57 @@
     <string name="settings_title">Settings</string>
     <string name="settings_currency">Currency</string>
     <string name="action_back">Back</string>
+
+    <!-- Received income (L02) -->
+    <string name="income_title">Received</string>
+    <string name="income_open">Received income</string>
+    <string name="income_header_label">RECEIVED THIS MONTH</string>
+    <string name="income_header_caption">Only money that actually arrived</string>
+    <plurals name="income_header_unresolved">
+        <item quantity="one">%d record has no LKR rate and is not included</item>
+        <item quantity="other">%d records have no LKR rate and are not included</item>
+    </plurals>
+    <string name="income_empty">No income yet. Tap + to add money you received.</string>
+    <string name="income_load_failed">Could not load your income. Check your connection and try again.</string>
+    <string name="income_add">Add income</string>
+    <string name="income_edit">Edit income</string>
+    <string name="income_default_title">Income</string>
+    <string name="income_missing_rate">No LKR rate</string>
+    <string name="income_edited">Edited</string>
+
+    <string name="income_field_amount">Amount</string>
+    <string name="income_field_account">Account</string>
+    <string name="income_field_account_locked">To change the account, undo this income and add it again.</string>
+    <string name="income_field_date">Date received</string>
+    <string name="income_field_rate">1 %1$s = ? LKR</string>
+    <string name="income_field_rate_hint">Leave empty if you don\'t know. It will show as a missing rate.</string>
+    <string name="income_field_received_from">Received from (optional)</string>
+    <string name="income_field_category">Category (optional)</string>
+    <string name="income_field_note">Note (optional)</string>
+    <string name="income_no_accounts">Add an account first.</string>
+
+    <string name="income_error_amount_missing">Enter the amount you received</string>
+    <string name="income_error_amount_invalid">Enter a valid amount above zero</string>
+    <string name="income_error_date_future">Income can\'t be in the future</string>
+    <string name="income_error_rate_invalid">Enter a valid rate above zero, or leave it empty</string>
+    <string name="income_error_too_long">Too long</string>
+
+    <string name="income_save">Save</string>
+    <string name="income_undo">Undo this income</string>
+    <string name="income_undo_confirm_title">Undo this income?</string>
+    <string name="income_undo_confirm_body">It will be removed from your totals. This can\'t be reversed.</string>
+    <string name="income_undo_confirm">Undo</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="action_ok">OK</string>
+
+    <string name="income_message_not_signed_in">Sign in to save income.</string>
+    <string name="income_message_nothing_changed">Nothing was changed.</string>
+    <string name="income_message_not_found">This income no longer exists.</string>
+    <string name="income_message_failed">Could not save. Please try again.</string>
+
+    <string name="income_category_salary">Salary</string>
+    <string name="income_category_freelance">Freelance</string>
+    <string name="income_category_allowance">Allowance</string>
+    <string name="income_category_gift">Gift</string>
+    <string name="income_category_other">Other</string>
 </resources>
