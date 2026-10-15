@@ -72,6 +72,16 @@ Use the committed Gradle wrapper:
 ./gradlew testDebugUnitTest    # unit tests, including the domain-purity check
 ```
 
+### Testing against the Firebase emulators
+
+Sign-in and data tests run against the local Firebase Emulator Suite, never the live project. With an Android emulator running:
+
+```bash
+npx -y firebase-tools@latest emulators:exec --only auth,firestore "./gradlew connectedDebugAndroidTest -Pzar.useEmulators=true"
+```
+
+`-Pzar.useEmulators=true` makes a debug build use the emulators (`BuildConfig.USE_FIREBASE_EMULATORS`). Normal builds always use the live project.
+
 Without `app/google-services.json` the build still succeeds and prints a warning, but Firebase is not initialised, so any screen that injects `FirebaseAuth` or `FirebaseFirestore` will crash at runtime. Never commit that file.
 
 Machine paths, IDE files, build output, Firebase configuration and credentials are ignored. Privileged AI/service keys belong on the backend.

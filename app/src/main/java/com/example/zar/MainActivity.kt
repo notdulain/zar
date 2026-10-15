@@ -4,7 +4,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import com.example.zar.core.navigation.ZarNavHost
+import com.example.zar.core.navigation.ZarRoot
 import com.example.zar.core.presentation.theme.ZarTheme
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -15,7 +15,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             ZarTheme {
-                ZarNavHost()
+                ZarRoot()
             }
         }
     }
