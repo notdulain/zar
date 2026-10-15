@@ -44,6 +44,11 @@ rules_version = '2';
 // paymentMatches/{expectedPaymentId_transactionId}   create, delete (no update)
 //   expectedPaymentId, transactionId, amount (positive Money), matchedAt
 //
+// projects/{projectId}            create, update (no delete: archive instead)
+//   id (== doc id), name (1-80), client? (1-80), currency {code, kind, digits} (immutable),
+//   status 'ACTIVE'|'ARCHIVED', createdAt (immutable). Milestones are expectedPayments
+//   with source FREELANCE_MILESTONE pointing at the project.
+//
 // drafts/{draftId}                create, update, delete (unconfirmed proposals)
 //   id (== doc id), source, status, proposals (list of maps, max 5), createdAt (immutable)
 //   Raw message text is never stored here; it stays in encrypted on-device staging.
@@ -293,6 +298,23 @@ service cloud.firestore {
         && isMillis(d.matchedAt);
     }
 
+    function isValidProject(projectId) {
+      let d = data();
+      return hasOnlyAllowedFields(['id', 'name', 'client', 'currency', 'status', 'createdAt'])
+        && hasRequiredFields(['id', 'name', 'currency', 'status', 'createdAt'])
+        && d.id == projectId
+        && isShortString(d.name, 80)
+        && isOptionalString(d, 'client', 80)
+        && d.currency is map
+        && d.currency.keys().hasOnly(['code', 'kind', 'digits'])
+        && d.currency.keys().hasAll(['code', 'kind', 'digits'])
+        && isCurrencyCode(d.currency.code)
+        && d.currency.kind in ['FIAT', 'CRYPTO']
+        && d.currency.digits is int && d.currency.digits >= 0 && d.currency.digits <= 18
+        && d.status in ['ACTIVE', 'ARCHIVED']
+        && isMillis(d.createdAt);
+    }
+
     function isValidProposal(p) {
       return p is map
         && p.keys().hasOnly(['kind', 'type', 'direction', 'amount', 'sent', 'received', 'accountId', 'fromAccountId',
@@ -390,6 +412,15 @@ service cloud.firestore {
         allow create: if isOwner(userId) && isValidPaymentMatch(matchId);
         allow delete: if isOwner(userId);
         allow update: if false;
+      }
+
+      match /projects/{projectId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidProject(projectId);
+        // Milestones are in the project's currency, so it never changes; archive instead of deleting.
+        allow update: if isOwner(userId) && isValidProject(projectId)
+          && areImmutableFieldsUnchanged(['id', 'currency', 'createdAt']);
+        allow delete: if false;
       }
 
       match /drafts/{draftId} {
