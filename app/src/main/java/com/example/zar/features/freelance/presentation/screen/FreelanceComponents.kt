@@ -46,6 +46,7 @@ internal fun FreelanceMessage.textRes(): Int = when (this) {
     FreelanceMessage.ARCHIVED -> R.string.freelance_message_archived
     FreelanceMessage.CANCELLED -> R.string.freelance_message_cancelled
     FreelanceMessage.NOT_FOUND -> R.string.project_not_found
+    FreelanceMessage.BELOW_LINKED -> R.string.freelance_message_below_linked
     FreelanceMessage.FAILED -> R.string.freelance_message_failed
 }
 

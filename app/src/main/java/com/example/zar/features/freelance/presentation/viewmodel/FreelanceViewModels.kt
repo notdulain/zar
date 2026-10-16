@@ -36,12 +36,13 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-enum class FreelanceMessage { NOT_SIGNED_IN, ARCHIVED, CANCELLED, NOT_FOUND, FAILED }
+enum class FreelanceMessage { NOT_SIGNED_IN, ARCHIVED, CANCELLED, NOT_FOUND, BELOW_LINKED, FAILED }
 
 internal fun Throwable.toFreelanceMessage(): FreelanceMessage = when (this) {
     is LedgerError.NotSignedIn -> FreelanceMessage.NOT_SIGNED_IN
     is FreelanceError.ProjectArchived -> FreelanceMessage.ARCHIVED
     is FreelanceError.MilestoneCancelled -> FreelanceMessage.CANCELLED
+    is FreelanceError.AmountBelowLinked -> FreelanceMessage.BELOW_LINKED
     else -> FreelanceMessage.FAILED
 }
 

@@ -71,7 +71,7 @@ class FreelanceUseCasesTest {
 
     @Test
     fun milestoneIsAnIncomingExpectedPaymentForTheProject() = runBlocking {
-        val result = SaveMilestoneUseCase(expected)(p1, ExpectedPaymentId("m1"), MilestoneInput("Design", usd(1_000), TODAY), null, T0)
+        val result = SaveMilestoneUseCase(expected, FixedLedger(emptyList()))(p1, ExpectedPaymentId("m1"), MilestoneInput("Design", usd(1_000), TODAY), null, T0)
         assertTrue(result.isSuccess)
         val saved = expected.payments.value.single()
         assertEquals(ExpectedSource.FreelanceMilestone("p1", "m1"), saved.source)
@@ -80,13 +80,27 @@ class FreelanceUseCasesTest {
 
     @Test
     fun milestoneRejectsWrongCurrencyArchivedProjectAndCancelledEdits() = runBlocking {
-        val save = SaveMilestoneUseCase(expected)
+        val save = SaveMilestoneUseCase(expected, FixedLedger(emptyList()))
         val input = MilestoneInput("Design", usd(1_000), TODAY)
         assertTrue(save(p1, ExpectedPaymentId("m1"), input.copy(amount = lkr(1_000)), null, T0).exceptionOrNull() is FreelanceError.CurrencyMismatch)
         assertTrue(save(p1.copy(status = ProjectStatus.ARCHIVED), ExpectedPaymentId("m1"), input, null, T0).exceptionOrNull() is FreelanceError.ProjectArchived)
         val cancelled = milestone("m2", "p1", usd(1), status = ExpectedPaymentStatus.CANCELLED)
         assertTrue(save(p1, cancelled.id, input, cancelled, T0).exceptionOrNull() is FreelanceError.MilestoneCancelled)
         assertTrue(expected.payments.value.isEmpty())
+    }
+
+    @Test
+    fun milestoneCannotShrinkBelowLinkedReceipts() = runBlocking {
+        val existing = milestone("m1", "p1", usd(1_000))
+        expected.saveExpectedPayment(existing)
+        expected.saveMatch(match("m1", "r1", usd(500)))
+        val save = SaveMilestoneUseCase(expected, FixedLedger(listOf(receipt)))
+
+        val result = save(p1, existing.id, MilestoneInput("Design", usd(400), TODAY), existing, T0)
+
+        assertTrue(result.exceptionOrNull() is FreelanceError.AmountBelowLinked)
+        assertEquals(usd(1_000), expected.payments.value.single().amount)
+        assertTrue(save(p1, existing.id, MilestoneInput("Design", usd(500), TODAY), existing, T0).isSuccess)
     }
 
     @Test

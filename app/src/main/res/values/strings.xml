@@ -169,4 +169,5 @@
     <string name="freelance_message_archived">This project is archived.</string>
     <string name="freelance_message_cancelled">This milestone is cancelled.</string>
     <string name="freelance_message_failed">Could not save. Please try again.</string>
+    <string name="freelance_message_below_linked">Remove linked payments before lowering this amount.</string>
 </resources>

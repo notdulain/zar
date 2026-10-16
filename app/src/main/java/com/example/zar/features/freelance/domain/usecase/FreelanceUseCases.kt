@@ -1,5 +1,6 @@
 package com.example.zar.features.freelance.domain.usecase
 
+import com.example.zar.core.domain.calculation.ExpectedPaymentProgressCalculator
 import com.example.zar.core.domain.model.Direction
 import com.example.zar.core.domain.model.ExpectedPayment
 import com.example.zar.core.domain.model.ExpectedPaymentId
@@ -28,6 +29,7 @@ import javax.inject.Inject
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 
 /** Why a freelance save was refused before reaching storage. */
@@ -37,6 +39,7 @@ sealed class FreelanceError(message: String) : Exception(message) {
     class CurrencyMismatch : FreelanceError("Amounts must use the project's currency")
     class NotIncome : FreelanceError("Only received income can be linked")
     class AmountTooHigh : FreelanceError("More than the receipt or milestone allows")
+    class AmountBelowLinked : FreelanceError("Amount is below linked receipts")
 }
 
 /** Projects with milestone progress, plus what clients owe. Recomputed whenever records change. */
@@ -94,6 +97,7 @@ class SaveProjectUseCase @Inject constructor(
 
 class SaveMilestoneUseCase @Inject constructor(
     private val expected: ExpectedPaymentRepository,
+    private val ledger: LedgerRepository,
 ) {
     /** Creates a milestone when [existing] is null, otherwise edits it. Reuse [id] on retry. */
     suspend operator fun invoke(
@@ -106,6 +110,18 @@ class SaveMilestoneUseCase @Inject constructor(
         if (project.isArchived) throw FreelanceError.ProjectArchived()
         if (input.amount.currency != project.currency) throw FreelanceError.CurrencyMismatch()
         if (existing?.status == ExpectedPaymentStatus.CANCELLED) throw FreelanceError.MilestoneCancelled()
+        if (existing != null && input.amount < existing.amount) {
+            val (payments, matches, entries) = combine(
+                expected.observeExpectedPayments(), expected.observeMatches(), ledger.observeLedger(),
+            ) { payments, matches, entries ->
+                Triple(payments, matches, entries)
+            }.first()
+            val linked = ExpectedPaymentProgressCalculator.effectiveAllocations(payments, matches, entries)
+            val linkedTotal = matches.filter { it.expectedPaymentId == existing.id }
+                .mapNotNull { linked[it.id] }
+                .fold(Money.zero(project.currency)) { total, amount -> total + amount }
+            if (input.amount < linkedTotal) throw FreelanceError.AmountBelowLinked()
+        }
         val milestone = existing?.copy(title = input.title, amount = input.amount, dueDate = input.dueDate)
             ?: ExpectedPayment(
                 id = id,
