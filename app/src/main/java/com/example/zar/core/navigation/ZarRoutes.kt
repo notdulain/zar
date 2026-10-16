@@ -24,3 +24,17 @@ data object IncomeRoute
 /** Add income when [incomeId] is null; otherwise edit that income. */
 @Serializable
 data class IncomeFormRoute(val incomeId: String? = null)
+
+@Serializable
+data object FreelanceRoute
+
+/** New project when [projectId] is null; otherwise edit it. */
+@Serializable
+data class ProjectFormRoute(val projectId: String? = null)
+
+@Serializable
+data class ProjectRoute(val projectId: String)
+
+/** New milestone when [milestoneId] is null; otherwise edit it and link receipts. */
+@Serializable
+data class MilestoneRoute(val projectId: String, val milestoneId: String? = null)

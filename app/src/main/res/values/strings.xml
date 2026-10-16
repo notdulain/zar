@@ -97,4 +97,77 @@
     <string name="sign_out_unsynced_body">Your latest changes are only on this phone. If you sign out now they will be lost. Connect to the internet and wait a moment, or sign out anyway.</string>
     <string name="sign_out_anyway">Sign out anyway</string>
     <string name="action_cancel">Cancel</string>
+
+    <!-- Freelance (L03) -->
+    <string name="freelance_title">Freelance</string>
+    <string name="freelance_open">Freelance projects</string>
+    <string name="freelance_owed_label">CLIENTS OWE YOU</string>
+    <string name="freelance_owed_none">Nothing owed right now</string>
+    <plurals name="freelance_owed_caption">
+        <item quantity="one">Across %d project. Only money not yet received.</item>
+        <item quantity="other">Across %d projects. Only money not yet received.</item>
+    </plurals>
+    <string name="freelance_overdue">%1$s overdue</string>
+    <string name="freelance_empty">No projects yet. Tap + to add a client project and its milestones.</string>
+    <string name="freelance_load_failed">Could not load your projects. Check your connection and try again.</string>
+    <string name="freelance_left">%1$s left</string>
+    <string name="freelance_received_of">Received %1$s of %2$s</string>
+    <string name="freelance_archived">Archived</string>
+    <plurals name="freelance_milestone_count">
+        <item quantity="one">%d milestone</item>
+        <item quantity="other">%d milestones</item>
+    </plurals>
+
+    <string name="project_add">New project</string>
+    <string name="project_edit">Edit project</string>
+    <string name="project_name">Project name</string>
+    <string name="project_client">Client (optional)</string>
+    <string name="project_currency">Currency</string>
+    <string name="project_currency_locked">The currency can\'t change once a project exists.</string>
+    <string name="project_archive">Archive project</string>
+    <string name="project_unarchive">Restore project</string>
+    <string name="project_not_found">This project no longer exists.</string>
+    <string name="project_still_owed">STILL OWED</string>
+    <string name="project_no_milestones">No milestones yet. Add one for each payment you expect.</string>
+    <string name="project_add_milestone">Add milestone</string>
+    <string name="project_archived_note">This project is archived. Restore it to add or change milestones.</string>
+    <string name="action_edit">Edit</string>
+
+    <string name="milestone_add">New milestone</string>
+    <string name="milestone_edit">Milestone</string>
+    <string name="milestone_title">Milestone name</string>
+    <string name="milestone_amount">Expected amount</string>
+    <string name="milestone_due">Due date</string>
+    <string name="milestone_due_on">Due %1$s</string>
+    <string name="milestone_state_paid">Paid</string>
+    <string name="milestone_state_cancelled">Cancelled</string>
+    <string name="milestone_state_overdue">%1$s overdue</string>
+    <plurals name="milestone_payment_count">
+        <item quantity="one">%d payment linked</item>
+        <item quantity="other">%d payments linked</item>
+    </plurals>
+    <string name="milestone_linked">PAYMENTS LINKED</string>
+    <string name="milestone_link_title">LINK A PAYMENT YOU RECEIVED</string>
+    <string name="milestone_link_hint">Only income in %1$s that isn\'t fully linked yet is shown. Add the payment under Received first.</string>
+    <string name="milestone_no_candidates">No unlinked %1$s income. Add the payment under Received income first.</string>
+    <string name="milestone_available">%1$s available</string>
+    <string name="milestone_link">Link</string>
+    <string name="milestone_unlink">Remove</string>
+    <string name="milestone_cancel">Cancel milestone</string>
+    <string name="milestone_cancel_title">Cancel this milestone?</string>
+    <string name="milestone_cancel_body">It will no longer count as money owed. Payments already linked stay received. This can\'t be reversed.</string>
+    <string name="milestone_cancel_confirm">Cancel milestone</string>
+    <string name="milestone_cancelled_note">This milestone was cancelled.</string>
+    <string name="milestone_not_found">This milestone no longer exists.</string>
+
+    <string name="freelance_error_name_missing">Enter a name</string>
+    <string name="freelance_error_amount_missing">Enter an amount</string>
+    <string name="freelance_error_amount_invalid">Enter a valid amount above zero</string>
+    <string name="freelance_error_more_than_receipt">More than this payment has left</string>
+    <string name="freelance_error_more_than_remaining">More than the milestone still expects</string>
+    <string name="freelance_message_not_signed_in">Sign in to save.</string>
+    <string name="freelance_message_archived">This project is archived.</string>
+    <string name="freelance_message_cancelled">This milestone is cancelled.</string>
+    <string name="freelance_message_failed">Could not save. Please try again.</string>
+    <string name="freelance_message_below_linked">Remove linked payments before lowering this amount.</string>
 </resources>

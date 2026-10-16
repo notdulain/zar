@@ -24,26 +24,7 @@ object ExpectedPaymentProgressCalculator {
         entries: List<LedgerEntry>,
         today: LocalDate,
     ): List<ExpectedPaymentProgress> {
-        val expectedById = expectedPayments.associateBy { it.id }
-        val transactions = entries.active().associate { it.id to it.current }
-
-        // Effective allocation per match after capping each transaction.
-        val effective = mutableMapOf<String, Money>()
-        matches.distinctBy { it.id }.groupBy { it.transactionId }.forEach { (txId, txMatches) ->
-            val tx = transactions[txId] ?: return@forEach
-            if (tx.type == TransactionType.TRANSFER_IN || tx.type == TransactionType.TRANSFER_OUT) return@forEach
-            var available = tx.amount
-            for (match in txMatches.sortedWith(compareBy<PaymentMatch>({ it.matchedAt }, { it.id }))) {
-                val expected = expectedById[match.expectedPaymentId] ?: continue
-                if (expected.direction != tx.direction) continue
-                if (match.amount.currency != tx.amount.currency || match.amount.currency != expected.amount.currency) continue
-                val allocated = minOf(match.amount, available)
-                if (allocated.isPositive) {
-                    effective[match.id] = allocated
-                    available -= allocated
-                }
-            }
-        }
+        val effective = effectiveAllocations(expectedPayments, matches, entries)
 
         val matchesByExpected = matches.distinctBy { it.id }.groupBy { it.expectedPaymentId }
         return expectedPayments.map { expected ->
@@ -61,5 +42,36 @@ object ExpectedPaymentProgressCalculator {
             }
             ExpectedPaymentProgress(expected, matched, remaining, overdue, state)
         }
+    }
+
+    /**
+     * How much of each match actually counts, keyed by [PaymentMatch.id]. Each transaction's
+     * matches are capped at its amount, oldest first; matches on undone, transfer,
+     * wrong-direction or wrong-currency transactions are left out.
+     */
+    fun effectiveAllocations(
+        expectedPayments: List<ExpectedPayment>,
+        matches: List<PaymentMatch>,
+        entries: List<LedgerEntry>,
+    ): Map<String, Money> {
+        val expectedById = expectedPayments.associateBy { it.id }
+        val transactions = entries.active().associate { it.id to it.current }
+        val effective = mutableMapOf<String, Money>()
+        matches.distinctBy { it.id }.groupBy { it.transactionId }.forEach { (txId, txMatches) ->
+            val tx = transactions[txId] ?: return@forEach
+            if (tx.type == TransactionType.TRANSFER_IN || tx.type == TransactionType.TRANSFER_OUT) return@forEach
+            var available = tx.amount
+            for (match in txMatches.sortedWith(compareBy<PaymentMatch>({ it.matchedAt }, { it.id }))) {
+                val expected = expectedById[match.expectedPaymentId] ?: continue
+                if (expected.direction != tx.direction) continue
+                if (match.amount.currency != tx.amount.currency || match.amount.currency != expected.amount.currency) continue
+                val allocated = minOf(match.amount, available)
+                if (allocated.isPositive) {
+                    effective[match.id] = allocated
+                    available -= allocated
+                }
+            }
+        }
+        return effective
     }
 }
