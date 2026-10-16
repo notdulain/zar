@@ -19,7 +19,7 @@ import com.example.zar.core.presentation.theme.ZarTheme
 
 // Placeholder start destination. The Home feature replaces this screen.
 @Composable
-fun HomeScreen(onOpenSettings: () -> Unit) {
+fun HomeScreen(onOpenSettings: () -> Unit, onOpenIncome: () -> Unit) {
     Scaffold { innerPadding ->
         Column(
             modifier = Modifier
@@ -34,6 +34,10 @@ fun HomeScreen(onOpenSettings: () -> Unit) {
             Button(onClick = onOpenSettings) {
                 Text(stringResource(R.string.settings_title))
             }
+            // Temporary entry point until Home (Sumuditha) adds the real Received card.
+            Button(onClick = onOpenIncome) {
+                Text(stringResource(R.string.income_open))
+            }
         }
     }
 }
@@ -41,5 +45,5 @@ fun HomeScreen(onOpenSettings: () -> Unit) {
 @Preview(showBackground = true)
 @Composable
 private fun HomeScreenPreview() {
-    ZarTheme { HomeScreen(onOpenSettings = {}) }
+    ZarTheme { HomeScreen(onOpenSettings = {}, onOpenIncome = {}) }
 }

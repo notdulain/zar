@@ -17,3 +17,10 @@ data object HomeRoute
 
 @Serializable
 data object SettingsRoute
+
+@Serializable
+data object IncomeRoute
+
+/** Add income when [incomeId] is null; otherwise edit that income. */
+@Serializable
+data class IncomeFormRoute(val incomeId: String? = null)
