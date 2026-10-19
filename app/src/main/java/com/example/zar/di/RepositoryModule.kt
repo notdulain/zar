@@ -7,7 +7,7 @@ import com.example.zar.core.domain.repository.AccountRepository
 import com.example.zar.core.domain.repository.ExpectedPaymentRepository
 import com.example.zar.core.domain.repository.LedgerRepository
 import com.example.zar.core.domain.repository.UserSessionProvider
-import com.example.zar.features.accounts.data.repository.SampleAccountRepository
+import com.example.zar.features.accounts.data.repository.FirestoreAccountRepository
 import com.example.zar.features.auth.data.repository.FirebaseAuthRepository
 import com.example.zar.features.auth.domain.repository.AuthRepository
 import com.example.zar.features.auth.domain.repository.SignOutHandler
@@ -51,10 +51,9 @@ abstract class RepositoryModule {
     @Singleton
     abstract fun bindProjectRepository(impl: FirestoreProjectRepository): ProjectRepository
 
-    // Temporary sample accounts until D03 adds the Firestore implementation.
     @Binds
     @Singleton
-    abstract fun bindAccountRepository(impl: SampleAccountRepository): AccountRepository
+    abstract fun bindAccountRepository(impl: FirestoreAccountRepository): AccountRepository
 
     @Binds
     @Singleton

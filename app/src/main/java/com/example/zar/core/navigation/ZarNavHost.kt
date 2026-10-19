@@ -5,6 +5,9 @@ import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.example.zar.features.accounts.presentation.screen.AccountDetailScreen
+import com.example.zar.features.accounts.presentation.screen.AccountFormScreen
+import com.example.zar.features.accounts.presentation.screen.AccountsScreen
 import com.example.zar.features.freelance.presentation.screen.FreelanceScreen
 import com.example.zar.features.freelance.presentation.screen.MilestoneScreen
 import com.example.zar.features.freelance.presentation.screen.ProjectFormScreen
@@ -27,6 +30,7 @@ fun ZarNavHost(modifier: Modifier = Modifier) {
                 onOpenSettings = { navController.navigate(SettingsRoute) },
                 onOpenIncome = { navController.navigate(IncomeRoute) },
                 onOpenFreelance = { navController.navigate(FreelanceRoute) },
+                onOpenAccounts = { navController.navigate(AccountsRoute) },
             )
         }
         composable<SettingsRoute> {
@@ -69,6 +73,22 @@ fun ZarNavHost(modifier: Modifier = Modifier) {
         }
         composable<MilestoneRoute> {
             MilestoneScreen(onDone = { navController.popBackStack() })
+        }
+        composable<AccountsRoute> {
+            AccountsScreen(
+                onBack = { navController.popBackStack() },
+                onAddAccount = { navController.navigate(AccountFormRoute()) },
+                onOpenAccount = { id -> navController.navigate(AccountRoute(id)) },
+            )
+        }
+        composable<AccountRoute> {
+            AccountDetailScreen(
+                onBack = { navController.popBackStack() },
+                onEdit = { id -> navController.navigate(AccountFormRoute(accountId = id)) },
+            )
+        }
+        composable<AccountFormRoute> {
+            AccountFormScreen(onDone = { navController.popBackStack() })
         }
     }
 }

@@ -47,7 +47,7 @@ These are the shared models, repository interfaces and saving rules that every f
 - **Firestore is the primary financial store.** Everything is under `users/{uid}/` with these subcollections: `accounts`, `transactions`, `corrections`, `voids`, `evidenceLinks`, `expectedPayments`, `paymentMatches`, `drafts` (`FirestoreCollections`).
 - `firestore.rules` allows only the owner and enforces each collection's schema and write-once behaviour. Tests are in `firestore-tests/` (`npm install && npm test`, needs Java).
 - **Encrypted Room is only for capture staging** (L08): raw bank messages stay on the device and are never uploaded. Drafts carry structured fields only, and the rules reject a `rawText` field.
-- Implemented now: `LedgerRepository` (Firestore) and `UserSessionProvider` (Firebase Auth). Interfaces only, to be implemented by their owners: `AccountRepository` (D03), `ExpectedPaymentRepository` (L03/L05), `DraftRepository` (D06/S07). Use the field names already in `firestore.rules`.
+- Implemented now: `LedgerRepository` (Firestore), `UserSessionProvider` (Firebase Auth) and `AccountRepository` (Firestore, D03: `features/accounts`). Interfaces only, to be implemented by their owners: `ExpectedPaymentRepository` (L03/L05), `DraftRepository` (D06/S07). Use the field names already in `firestore.rules`.
 
 ## Decisions to confirm as a team
 
