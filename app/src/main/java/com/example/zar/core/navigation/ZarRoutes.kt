@@ -38,3 +38,13 @@ data class ProjectRoute(val projectId: String)
 /** New milestone when [milestoneId] is null; otherwise edit it and link receipts. */
 @Serializable
 data class MilestoneRoute(val projectId: String, val milestoneId: String? = null)
+
+@Serializable
+data object AccountsRoute
+
+@Serializable
+data class AccountRoute(val accountId: String)
+
+/** Add an account when [accountId] is null; otherwise edit that account. */
+@Serializable
+data class AccountFormRoute(val accountId: String? = null)

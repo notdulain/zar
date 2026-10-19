@@ -19,7 +19,7 @@ import com.example.zar.core.presentation.theme.ZarTheme
 
 // Placeholder start destination. The Home feature replaces this screen.
 @Composable
-fun HomeScreen(onOpenSettings: () -> Unit, onOpenIncome: () -> Unit, onOpenFreelance: () -> Unit) {
+fun HomeScreen(onOpenSettings: () -> Unit, onOpenIncome: () -> Unit, onOpenFreelance: () -> Unit, onOpenAccounts: () -> Unit) {
     Scaffold { innerPadding ->
         Column(
             modifier = Modifier
@@ -41,6 +41,10 @@ fun HomeScreen(onOpenSettings: () -> Unit, onOpenIncome: () -> Unit, onOpenFreel
             Button(onClick = onOpenFreelance) {
                 Text(stringResource(R.string.freelance_open))
             }
+            // Temporary entry point until the More tab opens Accounts.
+            Button(onClick = onOpenAccounts) {
+                Text(stringResource(R.string.accounts_open))
+            }
         }
     }
 }
@@ -48,5 +52,5 @@ fun HomeScreen(onOpenSettings: () -> Unit, onOpenIncome: () -> Unit, onOpenFreel
 @Preview(showBackground = true)
 @Composable
 private fun HomeScreenPreview() {
-    ZarTheme { HomeScreen(onOpenSettings = {}, onOpenIncome = {}, onOpenFreelance = {}) }
+    ZarTheme { HomeScreen(onOpenSettings = {}, onOpenIncome = {}, onOpenFreelance = {}, onOpenAccounts = {}) }
 }
