@@ -60,9 +60,9 @@ fun ZarIcon(@DrawableRes icon: Int, modifier: Modifier = Modifier, size: Dp = 18
     Icon(painterResource(icon), contentDescription = null, modifier = modifier.size(size), tint = tint)
 }
 
-/** Round icon holder used on list rows (36dp). */
+/** 40dp icon holder used by Figma's transaction and account rows. */
 @Composable
-fun ZarIconChip(@DrawableRes icon: Int, modifier: Modifier = Modifier, size: Dp = 36.dp, iconSize: Dp = 18.dp) {
+fun ZarIconChip(@DrawableRes icon: Int, modifier: Modifier = Modifier, size: Dp = 40.dp, iconSize: Dp = 19.dp) {
     Box(modifier.size(size).clip(CircleShape).background(ZarTheme.colors.subtle), Alignment.Center) {
         ZarIcon(icon, size = iconSize)
     }
@@ -122,8 +122,9 @@ fun ZarMonoLabel(text: String, modifier: Modifier = Modifier, color: Color = Zar
 }
 
 enum class ZarButtonStyle { Primary, Soft, Outline }
+enum class ZarButtonSize { Large, Medium }
 
-/** Large (58dp) button for sheet and screen actions. */
+/** Figma button variants: Large (58dp) for sheets, Medium (44dp) inside cards. */
 @Composable
 fun ZarButton(
     text: String,
@@ -131,8 +132,13 @@ fun ZarButton(
     modifier: Modifier = Modifier,
     style: ZarButtonStyle = ZarButtonStyle.Primary,
     enabled: Boolean = true,
+    size: ZarButtonSize = ZarButtonSize.Large,
+    @DrawableRes icon: Int? = null,
 ) {
     val colors = ZarTheme.colors
+    val shape = if (size == ZarButtonSize.Large) ZarShapes.lg else androidx.compose.foundation.shape.RoundedCornerShape(16.dp)
+    val height = if (size == ZarButtonSize.Large) 58.dp else 44.dp
+    val horizontalPadding = if (size == ZarButtonSize.Large) 24.dp else 16.dp
     val container = when (style) {
         ZarButtonStyle.Primary -> colors.accentPrimary
         ZarButtonStyle.Soft -> colors.subtle
@@ -141,16 +147,25 @@ fun ZarButton(
     val content = if (style == ZarButtonStyle.Primary) colors.textOnInverse else colors.textPrimary
     Box(
         modifier
-            .height(58.dp)
+            .height(height)
             .alpha(if (enabled) 1f else 0.4f)
-            .clip(ZarShapes.lg)
+            .clip(shape)
             .background(container)
-            .then(if (style == ZarButtonStyle.Outline) Modifier.border(BorderStroke(1.dp, colors.borderDefault), ZarShapes.lg) else Modifier)
+            .then(if (style == ZarButtonStyle.Outline) Modifier.border(BorderStroke(1.dp, colors.borderDefault), shape) else Modifier)
             .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
-            .padding(horizontal = 24.dp),
+            .padding(horizontal = horizontalPadding),
         Alignment.Center,
     ) {
-        Text(text, style = ZarType.labelButton, color = content, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            if (icon != null) ZarIcon(icon, size = if (size == ZarButtonSize.Large) 20.dp else 18.dp, tint = content)
+            Text(
+                text,
+                style = if (size == ZarButtonSize.Large) ZarType.labelButton else ZarType.labelChip,
+                color = content,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
     }
 }
 
@@ -168,7 +183,7 @@ fun ZarChip(
     val foreground = if (selected) colors.textOnInverse else colors.textPrimary
     Row(
         modifier
-            .alpha(if (enabled) 1f else 0.4f)
+            .alpha(if (enabled) 1f else 0.45f)
             .clip(ZarShapes.sm)
             .background(if (selected) colors.accentSelected else colors.subtle)
             .clickable(enabled = enabled, role = Role.RadioButton, onClick = onClick)
