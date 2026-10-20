@@ -306,4 +306,44 @@
     <string name="more_settings_detail">Currency and sign out</string>
     <string name="more_income_detail">View and manage received money</string>
     <string name="more_freelance_detail">Projects, milestones and client payments</string>
+
+    <!-- Home overview -->
+    <string name="home_received">Received</string>
+    <string name="home_received_this_month">Received</string>
+    <string name="home_received_note_short">Money that actually arrived</string>
+    <string name="home_chart_start">Month start</string>
+    <string name="home_chart_today">Today</string>
+    <string name="home_received_note">Money that actually arrived. Expected and unexplained money is not included.</string>
+    <string name="home_previous_month">Previous month</string>
+    <string name="home_next_month">Next month</string>
+    <string name="home_spent_committed">Committed</string>
+    <string name="home_spent_discretionary">Discretionary</string>
+    <string name="home_spent_unknown">Unknown</string>
+    <string name="home_loading">Loading your records…</string>
+    <string name="home_error">Couldn\'t load your records.</string>
+    <string name="home_retry">Try again</string>
+    <string name="home_month_empty">Nothing recorded in this month yet.</string>
+    <string name="home_more_link">More ›</string>
+    <string name="home_coverage_complete">No missing rates or unclassified spending in these totals.</string>
+    <string name="home_coverage_missing_rate">%1$d record(s) have no LKR rate and are left out of these totals. They need a rate.</string>
+    <string name="home_coverage_unknown">Unknown spending has no class yet. Review it to see the real split.</string>
+    <string name="home_coverage_adjustments">%1$d cash catch-up adjustment(s) affect this month. Review the records for gaps.</string>
+    <string name="home_warning_prefix">Check:</string>
+    <string name="home_activity_income">Income</string>
+    <string name="home_activity_expense">Expense</string>
+    <string name="home_activity_transfer_in">Transfer in</string>
+    <string name="home_activity_transfer_out">Transfer out</string>
+    <string name="home_activity_refund">Refund</string>
+    <string name="home_activity_adjustment_in">Adjustment in</string>
+    <string name="home_activity_adjustment_out">Adjustment out</string>
+    <string name="home_activity_corrected">Corrected</string>
+    <string name="home_activity_undone">Undone</string>
+    <string name="activity_current_month">This month⌄</string>
+    <string name="activity_month">October</string>
+    <string name="activity_filter_all">All</string>
+    <string name="activity_filter_review">Needs review</string>
+    <string name="home_received_chart">Daily received income in LKR for %1$s.</string>
+    <string name="home_received_chart_empty">No income with a known LKR value to chart.</string>
+    <string name="activity_pending">Activity details are coming soon. Open Received income to manage saved income.</string>
+    <string name="activity_amount_pending">—</string>
 </resources>
