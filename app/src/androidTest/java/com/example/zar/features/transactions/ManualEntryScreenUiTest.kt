@@ -61,6 +61,7 @@ class ManualEntryScreenUiTest {
         var income = 0
         var addAccount = 0
         var category: ExpenseCategory? = null
+        var time: java.time.LocalTime? = null
         var suggestion: EntrySuggestion? = null
         var closed = 0
     }
@@ -78,6 +79,7 @@ class ManualEntryScreenUiTest {
                         onKind = { rec.kind = it },
                         onAmount = { rec.amount = it },
                         onDate = {},
+                        onTime = { rec.time = it },
                         onAccount = {},
                         onCategory = { rec.category = it },
                         onSpendingClass = {},
@@ -102,6 +104,7 @@ class ManualEntryScreenUiTest {
 
         compose.onNodeWithTag("manual-amount").assertIsDisplayed()
         compose.onNodeWithTag("manual-currency").assertIsDisplayed()
+        compose.onNodeWithTag("manual-time").assertExists()
         compose.onNodeWithTag("manual-account-bank").assertIsDisplayed()
         compose.onNodeWithTag("manual-category-groceries").assertExists()
         compose.onNodeWithTag("manual-class-discretionary").assertExists()
@@ -121,6 +124,18 @@ class ManualEntryScreenUiTest {
         assertEquals("850", rec.amount)
         assertEquals(ExpenseCategory.TRANSPORT, rec.category)
         assertEquals(1, rec.saves)
+    }
+
+    @Test
+    fun expenseTimePickerReturnsTheSelectedTime() {
+        val rec = Recorder()
+        show(state(), rec)
+
+        compose.onNodeWithTag("manual-time").performScrollTo().performClick()
+        compose.onNodeWithText("Time").assertIsDisplayed()
+        compose.onNodeWithText("Set time").performClick()
+
+        assertTrue(rec.time != null)
     }
 
     @Test

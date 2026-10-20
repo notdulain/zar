@@ -20,6 +20,7 @@ import com.example.zar.features.transactions.domain.manual.model.TransferFormInp
 import com.example.zar.features.transactions.domain.manual.model.TransferFormResult
 import com.example.zar.features.transactions.domain.manual.model.TransferProblem
 import java.time.LocalDate
+import java.time.LocalTime
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -127,6 +128,15 @@ class ManualEntryRulesTest {
     }
 
     @Test
+    fun selectedExpenseTimeIsDistinctFromItsSaveInstant() {
+        val selectedTime = LocalTime.of(8, 35)
+        val details = (ManualEntryRules.validateExpense(expense().copy(time = selectedTime), today) as ExpenseFormResult.Valid).details
+        val transaction = ManualEntryRules.newExpense(TransactionId("timed"), details, T0)
+        assertEquals(selectedTime, transaction.time)
+        assertEquals(T0, transaction.createdAt)
+    }
+
+    @Test
     fun foreignCurrencyExpenseIsSavedWithAMissingRateNotAGuess() {
         val details = (ManualEntryRules.validateExpense(expense(amount = "12", account = payoneer), today) as ExpenseFormResult.Valid).details
         val tx = ManualEntryRules.newExpense(TransactionId("e2"), details, T0)
@@ -222,6 +232,18 @@ class ManualEntryRulesTest {
         assertEquals(TransactionType.TRANSFER_IN, transfer.inLeg().type)
         assertEquals(bank.id, transfer.outLeg().accountId)
         assertEquals(cash.id, transfer.inLeg().accountId)
+    }
+
+    @Test
+    fun selectedTransferTimeIsOnBothLegsAndItsFee() {
+        val selectedTime = LocalTime.of(18, 42)
+        val details = (ManualEntryRules.validateTransfer(transfer(fee = "30").copy(time = selectedTime), today) as TransferFormResult.Valid).details
+        val transfer = ManualEntryRules.newTransfer(TransferId("timed"), details, T0)
+        assertEquals(selectedTime, transfer.time)
+        assertEquals(selectedTime, transfer.outLeg().time)
+        assertEquals(selectedTime, transfer.inLeg().time)
+        assertEquals(selectedTime, transfer.fee?.time)
+        assertEquals(T0, transfer.createdAt)
     }
 
     @Test

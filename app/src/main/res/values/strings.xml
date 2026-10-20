@@ -409,7 +409,9 @@
     <string name="manual_kind_transfer">Transfer</string>
     <string name="manual_field_amount">Amount</string>
     <string name="manual_field_account">Account</string>
+    <string name="manual_all_accounts">All accounts →</string>
     <string name="manual_field_category">Category</string>
+    <string name="manual_all_categories">All categories →</string>
     <string name="manual_field_counts_as">Counts as</string>
     <string name="manual_counts_as_hint">Usual for %1$s</string>
     <string name="manual_field_date">Date</string>

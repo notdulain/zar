@@ -33,6 +33,7 @@ const path = (uid, col, id) => `users/${uid}/${col}/${id}`;
 
 test('owner can create and read a transaction', async () => {
   await assertSucceeds(setDoc(doc(alice(), path('alice', 'transactions', 't1')), tx('t1')));
+  await assertSucceeds(setDoc(doc(alice(), path('alice', 'transactions', 'timed')), tx('timed', { time: '09:05' })));
   await assertSucceeds(setDoc(doc(alice(), path('alice', 'transactions', 'u1')), usdIncome('u1')));
   await assertSucceeds(getDocs(collection(alice(), 'users/alice/transactions')));
 });
@@ -84,6 +85,7 @@ test('invalid transactions are rejected', async () => {
   await assertSucceeds(setDoc(p('h'), { ...refund, id: 'h', refundOf: 't1' }));
   await assertSucceeds(setDoc(p('i'), tx('i', { amount: { currency: 'BTC', kind: 'CRYPTO', digits: 8, quantity: '0.00012345' }, conversion: { status: 'MISSING', target: lkr(0) } })));
   await assertFails(setDoc(p('j'), tx('j', { amount: { currency: 'BTC', kind: 'CRYPTO', digits: 8, quantity: '0.000' } })));
+  await assertFails(setDoc(p('bad-time'), tx('bad-time', { time: '25:61' })));
 });
 
 test('corrections are write-once and validated', async () => {

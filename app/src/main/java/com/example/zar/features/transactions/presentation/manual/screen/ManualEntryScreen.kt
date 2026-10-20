@@ -1,12 +1,24 @@
 package com.example.zar.features.transactions.presentation.manual.screen
 
+import androidx.activity.compose.BackHandler
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.SelectableDates
+import androidx.compose.material3.rememberDatePickerState
+import androidx.compose.material3.TextButton
+import java.time.Instant
+import java.time.ZoneOffset
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -17,7 +29,6 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.rememberScrollState
@@ -26,13 +37,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DatePicker
-import androidx.compose.material3.DatePickerDialog
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.SelectableDates
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -44,8 +49,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
@@ -84,9 +92,10 @@ import com.example.zar.features.transactions.presentation.manual.viewmodel.Manua
 import com.example.zar.features.transactions.presentation.manual.viewmodel.ManualEntryMessage
 import com.example.zar.features.transactions.presentation.manual.viewmodel.ManualEntryUiState
 import com.example.zar.features.transactions.presentation.manual.viewmodel.ManualEntryViewModel
-import java.time.Instant
 import java.time.LocalDate
-import java.time.ZoneOffset
+import java.time.LocalTime
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 /**
  * Add a manual expense or transfer. Laid out like the Figma sheets (Z06, Z12 and the Z31–Z35 states).
@@ -112,6 +121,7 @@ fun ManualEntryScreen(
             onKind = viewModel::onKindSelect,
             onAmount = viewModel::onAmountChange,
             onDate = viewModel::onDateSelect,
+            onTime = viewModel::onTimeSelect,
             onAccount = viewModel::onAccountSelect,
             onCategory = viewModel::onCategorySelect,
             onSpendingClass = viewModel::onSpendingClassSelect,
@@ -135,6 +145,7 @@ internal class ManualEntryActions(
     val onKind: (ManualEntryKind) -> Unit,
     val onAmount: (String) -> Unit,
     val onDate: (LocalDate) -> Unit,
+    val onTime: (LocalTime) -> Unit,
     val onAccount: (AccountId) -> Unit,
     val onCategory: (ExpenseCategory) -> Unit,
     val onSpendingClass: (SpendingClass) -> Unit,
@@ -156,6 +167,10 @@ internal fun ManualEntryContent(uiState: ManualEntryUiState, focusNote: Boolean,
     val noteFocus = remember { FocusRequester() }
     var quickNoteTaps by remember { mutableIntStateOf(0) }
     var openedWithFocus by rememberSaveable { mutableStateOf(false) }
+    var openPicker by rememberSaveable { mutableStateOf<String?>(null) }
+
+    // Back closes an open date or time picker first, instead of dismissing the whole form and losing what was typed.
+    BackHandler(enabled = openPicker != null) { openPicker = null }
 
     // "Quick note" focuses the note once; the field may not exist yet if the form was on Transfer.
     LaunchedEffect(uiState.isLoading, uiState.kind, quickNoteTaps) {
@@ -166,25 +181,43 @@ internal fun ManualEntryContent(uiState: ManualEntryUiState, focusNote: Boolean,
         }
     }
 
-    Column(Modifier.fillMaxSize().background(colors.surface).statusBarsPadding().imePadding()) {
-        Row(
-            Modifier.fillMaxWidth().padding(start = 24.dp, end = 24.dp, top = 18.dp, bottom = 12.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
+    BoxWithConstraints(Modifier.fillMaxSize().imePadding()) {
+        Box(Modifier.fillMaxSize().background(colors.scrim.copy(alpha = 0.64f)).clickable(onClick = actions.onClose))
+        if (openPicker == "date") {
+            ManualDatePickerSheet(
+                date = uiState.date,
+                onCancel = { openPicker = null },
+                onSetDate = { actions.onDate(it); openPicker = null },
+                modifier = Modifier.align(Alignment.BottomCenter),
+            )
+        } else if (openPicker == "time") {
+            ManualTimePickerSheet(
+                time = uiState.time,
+                onCancel = { openPicker = null },
+                onSetTime = { actions.onTime(it); openPicker = null },
+                modifier = Modifier.align(Alignment.BottomCenter),
+            )
+        } else {
+        Column(
+            Modifier.align(Alignment.BottomCenter).fillMaxWidth().heightIn(max = maxHeight - 48.dp)
+                .clip(ZarShapes.sheet).background(colors.surface).pointerInput(Unit) { detectTapGestures {} }.padding(top = 10.dp),
         ) {
-            Text(stringResource(R.string.manual_title), style = ZarType.headingSheet, color = colors.textPrimary)
-            Box(
-                Modifier
-                    .size(40.dp)
-                    .clip(CircleShape)
-                    .clickable(role = Role.Button, onClickLabel = stringResource(R.string.manual_close), onClick = actions.onClose)
-                    .semantics { contentDescription = closeLabel }
-                    .testTag("manual-close"),
-                Alignment.Center,
-            ) {
-                ZarIcon(R.drawable.ic_ph_x, size = 20.dp)
+            Box(Modifier.fillMaxWidth(), Alignment.Center) {
+                Box(Modifier.size(width = 36.dp, height = 4.dp).clip(CircleShape).background(colors.trackOff))
             }
-        }
+            Row(
+                Modifier.fillMaxWidth().padding(start = 24.dp, end = 24.dp, top = 14.dp, bottom = 22.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(stringResource(R.string.manual_title), style = ZarType.headingSheet, color = colors.textPrimary)
+                Box(
+                    Modifier.size(24.dp).clip(CircleShape)
+                        .clickable(role = Role.Button, onClickLabel = stringResource(R.string.manual_close), onClick = actions.onClose)
+                        .semantics { contentDescription = closeLabel }.testTag("manual-close"),
+                    Alignment.Center,
+                ) { ZarIcon(R.drawable.ic_ph_x, size = 20.dp) }
+            }
         Segmented(
             labels = listOf(
                 stringResource(R.string.manual_kind_expense),
@@ -209,20 +242,20 @@ internal fun ManualEntryContent(uiState: ManualEntryUiState, focusNote: Boolean,
             Box(Modifier.weight(1f).fillMaxWidth(), Alignment.Center) { CircularProgressIndicator(color = colors.accentSelected) }
         } else {
             Column(
-                Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 24.dp, vertical = 18.dp),
+                Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState()).padding(horizontal = 24.dp, vertical = 22.dp),
                 verticalArrangement = Arrangement.spacedBy(18.dp),
             ) {
                 if (!uiState.isOnline) OfflineBanner()
                 when (uiState.kind) {
-                    ManualEntryKind.EXPENSE -> ExpenseFields(uiState, actions, noteFocus)
-                    ManualEntryKind.TRANSFER -> TransferFields(uiState, actions)
+                    ManualEntryKind.EXPENSE -> ExpenseFields(uiState, actions, noteFocus, { openPicker = "date" }, { openPicker = "time" })
+                    ManualEntryKind.TRANSFER -> TransferFields(uiState, actions, { openPicker = "date" }, { openPicker = "time" })
                 }
                 uiState.message?.let { FieldError(it.textRes(), Modifier.testTag("manual-message")) }
             }
         }
 
         Row(
-            Modifier.fillMaxWidth().navigationBarsPadding().padding(start = 24.dp, end = 24.dp, top = 12.dp, bottom = 22.dp),
+            Modifier.fillMaxWidth().navigationBarsPadding().padding(start = 24.dp, end = 24.dp, top = 4.dp, bottom = 14.dp),
             horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             ZarButton(
@@ -233,6 +266,7 @@ internal fun ManualEntryContent(uiState: ManualEntryUiState, focusNote: Boolean,
                 },
                 modifier = Modifier.weight(1f).testTag("manual-quick-note"),
                 style = ZarButtonStyle.Soft,
+                icon = R.drawable.ic_ph_note_pencil,
             )
             ZarButton(
                 text = stringResource(R.string.manual_save),
@@ -241,36 +275,63 @@ internal fun ManualEntryContent(uiState: ManualEntryUiState, focusNote: Boolean,
                 enabled = !uiState.isSaving && !uiState.isLoading && uiState.accounts.isNotEmpty(),
             )
         }
+        }
     }
+}
 }
 
 // --- Expense --------------------------------------------------------------------------------
 
 @Composable
-private fun ExpenseFields(state: ManualEntryUiState, actions: ManualEntryActions, noteFocus: FocusRequester) {
+private fun ExpenseFields(state: ManualEntryUiState, actions: ManualEntryActions, noteFocus: FocusRequester, onOpenDate: () -> Unit, onOpenTime: () -> Unit) {
     val problems = state.expenseProblems
+    var allAccounts by rememberSaveable { mutableStateOf(false) }
+    var allCategories by rememberSaveable { mutableStateOf(false) }
     AmountRow(state.amount, state.currency.code, actions.onAmount)
     FieldError(if (ExpenseProblem.AMOUNT_MISSING in problems || ExpenseProblem.AMOUNT_INVALID in problems) R.string.manual_error_amount else null)
     ZarDivider()
 
-    Section(stringResource(R.string.manual_field_account)) {
+    Section(stringResource(R.string.manual_field_account), stringResource(R.string.manual_all_accounts), { allAccounts = !allAccounts }) {
         if (state.accounts.isEmpty()) {
             NoAccountsCard(actions.onAddAccount)
+        } else if (allAccounts) {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                state.accounts.forEach { account ->
+                    ZarChip(
+                        label = account.name,
+                        selected = account.id == state.accountId,
+                        onClick = { actions.onAccount(account.id); allAccounts = false },
+                        icon = account.type.iconRes(),
+                        modifier = Modifier.testTag("manual-account-${account.id.value}"),
+                    )
+                }
+            }
         } else {
             AccountChips(state.accounts, selected = state.accountId, onSelect = actions.onAccount, tagPrefix = "manual-account")
         }
         FieldError(if (ExpenseProblem.ACCOUNT_MISSING in problems) R.string.manual_error_account else null)
     }
 
-    Section(stringResource(R.string.manual_field_category)) {
-        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            ExpenseCategory.entries.forEach { category ->
-                ZarChip(
-                    label = stringResource(category.labelRes()),
-                    selected = category == state.category,
-                    onClick = { actions.onCategory(category) },
-                    modifier = Modifier.testTag("manual-category-${category.id}"),
-                )
+    Section(stringResource(R.string.manual_field_category), stringResource(R.string.manual_all_categories), { allCategories = !allCategories }) {
+        if (allCategories) {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                ExpenseCategory.entries.forEach { category ->
+                    ZarChip(
+                        label = stringResource(category.labelRes()), selected = category == state.category,
+                        onClick = { actions.onCategory(category); allCategories = false },
+                        icon = category.iconRes(), modifier = Modifier.testTag("manual-category-${category.id}"),
+                    )
+                }
+            }
+        } else {
+            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                ExpenseCategory.entries.forEach { category ->
+                    ZarChip(
+                        label = stringResource(category.labelRes()), selected = category == state.category,
+                        onClick = { actions.onCategory(category) }, icon = category.iconRes(),
+                        modifier = Modifier.testTag("manual-category-${category.id}"),
+                    )
+                }
             }
         }
         FieldError(if (ExpenseProblem.CATEGORY_MISSING in problems) R.string.manual_error_category else null)
@@ -295,11 +356,12 @@ private fun ExpenseFields(state: ManualEntryUiState, actions: ManualEntryActions
             segmentHeight = 32.dp,
             tagPrefix = "manual-class",
             tags = classes.map { it.name.lowercase() },
+            showClassDots = true,
         )
     }
     ZarDivider()
 
-    DateRow(state.date, actions.onDate)
+    DateTimeRow(state.date, state.time, onOpenDate, onOpenTime)
     FieldError(if (ExpenseProblem.DATE_IN_FUTURE in problems) R.string.manual_error_date_future else null)
     ZarDivider()
 
@@ -373,7 +435,7 @@ private fun Suggestions(state: ManualEntryUiState, onSelect: (EntrySuggestion) -
 // --- Transfer -------------------------------------------------------------------------------
 
 @Composable
-private fun TransferFields(state: ManualEntryUiState, actions: ManualEntryActions) {
+private fun TransferFields(state: ManualEntryUiState, actions: ManualEntryActions, onOpenDate: () -> Unit, onOpenTime: () -> Unit) {
     val problems = state.transferProblems
     AmountRow(state.amount, state.currency.code, actions.onAmount)
     FieldError(if (TransferProblem.AMOUNT_MISSING in problems || TransferProblem.AMOUNT_INVALID in problems) R.string.manual_error_amount else null)
@@ -455,7 +517,7 @@ private fun TransferFields(state: ManualEntryUiState, actions: ManualEntryAction
     }
     ZarDivider()
 
-    DateRow(state.date, actions.onDate)
+    DateTimeRow(state.date, state.time, onOpenDate, onOpenTime)
     FieldError(if (TransferProblem.DATE_IN_FUTURE in problems) R.string.manual_error_date_future else null)
     ZarDivider()
 
@@ -531,9 +593,15 @@ private fun AccountChips(accounts: List<Account>, selected: AccountId?, onSelect
 }
 
 @Composable
-internal fun Section(label: String, content: @Composable () -> Unit) {
+internal fun Section(label: String, action: String? = null, onAction: (() -> Unit)? = null, content: @Composable () -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        ZarMonoLabel(label)
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            ZarMonoLabel(label)
+            if (action != null && onAction != null) {
+                Text(action, style = ZarType.labelAction, color = ZarTheme.colors.textSelected,
+                    modifier = Modifier.clickable(role = Role.Button, onClick = onAction))
+            }
+        }
         content()
     }
 }
@@ -584,10 +652,11 @@ internal fun Segmented(
     tagPrefix: String,
     tags: List<String>,
     modifier: Modifier = Modifier,
+    showClassDots: Boolean = false,
 ) {
     val colors = ZarTheme.colors
     Row(
-        modifier.fillMaxWidth().selectableGroup().clip(ZarShapes.lg).background(colors.subtle).padding(4.dp),
+        modifier.fillMaxWidth().selectableGroup().clip(ZarShapes.md).background(colors.subtle).padding(4.dp),
         horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         labels.forEachIndexed { index, label ->
@@ -596,6 +665,7 @@ internal fun Segmented(
                 Modifier
                     .weight(1f)
                     .heightIn(min = segmentHeight)
+                    .then(if (selected) Modifier.shadow(2.dp, ZarShapes.sm, ambientColor = Color(0x140F1A2B), spotColor = Color(0x140F1A2B)) else Modifier)
                     .clip(ZarShapes.sm)
                     .background(if (selected) colors.surface else colors.subtle)
                     .selectable(selected = selected, role = Role.RadioButton, onClick = { onSelect(index) })
@@ -603,7 +673,14 @@ internal fun Segmented(
                     .testTag("$tagPrefix-${tags[index]}"),
                 Alignment.Center,
             ) {
-                Text(label, style = ZarType.labelChip, color = if (selected) colors.textPrimary else colors.textTertiary)
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                    if (showClassDots) {
+                        val dot = when (index) { 0 -> colors.accentSelected; 1 -> colors.accentDiscretionary; else -> Color.Transparent }
+                        Box(Modifier.size(7.dp).clip(CircleShape).background(dot)
+                            .then(if (index == 2) Modifier.border(1.dp, colors.textTertiary, CircleShape) else Modifier))
+                    }
+                    Text(label, style = ZarType.labelChip, color = if (selected) colors.textPrimary else colors.textTertiary)
+                }
             }
         }
     }
@@ -639,6 +716,37 @@ internal fun TextInput(
 @Composable
 internal fun FieldError(@androidx.annotation.StringRes res: Int?, modifier: Modifier = Modifier) {
     if (res != null) Text(stringResource(res), style = ZarType.bodyCaption, color = ZarTheme.colors.danger, modifier = modifier)
+}
+
+@Composable
+private fun DateTimeRow(date: LocalDate, time: LocalTime, onOpenDate: () -> Unit, onOpenTime: () -> Unit) {
+    val colors = ZarTheme.colors
+    Row(
+        Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        ZarMonoLabel(stringResource(R.string.manual_field_date), modifier = Modifier.size(width = 96.dp, height = 16.dp))
+        Row(Modifier.weight(1f), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                Modifier.clip(ZarShapes.xs).clickable(role = Role.Button, onClick = onOpenDate)
+                    .padding(vertical = 8.dp).testTag("manual-date"),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(IncomeFormat.fullDate(date), style = ZarType.bodyM, color = colors.textPrimary)
+                ZarIcon(R.drawable.ic_ph_caret_down, size = 14.dp, tint = colors.iconMuted)
+            }
+            Row(
+                Modifier.clip(ZarShapes.xs).clickable(role = Role.Button, onClick = onOpenTime)
+                    .padding(vertical = 8.dp).testTag("manual-time"),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(time.format(DateTimeFormatter.ofPattern("h:mm a", Locale.ENGLISH)), style = ZarType.bodyM, color = colors.textPrimary)
+                ZarIcon(R.drawable.ic_ph_caret_down, size = 14.dp, tint = colors.iconMuted)
+            }
+        }
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -686,6 +794,17 @@ internal fun ExpenseCategory.labelRes(): Int = when (this) {
     ExpenseCategory.SEASON_TICKET -> R.string.manual_category_season_ticket
     ExpenseCategory.SUBSCRIPTIONS -> R.string.manual_category_subscriptions
     ExpenseCategory.OTHER -> R.string.manual_category_other
+}
+
+private fun ExpenseCategory.iconRes(): Int = when (this) {
+    ExpenseCategory.COFFEE_DINING -> R.drawable.ic_figma_coffee
+    ExpenseCategory.GROCERIES -> R.drawable.ic_figma_groceries
+    ExpenseCategory.TRANSPORT -> R.drawable.ic_figma_transport
+    ExpenseCategory.BILLS -> R.drawable.ic_ph_receipt
+    ExpenseCategory.RENT -> R.drawable.ic_ph_house_inactive
+    ExpenseCategory.SEASON_TICKET -> R.drawable.ic_figma_transport
+    ExpenseCategory.SUBSCRIPTIONS -> R.drawable.ic_ph_receipt
+    ExpenseCategory.OTHER -> R.drawable.ic_ph_wallet
 }
 
 internal fun SpendingClass.labelRes(): Int = when (this) {

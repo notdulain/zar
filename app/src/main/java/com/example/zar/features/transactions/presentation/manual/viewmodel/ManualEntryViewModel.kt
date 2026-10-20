@@ -31,6 +31,8 @@ import com.example.zar.features.transactions.domain.manual.usecase.RecordTransfe
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalTime
+import java.time.temporal.ChronoUnit
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -52,6 +54,7 @@ data class ManualEntryUiState(
     // Shared by both kinds, so switching tabs keeps what was typed.
     val amount: String = "",
     val date: LocalDate = ZarTime.today(),
+    val time: LocalTime = LocalTime.now(ZarTime.ZONE).truncatedTo(ChronoUnit.MINUTES),
     // Expense
     val accountId: AccountId? = null,
     val category: ExpenseCategory? = null,
@@ -154,6 +157,10 @@ class ManualEntryViewModel @Inject constructor(
         )
     }
 
+    fun onTimeSelect(value: LocalTime) = _uiState.update {
+        it.copy(time = value.truncatedTo(ChronoUnit.MINUTES))
+    }
+
     fun onAccountSelect(id: AccountId) = _uiState.update {
         it.copy(accountId = id, expenseProblems = it.expenseProblems - ExpenseProblem.ACCOUNT_MISSING)
     }
@@ -253,6 +260,7 @@ class ManualEntryViewModel @Inject constructor(
             amount = state.amount,
             account = state.selectedAccount,
             date = state.date,
+            time = state.time,
             category = state.category,
             spendingClass = state.spendingClass,
             title = state.title,
@@ -274,6 +282,7 @@ class ManualEntryViewModel @Inject constructor(
             from = state.fromAccount,
             to = state.toAccount,
             date = state.date,
+            time = state.time,
             note = state.transferNote,
         )
         when (val result = ManualEntryRules.validateTransfer(input, ZarTime.today())) {

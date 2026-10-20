@@ -65,6 +65,7 @@ object ManualEntryRules {
                 spendingClass = input.spendingClass,
                 title = title.ifEmpty { null },
                 description = description.ifEmpty { null },
+                time = input.time,
             ),
         )
     }
@@ -117,7 +118,7 @@ object ManualEntryRules {
             return TransferFormResult.Invalid(problems)
         }
         return TransferFormResult.Valid(
-            TransferDetails(from = from, to = to, amount = amount, fee = fee, date = input.date, note = note.ifEmpty { null }),
+            TransferDetails(from = from, to = to, amount = amount, fee = fee, date = input.date, note = note.ifEmpty { null }, time = input.time),
         )
     }
 
@@ -137,6 +138,7 @@ object ManualEntryRules {
         merchant = details.title,
         note = details.description,
         createdAt = createdAt,
+        time = details.time,
     )
 
     fun newTransfer(id: TransferId, details: TransferDetails, createdAt: Instant): Transfer {
@@ -153,6 +155,7 @@ object ManualEntryRules {
             fee = newTransferFee(id, details, createdAt),
             note = details.note,
             createdAt = createdAt,
+            time = details.time,
         )
     }
 
@@ -173,6 +176,7 @@ object ManualEntryRules {
             categoryId = TRANSFER_FEE_CATEGORY_ID,
             merchant = TRANSFER_FEE_TITLE,
             createdAt = createdAt,
+            time = details.time,
         )
     }
 }

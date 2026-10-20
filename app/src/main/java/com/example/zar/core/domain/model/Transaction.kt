@@ -4,6 +4,7 @@ import com.example.zar.core.domain.model.money.Money
 import com.example.zar.core.domain.model.money.ReportingConversion
 import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalTime
 
 enum class Direction { IN, OUT }
 
@@ -51,6 +52,8 @@ data class Transaction(
     /** The expense this refund belongs to. */
     val refundOf: TransactionId? = null,
     val createdAt: Instant,
+    /** User-selected local time of the movement, if known. Kept separate from save time. */
+    val time: LocalTime? = null,
 ) {
     init {
         require(amount.isPositive) { "Amount must be positive" }
