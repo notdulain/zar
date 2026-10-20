@@ -7,6 +7,7 @@ import com.example.zar.core.domain.model.TransactionId
 import com.example.zar.core.domain.model.TransactionType
 import com.example.zar.core.domain.model.Transfer
 import com.example.zar.core.domain.model.TransferId
+import com.example.zar.core.domain.model.feeId
 import com.example.zar.core.domain.model.money.Currencies
 import com.example.zar.core.domain.model.money.Money
 import com.example.zar.features.transactions.domain.manual.model.ExpenseDetails
@@ -159,7 +160,7 @@ object ManualEntryRules {
     }
 
     /** ID of the expense holding a transfer's fee. Stable, so a retry can't charge the fee twice. */
-    fun feeId(transferId: TransferId): TransactionId = TransactionId("${transferId.value}-fee")
+    fun feeId(transferId: TransferId): TransactionId = transferId.feeId()
 
     /** The fee as its own expense on the sending account, or null when there is no fee. */
     fun newTransferFee(transferId: TransferId, details: TransferDetails, createdAt: Instant): Transaction? {

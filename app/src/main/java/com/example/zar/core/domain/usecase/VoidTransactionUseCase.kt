@@ -1,15 +1,19 @@
 package com.example.zar.core.domain.usecase
 
 import com.example.zar.core.domain.model.LedgerEntry
-import com.example.zar.core.domain.model.TransactionId
+import com.example.zar.core.domain.model.VoidMarker
+import com.example.zar.core.domain.model.feeId
 import com.example.zar.core.domain.model.inLegId
 import com.example.zar.core.domain.model.outLegId
-import com.example.zar.core.domain.model.VoidMarker
 import com.example.zar.core.domain.repository.LedgerRepository
 import java.time.Instant
 import javax.inject.Inject
+import kotlinx.coroutines.flow.first
 
-/** Undo. Voiding a transfer leg voids both legs together. Voiding twice is harmless. */
+/**
+ * Undo. Voiding a transfer leg voids both legs, and the transfer's separate fee expense when it
+ * has one that is still active, in one atomic write. Voiding twice is harmless.
+ */
 class VoidTransactionUseCase @Inject constructor(
     private val ledger: LedgerRepository,
 ) {
@@ -20,7 +24,10 @@ class VoidTransactionUseCase @Inject constructor(
             val ids = if (transferId == null) {
                 listOf(entry.id)
             } else {
-                listOf(transferId.outLegId(), transferId.inLegId())
+                // A fee that was already voided on its own must not be written again: voids are write-once.
+                val feeId = transferId.feeId()
+                val fee = ledger.observeLedger().first().firstOrNull { it.id == feeId }?.takeIf { !it.isVoided }
+                listOfNotNull(transferId.outLegId(), transferId.inLegId(), fee?.id)
             }
             ledger.void(ids.map { VoidMarker(it, voidedAt, reason) })
         }

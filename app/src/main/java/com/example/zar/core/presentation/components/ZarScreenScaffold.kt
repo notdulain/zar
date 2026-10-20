@@ -61,6 +61,7 @@ fun ZarScreenScaffold(
     onNavigate: (TopLevelDestination) -> Unit,
     onAddOption: (AddEntryOption) -> Unit,
     modifier: Modifier = Modifier,
+    heroUnderStatusBar: Boolean = destination == TopLevelDestination.Home,
     content: @Composable (PaddingValues) -> Unit,
 ) {
     var showAddSheet by rememberSaveable { mutableStateOf(false) }
@@ -71,20 +72,19 @@ fun ZarScreenScaffold(
     val view = LocalView.current
     val isLightTheme = ZarTheme.colors.canvas == ZarLightColors.canvas
 
-    // The Home hero extends under the status bar, so its system glyphs must be white.
-    DisposableEffect(activity, view, isHome, isLightTheme) {
+    // A hero that extends under the status bar (Home, Activity) needs white system glyphs and no top inset.
+    // Nothing is restored on exit: the screen opened next sets what it needs, and putting the old value back
+    // after the transition left white glyphs on the light screens opened from Activity and More.
+    DisposableEffect(activity, view, heroUnderStatusBar, isLightTheme) {
         val controller = activity?.let { WindowCompat.getInsetsController(it.window, view) }
-        val previous = controller?.isAppearanceLightStatusBars
-        controller?.isAppearanceLightStatusBars = !isHome && isLightTheme
-        onDispose {
-            if (previous != null) controller.isAppearanceLightStatusBars = previous
-        }
+        controller?.isAppearanceLightStatusBars = !heroUnderStatusBar && isLightTheme
+        onDispose { }
     }
 
     Scaffold(
         modifier = modifier,
         containerColor = MaterialTheme.colorScheme.background,
-        contentWindowInsets = if (isHome) {
+        contentWindowInsets = if (heroUnderStatusBar) {
             WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom)
         } else {
             WindowInsets.safeDrawing
@@ -94,7 +94,7 @@ fun ZarScreenScaffold(
                 modifier = Modifier
                     .fillMaxWidth()
                     .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom))
-                    .padding(horizontal = ZarDimens.ScreenGutter, vertical = ZarDimens.SpaceMd),
+                    .padding(start = ZarDimens.ScreenGutter, end = ZarDimens.ScreenGutter, top = ZarDimens.SpaceMd, bottom = ZarDimens.NavBottomGap),
                 contentAlignment = Alignment.Center,
             ) {
                 BoxWithConstraints(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
@@ -127,7 +127,7 @@ fun ZarScreenScaffold(
                 start = inner.calculateStartPadding(layoutDirection),
                 end = inner.calculateEndPadding(layoutDirection),
                 top = inner.calculateTopPadding(),
-                bottom = inner.calculateBottomPadding() + ZarDimens.SpaceMd,
+                bottom = inner.calculateBottomPadding() + ZarDimens.NavBottomGap,
             ),
         )
     }

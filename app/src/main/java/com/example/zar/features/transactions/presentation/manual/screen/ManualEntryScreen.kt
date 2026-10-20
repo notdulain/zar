@@ -1,5 +1,14 @@
 package com.example.zar.features.transactions.presentation.manual.screen
 
+import androidx.activity.compose.BackHandler
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.SelectableDates
+import androidx.compose.material3.rememberDatePickerState
+import androidx.compose.material3.TextButton
+import java.time.Instant
+import java.time.ZoneOffset
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -159,6 +168,9 @@ internal fun ManualEntryContent(uiState: ManualEntryUiState, focusNote: Boolean,
     var quickNoteTaps by remember { mutableIntStateOf(0) }
     var openedWithFocus by rememberSaveable { mutableStateOf(false) }
     var openPicker by rememberSaveable { mutableStateOf<String?>(null) }
+
+    // Back closes an open date or time picker first, instead of dismissing the whole form and losing what was typed.
+    BackHandler(enabled = openPicker != null) { openPicker = null }
 
     // "Quick note" focuses the note once; the field may not exist yet if the form was on Transfer.
     LaunchedEffect(uiState.isLoading, uiState.kind, quickNoteTaps) {
@@ -581,7 +593,7 @@ private fun AccountChips(accounts: List<Account>, selected: AccountId?, onSelect
 }
 
 @Composable
-private fun Section(label: String, action: String? = null, onAction: (() -> Unit)? = null, content: @Composable () -> Unit) {
+internal fun Section(label: String, action: String? = null, onAction: (() -> Unit)? = null, content: @Composable () -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             ZarMonoLabel(label)
@@ -632,7 +644,7 @@ private fun OfflineBanner() {
 
 /** Equal-width segments on a subtle track; the selected one is a white tile. */
 @Composable
-private fun Segmented(
+internal fun Segmented(
     labels: List<String>,
     selectedIndex: Int,
     onSelect: (Int) -> Unit,
@@ -675,7 +687,7 @@ private fun Segmented(
 }
 
 @Composable
-private fun TextInput(
+internal fun TextInput(
     value: String,
     onValueChange: (String) -> Unit,
     placeholder: String,
@@ -702,7 +714,7 @@ private fun TextInput(
 }
 
 @Composable
-private fun FieldError(@androidx.annotation.StringRes res: Int?, modifier: Modifier = Modifier) {
+internal fun FieldError(@androidx.annotation.StringRes res: Int?, modifier: Modifier = Modifier) {
     if (res != null) Text(stringResource(res), style = ZarType.bodyCaption, color = ZarTheme.colors.danger, modifier = modifier)
 }
 
@@ -737,7 +749,43 @@ private fun DateTimeRow(date: LocalDate, time: LocalTime, onOpenDate: () -> Unit
     }
 }
 
-private fun ExpenseCategory.labelRes(): Int = when (this) {
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+internal fun DateRow(date: LocalDate, onSelect: (LocalDate) -> Unit) {
+    var showPicker by rememberSaveable { mutableStateOf(false) }
+    val colors = ZarTheme.colors
+    Row(
+        Modifier.fillMaxWidth().clickable(role = Role.Button) { showPicker = true }.testTag("manual-date"),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        ZarFormRow(stringResource(R.string.manual_field_date), Modifier.weight(1f)) {
+            Row(Modifier.weight(1f), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Text(IncomeFormat.fullDate(date), style = ZarType.bodyM, color = colors.textPrimary)
+                ZarIcon(R.drawable.ic_ph_caret_down, size = 14.dp, tint = colors.iconMuted)
+            }
+        }
+    }
+    if (!showPicker) return
+    val todayMillis = ZarTime.today().atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
+    val state = rememberDatePickerState(
+        initialSelectedDateMillis = date.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli(),
+        selectableDates = object : SelectableDates {
+            override fun isSelectableDate(utcTimeMillis: Long) = utcTimeMillis <= todayMillis
+        },
+    )
+    DatePickerDialog(
+        onDismissRequest = { showPicker = false },
+        confirmButton = {
+            TextButton(onClick = {
+                state.selectedDateMillis?.let { onSelect(Instant.ofEpochMilli(it).atZone(ZoneOffset.UTC).toLocalDate()) }
+                showPicker = false
+            }) { Text(stringResource(R.string.action_ok)) }
+        },
+        dismissButton = { TextButton(onClick = { showPicker = false }) { Text(stringResource(R.string.action_cancel)) } },
+    ) { DatePicker(state = state) }
+}
+
+internal fun ExpenseCategory.labelRes(): Int = when (this) {
     ExpenseCategory.COFFEE_DINING -> R.string.manual_category_coffee_dining
     ExpenseCategory.GROCERIES -> R.string.manual_category_groceries
     ExpenseCategory.TRANSPORT -> R.string.manual_category_transport
@@ -759,7 +807,7 @@ private fun ExpenseCategory.iconRes(): Int = when (this) {
     ExpenseCategory.OTHER -> R.drawable.ic_ph_wallet
 }
 
-private fun SpendingClass.labelRes(): Int = when (this) {
+internal fun SpendingClass.labelRes(): Int = when (this) {
     SpendingClass.COMMITTED -> R.string.manual_class_committed
     SpendingClass.DISCRETIONARY -> R.string.manual_class_discretionary
     SpendingClass.UNKNOWN -> R.string.manual_class_unknown
