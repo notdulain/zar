@@ -1,9 +1,11 @@
 package com.example.zar.di
 
+import com.example.zar.core.data.local.AndroidConnectivityMonitor
 import com.example.zar.core.data.remote.FirebaseUserSessionProvider
 import com.example.zar.core.data.remote.firestore.FirestoreExpectedPaymentRepository
 import com.example.zar.core.data.remote.firestore.FirestoreLedgerRepository
 import com.example.zar.core.domain.repository.AccountRepository
+import com.example.zar.core.domain.repository.ConnectivityMonitor
 import com.example.zar.core.domain.repository.ExpectedPaymentRepository
 import com.example.zar.core.domain.repository.LedgerRepository
 import com.example.zar.core.domain.repository.UserSessionProvider
@@ -60,6 +62,10 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun bindGoalRepository(impl: FirestoreGoalRepository): GoalRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindConnectivityMonitor(impl: AndroidConnectivityMonitor): ConnectivityMonitor
 
     @Binds
     @Singleton
