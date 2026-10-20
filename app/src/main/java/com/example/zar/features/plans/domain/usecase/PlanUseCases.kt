@@ -37,6 +37,7 @@ class ObservePlansOverviewUseCase @Inject constructor(
             .asSequence()
             .filter { account -> !account.isArchived || goal?.allocations?.any { it.accountId == account.id } == true }
             .filter { currency == null || it.currency == currency }
+            .filter { account -> account.openingDate <= today || goal?.allocations?.any { it.accountId == account.id } == true }
             .map { AccountBalanceCalculator.calculate(it, entries, today) }
             .filter { balance ->
                 (balance.current != null && !balance.current.isNegative) ||
@@ -77,7 +78,9 @@ class SetGoalAllocationUseCase @Inject constructor(
         val updatedAllocations = goal.allocations.filterNot { it.accountId == accountId }.toMutableList()
         if (amount.isPositive) {
             if (account.isArchived) throw LedgerError.AccountArchived(accountId)
-            val accountBalance = AccountBalanceCalculator.calculate(account, ledger.observeLedger().first(), ZarTime.today())
+            val today = ZarTime.today()
+            if (account.openingDate > today) throw LedgerError.InvalidRecord("This account has not opened yet")
+            val accountBalance = AccountBalanceCalculator.calculate(account, ledger.observeLedger().first(), today)
             if (accountBalance.mismatchedCount > 0) {
                 throw LedgerError.InvalidRecord("Fix entries in the wrong currency before allocating")
             }

@@ -6,7 +6,7 @@ import com.example.zar.core.domain.model.Transfer
 import com.example.zar.core.domain.repository.LedgerRepository
 import javax.inject.Inject
 
-/** Saves both legs of a transfer atomically. Transfers are never income or spending. */
+/** Saves both transfer legs and any separate fee expense atomically. Transfers are never income or spending. */
 class SaveTransferUseCase @Inject constructor(
     private val ledger: LedgerRepository,
 ) {

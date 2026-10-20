@@ -10,6 +10,7 @@ import com.example.zar.core.domain.model.LedgerEntry
 import com.example.zar.core.domain.model.OpeningBalance
 import com.example.zar.core.domain.model.TransactionChanges
 import com.example.zar.core.domain.model.TransactionType
+import com.example.zar.core.domain.model.money.FiatMoney
 import com.example.zar.core.domain.model.money.Currencies
 import com.example.zar.features.plans.domain.model.GoalAllocation
 import com.example.zar.features.plans.domain.model.GoalBackingCalculator
@@ -98,5 +99,27 @@ class GoalBackingCalculatorTest {
         val past = GoalBackingCalculator.calculate(goal.copy(targetDate = today.minusDays(1)), listOf(account), emptyList(), today)
         assertEquals(-1L, past.daysRemaining)
         assertNull(past.weeklyPace)
+    }
+
+    @Test fun futureOpeningFundsCannotBackAGoalToday() {
+        val result = GoalBackingCalculator.calculate(goal, listOf(account.copy(openingDate = today.plusDays(1))), emptyList(), today)
+        assertEquals(lkr(0), result.backed)
+        assertTrue(result.hasUnknownBalance)
+        assertNull(result.weeklyPace)
+        assertNull(result.balanceAsOf)
+    }
+
+    @Test fun fullyBackedGoalHasNoShortfallOrPace() {
+        val funded = goal.copy(target = lkr(8_000))
+        val result = GoalBackingCalculator.calculate(funded, listOf(account), emptyList(), today)
+        assertEquals(lkr(0), result.targetShortfall)
+        assertEquals(1f, result.backedFraction(funded.target))
+        assertNull(result.weeklyPace)
+    }
+
+    @Test fun weeklyPaceRoundsUpToTheSmallestCurrencyUnit() {
+        val tinyGoal = SavingsGoal(goal.id, goal.name, FiatMoney(1, Currencies.LKR), targetDate = today.plusDays(3))
+        val result = GoalBackingCalculator.calculate(tinyGoal, emptyList(), emptyList(), today)
+        assertEquals(FiatMoney(3, Currencies.LKR), result.weeklyPace)
     }
 }

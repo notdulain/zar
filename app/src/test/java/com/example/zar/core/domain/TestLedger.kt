@@ -90,8 +90,8 @@ class FakeLedgerRepository : LedgerRepository {
     }
 
     override suspend fun saveTransfer(transfer: Transfer) {
-        transactions.putIfAbsent(transfer.outLegId, transfer.outLeg())
-        transactions.putIfAbsent(transfer.inLegId, transfer.inLeg())
+        val records = listOf(transfer.outLeg(), transfer.inLeg()) + listOfNotNull(transfer.fee)
+        if (records.none { it.id in transactions }) records.forEach { transactions[it.id] = it }
     }
 
     override suspend fun addCorrection(correction: Correction) {

@@ -1,7 +1,7 @@
 import { test, before, after, beforeEach } from 'node:test';
 import { readFileSync } from 'node:fs';
 import { initializeTestEnvironment, assertSucceeds, assertFails } from '@firebase/rules-unit-testing';
-import { doc, setDoc, getDoc, getDocs, collection, deleteDoc, updateDoc, writeBatch } from 'firebase/firestore';
+import { doc, setDoc, getDoc, getDocs, collection, deleteDoc, updateDoc, writeBatch, deleteField } from 'firebase/firestore';
 
 let env;
 const RULES = new URL("../firestore.rules", import.meta.url);
@@ -173,6 +173,8 @@ test('goals: owner can explicitly allocate money without changing ledger data', 
   await assertFails(updateDoc(r, { id: 'other' }));
   await assertFails(updateDoc(r, { allocations: [{ accountId: 'savings', amount: lkr(0) }] }));
   await assertFails(updateDoc(r, { targetDate: 'next summer' }));
+  await assertFails(updateDoc(r, { targetDate: null }));
+  await assertSucceeds(updateDoc(r, { targetDate: deleteField() }));
   await assertFails(updateDoc(r, { allocations: [{ accountId: 'savings', amount: { ...lkr(100), currency: 'USD' } }] }));
   await assertFails(setDoc(doc(alice(), path('alice', 'goals', 'bad-id')), { ...goal }));
   await assertFails(deleteDoc(r));

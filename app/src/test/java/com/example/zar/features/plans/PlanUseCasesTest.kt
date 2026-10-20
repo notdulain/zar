@@ -134,4 +134,13 @@ class PlanUseCasesTest {
         assertEquals(lkr(5_200), updated?.backed)
         assertEquals(lkr(2_800), updated?.allocationGap)
     }
+
+    @Test
+    fun futureOpeningFundsCannotBeAllocatedToday() = runBlocking {
+        val futureAccount = savings.copy(openingDate = ZarTime.today().plusDays(1))
+        val goals = FakeGoalRepository(listOf(goal))
+        val accounts = FakePlanAccounts(listOf(futureAccount))
+        assertTrue(SetGoalAllocationUseCase(goals, accounts, TrackingPlanLedger())(goal.id, savings.id, lkr(1_000)).isFailure)
+        assertTrue(ObservePlansOverviewUseCase(goals, accounts, TrackingPlanLedger())().first().allocationAccounts.isEmpty())
+    }
 }

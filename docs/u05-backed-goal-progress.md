@@ -2,24 +2,31 @@
 
 Jira: [SCRUM-48](https://03dulain.atlassian.net/browse/SCRUM-48)
 
-Plans now distinguishes money the user allocated from money the recorded backing account still holds. For each allocation, known backing is the smaller of the allocation and the account balance, with negative balances treated as zero. The goal shows both progress bars, the allocation gap, the remaining target amount, and the oldest last-recorded date among backing accounts. A missing, unknown, or currency-inconsistent account leaves the shortfall and saving pace unavailable; an approximate opening balance is labelled as an estimate.
+Plans distinguishes money explicitly allocated from money its recorded backing accounts still hold. Known backing is the smaller of each allocation and its account balance, with negative balances treated as zero. Missing, unknown, future-opening, or currency-inconsistent backing accounts leave shortfall and saving pace unavailable. Approximate opening balances are labelled as estimates. Transactions dated after today do not contribute to backing or new allocations.
 
-The optional target date is saved on the goal document. Existing goals without that field still load. When a date is set, weekly pace rounds up to the smallest currency unit: `remaining backed target × 7 / days until target`. A past date asks the user to update it. Only recorded transactions through today affect backing; expected or future dated income is excluded.
+The optional target date is saved on the goal document. Older goals without the field still load, and removing a date preserves allocations. Weekly pace rounds up to the smallest currency unit: `remaining backed target × 7 / days until target`. A past date asks for a new date. A fully backed goal shows completion without a weekly pace.
 
-## Manual check on a Pixel 6a emulator
+The balance date is the oldest last-recorded date across backing accounts, using each account's latest active transaction or opening date. It is not a bank sync timestamp.
 
-1. Create an LKR savings account with a known opening balance of LKR 10,000.
-2. On Plans, create a MacBook goal with target LKR 20,000 and a target date 14 days away. Allocate LKR 8,000 from Savings. Verify both bars show LKR 8,000 and pace is LKR 6,000 per week.
-3. Edit the Savings account opening balance to LKR 4,000. Verify allocated remains LKR 8,000, backed falls to LKR 4,000, the allocation gap becomes LKR 4,000, and pace becomes LKR 8,000 per week.
-4. Change the goal date to yesterday. Verify Plans asks for a new target date instead of showing a weekly pace.
+## Styling
 
-The current Add sheet does not yet save expenses. Tests cover later expenses, transaction corrections, unknown and approximate valuations, currency errors, and future dated income using in-memory records. The manual path above only needs the existing Accounts and Plans forms.
+Plans uses the shared dusk hero, Geist typography, semantic light/dark colors, surface cards and Zar buttons. The hero shows backed and allocated progress; a separate card shows the remaining target, allocation gap, recorded date and weekly pace. Goal and allocation editors use neutral surfaces, rounded fields, scrollable content, shared Save/Cancel controls, and accessible account selection.
 
-The date on the card is the latest recorded transaction date (or the account opening date if no transaction exists), not a bank sync timestamp.
+## Verification
 
-## Pixel 6a evidence
+- Unit tests cover spending, corrections, changed balances, unknown/approximate/currency-inconsistent accounts, future funds, completion, rounding, date persistence and removal.
+- Firestore rules tests cover optional date creation/update/removal, invalid values, owner access and allocation limits.
+- Compose emulator tests cover backed versus allocated values, creation/allocation actions, date selection/removal, saving controls, dark mode, and a 320dp layout with 200% text.
 
-- [Plans empty state](screenshots/u05-plans-empty-after.png)
-- [Goal editor with target date](screenshots/u05-goal-date-editor.png)
+## Pixel 6a screenshots
 
-These images show the empty state and date control. The backed amount and pace cases are verified by the domain and ViewModel tests; the emulator account had no saved goal, so no user data was created for a screenshot.
+These are deterministic Compose fixtures, not real user records.
+
+- [Empty state](screenshots/u05-plans-empty-after.png)
+- [Backed amount and allocation gap](screenshots/u05-plans-shortfall.png)
+- [Saving pace](screenshots/u05-plans-pace.png)
+- [Goal date editor](screenshots/u05-goal-date-editor.png)
+- [Dark mode](screenshots/u05-plans-dark.png)
+- [Large text and unknown balance](screenshots/u05-plans-large-text.png)
+
+For a manual end-to-end check, create an LKR 10,000 account, set a goal of LKR 20,000 due in 14 days, and allocate LKR 8,000. Backing should be LKR 8,000 and pace LKR 6,000/week. Record an LKR 6,000 expense from that account using Add. Backing should fall to LKR 4,000 while allocation stays LKR 8,000, with an LKR 4,000 gap and LKR 8,000/week pace.

@@ -44,7 +44,7 @@ object GoalBackingCalculator {
 
         goal.allocations.forEach { allocation ->
             val account = byId[allocation.accountId]
-            if (account == null || account.currency != goal.target.currency) {
+            if (account == null || account.currency != goal.target.currency || account.openingDate > today) {
                 unknown = true
                 return@forEach
             }

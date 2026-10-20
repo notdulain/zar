@@ -111,4 +111,19 @@ class PlansViewModelTest {
         assertEquals(date, vm.uiState.value.overview?.goal?.targetDate)
     }
 
+
+    @Test
+    fun removingGoalDatePreservesAllocations() = runTest {
+        vm.openGoalEditor()
+        vm.updateGoalDate(LocalDate.of(2027, 6, 1))
+        vm.submitGoal()
+        vm.openAllocationEditor()
+        vm.updateAllocationAmount("1000")
+        vm.submitAllocation()
+        vm.openGoalEditor()
+        vm.updateGoalDate(null)
+        vm.submitGoal()
+        assertNull(vm.uiState.value.overview?.goal?.targetDate)
+        assertEquals(lkr(1_000), vm.uiState.value.overview?.goal?.allocated)
+    }
 }
