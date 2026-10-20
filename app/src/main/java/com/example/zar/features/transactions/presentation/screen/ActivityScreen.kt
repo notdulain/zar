@@ -7,9 +7,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import com.example.zar.R
@@ -28,6 +30,7 @@ import com.example.zar.core.presentation.theme.ZarTheme
 fun ActivityScreen(
     onNavigate: (TopLevelDestination) -> Unit,
     onAddOption: (AddEntryOption) -> Unit,
+    onOpenIncome: () -> Unit,
 ) {
     ZarScreenScaffold(
         destination = TopLevelDestination.Activity,
@@ -42,6 +45,9 @@ fun ActivityScreen(
                 .padding(horizontal = ZarDimens.ScreenGutter, vertical = ZarDimens.SpaceLg),
             verticalArrangement = Arrangement.spacedBy(ZarDimens.SpaceMd),
         ) {
+            TextButton(onClick = onOpenIncome, modifier = Modifier.testTag("activity-open-income")) {
+                Text(stringResource(R.string.income_open))
+            }
             ZarHeroCard {
                 ZarLabel(stringResource(R.string.nav_activity), color = ZarSubtle)
                 ZarLabel(stringResource(R.string.home_spent_this_month), color = ZarSubtle)
@@ -64,5 +70,5 @@ fun ActivityScreen(
 @Preview(showBackground = true)
 @Composable
 private fun ActivityScreenPreview() {
-    ZarTheme { ActivityScreen(onNavigate = {}, onAddOption = {}) }
+    ZarTheme { ActivityScreen(onNavigate = {}, onAddOption = {}, onOpenIncome = {}) }
 }

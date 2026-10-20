@@ -1,13 +1,13 @@
 package com.example.zar.core.presentation.components
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
@@ -26,8 +26,10 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.zar.core.presentation.theme.ZarDimens
+import com.example.zar.core.presentation.theme.ZarNavy
+import com.example.zar.core.presentation.theme.ZarWhite
 
-/** Pill-shaped navbar shown on every screen except Home. */
+/** Hi-fi floating pill navbar. Every item keeps its label visible. */
 @Composable
 fun ZarBottomNav(
     selected: TopLevelDestination,
@@ -35,14 +37,14 @@ fun ZarBottomNav(
     modifier: Modifier = Modifier,
 ) {
     Surface(
-        modifier = modifier.fillMaxWidth().height(ZarDimens.NavHeight),
+        modifier = modifier.fillMaxWidth().heightIn(min = ZarDimens.NavHeight),
         shape = RoundedCornerShape(ZarDimens.NavRadius),
         color = MaterialTheme.colorScheme.surface,
-        border = BorderStroke(ZarDimens.Hairline, MaterialTheme.colorScheme.outline),
+        shadowElevation = 8.dp,
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = ZarDimens.SpaceSm, vertical = 5.dp),
-            horizontalArrangement = Arrangement.spacedBy(ZarDimens.SpaceXs),
+            modifier = Modifier.selectableGroup().padding(horizontal = 6.dp, vertical = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(2.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             TopLevelDestination.entries.forEach { destination ->
@@ -68,22 +70,20 @@ private fun NavItem(
     val colors = MaterialTheme.colorScheme
     Column(
         modifier = modifier
-            .height(51.dp)
+            .heightIn(min = 59.dp)
             .clip(RoundedCornerShape(28.dp))
-            .background(if (isSelected) colors.secondaryContainer else Color.Transparent)
-            .clickable(role = Role.Tab, onClick = onClick)
+            .background(if (isSelected) ZarNavy else Color.Transparent)
+            .selectable(selected = isSelected, role = Role.Tab, onClick = onClick)
             .semantics { contentDescription = label }
             .testTag("nav-${destination.name.lowercase()}"),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        TopLevelIcon(destination, tint = if (isSelected) colors.onSurface else colors.onSurfaceVariant)
-        if (isSelected) {
-            Text(
-                label.uppercase(),
-                style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
-                color = colors.onSurface,
-            )
-        }
+        TopLevelIcon(destination, tint = if (isSelected) ZarWhite else colors.onSurfaceVariant)
+        Text(
+            label,
+            style = MaterialTheme.typography.bodySmall.copy(fontSize = 10.sp, lineHeight = 12.sp),
+            color = if (isSelected) ZarWhite else colors.onSurfaceVariant,
+        )
     }
 }

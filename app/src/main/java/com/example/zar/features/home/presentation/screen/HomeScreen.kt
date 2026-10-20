@@ -50,7 +50,7 @@ fun HomeScreen(
                     onClick = { onNavigate(TopLevelDestination.More) },
                     modifier = Modifier.testTag("nav-more"),
                 ) {
-                    Text(stringResource(R.string.nav_more).uppercase() + " ›", style = MaterialTheme.typography.labelLarge)
+                    Text(stringResource(R.string.nav_more).uppercase() + " â€º", style = MaterialTheme.typography.labelLarge)
                 }
             }
             SummaryCard(
