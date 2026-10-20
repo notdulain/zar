@@ -16,6 +16,15 @@ data object RegisterRoute
 data object HomeRoute
 
 @Serializable
+data object ActivityRoute
+
+@Serializable
+data object PlansRoute
+
+@Serializable
+data object MoreRoute
+
+@Serializable
 data object SettingsRoute
 
 @Serializable

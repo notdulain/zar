@@ -2,6 +2,7 @@ package com.example.zar.features.accounts.presentation.screen
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -127,7 +128,7 @@ private fun AccountSections(overview: AccountsOverview, onOpenAccount: (String) 
 private fun Section(title: String, balances: List<AccountBalance>, onOpenAccount: (String) -> Unit, modifier: Modifier = Modifier) {
     Column(modifier) {
         ZarSectionHeader(title)
-        ZarCard(Modifier.padding(horizontal = 10.dp).padding(top = 10.dp).fillMaxWidth()) {
+        ZarCard(Modifier.padding(horizontal = 10.dp).padding(top = 10.dp).fillMaxWidth(), contentPadding = PaddingValues(0.dp)) {
             Column(Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
                 balances.forEachIndexed { index, balance ->
                     if (index > 0) ZarDivider()

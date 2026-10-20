@@ -50,11 +50,6 @@ fun Modifier.zarCard(shape: Shape = ZarShapes.lg): Modifier = composed {
 }
 
 @Composable
-fun ZarCard(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
-    Column(modifier.zarCard(), content = content)
-}
-
-@Composable
 fun ZarDivider(modifier: Modifier = Modifier) {
     Box(modifier.fillMaxWidth().height(1.dp).background(ZarTheme.colors.borderHairline))
 }
