@@ -25,6 +25,10 @@ class ObserveHomeOverviewUseCase @Inject constructor(
             summary = LedgerSummaryCalculator.summarize(entries, period),
             recent = active.take(RECENT_COUNT),
             hasRecordsInMonth = active.any { it.current.date in period },
+            receivedByDay = (1..month.lengthOfMonth()).map { day ->
+                val date = month.atDay(day)
+                LedgerSummaryCalculator.summarize(entries, date..date).received
+            },
         )
     }
 

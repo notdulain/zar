@@ -36,4 +36,11 @@ class MoneyFormatTest {
         val btc = CryptoAmount.of("0.00012345".toBigDecimal(), Currencies.BTC)
         assertEquals("BTC 0.00012345", btc.formatWithCode())
     }
+    @Test
+    fun tinyEthAmountsNeverRoundDownToZero() {
+        val eth = CryptoAmount.of("0.000000000000000001".toBigDecimal(), Currencies.ETH)
+        assertEquals("ETH 0.000000000000000001", eth.formatWithCode())
+        assertEquals("ETH 1.123456789012345678", CryptoAmount.of("1.123456789012345678".toBigDecimal(), Currencies.ETH).formatWithCode())
+    }
+
 }

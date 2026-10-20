@@ -4,17 +4,20 @@ import androidx.annotation.StringRes
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -26,7 +29,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -83,7 +90,7 @@ fun HomeScreen(
 }
 
 @Composable
-private fun HomeScreenContent(
+internal fun HomeScreenContent(
     state: HomeUiState,
     onPreviousMonth: () -> Unit,
     onNextMonth: () -> Unit,
@@ -146,28 +153,56 @@ private fun MonthRow(
     onDark: Boolean = false,
 ) {
     val foreground = if (onDark) ZarWhite else MaterialTheme.colorScheme.onSurface
-    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        TextButton(onClick = onPrevious, modifier = Modifier.testTag("month-previous")) {
-            Text("‹", style = MaterialTheme.typography.titleMedium, color = foreground)
-        }
-        Text(
-            month.format(MonthFormat).uppercase(),
-            style = MaterialTheme.typography.labelLarge,
-            color = foreground,
-            modifier = Modifier.testTag("month-label"),
-        )
-        TextButton(onClick = onNext, enabled = canGoForward, modifier = Modifier.testTag("month-next")) {
-            Text("›", style = MaterialTheme.typography.titleMedium, color = foreground)
-        }
-        Row(Modifier.weight(1f), horizontalArrangement = Arrangement.End) {
-            TextButton(onClick = onMore, modifier = Modifier.testTag("nav-more")) {
+    val previousDescription = stringResource(R.string.home_previous_month)
+    val nextDescription = stringResource(R.string.home_next_month)
+    val fontScale = LocalDensity.current.fontScale
+    BoxWithConstraints(Modifier.fillMaxWidth()) {
+        val stackMore = maxWidth < 300.dp || fontScale > 1.3f
+        Column {
+            if (stackMore) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                    MoreLink(onMore, foreground)
+                }
+            }
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                IconButton(
+                    onClick = onPrevious,
+                    modifier = Modifier.testTag("month-previous").semantics { contentDescription = previousDescription },
+                ) {
+                    Text("‹", style = MaterialTheme.typography.titleMedium, color = foreground)
+                }
                 Text(
-                    stringResource(R.string.home_more_link).uppercase(),
+                    month.format(MonthFormat).uppercase(),
                     style = MaterialTheme.typography.labelLarge,
                     color = foreground,
+                    modifier = Modifier.weight(1f).testTag("month-label"),
+                    textAlign = TextAlign.Center,
                 )
+                IconButton(
+                    onClick = onNext,
+                    enabled = canGoForward,
+                    modifier = Modifier.testTag("month-next").semantics { contentDescription = nextDescription },
+                ) {
+                    Text(
+                        "›",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = if (canGoForward) foreground else foreground.copy(alpha = 0.38f),
+                    )
+                }
+                if (!stackMore) MoreLink(onMore, foreground)
             }
         }
+    }
+}
+
+@Composable
+private fun MoreLink(onClick: () -> Unit, color: Color) {
+    TextButton(onClick = onClick, modifier = Modifier.testTag("nav-more")) {
+        Text(
+            stringResource(R.string.home_more_link).uppercase(),
+            style = MaterialTheme.typography.labelLarge,
+            color = color,
+        )
     }
 }
 
@@ -216,7 +251,7 @@ private fun OverviewBlock(
         modifier = Modifier.padding(horizontal = ZarDimens.ScreenGutter),
         verticalArrangement = Arrangement.spacedBy(ZarDimens.SpaceMd),
     ) {
-        ZarCard(Modifier.fillMaxWidth().testTag("spent-card")) {
+        ZarCard(Modifier.fillMaxWidth().testTag("spent-card"), onClick = { onNavigate(TopLevelDestination.Activity) }) {
             ZarLabel(stringResource(R.string.home_spent), color = MaterialTheme.colorScheme.onSurface)
             ZarLabel(month)
             Text(
@@ -307,7 +342,7 @@ private fun ReceivedHero(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(430.dp)
+            .heightIn(min = 430.dp)
             .clip(shape)
             .background(
                 Brush.verticalGradient(
@@ -317,7 +352,7 @@ private fun ReceivedHero(
             .testTag("received-card"),
     ) {
         Column(
-            modifier = Modifier.fillMaxSize().padding(horizontal = 22.dp, vertical = ZarDimens.SpaceSm),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 22.dp, vertical = ZarDimens.SpaceSm),
         ) {
             MonthRow(
                 month = overview.month,
@@ -341,50 +376,55 @@ private fun ReceivedHero(
                 modifier = Modifier.padding(top = ZarDimens.SpaceSm),
             )
             if (overview.summary.received.unresolvedCount > 0) {
-                Text(
+                CoverageNote(
                     stringResource(R.string.home_coverage_missing_rate, overview.summary.received.unresolvedCount),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = ZarHighlight,
-                    modifier = Modifier.padding(top = ZarDimens.SpaceXs).testTag("received-warning"),
+                    isWarning = true,
+                    tag = "received-warning",
+                    onDark = true,
                 )
             }
-            ReceivedBarChart(
-                hasRecords = overview.hasRecordsInMonth,
-                modifier = Modifier.fillMaxWidth().height(190.dp).padding(top = ZarDimens.SpaceLg),
-            )
+            ReceivedBarChart(overview, Modifier.fillMaxWidth().height(190.dp).padding(top = ZarDimens.SpaceLg))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                ZarLabel(stringResource(R.string.home_chart_start), color = ZarSubtle)
-                ZarLabel(stringResource(R.string.home_chart_today), color = ZarWhite)
+                ZarLabel(overview.month.atDay(1).format(DayFormat), color = ZarSubtle)
+                ZarLabel(overview.month.atEndOfMonth().format(DayFormat), color = ZarWhite)
             }
         }
     }
 }
 
 @Composable
-private fun ReceivedBarChart(hasRecords: Boolean, modifier: Modifier = Modifier) {
-    val levels = if (hasRecords) {
-        listOf(0.24f, 0.32f, 0.38f, 0.42f, 0.36f, 0.31f, 0.45f, 0.55f, 0.51f, 0.58f,
-            0.66f, 0.63f, 0.72f, 0.76f, 0.82f, 0.74f, 0.68f, 0.79f, 0.88f, 0.84f,
-            0.77f, 0.86f, 0.94f, 0.89f, 0.96f, 1f, 0.92f, 0.98f, 0.95f, 0.9f)
-    } else {
-        List(30) { 0.08f }
-    }
-    Canvas(modifier) {
-        val gap = 5.dp.toPx()
-        val barWidth = ((size.width - gap * (levels.size - 1)) / levels.size).coerceAtLeast(3.dp.toPx())
-        levels.forEachIndexed { index, level ->
-            val height = size.height * level
-            val color = when {
-                index == levels.lastIndex -> ZarHighlight
-                index >= levels.lastIndex - 5 -> ZarWhite
-                else -> ZarWhite.copy(alpha = 0.24f)
-            }
-            drawRoundRect(
-                color = color,
-                topLeft = androidx.compose.ui.geometry.Offset(index * (barWidth + gap), size.height - height),
-                size = androidx.compose.ui.geometry.Size(barWidth, height),
-                cornerRadius = CornerRadius(barWidth / 2f, barWidth / 2f),
+private fun ReceivedBarChart(overview: HomeOverview, modifier: Modifier = Modifier) {
+    val days = overview.receivedByDay
+    val maxAmount = days.maxOfOrNull { it.amount.minorUnits } ?: 0L
+    val description = stringResource(R.string.home_received_chart, overview.month.format(MonthFormat)) + " " +
+        if (maxAmount == 0L) stringResource(R.string.home_received_chart_empty) else {
+            days.mapIndexedNotNull { index, total ->
+                if (total.amount.isZero) null else "${overview.month.atDay(index + 1).format(DayFormat)}: ${total.amount.formatWithCode()}"
+            }.joinToString("; ")
+        }
+    Box(modifier.semantics { contentDescription = description }.testTag("received-chart")) {
+        if (maxAmount == 0L) {
+            Text(
+                stringResource(R.string.home_received_chart_empty),
+                color = ZarSubtle,
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.align(Alignment.Center),
             )
+        } else {
+            Canvas(Modifier.fillMaxSize()) {
+                val slotWidth = size.width / days.size
+                val barWidth = slotWidth * 0.65f
+                days.forEachIndexed { index, total ->
+                    // Only the drawing ratio uses floating point; money stays in integer minor units.
+                    val height = size.height * (total.amount.minorUnits.toDouble() / maxAmount).toFloat()
+                    drawRoundRect(
+                        color = if (index == days.lastIndex) ZarHighlight else ZarWhite.copy(alpha = 0.65f),
+                        topLeft = androidx.compose.ui.geometry.Offset(index * slotWidth, size.height - height),
+                        size = androidx.compose.ui.geometry.Size(barWidth, height),
+                        cornerRadius = CornerRadius(barWidth / 2f, barWidth / 2f),
+                    )
+                }
+            }
         }
     }
 }
@@ -392,20 +432,24 @@ private fun ReceivedBarChart(hasRecords: Boolean, modifier: Modifier = Modifier)
 @Composable
 private fun SplitLine(@StringRes label: Int, total: ReportingTotal, tag: String) {
     Row(Modifier.fillMaxWidth().testTag(tag), horizontalArrangement = Arrangement.SpaceBetween) {
-        Text(stringResource(label), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text(total.amount.formatWithCode(), style = MaterialTheme.typography.labelLarge)
+        Text(stringResource(label), modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(total.amount.formatWithCode(), modifier = Modifier.weight(1f), textAlign = TextAlign.End, style = MaterialTheme.typography.labelLarge)
     }
 }
 
 /** Coverage text sits directly under the totals it explains. Warnings are bold and prefixed. */
 @Composable
-private fun CoverageNote(text: String, isWarning: Boolean, tag: String = "") {
+private fun CoverageNote(text: String, isWarning: Boolean, tag: String = "", onDark: Boolean = false) {
     val prefix = if (isWarning) stringResource(R.string.home_warning_prefix) + " " else ""
     Text(
         prefix + text,
         style = MaterialTheme.typography.bodySmall,
         fontWeight = if (isWarning) FontWeight.Bold else FontWeight.Normal,
-        color = if (isWarning) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
+        color = when {
+            onDark && isWarning -> ZarHighlight
+            isWarning -> MaterialTheme.colorScheme.onSurface
+            else -> MaterialTheme.colorScheme.onSurfaceVariant
+        },
         modifier = Modifier.padding(top = ZarDimens.SpaceSm).testTag(tag),
     )
 }

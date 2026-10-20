@@ -1,6 +1,7 @@
 package com.example.zar.features.home.domain.model
 
 import com.example.zar.core.domain.calculation.PeriodSummary
+import com.example.zar.core.domain.calculation.ReportingTotal
 import com.example.zar.core.domain.model.LedgerEntry
 import java.time.YearMonth
 
@@ -8,7 +9,7 @@ import java.time.YearMonth
  * Everything Home shows for one month, built only from saved records.
  *
  * [summary] holds Received (income only) and Spent split into committed, discretionary and
- * unknown. Expected payments, drafts, transfers and refunds never reach it. [recent] is the
+ * unknown. Expected payments, drafts and transfers are excluded; refunds reduce spending. [recent] is the
  * latest activity overall, not limited to [month].
  */
 data class HomeOverview(
@@ -16,12 +17,14 @@ data class HomeOverview(
     val summary: PeriodSummary,
     val recent: List<LedgerEntry>,
     val hasRecordsInMonth: Boolean,
+    /** One income total per calendar day, starting on day 1; missing rates remain unresolved. */
+    val receivedByDay: List<ReportingTotal> = emptyList(),
 ) {
     /** Records in this month that could not be converted to LKR and so are missing from totals. */
     val missingRateCount: Int
         get() = summary.received.unresolvedCount + summary.spent.total.unresolvedCount
 
-    /** Cash catch-up or reconciliation outflows, counted as unknown spending. */
+    /** Cash catch-up or reconciliation adjustments in either direction. */
     val adjustmentCount: Int get() = summary.unclassifiedAdjustmentCount
 
     val hasUnknownSpending: Boolean get() = summary.spent.unknown.amount.isPositive

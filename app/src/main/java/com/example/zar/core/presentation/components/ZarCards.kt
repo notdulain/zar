@@ -127,7 +127,7 @@ fun ZarActivityRow(
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            Text(amount, style = MaterialTheme.typography.labelLarge, textAlign = TextAlign.End)
+            Text(amount, modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelLarge, textAlign = TextAlign.End)
         }
     }
 }

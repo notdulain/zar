@@ -27,14 +27,17 @@ import com.example.zar.core.presentation.theme.ZarSubtle
 import com.example.zar.core.presentation.theme.ZarTheme
 
 /**
- * The More tab: a list of option cards. Settings opens today; the other cards stay inactive
- * until the Accounts, Capture, Privacy and Export features own their destinations.
+ * The More tab keeps existing account, income and freelance features reachable.
+ * Capture, Privacy and Export remain layout shells until their features are implemented.
  */
 @Composable
 fun MoreScreen(
     onNavigate: (TopLevelDestination) -> Unit,
     onAddOption: (AddEntryOption) -> Unit,
     onOpenSettings: () -> Unit,
+    onOpenAccounts: () -> Unit,
+    onOpenIncome: () -> Unit,
+    onOpenFreelance: () -> Unit,
 ) {
     ZarScreenScaffold(
         destination = TopLevelDestination.More,
@@ -57,7 +60,9 @@ fun MoreScreen(
                     color = ZarSubtle,
                 )
             }
-            MoreOption(R.string.more_accounts, R.string.more_accounts_detail, onClick = null)
+            MoreOption(R.string.more_accounts, R.string.more_accounts_detail, onClick = onOpenAccounts, tag = "open-accounts")
+            MoreOption(R.string.income_open, R.string.more_income_detail, onClick = onOpenIncome, tag = "open-income")
+            MoreOption(R.string.freelance_open, R.string.more_freelance_detail, onClick = onOpenFreelance, tag = "open-freelance")
             MoreOption(R.string.more_capture, R.string.more_capture_detail, onClick = null)
             MoreOption(R.string.more_privacy, R.string.more_privacy_detail, onClick = null)
             MoreOption(R.string.more_export, R.string.more_export_detail, onClick = null)
@@ -85,7 +90,9 @@ private fun MoreOption(title: Int, detail: Int, onClick: (() -> Unit)?, tag: Str
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            Text("›", style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (onClick != null) {
+                Text("›", style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
         }
     }
 }
@@ -93,5 +100,5 @@ private fun MoreOption(title: Int, detail: Int, onClick: (() -> Unit)?, tag: Str
 @Preview(showBackground = true)
 @Composable
 private fun MoreScreenPreview() {
-    ZarTheme { MoreScreen(onNavigate = {}, onAddOption = {}, onOpenSettings = {}) }
+    ZarTheme { MoreScreen(onNavigate = {}, onAddOption = {}, onOpenSettings = {}, onOpenAccounts = {}, onOpenIncome = {}, onOpenFreelance = {}) }
 }

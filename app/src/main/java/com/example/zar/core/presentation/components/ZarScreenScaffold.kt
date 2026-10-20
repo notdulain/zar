@@ -5,7 +5,13 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.calculateStartPadding
+import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -21,6 +27,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -48,15 +55,17 @@ fun ZarScreenScaffold(
     var showAddSheet by rememberSaveable { mutableStateOf(false) }
     val isHome = destination == TopLevelDestination.Home
     val addDescription = stringResource(R.string.add_entry)
+    val layoutDirection = LocalLayoutDirection.current
 
     Scaffold(
         modifier = modifier,
         containerColor = MaterialTheme.colorScheme.background,
+        contentWindowInsets = WindowInsets.safeDrawing,
         bottomBar = {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .navigationBarsPadding()
+                    .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom))
                     .padding(horizontal = ZarDimens.ScreenGutter, vertical = ZarDimens.SpaceMd),
                 contentAlignment = Alignment.Center,
             ) {
@@ -79,9 +88,11 @@ fun ZarScreenScaffold(
             }
         },
     ) { inner ->
-        // Reserve the space the floating Add button covers so content can scroll above it.
+        // Preserve side insets as well, so landscape content clears display cutouts.
         content(
             PaddingValues(
+                start = inner.calculateStartPadding(layoutDirection),
+                end = inner.calculateEndPadding(layoutDirection),
                 top = inner.calculateTopPadding(),
                 bottom = inner.calculateBottomPadding() + ZarDimens.SpaceMd,
             ),

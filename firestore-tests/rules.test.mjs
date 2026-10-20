@@ -137,3 +137,22 @@ test('accounts: currency fixed, no delete, user doc locked', async () => {
   await assertFails(setDoc(doc(alice(), 'users/alice'), { name: 'x' }));
   await assertFails(setDoc(doc(alice(), 'users/alice/secrets/x'), { a: 1 }));
 });
+
+test('projects: currency fixed, archive instead of delete, owner only', async () => {
+  const p = { id: 'p1', name: 'Website redesign', client: 'Acme', currency: { code: 'USD', kind: 'FIAT', digits: 2 },
+    status: 'ACTIVE', createdAt: 1790000000000 };
+  const r = doc(alice(), path('alice', 'projects', 'p1'));
+  await assertSucceeds(setDoc(r, p));
+  const { client, ...noClient } = p;
+  await assertSucceeds(setDoc(doc(alice(), path('alice', 'projects', 'p2')), { ...noClient, id: 'p2' }));
+  await assertSucceeds(updateDoc(r, { name: 'Website v2', status: 'ARCHIVED' }));
+  await assertFails(updateDoc(r, { currency: { code: 'LKR', kind: 'FIAT', digits: 2 } }));
+  await assertFails(updateDoc(r, { createdAt: 1790000000001 }));
+  await assertFails(updateDoc(r, { status: 'DONE' }));
+  await assertFails(setDoc(doc(alice(), path('alice', 'projects', 'p3')), { ...p, id: 'other' }));
+  await assertFails(setDoc(doc(alice(), path('alice', 'projects', 'p4')), { ...p, id: 'p4', name: '' }));
+  await assertFails(setDoc(doc(alice(), path('alice', 'projects', 'p5')), { ...p, id: 'p5', rate: '300' }));
+  await assertFails(deleteDoc(r));
+  await assertFails(getDoc(doc(bob(), path('alice', 'projects', 'p1'))));
+  await assertFails(setDoc(doc(bob(), path('alice', 'projects', 'p6')), { ...p, id: 'p6' }));
+});
