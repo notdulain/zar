@@ -531,7 +531,7 @@ private fun AccountChips(accounts: List<Account>, selected: AccountId?, onSelect
 }
 
 @Composable
-private fun Section(label: String, content: @Composable () -> Unit) {
+internal fun Section(label: String, content: @Composable () -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         ZarMonoLabel(label)
         content()
@@ -576,7 +576,7 @@ private fun OfflineBanner() {
 
 /** Equal-width segments on a subtle track; the selected one is a white tile. */
 @Composable
-private fun Segmented(
+internal fun Segmented(
     labels: List<String>,
     selectedIndex: Int,
     onSelect: (Int) -> Unit,
@@ -610,7 +610,7 @@ private fun Segmented(
 }
 
 @Composable
-private fun TextInput(
+internal fun TextInput(
     value: String,
     onValueChange: (String) -> Unit,
     placeholder: String,
@@ -637,13 +637,13 @@ private fun TextInput(
 }
 
 @Composable
-private fun FieldError(@androidx.annotation.StringRes res: Int?, modifier: Modifier = Modifier) {
+internal fun FieldError(@androidx.annotation.StringRes res: Int?, modifier: Modifier = Modifier) {
     if (res != null) Text(stringResource(res), style = ZarType.bodyCaption, color = ZarTheme.colors.danger, modifier = modifier)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun DateRow(date: LocalDate, onSelect: (LocalDate) -> Unit) {
+internal fun DateRow(date: LocalDate, onSelect: (LocalDate) -> Unit) {
     var showPicker by rememberSaveable { mutableStateOf(false) }
     val colors = ZarTheme.colors
     Row(
@@ -677,7 +677,7 @@ private fun DateRow(date: LocalDate, onSelect: (LocalDate) -> Unit) {
     ) { DatePicker(state = state) }
 }
 
-private fun ExpenseCategory.labelRes(): Int = when (this) {
+internal fun ExpenseCategory.labelRes(): Int = when (this) {
     ExpenseCategory.COFFEE_DINING -> R.string.manual_category_coffee_dining
     ExpenseCategory.GROCERIES -> R.string.manual_category_groceries
     ExpenseCategory.TRANSPORT -> R.string.manual_category_transport
@@ -688,7 +688,7 @@ private fun ExpenseCategory.labelRes(): Int = when (this) {
     ExpenseCategory.OTHER -> R.string.manual_category_other
 }
 
-private fun SpendingClass.labelRes(): Int = when (this) {
+internal fun SpendingClass.labelRes(): Int = when (this) {
     SpendingClass.COMMITTED -> R.string.manual_class_committed
     SpendingClass.DISCRETIONARY -> R.string.manual_class_discretionary
     SpendingClass.UNKNOWN -> R.string.manual_class_unknown

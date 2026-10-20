@@ -72,13 +72,12 @@ fun ZarScreenScaffold(
     val isLightTheme = ZarTheme.colors.canvas == ZarLightColors.canvas
 
     // The Home hero extends under the status bar, so its system glyphs must be white.
+    // Nothing is restored on exit: the screen opened next sets what it needs, and putting the old value back
+    // after the transition left white glyphs on the light screens opened from Activity and More.
     DisposableEffect(activity, view, isHome, isLightTheme) {
         val controller = activity?.let { WindowCompat.getInsetsController(it.window, view) }
-        val previous = controller?.isAppearanceLightStatusBars
         controller?.isAppearanceLightStatusBars = !isHome && isLightTheme
-        onDispose {
-            if (previous != null) controller.isAppearanceLightStatusBars = previous
-        }
+        onDispose { }
     }
 
     Scaffold(
