@@ -13,6 +13,8 @@ import com.example.zar.features.auth.domain.repository.AuthRepository
 import com.example.zar.features.auth.domain.repository.SignOutHandler
 import com.example.zar.features.freelance.data.repository.FirestoreProjectRepository
 import com.example.zar.features.freelance.domain.repository.ProjectRepository
+import com.example.zar.features.plans.data.repository.FirestoreGoalRepository
+import com.example.zar.features.plans.domain.repository.GoalRepository
 import com.example.zar.features.settings.data.repository.InMemoryAppPreferencesRepository
 import com.example.zar.features.settings.domain.repository.AppPreferencesRepository
 import dagger.Binds
@@ -54,6 +56,10 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun bindAccountRepository(impl: FirestoreAccountRepository): AccountRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindGoalRepository(impl: FirestoreGoalRepository): GoalRepository
 
     @Binds
     @Singleton

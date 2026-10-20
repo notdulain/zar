@@ -31,8 +31,7 @@ import com.example.zar.core.presentation.theme.ZarDimens
 /**
  * Layout shared by the four main screens.
  *
- * - [TopLevelDestination.Home]: no navbar, Add button centred at the bottom.
- * - Everything else: pill navbar and Add button share one floating row.
+ * The pill navbar and Add button share one floating row on every top-level screen.
  *
  * [content] receives padding that already clears the navbar and the Add button, so lists can
  * scroll fully into view.
@@ -46,7 +45,6 @@ fun ZarScreenScaffold(
     content: @Composable (PaddingValues) -> Unit,
 ) {
     var showAddSheet by rememberSaveable { mutableStateOf(false) }
-    val isHome = destination == TopLevelDestination.Home
     val addDescription = stringResource(R.string.add_entry)
 
     Scaffold(
@@ -60,21 +58,17 @@ fun ZarScreenScaffold(
                     .padding(horizontal = ZarDimens.ScreenGutter, vertical = ZarDimens.SpaceMd),
                 contentAlignment = Alignment.Center,
             ) {
-                if (isHome) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(ZarDimens.SpaceSm),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    ZarBottomNav(
+                        selected = destination,
+                        onNavigate = onNavigate,
+                        modifier = Modifier.weight(1f),
+                    )
                     ZarAddButton(addDescription) { showAddSheet = true }
-                } else {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(ZarDimens.SpaceSm),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        ZarBottomNav(
-                            selected = destination,
-                            onNavigate = onNavigate,
-                            modifier = Modifier.weight(1f),
-                        )
-                        ZarAddButton(addDescription) { showAddSheet = true }
-                    }
                 }
             }
         },

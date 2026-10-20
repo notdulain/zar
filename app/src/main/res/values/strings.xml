@@ -96,6 +96,8 @@
     <string name="sign_out_unsynced_body">Your latest changes are only on this phone. If you sign out now they will be lost. Connect to the internet and wait a moment, or sign out anyway.</string>
     <string name="sign_out_anyway">Sign out anyway</string>
     <string name="action_cancel">Cancel</string>
+    <string name="action_save">Save</string>
+    <string name="action_retry">Try again</string>
 
     <!-- Navigation -->
     <string name="nav_home">Home</string>
@@ -166,6 +168,29 @@
 
     <!-- Plans -->
     <string name="plans_goal_empty">No goal set</string>
+    <string name="plans_goal_name">MacBook fund</string>
+    <string name="plans_zero_amount">LKR 0</string>
+    <string name="plans_of_target">of %1$s</string>
+    <string name="plans_goal_not_created">Create the goal to choose its target</string>
+    <string name="plans_nothing_allocated">Nothing allocated yet</string>
+    <string name="plans_remaining">%1$s still needed</string>
+    <string name="plans_create">Create</string>
+    <string name="plans_create_note">Your account balances stay unallocated until you choose an amount.</string>
+    <string name="plans_create_action">CREATE MACBOOK FUND →</string>
+    <string name="plans_allocate_action">SET ASIDE MONEY →</string>
+    <string name="plans_no_accounts">Add a known LKR account balance before allocating money.</string>
+    <string name="plans_load_failed">Could not load your plan.</string>
+    <string name="plans_edit_goal">MacBook fund</string>
+    <string name="plans_goal_field">Goal name</string>
+    <string name="plans_target_field">Target</string>
+    <string name="plans_set_aside">Set aside money</string>
+    <string name="plans_allocation_explanation">Choose how much of an account is reserved for this goal. This does not record a transaction.</string>
+    <string name="plans_allocation_field">Allocated amount</string>
+    <string name="plans_zero_removes">Enter 0 to remove this allocation.</string>
+    <string name="plans_invalid_goal">Enter a name and a target greater than zero.</string>
+    <string name="plans_invalid_amount">Enter zero or a positive amount.</string>
+    <string name="plans_allocation_too_large">That amount is more than the available balance or remaining target.</string>
+    <string name="plans_save_failed">Could not save. Please try again.</string>
     <string name="plans_allowance">Weekly allowance</string>
     <string name="plans_allowance_empty">Not set</string>
     <string name="plans_bills_empty">No bills added</string>

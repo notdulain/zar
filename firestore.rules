@@ -49,6 +49,10 @@ rules_version = '2';
 //   status 'ACTIVE'|'ARCHIVED', createdAt (immutable). Milestones are expectedPayments
 //   with source FREELANCE_MILESTONE pointing at the project.
 //
+// goals/{goalId}                  create, update (no delete in U04)
+//   id (== doc id), name (1-80), target (positive Money), allocations (max 10),
+//   allocation {accountId, amount}; allocations reserve money but do not write ledger entries.
+//
 // drafts/{draftId}                create, update, delete (unconfirmed proposals)
 //   id (== doc id), source, status, proposals (list of maps, max 5), createdAt (immutable)
 //   Raw message text is never stored here; it stays in encrypted on-device staging.
@@ -315,6 +319,37 @@ service cloud.firestore {
         && isMillis(d.createdAt);
     }
 
+    function isGoalAllocation(a, currency) {
+      return a is map
+        && a.keys().hasOnly(['accountId', 'amount'])
+        && a.keys().hasAll(['accountId', 'amount'])
+        && isId(a.accountId)
+        && isPositiveMoney(a.amount)
+        && a.amount.currency == currency;
+    }
+
+    function isValidGoal(goalId) {
+      let d = data();
+      let a = d.allocations;
+      return hasOnlyAllowedFields(['id', 'name', 'target', 'allocations', 'updatedAt'])
+        && hasRequiredFields(['id', 'name', 'target', 'allocations', 'updatedAt'])
+        && d.id == goalId
+        && isShortString(d.name, 80)
+        && isPositiveMoney(d.target)
+        && isMillis(d.updatedAt)
+        && a is list && a.size() <= 10
+        && (a.size() < 1 || isGoalAllocation(a[0], d.target.currency))
+        && (a.size() < 2 || isGoalAllocation(a[1], d.target.currency))
+        && (a.size() < 3 || isGoalAllocation(a[2], d.target.currency))
+        && (a.size() < 4 || isGoalAllocation(a[3], d.target.currency))
+        && (a.size() < 5 || isGoalAllocation(a[4], d.target.currency))
+        && (a.size() < 6 || isGoalAllocation(a[5], d.target.currency))
+        && (a.size() < 7 || isGoalAllocation(a[6], d.target.currency))
+        && (a.size() < 8 || isGoalAllocation(a[7], d.target.currency))
+        && (a.size() < 9 || isGoalAllocation(a[8], d.target.currency))
+        && (a.size() < 10 || isGoalAllocation(a[9], d.target.currency));
+    }
+
     function isValidProposal(p) {
       return p is map
         && p.keys().hasOnly(['kind', 'type', 'direction', 'amount', 'sent', 'received', 'accountId', 'fromAccountId',
@@ -420,6 +455,14 @@ service cloud.firestore {
         // Milestones are in the project's currency, so it never changes; archive instead of deleting.
         allow update: if isOwner(userId) && isValidProject(projectId)
           && areImmutableFieldsUnchanged(['id', 'currency', 'createdAt']);
+        allow delete: if false;
+      }
+
+      match /goals/{goalId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidGoal(goalId);
+        allow update: if isOwner(userId) && isValidGoal(goalId)
+          && areImmutableFieldsUnchanged(['id']);
         allow delete: if false;
       }
 

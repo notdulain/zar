@@ -50,7 +50,7 @@ fun Modifier.zarCard(shape: Shape = ZarShapes.lg): Modifier = composed {
 }
 
 @Composable
-fun ZarCard(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
+fun ZarDataCard(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
     Column(modifier.zarCard(), content = content)
 }
 

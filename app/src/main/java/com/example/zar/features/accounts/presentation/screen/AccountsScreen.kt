@@ -32,7 +32,7 @@ import com.example.zar.R
 import com.example.zar.core.domain.calculation.AccountBalance
 import com.example.zar.core.presentation.components.ZarAddPill
 import com.example.zar.core.presentation.components.ZarBackButton
-import com.example.zar.core.presentation.components.ZarCard
+import com.example.zar.core.presentation.components.ZarDataCard
 import com.example.zar.core.presentation.components.ZarDivider
 import com.example.zar.core.presentation.components.ZarIconChip
 import com.example.zar.core.presentation.components.ZarSectionHeader
@@ -127,7 +127,7 @@ private fun AccountSections(overview: AccountsOverview, onOpenAccount: (String) 
 private fun Section(title: String, balances: List<AccountBalance>, onOpenAccount: (String) -> Unit, modifier: Modifier = Modifier) {
     Column(modifier) {
         ZarSectionHeader(title)
-        ZarCard(Modifier.padding(horizontal = 10.dp).padding(top = 10.dp).fillMaxWidth()) {
+        ZarDataCard(Modifier.padding(horizontal = 10.dp).padding(top = 10.dp).fillMaxWidth()) {
             Column(Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
                 balances.forEachIndexed { index, balance ->
                     if (index > 0) ZarDivider()
