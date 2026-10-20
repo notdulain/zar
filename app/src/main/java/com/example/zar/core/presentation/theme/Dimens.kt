@@ -13,7 +13,7 @@ object ZarDimens {
 
     val CardRadius = 20.dp
     val RowCardRadius = 18.dp
-    val HeroRadius = 40.dp
+    val HeroRadius = 25.dp
     val SheetRadius = 32.dp
     val NavRadius = 32.dp
     val ChipRadius = 15.dp
@@ -21,5 +21,5 @@ object ZarDimens {
     val Hairline = 1.dp
     val CardPadding = 20.dp
     val AddButtonSize = 63.dp
-    val NavHeight = 62.dp
+    val NavHeight = 68.dp
 }

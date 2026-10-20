@@ -68,6 +68,10 @@
     <string name="home_spent_this_month">Spent this month</string>
     <string name="home_amount_placeholder">LKR 0</string>
     <string name="home_received">Received</string>
+    <string name="home_received_this_month">Received this month</string>
+    <string name="home_received_note_short">Money that actually arrived</string>
+    <string name="home_chart_start">Month start</string>
+    <string name="home_chart_today">Today</string>
     <string name="home_received_note">Money that actually arrived. Expected and unexplained money is not included.</string>
     <string name="home_previous_month">Previous month</string>
     <string name="home_next_month">Next month</string>
@@ -103,6 +107,10 @@
     <!-- Activity -->
     <string name="activity_based_on_records">Based on recorded transactions</string>
     <string name="activity_empty">No transactions yet.</string>
+    <string name="activity_current_month">This month⌄</string>
+    <string name="activity_month">October</string>
+    <string name="activity_filter_all">All</string>
+    <string name="activity_filter_review">Needs review</string>
 
     <!-- Plans -->
     <string name="plans_goal_empty">No goal set</string>
