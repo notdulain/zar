@@ -2,44 +2,64 @@ package com.example.zar.core.presentation.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Shapes
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.graphics.Color
 
 private val LightColors = lightColorScheme(
-    primary = ZarInk,
-    onPrimary = ZarWhite,
-    background = ZarCanvas,
-    onBackground = ZarInk,
-    surface = ZarWhite,
-    onSurface = ZarInk,
-    surfaceVariant = ZarTrack,
-    onSurfaceVariant = ZarMuted,
-    secondaryContainer = ZarNavy,
-    onSecondaryContainer = ZarWhite,
-    outline = ZarBorder,
-    outlineVariant = ZarBorder,
-    inverseSurface = ZarNavy,
-    inverseOnSurface = ZarWhite,
+    primary = ZarLightColors.accentPrimary,
+    onPrimary = ZarLightColors.textOnInverse,
+    primaryContainer = ZarLightColors.selectedTint,
+    onPrimaryContainer = ZarLightColors.textSelected,
+    secondary = ZarLightColors.accentIncome,
+    onSecondary = ZarLightColors.textOnInverse,
+    background = ZarLightColors.canvas,
+    onBackground = ZarLightColors.textPrimary,
+    surface = ZarLightColors.surface,
+    onSurface = ZarLightColors.textPrimary,
+    surfaceVariant = ZarLightColors.subtle,
+    onSurfaceVariant = ZarLightColors.textSecondary,
+    secondaryContainer = ZarLightColors.inverse,
+    onSecondaryContainer = ZarLightColors.textOnInverse,
+    outline = ZarLightColors.borderDefault,
+    outlineVariant = ZarLightColors.borderHairline,
+    inverseSurface = ZarLightColors.inverse,
+    inverseOnSurface = ZarLightColors.textOnInverse,
+    error = ZarPrimitives.coral700,
+    onError = ZarLightColors.textOnInverse,
 )
 
 private val DarkColors = darkColorScheme(
-    primary = ZarWhite,
-    onPrimary = ZarNavy,
-    background = ZarNavy,
-    onBackground = ZarWhite,
-    surface = ZarNavy,
-    onSurface = ZarWhite,
-    surfaceVariant = Color(0xFF1C1C1C),
-    onSurfaceVariant = ZarSubtle,
-    secondaryContainer = Color(0xFF1C1C1C),
-    onSecondaryContainer = ZarWhite,
-    outline = Color(0xFF3A3A3A),
-    outlineVariant = Color(0xFF3A3A3A),
-    inverseSurface = ZarWhite,
-    inverseOnSurface = ZarNavy,
+    primary = ZarDarkColors.accentPrimary,
+    onPrimary = ZarDarkColors.textOnInverse,
+    primaryContainer = ZarDarkColors.selectedTint,
+    onPrimaryContainer = ZarDarkColors.textSelected,
+    secondary = ZarDarkColors.accentIncome,
+    onSecondary = ZarDarkColors.textOnInverse,
+    background = ZarDarkColors.canvas,
+    onBackground = ZarDarkColors.textPrimary,
+    surface = ZarDarkColors.surface,
+    onSurface = ZarDarkColors.textPrimary,
+    surfaceVariant = ZarDarkColors.subtle,
+    onSurfaceVariant = ZarDarkColors.textSecondary,
+    secondaryContainer = ZarDarkColors.inverse,
+    onSecondaryContainer = ZarDarkColors.textOnInverse,
+    outline = ZarDarkColors.borderDefault,
+    outlineVariant = ZarDarkColors.borderHairline,
+    inverseSurface = ZarDarkColors.surface,
+    inverseOnSurface = ZarDarkColors.textPrimary,
+    error = ZarPrimitives.coral700,
+    onError = ZarDarkColors.textOnInverse,
+)
+
+private val ZarMaterialShapes = Shapes(
+    extraSmall = ZarShapes.xs,
+    small = ZarShapes.sm,
+    medium = ZarShapes.md,
+    large = ZarShapes.lg,
+    extraLarge = ZarShapes.xl,
 )
 
 /** App-wide Material 3 theme. Every screen should be wrapped in this. */
@@ -52,6 +72,7 @@ fun ZarTheme(
         MaterialTheme(
             colorScheme = if (darkTheme) DarkColors else LightColors,
             typography = ZarTypography,
+            shapes = ZarMaterialShapes,
             content = content,
         )
     }

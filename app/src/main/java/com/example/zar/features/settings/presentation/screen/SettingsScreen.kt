@@ -1,28 +1,38 @@
 package com.example.zar.features.settings.presentation.screen
 
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.ListItem
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.zar.R
+import com.example.zar.core.presentation.components.ZarBackButton
+import com.example.zar.core.presentation.components.ZarCard
+import com.example.zar.core.presentation.components.ZarDivider
+import com.example.zar.core.presentation.components.ZarMonoLabel
+import com.example.zar.core.presentation.components.ZarTitleBlock
 import com.example.zar.core.presentation.theme.ZarTheme
+import com.example.zar.core.presentation.theme.ZarType
 import com.example.zar.features.settings.presentation.viewmodel.SettingsUiState
 import com.example.zar.features.settings.presentation.viewmodel.SettingsViewModel
 
@@ -41,7 +51,6 @@ fun SettingsScreen(
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SettingsContent(
     uiState: SettingsUiState,
@@ -50,36 +59,29 @@ private fun SettingsContent(
     onConfirmSignOut: () -> Unit,
     onDismissWarning: () -> Unit,
 ) {
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.settings_title)) },
-                navigationIcon = {
-                    TextButton(onClick = onBack) { Text(stringResource(R.string.action_back)) }
-                },
-            )
-        },
-    ) { innerPadding ->
-        Column(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
-            ListItem(
-                headlineContent = { Text(stringResource(R.string.settings_currency)) },
-                supportingContent = { Text(uiState.currencyCode) },
-            )
-            uiState.email?.let { email ->
-                ListItem(
-                    headlineContent = { Text(stringResource(R.string.settings_signed_in_as)) },
-                    supportingContent = { Text(email) },
-                )
+    val colors = ZarTheme.colors
+    val backTop = maxOf(4.dp, 54.dp - WindowInsets.statusBars.asPaddingValues().calculateTopPadding())
+    Box(Modifier.fillMaxSize().background(colors.canvas)) {
+        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).statusBarsPadding()) {
+            ZarBackButton(onBack, stringResource(R.string.action_back), Modifier.padding(start = 10.dp, top = backTop))
+            ZarTitleBlock(stringResource(R.string.settings_title), null, Modifier.padding(top = 6.dp))
+            ZarCard(
+                Modifier.fillMaxWidth().padding(start = 10.dp, end = 10.dp, top = 30.dp),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
+            ) {
+                SettingsRow(stringResource(R.string.settings_currency), uiState.currencyCode)
+                uiState.email?.let { email ->
+                    ZarDivider()
+                    SettingsRow(stringResource(R.string.settings_signed_in_as), email)
+                }
             }
-            HorizontalDivider()
-            ListItem(
-                headlineContent = {
-                    Text(stringResource(R.string.settings_sign_out), color = MaterialTheme.colorScheme.error)
-                },
-                modifier = Modifier
-                    .testTag("sign-out")
-                    .clickable(enabled = !uiState.isSigningOut, onClick = onSignOut),
-            )
+            ZarCard(
+                Modifier.fillMaxWidth().padding(start = 10.dp, end = 10.dp, top = 12.dp).testTag("sign-out"),
+                onClick = if (uiState.isSigningOut) null else onSignOut,
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 18.dp),
+            ) {
+                Text(stringResource(R.string.settings_sign_out), style = ZarType.labelButton, color = colors.danger)
+            }
         }
     }
     if (uiState.showUnsyncedWarning) {
@@ -97,13 +99,10 @@ private fun SettingsContent(
     }
 }
 
-@Preview(showBackground = true)
 @Composable
-private fun SettingsContentPreview() {
-    ZarTheme {
-        SettingsContent(
-            uiState = SettingsUiState(isLoading = false, currencyCode = "LKR", email = "dulain@example.com"),
-            onBack = {}, onSignOut = {}, onConfirmSignOut = {}, onDismissWarning = {},
-        )
+private fun SettingsRow(label: String, value: String) {
+    Column(Modifier.fillMaxWidth().padding(vertical = 14.dp), horizontalAlignment = Alignment.Start) {
+        ZarMonoLabel(label)
+        Text(value, style = ZarType.bodyM, color = ZarTheme.colors.textPrimary, modifier = Modifier.padding(top = 3.dp))
     }
 }

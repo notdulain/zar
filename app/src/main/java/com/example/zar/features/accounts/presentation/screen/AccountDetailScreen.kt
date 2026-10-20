@@ -3,6 +3,7 @@ package com.example.zar.features.accounts.presentation.screen
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,6 +16,8 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -68,9 +71,10 @@ fun AccountDetailScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val colors = ZarTheme.colors
     val detail = uiState.detail
+    val backTop = maxOf(4.dp, 54.dp - WindowInsets.statusBars.asPaddingValues().calculateTopPadding())
     Box(Modifier.fillMaxSize().background(colors.canvas)) {
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).statusBarsPadding()) {
-            ZarBackButton(onBack, stringResource(R.string.accounts_back), Modifier.padding(start = 10.dp, top = 4.dp))
+            ZarBackButton(onBack, stringResource(R.string.accounts_back), Modifier.padding(start = 10.dp, top = backTop))
             when {
                 uiState.isLoading -> Box(Modifier.fillMaxWidth().padding(top = 96.dp), Alignment.Center) { CircularProgressIndicator(color = colors.accentSelected) }
                 uiState.loadFailed -> Message(stringResource(R.string.accounts_load_failed))
