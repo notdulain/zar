@@ -156,3 +156,44 @@ test('projects: currency fixed, archive instead of delete, owner only', async ()
   await assertFails(getDoc(doc(bob(), path('alice', 'projects', 'p1'))));
   await assertFails(setDoc(doc(bob(), path('alice', 'projects', 'p6')), { ...p, id: 'p6' }));
 });
+
+test('goals: owner can explicitly allocate money without changing ledger data', async () => {
+  const goal = { id: 'macbook-fund', name: 'MacBook fund', target: lkr(49000000), allocations: [],
+    updatedAt: 1790000000000 };
+  const r = doc(alice(), path('alice', 'goals', 'macbook-fund'));
+
+  await assertSucceeds(setDoc(r, goal));
+  await assertSucceeds(updateDoc(r, {
+    allocations: [{ accountId: 'savings', amount: lkr(1120000) }],
+    updatedAt: 1790000000001,
+  }));
+  await assertSucceeds(getDoc(r));
+
+  await assertFails(updateDoc(r, { id: 'other' }));
+  await assertFails(updateDoc(r, { allocations: [{ accountId: 'savings', amount: lkr(0) }] }));
+  await assertFails(updateDoc(r, { allocations: [{ accountId: 'savings', amount: { ...lkr(100), currency: 'USD' } }] }));
+  await assertFails(setDoc(doc(alice(), path('alice', 'goals', 'bad-id')), { ...goal }));
+  await assertFails(deleteDoc(r));
+  await assertFails(getDoc(doc(bob(), path('alice', 'goals', 'macbook-fund'))));
+  await assertFails(setDoc(doc(bob(), path('alice', 'goals', 'other')), { ...goal, id: 'other' }));
+});
+
+test('goals: allocation boundary and update schema stay enforced', async () => {
+  const goal = { id: 'macbook-fund', name: 'MacBook fund', target: lkr(49000000), allocations: [], updatedAt: 1790000000000 };
+  const r = doc(alice(), path('alice', 'goals', goal.id));
+  const allocations = Array.from({ length: 10 }, (_, i) => ({ accountId: `account-${i}`, amount: lkr(100) }));
+  await assertSucceeds(setDoc(r, { ...goal, allocations }));
+  await assertSucceeds(updateDoc(r, { allocations, updatedAt: 1790000000001 }));
+  await assertFails(updateDoc(r, { allocations: [{ accountId: 'savings', amount: { ...lkr(100), digits: 3 } }] }));
+  await assertFails(updateDoc(r, { allocations: [{ accountId: 'savings', amount: { ...lkr(100), extra: true } }] }));
+  const crypto = { currency: 'USDT', kind: 'CRYPTO', digits: 6, quantity: '5' };
+  await assertSucceeds(setDoc(doc(alice(), path('alice', 'goals', 'crypto')), {
+    ...goal, id: 'crypto', target: crypto,
+    allocations: [{ accountId: 'wallet', amount: { ...crypto, quantity: '1.5' } }],
+  }));
+  await assertFails(updateDoc(r, { allocations: [...allocations, { accountId: 'extra', amount: lkr(100) }] }));
+  await assertFails(updateDoc(r, { name: 'x'.repeat(81) }));
+  await assertFails(updateDoc(r, { unexpectedField: true }));
+  await assertFails(updateDoc(doc(bob(), path('alice', 'goals', goal.id)), { name: 'Changed' }));
+  await assertFails(getDoc(doc(anon(), path('alice', 'goals', goal.id))));
+});
