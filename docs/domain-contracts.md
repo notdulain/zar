@@ -20,7 +20,7 @@ These are the shared models, repository interfaces and saving rules that every f
 2. **Write-once facts.** Transactions, corrections, voids and evidence links are created once. Firestore rules deny updates and deletes, so a replayed save can't overwrite an edit or revive an undo.
 3. **Edits are corrections.** `CorrectTransactionUseCase` appends a `Correction`. The original, including imported SMS facts, is kept. `LedgerProjector` applies corrections oldest first.
 4. **Undo is a void marker.** `VoidTransactionUseCase` voids both transfer legs together. Re-adding something means a new ID.
-5. **Transfers are atomic.** `SaveTransferUseCase` writes both legs in one batch.
+5. **Transfers are atomic.** `SaveTransferUseCase` writes both legs and any separate transfer-fee expense in one batch.
 6. **Captured counterparts link; they don't post.** When an SMS describes money already recorded (e.g. a manual transfer leg), save an `EvidenceLink`, not a new transaction. Each evidence ID links to one transaction only.
 7. **Offline first.** Repository saves return once Firestore has the write locally; sync happens later. Don't wait for the server in the UI.
 

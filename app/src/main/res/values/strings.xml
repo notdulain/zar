@@ -384,4 +384,67 @@
     <string name="plans_invalid_amount">Enter zero or a positive amount.</string>
     <string name="plans_allocation_too_large">That amount is more than the available balance or remaining target.</string>
     <string name="plans_save_failed">Could not save. Please try again.</string>
+
+    <!-- Manual expense and transfer entry -->
+    <string name="manual_title">Add transaction</string>
+    <string name="manual_close">Close</string>
+    <string name="manual_kind_expense">Expense</string>
+    <string name="manual_kind_income">Income</string>
+    <string name="manual_kind_transfer">Transfer</string>
+    <string name="manual_field_amount">Amount</string>
+    <string name="manual_field_account">Account</string>
+    <string name="manual_field_category">Category</string>
+    <string name="manual_field_counts_as">Counts as</string>
+    <string name="manual_counts_as_hint">Usual for %1$s</string>
+    <string name="manual_field_date">Date</string>
+    <string name="manual_field_note">Note</string>
+    <string name="manual_note_hint">What was it for?</string>
+    <string name="manual_field_description">Description</string>
+    <string name="manual_description_hint">Optional</string>
+    <string name="manual_field_fees">Fees</string>
+    <string name="manual_fee_hint">0</string>
+    <string name="manual_field_from">From</string>
+    <string name="manual_field_to">To</string>
+    <string name="manual_swap_accounts">Swap accounts</string>
+    <string name="manual_other_currencies">Only accounts in the same currency are shown. Transfers between currencies aren\'t supported yet.</string>
+    <string name="manual_quick_note">Quick note</string>
+    <string name="manual_save">Save</string>
+
+    <string name="manual_class_committed">Committed</string>
+    <string name="manual_class_discretionary">Discretionary</string>
+    <string name="manual_class_unknown">Unknown</string>
+
+    <string name="manual_category_coffee_dining">Coffee &amp; dining</string>
+    <string name="manual_category_groceries">Groceries</string>
+    <string name="manual_category_transport">Transport</string>
+    <string name="manual_category_bills">Bills</string>
+    <string name="manual_category_rent">Rent</string>
+    <string name="manual_category_season_ticket">Season ticket</string>
+    <string name="manual_category_subscriptions">Subscriptions</string>
+    <string name="manual_category_other">Other</string>
+
+    <string name="manual_suggestions_header">From your recent entries</string>
+    <string name="manual_suggestions_fills">Fills the form</string>
+
+    <string name="manual_offline_title">You\'re offline</string>
+    <string name="manual_offline_body">Saved on this phone. It syncs when you\'re back online.</string>
+
+    <string name="manual_no_accounts_title">No accounts yet</string>
+    <string name="manual_no_accounts_body">Add a bank, cash, freelance or crypto account to record an entry.</string>
+    <string name="manual_no_accounts_action">Add account</string>
+
+    <string name="manual_error_amount">Enter an amount above 0</string>
+    <string name="manual_error_account">Choose an account</string>
+    <string name="manual_error_category">Choose a category</string>
+    <string name="manual_error_date_future">Dates can\'t be in the future</string>
+    <string name="manual_error_title_too_long">The note is too long. Keep it under 120 characters.</string>
+    <string name="manual_error_description_too_long">The description is too long. Keep it under 500 characters.</string>
+    <string name="manual_error_fee">Enter a fee of 0 or more</string>
+    <string name="manual_error_from">Choose where the money comes from</string>
+    <string name="manual_error_to">Choose where the money goes</string>
+    <string name="manual_error_same_account">Choose two different accounts</string>
+    <string name="manual_error_currencies">Transfers between different currencies aren\'t supported yet</string>
+    <string name="manual_message_not_signed_in">Sign in to save.</string>
+    <string name="manual_message_archived">That account is archived. Choose another one.</string>
+    <string name="manual_message_failed">Could not save. Please try again.</string>
 </resources>

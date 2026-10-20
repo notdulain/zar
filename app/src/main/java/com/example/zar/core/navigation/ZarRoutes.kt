@@ -34,6 +34,10 @@ data object IncomeRoute
 @Serializable
 data class IncomeFormRoute(val incomeId: String? = null)
 
+/** Add a manual expense or transfer. [focusNote] opens it with the note focused (Quick note). */
+@Serializable
+data class ManualEntryRoute(val focusNote: Boolean = false)
+
 @Serializable
 data object FreelanceRoute
 
