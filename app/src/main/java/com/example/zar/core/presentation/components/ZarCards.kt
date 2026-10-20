@@ -20,15 +20,14 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import com.example.zar.core.presentation.theme.ZarDimens
-import com.example.zar.core.presentation.theme.ZarNavy
-import com.example.zar.core.presentation.theme.ZarSelected
+import com.example.zar.core.presentation.theme.ZarGradients
+import com.example.zar.core.presentation.theme.ZarTheme
 
 /** White, softly elevated card used for summaries, goals, bills and list rows. */
 @Composable
@@ -40,8 +39,8 @@ fun ZarCard(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val shape = RoundedCornerShape(radius)
-    val colors = MaterialTheme.colorScheme
-    val border = BorderStroke(ZarDimens.Hairline, colors.outlineVariant)
+    val colors = ZarTheme.colors
+    val border = BorderStroke(ZarDimens.Hairline, colors.borderDefault)
     val inner: @Composable () -> Unit = {
         Column(Modifier.padding(contentPadding), content = content)
     }
@@ -52,7 +51,7 @@ fun ZarCard(
             shape = shape,
             color = colors.surface,
             border = border,
-            shadowElevation = 2.dp,
+            shadowElevation = 6.dp,
         ) { inner() }
     } else {
         Surface(
@@ -60,7 +59,7 @@ fun ZarCard(
             shape = shape,
             color = colors.surface,
             border = border,
-            shadowElevation = 2.dp,
+            shadowElevation = 6.dp,
         ) { inner() }
     }
 }
@@ -75,7 +74,7 @@ fun ZarHeroCard(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(ZarDimens.HeroRadius))
-            .background(Brush.verticalGradient(listOf(Color(0xFF05070B), ZarNavy, ZarSelected))),
+            .background(ZarGradients.dusk),
     ) {
         CompositionLocalProvider(LocalContentColor provides Color.White) {
             Column(
