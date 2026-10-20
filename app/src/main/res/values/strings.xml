@@ -4,6 +4,58 @@
     <string name="settings_currency">Currency</string>
     <string name="action_back">Back</string>
 
+    <!-- Received income (L02) -->
+    <string name="income_title">Received</string>
+    <string name="income_open">Received income</string>
+    <string name="income_header_label">RECEIVED THIS MONTH</string>
+    <string name="income_header_caption">Only money that actually arrived</string>
+    <plurals name="income_header_unresolved">
+        <item quantity="one">%d record has no LKR rate and is not included</item>
+        <item quantity="other">%d records have no LKR rate and are not included</item>
+    </plurals>
+    <string name="income_empty">No income yet. Tap + to add money you received.</string>
+    <string name="income_load_failed">Could not load your income. Check your connection and try again.</string>
+    <string name="income_add">Add income</string>
+    <string name="income_edit">Edit income</string>
+    <string name="income_default_title">Income</string>
+    <string name="income_missing_rate">No LKR rate</string>
+    <string name="income_edited">Edited</string>
+
+    <string name="income_field_amount">Amount</string>
+    <string name="income_field_account">Account</string>
+    <string name="income_field_account_locked">To change the account, undo this income and add it again.</string>
+    <string name="income_field_date">Date received</string>
+    <string name="income_field_rate">1 %1$s = ? LKR</string>
+    <string name="income_field_rate_hint">Leave empty if you don\'t know. It will show as a missing rate.</string>
+    <string name="income_field_received_from">Received from (optional)</string>
+    <string name="income_field_category">Category (optional)</string>
+    <string name="income_field_note">Note (optional)</string>
+    <string name="income_no_accounts">Add an account first.</string>
+
+    <string name="income_error_amount_missing">Enter the amount you received</string>
+    <string name="income_error_amount_invalid">Enter a valid amount above zero</string>
+    <string name="income_error_date_future">Income can\'t be in the future</string>
+    <string name="income_error_rate_invalid">Enter a valid rate above zero, or leave it empty</string>
+    <string name="income_error_too_long">Too long</string>
+
+    <string name="income_save">Save</string>
+    <string name="income_undo">Undo this income</string>
+    <string name="income_undo_confirm_title">Undo this income?</string>
+    <string name="income_undo_confirm_body">It will be removed from your totals. This can\'t be reversed.</string>
+    <string name="income_undo_confirm">Undo</string>
+    <string name="action_ok">OK</string>
+
+    <string name="income_message_not_signed_in">Sign in to save income.</string>
+    <string name="income_message_nothing_changed">Nothing was changed.</string>
+    <string name="income_message_not_found">This income no longer exists.</string>
+    <string name="income_message_failed">Could not save. Please try again.</string>
+
+    <string name="income_category_salary">Salary</string>
+    <string name="income_category_freelance">Freelance</string>
+    <string name="income_category_allowance">Allowance</string>
+    <string name="income_category_gift">Gift</string>
+    <string name="income_category_other">Other</string>
+
     <!-- Auth -->
     <string name="auth_tagline">Money that actually arrived, and where it went.</string>
     <string name="auth_sign_in_title">Sign in</string>
@@ -129,4 +181,168 @@
     <string name="more_export">Export data</string>
     <string name="more_export_detail">Save a copy of your records</string>
     <string name="more_settings_detail">Currency and sign out</string>
+    <!-- Freelance (L03) -->
+    <string name="freelance_title">Freelance</string>
+    <string name="freelance_open">Freelance projects</string>
+    <string name="freelance_owed_label">CLIENTS OWE YOU</string>
+    <string name="freelance_owed_none">Nothing owed right now</string>
+    <plurals name="freelance_owed_caption">
+        <item quantity="one">Across %d project. Only money not yet received.</item>
+        <item quantity="other">Across %d projects. Only money not yet received.</item>
+    </plurals>
+    <string name="freelance_overdue">%1$s overdue</string>
+    <string name="freelance_empty">No projects yet. Tap + to add a client project and its milestones.</string>
+    <string name="freelance_load_failed">Could not load your projects. Check your connection and try again.</string>
+    <string name="freelance_left">%1$s left</string>
+    <string name="freelance_received_of">Received %1$s of %2$s</string>
+    <string name="freelance_archived">Archived</string>
+    <plurals name="freelance_milestone_count">
+        <item quantity="one">%d milestone</item>
+        <item quantity="other">%d milestones</item>
+    </plurals>
+
+    <string name="project_add">New project</string>
+    <string name="project_edit">Edit project</string>
+    <string name="project_name">Project name</string>
+    <string name="project_client">Client (optional)</string>
+    <string name="project_currency">Currency</string>
+    <string name="project_currency_locked">The currency can\'t change once a project exists.</string>
+    <string name="project_archive">Archive project</string>
+    <string name="project_unarchive">Restore project</string>
+    <string name="project_not_found">This project no longer exists.</string>
+    <string name="project_still_owed">STILL OWED</string>
+    <string name="project_no_milestones">No milestones yet. Add one for each payment you expect.</string>
+    <string name="project_add_milestone">Add milestone</string>
+    <string name="project_archived_note">This project is archived. Restore it to add or change milestones.</string>
+    <string name="action_edit">Edit</string>
+
+    <string name="milestone_add">New milestone</string>
+    <string name="milestone_edit">Milestone</string>
+    <string name="milestone_title">Milestone name</string>
+    <string name="milestone_amount">Expected amount</string>
+    <string name="milestone_due">Due date</string>
+    <string name="milestone_due_on">Due %1$s</string>
+    <string name="milestone_state_paid">Paid</string>
+    <string name="milestone_state_cancelled">Cancelled</string>
+    <string name="milestone_state_overdue">%1$s overdue</string>
+    <plurals name="milestone_payment_count">
+        <item quantity="one">%d payment linked</item>
+        <item quantity="other">%d payments linked</item>
+    </plurals>
+    <string name="milestone_linked">PAYMENTS LINKED</string>
+    <string name="milestone_link_title">LINK A PAYMENT YOU RECEIVED</string>
+    <string name="milestone_link_hint">Only income in %1$s that isn\'t fully linked yet is shown. Add the payment under Received first.</string>
+    <string name="milestone_no_candidates">No unlinked %1$s income. Add the payment under Received income first.</string>
+    <string name="milestone_available">%1$s available</string>
+    <string name="milestone_link">Link</string>
+    <string name="milestone_unlink">Remove</string>
+    <string name="milestone_cancel">Cancel milestone</string>
+    <string name="milestone_cancel_title">Cancel this milestone?</string>
+    <string name="milestone_cancel_body">It will no longer count as money owed. Payments already linked stay received. This can\'t be reversed.</string>
+    <string name="milestone_cancel_confirm">Cancel milestone</string>
+    <string name="milestone_cancelled_note">This milestone was cancelled.</string>
+    <string name="milestone_not_found">This milestone no longer exists.</string>
+
+    <string name="freelance_error_name_missing">Enter a name</string>
+    <string name="freelance_error_amount_missing">Enter an amount</string>
+    <string name="freelance_error_amount_invalid">Enter a valid amount above zero</string>
+    <string name="freelance_error_more_than_receipt">More than this payment has left</string>
+    <string name="freelance_error_more_than_remaining">More than the milestone still expects</string>
+    <string name="freelance_message_not_signed_in">Sign in to save.</string>
+    <string name="freelance_message_archived">This project is archived.</string>
+    <string name="freelance_message_cancelled">This milestone is cancelled.</string>
+    <string name="freelance_message_failed">Could not save. Please try again.</string>
+    <string name="freelance_message_below_linked">Remove linked payments before lowering this amount.</string>
+
+    <string name="accounts_open">Accounts</string>
+    <string name="accounts_title">Accounts</string>
+    <string name="accounts_subtitle_total">%1$s recorded across %2$s</string>
+    <string name="accounts_subtitle_none">No balances recorded yet</string>
+    <plurals name="accounts_count">
+        <item quantity="one">%d account</item>
+        <item quantity="other">%d accounts</item>
+    </plurals>
+    <string name="accounts_section_money">Money</string>
+    <string name="accounts_section_crypto">Crypto</string>
+    <string name="accounts_section_archived">Archived</string>
+    <string name="accounts_footnote">Totals only include accounts with a known value. An unknown value is never counted as zero.</string>
+    <string name="accounts_footnote_other_currency">Accounts in other currencies are shown in their own currency and left out of the total.</string>
+    <string name="accounts_empty">No accounts yet. Add the places your money sits, such as cash, a bank account or a wallet.</string>
+    <string name="accounts_load_failed">Could not load your accounts. Please try again.</string>
+    <string name="accounts_add">Add account</string>
+    <string name="accounts_back">Back</string>
+    <string name="accounts_value_unknown">Unknown</string>
+    <string name="accounts_meta_unknown">%1$s · value unknown</string>
+    <string name="accounts_meta_approximate">%1$s · approximate</string>
+    <string name="accounts_meta_mismatch">%1$s · check entries in another currency</string>
+
+    <string name="account_type_cash">Cash</string>
+    <string name="account_type_bank">Bank</string>
+    <string name="account_type_freelance">Freelance</string>
+    <string name="account_type_crypto">Crypto</string>
+    <string name="account_type_cash_long">Cash on hand</string>
+    <string name="account_type_bank_long">Bank account</string>
+    <string name="account_type_freelance_long">Freelance account</string>
+    <string name="account_type_crypto_long">Crypto wallet</string>
+
+    <string name="account_not_found">This account no longer exists.</string>
+    <string name="account_balance_label">Recorded balance</string>
+    <string name="account_balance_unknown">Unknown</string>
+    <string name="account_balance_approximate_note">Approximate · based on your estimate of the opening value</string>
+    <string name="account_balance_unknown_note">No opening value yet · edit the account to add one</string>
+    <string name="account_balance_known_note">Opening funds plus everything recorded since</string>
+    <string name="account_balance_archived_note">Archived · no new entries can be added</string>
+    <string name="account_mismatch_note">%1$s entries in another currency are not counted. Fix them to see the right balance.</string>
+    <string name="account_row_opening">Opening</string>
+    <string name="account_row_in_total">In total</string>
+    <string name="account_row_currency">Currency</string>
+    <string name="account_opening_known">%1$s on %2$s</string>
+    <string name="account_opening_approximate">About %1$s on %2$s</string>
+    <string name="account_opening_unknown">Not known yet</string>
+    <string name="account_in_total_yes">Included in account total</string>
+    <string name="account_in_total_unknown">Not counted · value unknown</string>
+    <string name="account_in_total_other_currency">Not counted · %1$s has no rate yet</string>
+    <string name="account_in_total_archived">Not counted · archived</string>
+    <string name="account_currency_value">%1$s · can\'t change once saved</string>
+    <string name="account_recent">Recent</string>
+    <string name="account_recent_empty">Nothing recorded on this account yet.</string>
+    <string name="account_entry_income">Income</string>
+    <string name="account_entry_expense">Expense</string>
+    <string name="account_entry_transfer">Transfer</string>
+    <string name="account_entry_refund">Refund</string>
+    <string name="account_entry_adjustment">Adjustment</string>
+    <string name="account_entry_meta">%1$s · %2$s</string>
+    <string name="account_edit">Edit account</string>
+    <string name="account_archive">Archive</string>
+    <string name="account_restore">Restore</string>
+    <string name="account_action_failed">Could not save. Please try again.</string>
+
+    <string name="account_form_add">New account</string>
+    <string name="account_form_edit">Edit account</string>
+    <string name="account_form_close">Close</string>
+    <string name="account_form_type">Type</string>
+    <string name="account_form_name">Name</string>
+    <string name="account_form_name_hint">e.g. Sampath Bank</string>
+    <string name="account_form_currency">Currency</string>
+    <string name="account_form_currency_locked">The currency can\'t change once an account is saved.</string>
+    <string name="account_form_opening">Opening</string>
+    <string name="account_form_opening_kind">Opening value</string>
+    <string name="account_form_kind_known">Exact</string>
+    <string name="account_form_kind_approximate">Approximate</string>
+    <string name="account_form_kind_unknown">Unknown</string>
+    <string name="account_form_as_of">As of</string>
+    <string name="account_form_opening_note">Opening funds are what the account already held. They are never counted as income.</string>
+    <string name="account_form_opening_note_crypto">Not sure what the wallet held? Mark it approximate or unknown and fix it later. Unknown values stay out of totals.</string>
+    <string name="account_form_cancel">Cancel</string>
+    <string name="account_form_save">Save account</string>
+    <string name="account_form_not_found">This account no longer exists.</string>
+    <string name="account_form_not_signed_in">Sign in to save.</string>
+    <string name="account_form_failed">Could not save. Please try again.</string>
+    <string name="account_error_name_missing">Enter a name</string>
+    <string name="account_error_name_too_long">Keep the name under 80 characters</string>
+    <string name="account_error_opening_missing">Enter the opening amount, or 0</string>
+    <string name="account_error_opening_invalid">Enter a valid amount, zero or more</string>
+    <string name="account_error_opening_not_allowed">Only crypto can start approximate or unknown</string>
+    <string name="account_error_date_future">The opening date can\'t be in the future</string>
+    <string name="account_error_type_currency">Pick a currency that suits this type</string>
 </resources>

@@ -1,0 +1,222 @@
+package com.example.zar.core.presentation.components
+
+import androidx.annotation.DrawableRes
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.composed
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+import com.example.zar.core.presentation.theme.ZarShapes
+import com.example.zar.core.presentation.theme.ZarTheme
+import com.example.zar.core.presentation.theme.ZarType
+
+// Shared building blocks from the Zar-UI Figma design system (Components page).
+
+/** White card with the card elevation (Elevation/Card) and a hairline border. */
+fun Modifier.zarCard(shape: Shape = ZarShapes.lg): Modifier = composed {
+    val colors = ZarTheme.colors
+    this
+        .shadow(6.dp, shape, ambientColor = Color(0x0A0F1A2B), spotColor = Color(0x1F0F1A2B))
+        .background(colors.surface, shape)
+        .border(1.dp, colors.borderDefault, shape)
+        .clip(shape)
+}
+
+@Composable
+fun ZarCard(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
+    Column(modifier.zarCard(), content = content)
+}
+
+@Composable
+fun ZarDivider(modifier: Modifier = Modifier) {
+    Box(modifier.fillMaxWidth().height(1.dp).background(ZarTheme.colors.borderHairline))
+}
+
+/** Icon at its Figma size, tinted from the theme. */
+@Composable
+fun ZarIcon(@DrawableRes icon: Int, modifier: Modifier = Modifier, size: Dp = 18.dp, tint: Color = ZarTheme.colors.iconStrong) {
+    Icon(painterResource(icon), contentDescription = null, modifier = modifier.size(size), tint = tint)
+}
+
+/** Round icon holder used on list rows (36dp). */
+@Composable
+fun ZarIconChip(@DrawableRes icon: Int, modifier: Modifier = Modifier, size: Dp = 36.dp, iconSize: Dp = 18.dp) {
+    Box(modifier.size(size).clip(CircleShape).background(ZarTheme.colors.subtle), Alignment.Center) {
+        ZarIcon(icon, size = iconSize)
+    }
+}
+
+/** 44dp back button with the 22dp arrow, at the top-left of a screen. */
+@Composable
+fun ZarBackButton(onClick: () -> Unit, contentDescription: String, modifier: Modifier = Modifier) {
+    Box(
+        modifier
+            .size(44.dp)
+            .clip(CircleShape)
+            .clickable(role = Role.Button, onClickLabel = contentDescription, onClick = onClick),
+        Alignment.Center,
+    ) {
+        Icon(
+            painterResource(com.example.zar.R.drawable.ic_ph_arrow_left),
+            contentDescription = contentDescription,
+            modifier = Modifier.size(22.dp),
+            tint = ZarTheme.colors.iconStrong,
+        )
+    }
+}
+
+/** Display/Title with a Body/S line under it. */
+@Composable
+fun ZarTitleBlock(title: String, subtitle: String?, modifier: Modifier = Modifier) {
+    Column(modifier.padding(horizontal = 22.dp)) {
+        Text(title, style = ZarType.displayTitle, color = ZarTheme.colors.textPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        if (subtitle != null) Text(subtitle, style = ZarType.bodyS, color = ZarTheme.colors.textSecondary)
+    }
+}
+
+/** Mono/Label section header with an optional trailing action (Label/Action). */
+@Composable
+fun ZarSectionHeader(label: String, modifier: Modifier = Modifier, action: String? = null, onAction: (() -> Unit)? = null) {
+    Row(
+        modifier.fillMaxWidth().padding(horizontal = 22.dp).height(16.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        ZarMonoLabel(label)
+        if (action != null) {
+            Text(
+                action,
+                style = ZarType.labelAction,
+                color = ZarTheme.colors.textSelected,
+                modifier = Modifier.clickable(enabled = onAction != null, role = Role.Button) { onAction?.invoke() },
+            )
+        }
+    }
+}
+
+@Composable
+fun ZarMonoLabel(text: String, modifier: Modifier = Modifier, color: Color = ZarTheme.colors.textTertiary) {
+    Text(text.uppercase(), style = ZarType.monoLabel, color = color, modifier = modifier)
+}
+
+enum class ZarButtonStyle { Primary, Soft, Outline }
+
+/** Large (58dp) button for sheet and screen actions. */
+@Composable
+fun ZarButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    style: ZarButtonStyle = ZarButtonStyle.Primary,
+    enabled: Boolean = true,
+) {
+    val colors = ZarTheme.colors
+    val container = when (style) {
+        ZarButtonStyle.Primary -> colors.accentPrimary
+        ZarButtonStyle.Soft -> colors.subtle
+        ZarButtonStyle.Outline -> colors.surface
+    }
+    val content = if (style == ZarButtonStyle.Primary) colors.textOnInverse else colors.textPrimary
+    Box(
+        modifier
+            .height(58.dp)
+            .alpha(if (enabled) 1f else 0.4f)
+            .clip(ZarShapes.lg)
+            .background(container)
+            .then(if (style == ZarButtonStyle.Outline) Modifier.border(BorderStroke(1.dp, colors.borderDefault), ZarShapes.lg) else Modifier)
+            .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
+            .padding(horizontal = 24.dp),
+        Alignment.Center,
+    ) {
+        Text(text, style = ZarType.labelButton, color = content, maxLines = 1, overflow = TextOverflow.Ellipsis)
+    }
+}
+
+/** Single-select chip. Selected is solid accent/selected with a white label. */
+@Composable
+fun ZarChip(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    @DrawableRes icon: Int? = null,
+    enabled: Boolean = true,
+) {
+    val colors = ZarTheme.colors
+    val foreground = if (selected) colors.textOnInverse else colors.textPrimary
+    Row(
+        modifier
+            .alpha(if (enabled) 1f else 0.4f)
+            .clip(ZarShapes.sm)
+            .background(if (selected) colors.accentSelected else colors.subtle)
+            .clickable(enabled = enabled, role = Role.RadioButton, onClick = onClick)
+            .padding(start = 12.dp, end = 14.dp, top = 9.dp, bottom = 9.dp),
+        horizontalArrangement = Arrangement.spacedBy(7.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (icon != null) ZarIcon(icon, size = 16.dp, tint = foreground)
+        Text(label, style = ZarType.labelChip, color = foreground, maxLines = 1)
+    }
+}
+
+/** Floating white pill that adds something, at the bottom of a list screen. */
+@Composable
+fun ZarAddPill(text: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val colors = ZarTheme.colors
+    Row(
+        modifier
+            .height(56.dp)
+            .shadow(8.dp, ZarShapes.pill, ambientColor = Color(0x0F0F1A2B), spotColor = Color(0x1F0F1A2B))
+            .background(colors.surface, ZarShapes.pill)
+            .border(1.dp, colors.borderDefault, ZarShapes.pill)
+            .clip(ZarShapes.pill)
+            .clickable(role = Role.Button, onClick = onClick)
+            .padding(start = 20.dp, end = 24.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        ZarIcon(com.example.zar.R.drawable.ic_ph_plus)
+        Text(text, style = ZarType.labelButton, color = colors.textPrimary)
+    }
+}
+
+/** A label (Mono/Label, fixed width) beside its value, as in Figma's form rows. */
+@Composable
+fun ZarFormRow(
+    label: String,
+    modifier: Modifier = Modifier,
+    labelWidth: Dp = 96.dp,
+    content: @Composable RowScope.() -> Unit,
+) {
+    Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.width(labelWidth).height(16.dp), Alignment.CenterStart) { ZarMonoLabel(label) }
+        content()
+    }
+}
