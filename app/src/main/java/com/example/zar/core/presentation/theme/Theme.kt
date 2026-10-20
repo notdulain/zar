@@ -4,8 +4,8 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
-import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 
 private val LightColors = lightColorScheme(
@@ -42,11 +42,7 @@ private val DarkColors = darkColorScheme(
     inverseOnSurface = ZarNavy,
 )
 
-/**
- * App-wide theme. Every screen should be wrapped in this. Material 3 still drives the screens
- * built before the design system; screens built from the Figma design read [ZarTheme.colors],
- * [ZarType] and [ZarShapes] instead.
- */
+/** App-wide Material 3 theme. Every screen should be wrapped in this. */
 @Composable
 fun ZarTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),

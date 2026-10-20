@@ -319,35 +319,41 @@ service cloud.firestore {
         && isMillis(d.createdAt);
     }
 
-    function isGoalAllocation(a, currency) {
-      return a is map
-        && a.keys().hasOnly(['accountId', 'amount'])
-        && a.keys().hasAll(['accountId', 'amount'])
+    // Validate the target once, then reuse its currency metadata for each allocation.
+    // Re-running the generic money validator ten times exceeds the rules expression budget.
+    function isGoalAllocation(a, target) {
+      let m = a.amount;
+      return a.keys().hasOnly(['accountId', 'amount'])
         && isId(a.accountId)
-        && isPositiveMoney(a.amount)
-        && a.amount.currency == currency;
+        && (target.kind == 'FIAT'
+          ? m.minor is int && m.minor > 0
+            && m == {'currency': target.currency, 'kind': 'FIAT', 'digits': target.digits, 'minor': m.minor}
+          : isDecimalString(m.quantity) && !m.quantity.matches('^0+(\\.0+)?$')
+            && m == {'currency': target.currency, 'kind': 'CRYPTO', 'digits': target.digits, 'quantity': m.quantity});
     }
 
     function isValidGoal(goalId) {
       let d = data();
       let a = d.allocations;
+      let count = a.size();
+      let target = d.target;
       return hasOnlyAllowedFields(['id', 'name', 'target', 'allocations', 'updatedAt'])
         && hasRequiredFields(['id', 'name', 'target', 'allocations', 'updatedAt'])
         && d.id == goalId
         && isShortString(d.name, 80)
-        && isPositiveMoney(d.target)
+        && isPositiveMoney(target)
         && isMillis(d.updatedAt)
-        && a is list && a.size() <= 10
-        && (a.size() < 1 || isGoalAllocation(a[0], d.target.currency))
-        && (a.size() < 2 || isGoalAllocation(a[1], d.target.currency))
-        && (a.size() < 3 || isGoalAllocation(a[2], d.target.currency))
-        && (a.size() < 4 || isGoalAllocation(a[3], d.target.currency))
-        && (a.size() < 5 || isGoalAllocation(a[4], d.target.currency))
-        && (a.size() < 6 || isGoalAllocation(a[5], d.target.currency))
-        && (a.size() < 7 || isGoalAllocation(a[6], d.target.currency))
-        && (a.size() < 8 || isGoalAllocation(a[7], d.target.currency))
-        && (a.size() < 9 || isGoalAllocation(a[8], d.target.currency))
-        && (a.size() < 10 || isGoalAllocation(a[9], d.target.currency));
+        && a is list && count <= 10
+        && (count < 1 || isGoalAllocation(a[0], target))
+        && (count < 2 || isGoalAllocation(a[1], target))
+        && (count < 3 || isGoalAllocation(a[2], target))
+        && (count < 4 || isGoalAllocation(a[3], target))
+        && (count < 5 || isGoalAllocation(a[4], target))
+        && (count < 6 || isGoalAllocation(a[5], target))
+        && (count < 7 || isGoalAllocation(a[6], target))
+        && (count < 8 || isGoalAllocation(a[7], target))
+        && (count < 9 || isGoalAllocation(a[8], target))
+        && (count < 10 || isGoalAllocation(a[9], target));
     }
 
     function isValidProposal(p) {

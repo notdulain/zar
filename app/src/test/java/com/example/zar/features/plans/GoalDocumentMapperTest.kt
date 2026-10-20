@@ -26,4 +26,18 @@ class GoalDocumentMapperTest {
     fun malformedGoalIsSkipped() {
         assertNull(GoalDocumentMapper.fromMap(mapOf("id" to "broken")))
     }
+    @Test
+    fun missingOrInvalidAllocationsAreNotSilentlyTreatedAsEmpty() {
+        val goal = SavingsGoal(GoalId("macbook-fund"), "MacBook fund", lkr(490_000))
+        val map = GoalDocumentMapper.toMap(goal, Instant.ofEpochMilli(1))
+        assertNull(GoalDocumentMapper.fromMap(map - "allocations"))
+        assertNull(GoalDocumentMapper.fromMap(map + ("allocations" to "invalid")))
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun allocationLimitMatchesFirestoreRules() {
+        SavingsGoal(GoalId("macbook-fund"), "MacBook fund", lkr(490_000),
+            List(11) { GoalAllocation(AccountId("account-$it"), lkr(100)) })
+    }
+
 }

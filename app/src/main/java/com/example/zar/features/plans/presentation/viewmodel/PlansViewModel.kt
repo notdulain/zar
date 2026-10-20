@@ -124,7 +124,7 @@ class PlansViewModel @Inject constructor(
         val editor = state.allocationEditor ?: return
         val goal = state.overview?.goal ?: return
         val accountId = editor.accountId ?: return
-        val amount = Money.parse(editor.amount.ifBlank { "0" }, goal.target.currency)
+        val amount = Money.parse(editor.amount, goal.target.currency)
         if (amount == null || amount.isNegative) {
             _uiState.update { it.copy(message = PlansMessage.INVALID_AMOUNT) }
             return

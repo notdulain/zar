@@ -14,10 +14,15 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
+import com.example.zar.core.domain.calculation.ZarTime
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -40,6 +45,7 @@ import com.example.zar.core.presentation.theme.ZarTheme
 fun ActivityScreen(
     onNavigate: (TopLevelDestination) -> Unit,
     onAddOption: (AddEntryOption) -> Unit,
+    onOpenIncome: () -> Unit,
 ) {
     ZarScreenScaffold(
         destination = TopLevelDestination.Activity,
@@ -58,10 +64,13 @@ fun ActivityScreen(
                 modifier = Modifier.padding(horizontal = ZarDimens.ScreenGutter),
                 verticalArrangement = Arrangement.spacedBy(ZarDimens.SpaceMd),
             ) {
+                TextButton(onClick = onOpenIncome, modifier = Modifier.testTag("activity-open-income")) {
+                    Text(stringResource(R.string.income_open))
+                }
                 ActivityFilters()
-                ZarLabel(stringResource(R.string.activity_month), color = MaterialTheme.colorScheme.onSurface)
+                ZarLabel(ZarTime.today().format(DateTimeFormatter.ofPattern("MMMM yyyy", Locale.ENGLISH)), color = MaterialTheme.colorScheme.onSurface)
                 Text(
-                    stringResource(R.string.activity_empty),
+                    stringResource(R.string.activity_pending),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -93,7 +102,7 @@ private fun ActivityHero() {
             Column(
                 modifier = Modifier.align(Alignment.BottomStart).padding(start = 22.dp, bottom = 20.dp),
             ) {
-                Text(stringResource(R.string.home_amount_placeholder), style = MaterialTheme.typography.headlineLarge, color = ZarWhite)
+                Text(stringResource(R.string.activity_amount_pending), style = MaterialTheme.typography.headlineLarge, color = ZarWhite)
                 ZarLabel(stringResource(R.string.home_received), color = ZarWhite)
             }
         }
@@ -111,7 +120,7 @@ private fun ActivityHero() {
             Column(
                 modifier = Modifier.align(Alignment.BottomStart).padding(start = 14.dp, bottom = 20.dp),
             ) {
-                Text(stringResource(R.string.home_amount_placeholder), style = MaterialTheme.typography.headlineMedium, color = ZarWhite)
+                Text(stringResource(R.string.activity_amount_pending), style = MaterialTheme.typography.headlineMedium, color = ZarWhite)
                 ZarLabel(stringResource(R.string.home_spent), color = ZarWhite)
             }
         }
@@ -147,5 +156,5 @@ private fun ActivityFilters() {
 @Preview(showBackground = true)
 @Composable
 private fun ActivityScreenPreview() {
-    ZarTheme { ActivityScreen(onNavigate = {}, onAddOption = {}) }
+    ZarTheme { ActivityScreen(onNavigate = {}, onAddOption = {}, onOpenIncome = {}) }
 }

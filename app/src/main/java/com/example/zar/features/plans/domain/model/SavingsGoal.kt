@@ -28,6 +28,7 @@ data class SavingsGoal(
         require(name.isNotBlank()) { "Goal name is required" }
         require(name.length <= 80) { "Goal name must be 80 characters or fewer" }
         require(target.isPositive) { "Goal target must be positive" }
+        require(allocations.size <= 10) { "A goal can allocate from at most 10 accounts" }
         require(allocations.map { it.accountId }.distinct().size == allocations.size) {
             "A goal can have only one allocation per account"
         }

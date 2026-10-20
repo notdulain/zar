@@ -87,4 +87,19 @@ class PlansViewModelTest {
         assertEquals(PlansMessage.ALLOCATION_TOO_LARGE, vm.uiState.value.message)
         assertTrue(vm.uiState.value.overview!!.goal!!.allocations.isEmpty())
     }
+    @Test
+    fun blankAmountDoesNotRemoveAnExistingAllocation() = runTest {
+        vm.openGoalEditor()
+        vm.submitGoal()
+        vm.openAllocationEditor()
+        vm.updateAllocationAmount("100")
+        vm.submitAllocation()
+        vm.openAllocationEditor()
+        vm.updateAllocationAmount("")
+        vm.submitAllocation()
+        assertEquals(PlansMessage.INVALID_AMOUNT, vm.uiState.value.message)
+        assertEquals(lkr(100), vm.uiState.value.overview?.goal?.allocated)
+        assertNotNull(vm.uiState.value.allocationEditor)
+    }
+
 }

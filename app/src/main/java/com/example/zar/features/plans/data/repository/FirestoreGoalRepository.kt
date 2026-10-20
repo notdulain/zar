@@ -75,7 +75,7 @@ object GoalDocumentMapper {
     )
 
     fun fromMap(map: Map<String, Any?>): SavingsGoal? = runCatching {
-        val allocations = (map["allocations"] as? List<*>).orEmpty().map { raw ->
+        val allocations = (map["allocations"] as List<*>).map { raw ->
             val allocation = raw as Map<*, *>
             GoalAllocation(
                 accountId = AccountId(allocation["accountId"] as String),

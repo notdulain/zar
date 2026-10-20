@@ -151,4 +151,44 @@ class ObserveHomeOverviewUseCaseTest {
         ledger.entries.value = LedgerProjector.project(listOf(tx("new", TransactionType.INCOME, lkr(2_000))), emptyList(), emptyList())
         assertEquals(lkr(2_000), useCase(october).first().summary.received.amount)
     }
+    @Test
+    fun dailyIncomeMatchesTheMonthAfterCorrectionsUndoAndMissingRates() {
+        val o = compute(
+            tx("paid", TransactionType.INCOME, lkr(1_000), date = october.atDay(1)),
+            tx("fixed", TransactionType.INCOME, lkr(400), date = october.atDay(2)),
+            tx("voided", TransactionType.INCOME, lkr(999), date = october.atDay(3)),
+            tx("no-rate", TransactionType.INCOME, usd(10), account = TestLedger.payoneer,
+                conversion = ReportingConversion.Missing(Currencies.LKR), date = october.atDay(4)),
+            tx("expense", TransactionType.EXPENSE, lkr(500), date = october.atDay(5)),
+            tx("other-month", TransactionType.INCOME, lkr(999), date = october.minusMonths(1).atEndOfMonth()),
+            corrections = listOf(TestLedger.correction("move", "fixed", TransactionChanges(amount = lkr(600), date = october.atDay(10)))),
+            voids = listOf(TestLedger.void("voided")),
+        )
+        assertEquals(31, o.receivedByDay.size)
+        assertEquals(lkr(1_000), o.receivedByDay[0].amount)
+        assertTrue(o.receivedByDay[1].amount.isZero)
+        assertTrue(o.receivedByDay[2].amount.isZero)
+        assertEquals(1, o.receivedByDay[3].unresolvedCount)
+        assertTrue(o.receivedByDay[4].amount.isZero)
+        assertEquals(lkr(600), o.receivedByDay[9].amount)
+        assertEquals(o.summary.received, o.receivedByDay.fold(com.example.zar.core.domain.calculation.ReportingTotal.zero()) { total, day -> total + day })
+    }
+
+    @Test
+    fun expenseOnlyMonthsHaveNoIncomeBarsAndRespectLeapYearLength() {
+        val february = YearMonth.of(2028, 2)
+        val o = compute(tx("expense", TransactionType.EXPENSE, lkr(500), date = february.atDay(29)), month = february)
+        assertTrue(o.hasRecordsInMonth)
+        assertEquals(29, o.receivedByDay.size)
+        assertTrue(o.receivedByDay.all { it.amount.isZero && it.isComplete })
+    }
+
+    @Test
+    fun incomingAdjustmentsWarnWithoutBecomingSpending() {
+        val o = compute(tx("cash-found", TransactionType.ADJUSTMENT_IN, lkr(800)))
+        assertEquals(1, o.adjustmentCount)
+        assertTrue(o.summary.spent.total.amount.isZero)
+        assertTrue(o.hasIncompleteData)
+    }
+
 }

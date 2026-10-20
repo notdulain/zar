@@ -6,9 +6,9 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.sp
 
 // Figma uses Geist for normal copy and amounts, and Geist Mono only for small uppercase labels.
-// System families keep the APK self-contained while preserving that sans/mono distinction.
-val ZarSansFont: FontFamily = FontFamily.SansSerif
-val ZarMonoFont: FontFamily = FontFamily.Monospace
+// Reuse the bundled variable fonts shared by the existing feature screens.
+val ZarSansFont: FontFamily = GeistFamily
+val ZarMonoFont: FontFamily = GeistMonoFamily
 
 private fun TextStyle.sans() = copy(fontFamily = ZarSansFont)
 private fun TextStyle.mono() = copy(fontFamily = ZarMonoFont)

@@ -19,18 +19,16 @@ import com.example.zar.features.home.presentation.screen.HomeScreen
 import com.example.zar.features.plans.presentation.screen.PlansScreen
 import com.example.zar.features.settings.presentation.screen.MoreScreen
 import com.example.zar.features.settings.presentation.screen.SettingsScreen
-import com.example.zar.features.transactions.presentation.screen.ActivityScreen
 import com.example.zar.features.transactions.presentation.income.screen.IncomeFormScreen
 import com.example.zar.features.transactions.presentation.income.screen.IncomeListScreen
+import com.example.zar.features.transactions.presentation.screen.ActivityScreen
 
 @Composable
 fun ZarNavHost(modifier: Modifier = Modifier) {
     val navController = rememberNavController()
     val onNavigate: (TopLevelDestination) -> Unit = { navController.navigateToTopLevel(it) }
-    // Voice, quick note and manual entry screens are added by their feature owners; until then
-    // the Add sheet simply closes.
+    // Capture and manual transaction entry are supplied by their feature owners.
     val onAddOption: (AddEntryOption) -> Unit = {}
-
     NavHost(
         navController = navController,
         startDestination = HomeRoute,
@@ -40,7 +38,11 @@ fun ZarNavHost(modifier: Modifier = Modifier) {
             HomeScreen(onNavigate = onNavigate, onAddOption = onAddOption)
         }
         composable<ActivityRoute> {
-            ActivityScreen(onNavigate = onNavigate, onAddOption = onAddOption)
+            ActivityScreen(
+                onNavigate = onNavigate,
+                onAddOption = onAddOption,
+                onOpenIncome = { navController.navigate(IncomeRoute) },
+            )
         }
         composable<PlansRoute> {
             PlansScreen(onNavigate = onNavigate, onAddOption = onAddOption)
@@ -49,8 +51,10 @@ fun ZarNavHost(modifier: Modifier = Modifier) {
             MoreScreen(
                 onNavigate = onNavigate,
                 onAddOption = onAddOption,
-                onOpenAccounts = { navController.navigate(AccountsRoute) },
                 onOpenSettings = { navController.navigate(SettingsRoute) },
+                onOpenAccounts = { navController.navigate(AccountsRoute) },
+                onOpenIncome = { navController.navigate(IncomeRoute) },
+                onOpenFreelance = { navController.navigate(FreelanceRoute) },
             )
         }
         composable<SettingsRoute> {

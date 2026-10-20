@@ -5,7 +5,13 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.calculateStartPadding
+import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -21,6 +27,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -31,7 +38,8 @@ import com.example.zar.core.presentation.theme.ZarDimens
 /**
  * Layout shared by the four main screens.
  *
- * The pill navbar and Add button share one floating row on every top-level screen.
+ * - [TopLevelDestination.Home]: no navbar, Add button centred at the bottom.
+ * - Everything else: pill navbar and Add button share one floating row.
  *
  * [content] receives padding that already clears the navbar and the Add button, so lists can
  * scroll fully into view.
@@ -45,37 +53,46 @@ fun ZarScreenScaffold(
     content: @Composable (PaddingValues) -> Unit,
 ) {
     var showAddSheet by rememberSaveable { mutableStateOf(false) }
+    val isHome = destination == TopLevelDestination.Home
     val addDescription = stringResource(R.string.add_entry)
+    val layoutDirection = LocalLayoutDirection.current
 
     Scaffold(
         modifier = modifier,
         containerColor = MaterialTheme.colorScheme.background,
+        contentWindowInsets = WindowInsets.safeDrawing,
         bottomBar = {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .navigationBarsPadding()
+                    .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom))
                     .padding(horizontal = ZarDimens.ScreenGutter, vertical = ZarDimens.SpaceMd),
                 contentAlignment = Alignment.Center,
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(ZarDimens.SpaceSm),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    ZarBottomNav(
-                        selected = destination,
-                        onNavigate = onNavigate,
-                        modifier = Modifier.weight(1f),
-                    )
+                if (isHome) {
                     ZarAddButton(addDescription) { showAddSheet = true }
+                } else {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(ZarDimens.SpaceSm),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        ZarBottomNav(
+                            selected = destination,
+                            onNavigate = onNavigate,
+                            modifier = Modifier.weight(1f),
+                        )
+                        ZarAddButton(addDescription) { showAddSheet = true }
+                    }
                 }
             }
         },
     ) { inner ->
-        // Reserve the space the floating Add button covers so content can scroll above it.
+        // Preserve side insets as well, so landscape content clears display cutouts.
         content(
             PaddingValues(
+                start = inner.calculateStartPadding(layoutDirection),
+                end = inner.calculateEndPadding(layoutDirection),
                 top = inner.calculateTopPadding(),
                 bottom = inner.calculateBottomPadding() + ZarDimens.SpaceMd,
             ),

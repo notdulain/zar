@@ -1,12 +1,13 @@
 package com.example.zar.core.presentation.components
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
@@ -36,13 +37,13 @@ fun ZarBottomNav(
     modifier: Modifier = Modifier,
 ) {
     Surface(
-        modifier = modifier.fillMaxWidth().height(ZarDimens.NavHeight),
+        modifier = modifier.fillMaxWidth().heightIn(min = ZarDimens.NavHeight),
         shape = RoundedCornerShape(ZarDimens.NavRadius),
         color = MaterialTheme.colorScheme.surface,
         shadowElevation = 8.dp,
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp),
+            modifier = Modifier.selectableGroup().padding(horizontal = 6.dp, vertical = 4.dp),
             horizontalArrangement = Arrangement.spacedBy(2.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -69,10 +70,10 @@ private fun NavItem(
     val colors = MaterialTheme.colorScheme
     Column(
         modifier = modifier
-            .height(59.dp)
+            .heightIn(min = 59.dp)
             .clip(RoundedCornerShape(28.dp))
             .background(if (isSelected) ZarNavy else Color.Transparent)
-            .clickable(role = Role.Tab, onClick = onClick)
+            .selectable(selected = isSelected, role = Role.Tab, onClick = onClick)
             .semantics { contentDescription = label }
             .testTag("nav-${destination.name.lowercase()}"),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -81,7 +82,7 @@ private fun NavItem(
         TopLevelIcon(destination, tint = if (isSelected) ZarWhite else colors.onSurfaceVariant)
         Text(
             label,
-            style = MaterialTheme.typography.bodySmall.copy(fontSize = 8.sp, lineHeight = 9.sp),
+            style = MaterialTheme.typography.bodySmall.copy(fontSize = 10.sp, lineHeight = 12.sp),
             color = if (isSelected) ZarWhite else colors.onSurfaceVariant,
         )
     }

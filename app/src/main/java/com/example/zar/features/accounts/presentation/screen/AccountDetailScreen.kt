@@ -2,6 +2,7 @@ package com.example.zar.features.accounts.presentation.screen
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -43,7 +44,7 @@ import com.example.zar.core.domain.model.money.Currencies
 import com.example.zar.core.presentation.components.ZarBackButton
 import com.example.zar.core.presentation.components.ZarButton
 import com.example.zar.core.presentation.components.ZarButtonStyle
-import com.example.zar.core.presentation.components.ZarDataCard
+import com.example.zar.core.presentation.components.ZarCard
 import com.example.zar.core.presentation.components.ZarDivider
 import com.example.zar.core.presentation.components.ZarIcon
 import com.example.zar.core.presentation.components.ZarIconChip
@@ -143,7 +144,7 @@ private fun DetailContent(detail: AccountDetail, onEdit: (String) -> Unit) {
             modifier = Modifier.padding(start = 22.dp, end = 22.dp, top = 10.dp),
         )
     } else {
-        ZarDataCard(Modifier.padding(horizontal = 10.dp).padding(top = 10.dp).fillMaxWidth()) {
+        ZarCard(Modifier.padding(horizontal = 10.dp).padding(top = 10.dp).fillMaxWidth(), contentPadding = PaddingValues(0.dp)) {
             Column(Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
                 detail.recent.forEachIndexed { index, entry ->
                     if (index > 0) ZarDivider()
@@ -159,7 +160,7 @@ private fun BalanceCard(detail: AccountDetail, modifier: Modifier = Modifier) {
     val colors = ZarTheme.colors
     val balance = detail.balance
     val current = balance.current
-    ZarDataCard(modifier.fillMaxWidth()) {
+    ZarCard(modifier.fillMaxWidth(), contentPadding = PaddingValues(0.dp)) {
         Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             ZarMonoLabel(stringResource(R.string.account_balance_label))
             if (current == null) {
@@ -207,7 +208,7 @@ private fun DetailsCard(detail: AccountDetail, onEdit: (String) -> Unit, modifie
         balance.current == null -> stringResource(R.string.account_in_total_unknown)
         else -> stringResource(R.string.account_in_total_yes)
     }
-    ZarDataCard(modifier.fillMaxWidth()) {
+    ZarCard(modifier.fillMaxWidth(), contentPadding = PaddingValues(0.dp)) {
         Column(Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
             DetailRow(stringResource(R.string.account_row_opening), opening, onClick = { onEdit(account.id.value) })
             ZarDivider()
