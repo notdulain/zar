@@ -4,6 +4,7 @@ import com.example.zar.core.domain.model.money.Money
 import com.example.zar.core.domain.model.money.ReportingConversion
 import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalTime
 
 /**
  * Money moved between two owned accounts. Its two [Transaction] legs and optional fee share one atomic write;
@@ -23,6 +24,8 @@ data class Transfer(
     val createdAt: Instant,
     /** Separate expense stored atomically with the legs when the transfer has a fee. */
     val fee: Transaction? = null,
+    /** User-selected local time shared by both legs and the fee. */
+    val time: LocalTime? = null,
 ) {
     init {
         require(fromAccountId != toAccountId) { "A transfer needs two different accounts" }
@@ -40,13 +43,13 @@ data class Transfer(
     fun outLeg() = Transaction(
         id = outLegId, accountId = fromAccountId, type = TransactionType.TRANSFER_OUT, amount = sent,
         date = date, reportingConversion = sentConversion, note = note, source = source,
-        transferId = id, createdAt = createdAt,
+        transferId = id, createdAt = createdAt, time = time,
     )
 
     fun inLeg() = Transaction(
         id = inLegId, accountId = toAccountId, type = TransactionType.TRANSFER_IN, amount = received,
         date = date, reportingConversion = receivedConversion, note = note, source = source,
-        transferId = id, createdAt = createdAt,
+        transferId = id, createdAt = createdAt, time = time,
     )
 }
 

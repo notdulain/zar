@@ -14,6 +14,7 @@ import com.example.zar.core.domain.model.TransactionType
 import com.example.zar.core.domain.model.money.CryptoAmount
 import com.example.zar.core.domain.model.money.Currencies
 import com.example.zar.core.domain.model.money.ReportingConversion
+import java.time.LocalTime
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -25,6 +26,18 @@ class LedgerDocumentMapperTest {
     fun roundTripsConvertedFiatTransaction() {
         val original = tx("usd", TransactionType.INCOME, usd(100), account = payoneer).copy(note = "Invoice 4")
         assertEquals(original, LedgerDocumentMapper.transactionFromMap(LedgerDocumentMapper.transactionToMap(original)))
+    }
+
+    @Test
+    fun selectedTimeRoundTripsAndLegacyDocumentsRemainReadable() {
+        val original = tx("timed", TransactionType.EXPENSE, lkr(850)).copy(time = LocalTime.of(9, 5))
+        val map = LedgerDocumentMapper.transactionToMap(original)
+        assertEquals("09:05", map["time"])
+        assertEquals(original, LedgerDocumentMapper.transactionFromMap(map))
+
+        val legacy = map - "time"
+        assertNull(LedgerDocumentMapper.transactionFromMap(legacy)?.time)
+        assertNull(LedgerDocumentMapper.transactionFromMap(map + ("time" to "25:61")))
     }
 
     @Test

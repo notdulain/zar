@@ -5,6 +5,7 @@ import com.example.zar.core.domain.model.AccountId
 import com.example.zar.core.domain.model.SpendingClass
 import com.example.zar.core.domain.model.money.Money
 import java.time.LocalDate
+import java.time.LocalTime
 
 /**
  * Stored in `Transaction.categoryId` for manual EXPENSE records. [usualClass] is only a hint that
@@ -36,6 +37,7 @@ data class ExpenseFormInput(
     /** "What was it for?" Saved as the entry's title (merchant). */
     val title: String,
     val description: String,
+    val time: LocalTime? = null,
 )
 
 enum class ExpenseProblem {
@@ -57,6 +59,7 @@ data class ExpenseDetails(
     val spendingClass: SpendingClass,
     val title: String?,
     val description: String?,
+    val time: LocalTime? = null,
 )
 
 sealed interface ExpenseFormResult {
@@ -74,6 +77,7 @@ data class TransferFormInput(
     val to: Account?,
     val date: LocalDate,
     val note: String,
+    val time: LocalTime? = null,
 )
 
 enum class TransferProblem {
@@ -97,6 +101,7 @@ data class TransferDetails(
     val fee: Money?,
     val date: LocalDate,
     val note: String?,
+    val time: LocalTime? = null,
 )
 
 sealed interface TransferFormResult {

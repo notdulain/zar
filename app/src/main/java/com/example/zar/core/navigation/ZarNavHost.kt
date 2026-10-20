@@ -2,9 +2,11 @@ package com.example.zar.core.navigation
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.window.DialogProperties
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.dialog
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import com.example.zar.core.presentation.components.AddEntryOption
@@ -78,7 +80,9 @@ fun ZarNavHost(modifier: Modifier = Modifier) {
         composable<IncomeFormRoute> {
             IncomeFormScreen(onDone = { navController.popBackStack() })
         }
-        composable<ManualEntryRoute> { entry ->
+        dialog<ManualEntryRoute>(
+            dialogProperties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
+        ) { entry ->
             ManualEntryScreen(
                 focusNote = entry.toRoute<ManualEntryRoute>().focusNote,
                 onDone = { navController.popBackStack() },

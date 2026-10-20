@@ -33,6 +33,7 @@ import com.example.zar.features.transactions.presentation.manual.viewmodel.Manua
 import com.example.zar.features.transactions.presentation.manual.viewmodel.ManualEntryMessage
 import com.example.zar.features.transactions.presentation.manual.viewmodel.ManualEntryViewModel
 import java.io.IOException
+import java.time.LocalTime
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -245,6 +246,17 @@ class ManualEntryViewModelTest {
         assertEquals(SpendingClass.COMMITTED, saved.spendingClass)
         assertTrue(vm.uiState.value.isFinished)
         assertFalse(vm.uiState.value.isSaving)
+    }
+
+    @Test
+    fun selectedTimeReachesSavedExpense() {
+        val vm = viewModel()
+        vm.fillValidExpense()
+        vm.onTimeSelect(LocalTime.of(9, 5, 35))
+        vm.save()
+
+        assertEquals(LocalTime.of(9, 5), vm.uiState.value.time)
+        assertEquals(LocalTime.of(9, 5), ledger.saved.values.single().time)
     }
 
     @Test

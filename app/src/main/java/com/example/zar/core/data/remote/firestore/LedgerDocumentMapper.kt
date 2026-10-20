@@ -24,6 +24,8 @@ import com.example.zar.core.domain.model.money.RateSource
 import com.example.zar.core.domain.model.money.ReportingConversion
 import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalTime
+import java.time.format.DateTimeFormatter
 
 /**
  * Converts ledger records to and from plain Firestore maps. Fiat is stored as integer minor
@@ -33,6 +35,7 @@ import java.time.LocalDate
  * Readers return null for malformed documents so one bad record cannot break the ledger.
  */
 object LedgerDocumentMapper {
+    private val transactionTimeFormat = DateTimeFormatter.ofPattern("HH:mm")
 
     // --- Money -----------------------------------------------------------------------------
 
@@ -113,6 +116,7 @@ object LedgerDocumentMapper {
         "type" to tx.type.name,
         "amount" to moneyToMap(tx.amount),
         "date" to tx.date.toString(),
+        "time" to tx.time?.format(transactionTimeFormat),
         "conversion" to conversionToMap(tx.reportingConversion),
         "spendingClass" to tx.spendingClass?.name,
         "categoryId" to tx.categoryId,
@@ -131,6 +135,7 @@ object LedgerDocumentMapper {
             type = TransactionType.valueOf(map["type"] as String),
             amount = moneyFromMap(map["amount"] as Map<*, *>)!!,
             date = LocalDate.parse(map["date"] as String),
+            time = (map["time"] as String?)?.let { LocalTime.parse(it, transactionTimeFormat) },
             reportingConversion = conversionFromMap(map["conversion"] as Map<*, *>)!!,
             spendingClass = (map["spendingClass"] as String?)?.let(SpendingClass::valueOf),
             categoryId = map["categoryId"] as String?,

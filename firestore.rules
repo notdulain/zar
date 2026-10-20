@@ -22,7 +22,7 @@ rules_version = '2';
 //   opening {status, amount?}, openingDate, archived (bool), updatedAt (int)
 //
 // transactions/{transactionId}    WRITE-ONCE: create only
-//   id (== doc id), accountId, type, amount (positive Money), date, conversion,
+//   id (== doc id), accountId, type, amount (positive Money), date, time? (HH:mm), conversion,
 //   source, createdAt; spendingClass (EXPENSE only, required), categoryId?, merchant?,
 //   note?, transferId (transfer legs only, required), refundOf (REFUND only, required)
 //
@@ -118,6 +118,10 @@ service cloud.firestore {
       return value is string && value.matches('^\\d{4}-\\d{2}-\\d{2}$');
     }
 
+    function isTimeString(value) {
+      return value is string && value.matches('^([01]\\d|2[0-3]):[0-5]\\d$');
+    }
+
     function isDecimalString(value) {
       return value is string && value.size() <= 50 && value.matches('^\\d{1,30}(\\.\\d{1,18})?$');
     }
@@ -200,7 +204,7 @@ service cloud.firestore {
 
     function isValidTransaction(transactionId) {
       let d = data();
-      return hasOnlyAllowedFields(['id', 'accountId', 'type', 'amount', 'date', 'conversion', 'spendingClass',
+      return hasOnlyAllowedFields(['id', 'accountId', 'type', 'amount', 'date', 'time', 'conversion', 'spendingClass',
           'categoryId', 'merchant', 'note', 'source', 'transferId', 'refundOf', 'createdAt'])
         && hasRequiredFields(['id', 'accountId', 'type', 'amount', 'date', 'conversion', 'source', 'createdAt'])
         && d.id == transactionId
@@ -208,6 +212,7 @@ service cloud.firestore {
         && d.type in ['INCOME', 'EXPENSE', 'TRANSFER_IN', 'TRANSFER_OUT', 'REFUND', 'ADJUSTMENT_IN', 'ADJUSTMENT_OUT']
         && isPositiveMoney(d.amount)
         && isDateString(d.date)
+        && (!('time' in d) || isTimeString(d.time))
         && isConversion(d.conversion)
         && d.source in ['MANUAL', 'SMS', 'SHARED_TEXT', 'QUICK_NOTE', 'CASH_CATCH_UP', 'RECONCILIATION']
         && isMillis(d.createdAt)
