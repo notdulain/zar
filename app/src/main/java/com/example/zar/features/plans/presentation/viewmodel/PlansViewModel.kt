@@ -13,6 +13,7 @@ import com.example.zar.features.plans.domain.usecase.SaveGoalUseCase
 import com.example.zar.features.plans.domain.usecase.SetGoalAllocationUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
+import java.time.LocalDate
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -24,7 +25,11 @@ import kotlinx.coroutines.launch
 
 enum class PlansMessage { INVALID_GOAL, INVALID_AMOUNT, ALLOCATION_TOO_LARGE, SAVE_FAILED }
 
-data class GoalEditorState(val name: String = "MacBook fund", val target: String = "490000")
+data class GoalEditorState(
+    val name: String = "MacBook fund",
+    val target: String = "490000",
+    val targetDate: LocalDate? = null,
+)
 
 data class AllocationEditorState(val accountId: AccountId? = null, val amount: String = "")
 
@@ -60,6 +65,7 @@ class PlansViewModel @Inject constructor(
                 goalEditor = GoalEditorState(
                     name = goal?.name ?: "MacBook fund",
                     target = goal?.target?.toDecimal()?.toPlainString() ?: "490000",
+                    targetDate = goal?.targetDate,
                 ),
                 message = null,
             )
@@ -74,6 +80,10 @@ class PlansViewModel @Inject constructor(
         it.copy(goalEditor = it.goalEditor?.copy(target = value), message = null)
     }
 
+    fun updateGoalDate(value: LocalDate?) = _uiState.update {
+        it.copy(goalEditor = it.goalEditor?.copy(targetDate = value), message = null)
+    }
+
     fun closeGoalEditor() = _uiState.update { it.copy(goalEditor = null, message = null) }
 
     fun submitGoal() {
@@ -84,7 +94,7 @@ class PlansViewModel @Inject constructor(
             return
         }
         launchSave {
-            saveGoal(GoalId(MACBOOK_GOAL_ID), editor.name, target)
+            saveGoal(GoalId(MACBOOK_GOAL_ID), editor.name, target, editor.targetDate)
                 .onSuccess { _uiState.update { it.copy(goalEditor = null) } }
         }
     }

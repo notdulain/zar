@@ -165,12 +165,14 @@ test('goals: owner can explicitly allocate money without changing ledger data', 
   await assertSucceeds(setDoc(r, goal));
   await assertSucceeds(updateDoc(r, {
     allocations: [{ accountId: 'savings', amount: lkr(1120000) }],
+    targetDate: '2027-06-01',
     updatedAt: 1790000000001,
   }));
   await assertSucceeds(getDoc(r));
 
   await assertFails(updateDoc(r, { id: 'other' }));
   await assertFails(updateDoc(r, { allocations: [{ accountId: 'savings', amount: lkr(0) }] }));
+  await assertFails(updateDoc(r, { targetDate: 'next summer' }));
   await assertFails(updateDoc(r, { allocations: [{ accountId: 'savings', amount: { ...lkr(100), currency: 'USD' } }] }));
   await assertFails(setDoc(doc(alice(), path('alice', 'goals', 'bad-id')), { ...goal }));
   await assertFails(deleteDoc(r));

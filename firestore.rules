@@ -50,7 +50,7 @@ rules_version = '2';
 //   with source FREELANCE_MILESTONE pointing at the project.
 //
 // goals/{goalId}                  create, update (no delete in U04)
-//   id (== doc id), name (1-80), target (positive Money), allocations (max 10),
+//   id (== doc id), name (1-80), target (positive Money), targetDate? (YYYY-MM-DD), allocations (max 10),
 //   allocation {accountId, amount}; allocations reserve money but do not write ledger entries.
 //
 // drafts/{draftId}                create, update, delete (unconfirmed proposals)
@@ -337,11 +337,12 @@ service cloud.firestore {
       let a = d.allocations;
       let count = a.size();
       let target = d.target;
-      return hasOnlyAllowedFields(['id', 'name', 'target', 'allocations', 'updatedAt'])
+      return hasOnlyAllowedFields(['id', 'name', 'target', 'targetDate', 'allocations', 'updatedAt'])
         && hasRequiredFields(['id', 'name', 'target', 'allocations', 'updatedAt'])
         && d.id == goalId
         && isShortString(d.name, 80)
         && isPositiveMoney(target)
+        && (!('targetDate' in d) || isDateString(d.targetDate))
         && isMillis(d.updatedAt)
         && a is list && count <= 10
         && (count < 1 || isGoalAllocation(a[0], target))

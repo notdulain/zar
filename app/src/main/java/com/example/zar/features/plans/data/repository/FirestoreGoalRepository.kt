@@ -12,6 +12,7 @@ import com.example.zar.features.plans.domain.model.SavingsGoal
 import com.example.zar.features.plans.domain.repository.GoalRepository
 import com.google.firebase.firestore.FirebaseFirestore
 import java.time.Instant
+import java.time.LocalDate
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -61,18 +62,19 @@ class FirestoreGoalRepository @Inject constructor(
 }
 
 object GoalDocumentMapper {
-    fun toMap(goal: SavingsGoal, updatedAt: Instant): Map<String, Any> = mapOf(
-        "id" to goal.id.value,
-        "name" to goal.name,
-        "target" to LedgerDocumentMapper.moneyToMap(goal.target),
-        "allocations" to goal.allocations.map { allocation ->
+    fun toMap(goal: SavingsGoal, updatedAt: Instant): Map<String, Any> = buildMap {
+        put("id", goal.id.value)
+        put("name", goal.name)
+        put("target", LedgerDocumentMapper.moneyToMap(goal.target))
+        goal.targetDate?.let { put("targetDate", it.toString()) }
+        put("allocations", goal.allocations.map { allocation ->
             mapOf(
                 "accountId" to allocation.accountId.value,
                 "amount" to LedgerDocumentMapper.moneyToMap(allocation.amount),
             )
-        },
-        "updatedAt" to updatedAt.toEpochMilli(),
-    )
+        })
+        put("updatedAt", updatedAt.toEpochMilli())
+    }
 
     fun fromMap(map: Map<String, Any?>): SavingsGoal? = runCatching {
         val allocations = (map["allocations"] as List<*>).map { raw ->
@@ -87,6 +89,7 @@ object GoalDocumentMapper {
             name = map["name"] as String,
             target = LedgerDocumentMapper.moneyFromMap(map["target"] as? Map<*, *>)!!,
             allocations = allocations,
+            targetDate = if ("targetDate" in map) LocalDate.parse(map["targetDate"] as String) else null,
         )
     }.getOrNull()
 }

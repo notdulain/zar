@@ -102,4 +102,13 @@ class PlansViewModelTest {
         assertNotNull(vm.uiState.value.allocationEditor)
     }
 
+    @Test
+    fun savesGoalDateForPaceCalculation() = runTest {
+        val date = LocalDate.of(2027, 6, 1)
+        vm.openGoalEditor()
+        vm.updateGoalDate(date)
+        vm.submitGoal()
+        assertEquals(date, vm.uiState.value.overview?.goal?.targetDate)
+    }
+
 }

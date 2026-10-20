@@ -16,13 +16,20 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -34,6 +41,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.zar.R
 import com.example.zar.core.domain.calculation.AccountBalance
+import com.example.zar.core.domain.calculation.ZarTime
 import com.example.zar.core.domain.model.Account
 import com.example.zar.core.domain.model.AccountId
 import com.example.zar.core.domain.model.AccountType
@@ -53,6 +61,8 @@ import com.example.zar.core.presentation.theme.ZarTheme
 import com.example.zar.core.presentation.theme.ZarTrack
 import com.example.zar.core.presentation.theme.ZarWhite
 import com.example.zar.features.plans.domain.model.GoalId
+import com.example.zar.features.plans.domain.model.BackedGoalProgress
+import com.example.zar.features.plans.domain.model.GoalBackingCalculator
 import com.example.zar.features.plans.domain.model.PlansOverview
 import com.example.zar.features.plans.domain.model.SavingsGoal
 import com.example.zar.features.plans.presentation.viewmodel.AllocationEditorState
@@ -61,6 +71,11 @@ import com.example.zar.features.plans.presentation.viewmodel.PlansMessage
 import com.example.zar.features.plans.presentation.viewmodel.PlansUiState
 import com.example.zar.features.plans.presentation.viewmodel.PlansViewModel
 import java.time.LocalDate
+import java.time.Instant
+import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
+import java.util.Locale
+import androidx.compose.material3.rememberDatePickerState
 
 @Composable
 fun PlansScreen(
@@ -84,6 +99,7 @@ fun PlansScreen(
             message = state.message,
             onNameChange = viewModel::updateGoalName,
             onTargetChange = viewModel::updateGoalTarget,
+            onDateChange = viewModel::updateGoalDate,
             onDismiss = viewModel::closeGoalEditor,
             onSave = viewModel::submitGoal,
         )
@@ -142,6 +158,7 @@ private fun PlansScreenContent(
 @Composable
 private fun GoalHero(overview: PlansOverview, onEditGoal: () -> Unit, onAllocate: () -> Unit) {
     val goal = overview.goal
+    val progress = overview.progress
     ZarHeroCard(
         modifier = Modifier
             .fillMaxWidth()
@@ -160,30 +177,32 @@ private fun GoalHero(overview: PlansOverview, onEditGoal: () -> Unit, onAllocate
         Spacer(Modifier.height(ZarDimens.SpaceLg))
         ZarLabel(goal?.name ?: stringResource(R.string.plans_goal_name), color = ZarSubtle)
         Text(
-            goal?.allocated?.formatWithCode() ?: stringResource(R.string.plans_zero_amount),
+            progress?.backed?.formatWithCode() ?: stringResource(R.string.plans_zero_amount),
             style = MaterialTheme.typography.headlineLarge,
-            modifier = Modifier.testTag("plans-allocated"),
+            modifier = Modifier.testTag("plans-backed"),
         )
         Text(
             goal?.let { stringResource(R.string.plans_of_target, it.target.formatWithCode()) }
                 ?: stringResource(R.string.plans_goal_not_created),
             style = MaterialTheme.typography.titleMedium,
         )
-        LinearProgressIndicator(
-            progress = { goal?.progress ?: 0f },
-            modifier = Modifier.fillMaxWidth().height(5.dp),
-            color = ZarWhite,
-            trackColor = ZarTrack.copy(alpha = 0.35f),
-        )
+        if (goal != null && progress != null) {
+            GoalProgressBars(goal, progress)
+        }
         Text(
             when {
                 goal == null -> stringResource(R.string.plans_create_note)
                 goal.allocations.isEmpty() -> stringResource(R.string.plans_nothing_allocated)
-                else -> stringResource(R.string.plans_remaining, goal.remaining.formatWithCode())
+                progress?.hasUnknownBalance == true -> stringResource(R.string.plans_unknown_backing)
+                progress?.isApproximate == true -> stringResource(R.string.plans_estimated_backing)
+                else -> stringResource(R.string.plans_recorded_backing)
             },
             style = MaterialTheme.typography.labelSmall,
             color = ZarSubtle,
         )
+        if (goal != null && progress != null) {
+            GoalProgressDetails(goal, progress)
+        }
         Spacer(Modifier.height(ZarDimens.SpaceLg))
         Text(
             stringResource(if (goal == null) R.string.plans_create_action else R.string.plans_allocate_action),
@@ -201,6 +220,65 @@ private fun GoalHero(overview: PlansOverview, onEditGoal: () -> Unit, onAllocate
         }
     }
 }
+
+@Composable
+private fun GoalProgressBars(goal: SavingsGoal, progress: BackedGoalProgress) {
+    ZarLabel(stringResource(R.string.plans_backed_label, progress.backed.formatWithCode()), color = ZarSubtle)
+    LinearProgressIndicator(
+        progress = { progress.backedFraction(goal.target) },
+        modifier = Modifier.fillMaxWidth().height(5.dp).testTag("plans-backed-progress"),
+        color = ZarWhite,
+        trackColor = ZarTrack.copy(alpha = 0.35f),
+    )
+    ZarLabel(stringResource(R.string.plans_allocated_label, progress.allocated.formatWithCode()), color = ZarSubtle)
+    LinearProgressIndicator(
+        progress = { progress.allocatedFraction(goal.target) },
+        modifier = Modifier.fillMaxWidth().height(5.dp).testTag("plans-allocated-progress"),
+        color = ZarSubtle,
+        trackColor = ZarTrack.copy(alpha = 0.35f),
+    )
+}
+
+@Composable
+private fun GoalProgressDetails(goal: SavingsGoal, progress: BackedGoalProgress) {
+    if (progress.hasUnknownBalance) {
+        Text(
+            stringResource(if (progress.hasMismatchedEntries) R.string.plans_mismatched_balance else R.string.plans_unknown_balance),
+            style = MaterialTheme.typography.bodySmall,
+            color = ZarWhite,
+        )
+    } else {
+        Text(
+            stringResource(R.string.plans_allocation_gap, progress.allocationGap!!.formatWithCode()),
+            style = MaterialTheme.typography.bodySmall,
+            color = ZarWhite,
+        )
+        Text(
+            stringResource(R.string.plans_target_shortfall, progress.targetShortfall!!.formatWithCode()),
+            style = MaterialTheme.typography.bodySmall,
+            color = ZarWhite,
+            modifier = Modifier.testTag("plans-shortfall"),
+        )
+        progress.balanceAsOf?.let { date ->
+            Text(stringResource(R.string.plans_balance_as_of, date.displayDate()), style = MaterialTheme.typography.labelSmall, color = ZarSubtle)
+        }
+    }
+    when {
+        progress.targetShortfall?.isZero == true -> Text(stringResource(R.string.plans_goal_backed), style = MaterialTheme.typography.bodySmall, color = ZarWhite)
+        goal.targetDate == null -> Text(stringResource(R.string.plans_set_date_hint), style = MaterialTheme.typography.bodySmall, color = ZarSubtle)
+        progress.daysRemaining != null && progress.daysRemaining <= 0 && progress.targetShortfall?.isPositive == true ->
+            Text(stringResource(R.string.plans_goal_overdue), style = MaterialTheme.typography.bodySmall, color = ZarWhite)
+        progress.hasUnknownBalance -> Text(stringResource(R.string.plans_pace_unavailable), style = MaterialTheme.typography.bodySmall, color = ZarSubtle)
+        progress.weeklyPace != null -> Text(
+            stringResource(R.string.plans_weekly_pace, progress.weeklyPace.formatWithCode(), goal.targetDate.displayDate()),
+            style = MaterialTheme.typography.bodyMedium,
+            color = ZarWhite,
+            modifier = Modifier.testTag("plans-weekly-pace"),
+        )
+    }
+}
+
+private fun LocalDate.displayDate(): String = format(DateTimeFormatter.ofPattern("d MMM yyyy", Locale.getDefault()))
 
 @Composable
 private fun LoadingHero() = ZarHeroCard(Modifier.fillMaxWidth().height(316.dp)) {
@@ -233,6 +311,7 @@ private fun GoalEditorDialog(
     message: PlansMessage?,
     onNameChange: (String) -> Unit,
     onTargetChange: (String) -> Unit,
+    onDateChange: (LocalDate?) -> Unit,
     onDismiss: () -> Unit,
     onSave: () -> Unit,
 ) {
@@ -250,12 +329,42 @@ private fun GoalEditorDialog(
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     singleLine = true,
                 )
+                GoalDateField(editor.targetDate, onDateChange)
                 if (message != null) DialogError(message)
             }
         },
         confirmButton = { TextButton(onClick = onSave, enabled = !isSaving) { Text(stringResource(R.string.action_save)) } },
         dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } },
     )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun GoalDateField(date: LocalDate?, onDateChange: (LocalDate?) -> Unit) {
+    var showPicker by rememberSaveable { mutableStateOf(false) }
+    OutlinedButton(onClick = { showPicker = true }, modifier = Modifier.fillMaxWidth()) {
+        Text(date?.let { stringResource(R.string.plans_target_date_value, it.displayDate()) }
+            ?: stringResource(R.string.plans_target_date_empty))
+    }
+    if (date != null) {
+        TextButton(onClick = { onDateChange(null) }) { Text(stringResource(R.string.plans_clear_target_date)) }
+    }
+    if (showPicker) {
+        val initial = date ?: ZarTime.today().plusMonths(6)
+        val picker = rememberDatePickerState(
+            initialSelectedDateMillis = initial.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli(),
+        )
+        DatePickerDialog(
+            onDismissRequest = { showPicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    picker.selectedDateMillis?.let { onDateChange(Instant.ofEpochMilli(it).atZone(ZoneOffset.UTC).toLocalDate()) }
+                    showPicker = false
+                }) { Text(stringResource(R.string.action_ok)) }
+            },
+            dismissButton = { TextButton(onClick = { showPicker = false }) { Text(stringResource(R.string.action_cancel)) } },
+        ) { DatePicker(state = picker) }
+    }
 }
 
 @Composable
@@ -284,7 +393,7 @@ private fun AllocationDialog(
                         horizontalArrangement = Arrangement.SpaceBetween,
                     ) {
                         Text(if (editor.accountId == balance.account.id) "● ${balance.account.name}" else "○ ${balance.account.name}")
-                        Text(balance.current?.formatWithCode().orEmpty())
+                        Text(balance.current?.formatWithCode() ?: stringResource(R.string.plans_balance_unknown_short))
                     }
                 }
                 OutlinedTextField(
@@ -326,7 +435,12 @@ private fun PlansScreenPreview() {
     val goal = SavingsGoal(GoalId("macbook-fund"), "MacBook fund", FiatMoney(49_000_000, Currencies.LKR))
     ZarTheme {
         PlansScreenContent(
-            state = PlansUiState(isLoading = false, overview = PlansOverview(goal, listOf(balance))),
+            state = PlansUiState(
+                isLoading = false,
+                overview = PlansOverview(
+                    goal, listOf(balance), GoalBackingCalculator.calculate(goal, listOf(account), emptyList(), LocalDate.of(2026, 10, 20)),
+                ),
+            ),
             onNavigate = {}, onAddOption = {}, onRetry = {}, onEditGoal = {}, onAllocate = {},
         )
     }
