@@ -525,8 +525,9 @@
     <string name="activity_void_caption_transfer">Voiding removes the transfer and its fee together.</string>
     <string name="activity_void_final">A void is final. To bring it back, add it again as a new entry.</string>
     <string name="activity_field_added">Added</string>
+    <string name="activity_field_type">Type</string>
     <string name="activity_field_status">Status</string>
-    <string name="activity_status_saved">Saved</string>
+    <string name="activity_status_saved">Saved · synced</string>
     <string name="activity_status_saved_offline">Saved on this phone</string>
     <string name="activity_status_voided">Voided</string>
     <string name="activity_fee_value">%1$s · separate expense</string>

@@ -117,11 +117,17 @@ fun ZarSwitch(
     onCheckedChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    large: Boolean = false,
 ) {
     val colors = ZarTheme.colors
+    // The Design System switch is 38x22; Figma's filter sheet uses a 46x28 one with a 22dp thumb.
+    val width = if (large) 46.dp else 38.dp
+    val height = if (large) 28.dp else 22.dp
+    val inset = if (large) 3.dp else 2.dp
+    val thumb = height - inset * 2
     Box(
         modifier
-            .size(width = 38.dp, height = 22.dp)
+            .size(width = width, height = height)
             .clip(CircleShape)
             .background(if (checked) colors.accentSelected else colors.trackOff)
             .toggleable(value = checked, enabled = enabled, role = Role.Switch, onValueChange = onCheckedChange),
@@ -129,8 +135,8 @@ fun ZarSwitch(
     ) {
         Box(
             Modifier
-                .offset(x = if (checked) 18.dp else 2.dp)
-                .size(18.dp)
+                .offset(x = if (checked) width - thumb - inset else inset)
+                .size(thumb)
                 .shadow(2.dp, CircleShape, ambientColor = Color(0x140F1A2B), spotColor = Color(0x140F1A2B))
                 .background(Color.White, CircleShape),
         )

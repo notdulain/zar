@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
@@ -136,7 +137,7 @@ internal fun EntryDetailBody(state: EntryDetailUiState, actions: DetailActions) 
                 is EntryDetailContent.Ready -> DetailContent(state, (state.content as EntryDetailContent.Ready).detail)
             }
             // Room so the last card clears the action buttons.
-            Spacer(Modifier.height(130.dp))
+            Spacer(Modifier.height(168.dp))
         }
         if (detail != null) DetailActionsBar(detail, actions, Modifier.align(Alignment.BottomCenter))
     }
@@ -164,12 +165,13 @@ private fun DetailContent(state: EntryDetailUiState, detail: EntryDetail) {
     val voided = entry.isVoided
     val transferTitle = transferTitle(detail)
 
-    Column(Modifier.padding(horizontal = 22.dp).padding(top = 6.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    // Figma: icon chip at y108, title at 180, amount at 206, date line at 246, details card at 282.
+    Column(Modifier.padding(horizontal = 22.dp).padding(top = 10.dp)) {
         ZarIconChip(EntryDisplay.icon(tx), size = 56.dp, iconSize = 26.dp, modifier = Modifier.alpha(if (voided) 0.6f else 1f))
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.padding(top = 16.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(
                 transferTitle ?: entryTitle(tx),
-                style = ZarType.headingSheet,
+                style = ZarType.headingSheet.copy(lineHeight = 23.sp),
                 color = colors.textPrimary,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
@@ -187,17 +189,18 @@ private fun DetailContent(state: EntryDetailUiState, detail: EntryDetail) {
                 }
                 append(IncomeFormat.amount(tx.amount))
             },
-            style = ZarType.amountM,
+            style = ZarType.amountM.copy(lineHeight = 36.sp),
             color = colors.textPrimary,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             textDecoration = if (voided) TextDecoration.LineThrough else null,
-            modifier = Modifier.testTag("detail-amount"),
+            modifier = Modifier.padding(top = 2.dp).testTag("detail-amount"),
         )
         Text(
             "${stringResource(EntryDisplay.typeLabel(tx.type))} · ${EntryDisplay.day(tx.date)}",
-            style = ZarType.bodyCaption,
+            style = ZarType.bodyCaption.copy(lineHeight = 16.sp),
             color = colors.textSecondary,
+            modifier = Modifier.padding(top = 4.dp),
         )
         if (entry.isCorrected) {
             val amountChanged = entry.original.amount != tx.amount
@@ -206,9 +209,9 @@ private fun DetailContent(state: EntryDetailUiState, detail: EntryDetail) {
                     append(pluralText(R.plurals.activity_edited_times, entry.corrections.size))
                     if (amountChanged) append(" · ").append(stringResource(R.string.activity_originally, IncomeFormat.withCode(entry.original.amount)))
                 },
-                style = ZarType.bodyCaption,
+                style = ZarType.bodyCaption.copy(lineHeight = 16.sp),
                 color = colors.textSecondary,
-                modifier = Modifier.testTag("detail-edited"),
+                modifier = Modifier.padding(top = 4.dp).testTag("detail-edited"),
             )
         }
     }
@@ -218,32 +221,17 @@ private fun DetailContent(state: EntryDetailUiState, detail: EntryDetail) {
             title = stringResource(R.string.activity_voided_title, EntryDisplay.stamp(marker.voidedAt)),
             body = stringResource(R.string.activity_voided_body),
             icon = R.drawable.ic_ph_prohibit,
-            modifier = Modifier.padding(horizontal = ZarDimens.SpaceSm).padding(top = 16.dp).testTag("detail-voided"),
+            modifier = Modifier.padding(horizontal = ZarDimens.ScreenGutter).padding(top = 20.dp).testTag("detail-voided"),
         )
     }
 
-    DetailsCard(state, detail, Modifier.padding(horizontal = ZarDimens.SpaceSm).padding(top = 16.dp))
+    DetailsCard(state, detail, Modifier.padding(horizontal = ZarDimens.ScreenGutter).padding(top = 19.dp))
 
     if (detail.isTransfer && detail.counterpart != null) {
-        LinkedEntriesCard(detail, Modifier.padding(horizontal = ZarDimens.SpaceSm).padding(top = 12.dp))
+        LinkedEntriesCard(detail, Modifier.padding(horizontal = ZarDimens.ScreenGutter).padding(top = 8.dp))
     }
     if (detail.history.isNotEmpty()) {
-        HistoryCard(detail, Modifier.padding(horizontal = ZarDimens.SpaceSm).padding(top = 12.dp))
-    }
-    if (!voided) {
-        Text(
-            stringResource(if (detail.isTransfer) R.string.activity_void_caption_transfer else R.string.activity_void_caption),
-            style = ZarType.bodyS,
-            color = colors.textSecondary,
-            modifier = Modifier.padding(horizontal = 22.dp).padding(top = 18.dp),
-        )
-    } else {
-        Text(
-            stringResource(R.string.activity_void_final),
-            style = ZarType.bodyS,
-            color = colors.textSecondary,
-            modifier = Modifier.padding(horizontal = 22.dp).padding(top = 18.dp),
-        )
+        HistoryCard(detail, Modifier.padding(horizontal = ZarDimens.ScreenGutter).padding(top = 8.dp))
     }
 }
 
@@ -300,7 +288,7 @@ private fun DetailsCard(state: EntryDetailUiState, detail: EntryDetail, modifier
             ValueRow(stringResource(R.string.activity_field_status), stringResource(status), dot = if (entry.isVoided) colors.textAttention else colors.fresh)
         }
     }
-    ZarCard(modifier.fillMaxWidth(), contentPadding = PaddingValues(horizontal = 20.dp, vertical = 4.dp)) {
+    ZarCard(modifier.fillMaxWidth(), contentPadding = PaddingValues(horizontal = 20.dp, vertical = 4.dp), soft = true) {
         rows.forEachIndexed { index, row ->
             if (index > 0) ZarDivider()
             Box(Modifier.padding(vertical = 14.dp)) { row() }
@@ -328,14 +316,14 @@ private fun ClassRow(spendingClass: SpendingClass?) {
         SpendingClass.DISCRETIONARY -> colors.chartDiscretionary
         SpendingClass.UNKNOWN -> colors.chartUnknown
     }
-    ValueRow(stringResource(R.string.manual_field_counts_as), stringResource(cls.labelRes()), dot = dot)
+    ValueRow(stringResource(R.string.activity_field_type), stringResource(cls.labelRes()), dot = dot)
 }
 
 @Composable
 private fun LinkedEntriesCard(detail: EntryDetail, modifier: Modifier = Modifier) {
     val colors = ZarTheme.colors
     val legs = listOfNotNull(detail.entry, detail.counterpart).sortedBy { if (it.original.type == TransactionType.TRANSFER_OUT) 0 else 1 }
-    ZarCard(modifier.fillMaxWidth().testTag("detail-linked"), contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp)) {
+    ZarCard(modifier.fillMaxWidth().testTag("detail-linked"), contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp), soft = true) {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             ZarMonoLabel(stringResource(R.string.activity_linked_title))
             legs.forEach { leg ->
@@ -375,7 +363,7 @@ private fun HistoryCard(detail: EntryDetail, modifier: Modifier = Modifier) {
     val entry = detail.entry
     // Newest first, one line per field a correction changed, then the original record at the bottom.
     val lines = detail.history.reversed().flatMap { event -> event.changes.map { it to event.correction.correctedAt } }
-    ZarCard(modifier.fillMaxWidth().testTag("detail-history"), contentPadding = PaddingValues(horizontal = 20.dp, vertical = 18.dp)) {
+    ZarCard(modifier.fillMaxWidth().testTag("detail-history"), contentPadding = PaddingValues(horizontal = 20.dp, vertical = 18.dp), soft = true) {
         Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
             ZarMonoLabel(stringResource(R.string.activity_history_title))
             lines.forEach { (change, at) ->
@@ -439,43 +427,60 @@ private fun sourceLabel(source: RecordSource): Int = when (source) {
 
 @Composable
 private fun DetailActionsBar(detail: EntryDetail, actions: DetailActions, modifier: Modifier = Modifier) {
-    val canvas = ZarTheme.colors.canvas
-    Row(
+    val colors = ZarTheme.colors
+    val canvas = colors.canvas
+    // Figma: the caption sits at y779 and the 58dp buttons at y811, 46dp above the screen edge.
+    Column(
         modifier
             .fillMaxWidth()
             // Fades the content out under the buttons so text never runs through them.
             .background(Brush.verticalGradient(listOf(Color.Transparent, canvas, canvas)))
             .navigationBarsPadding()
-            .padding(start = 9.dp, end = 9.dp, top = 28.dp, bottom = 22.dp),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
+            .padding(top = 28.dp, bottom = 22.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        if (detail.entry.isVoided) {
-            ZarButton(
-                text = stringResource(R.string.activity_add_again),
-                onClick = actions.onAddAgain,
-                modifier = Modifier.weight(1f).testTag("detail-add-again"),
-            )
-            return@Row
-        }
-        ZarButton(
-            text = stringResource(if (detail.isTransfer) R.string.activity_void_transfer else R.string.activity_void_entry),
-            onClick = actions.onVoid,
-            style = ZarButtonStyle.Outline,
-            icon = R.drawable.ic_ph_trash,
-            modifier = Modifier.weight(1f).testTag("detail-void"),
+        Text(
+            stringResource(
+                when {
+                    detail.entry.isVoided -> R.string.activity_void_final
+                    detail.isTransfer -> R.string.activity_void_caption_transfer
+                    else -> R.string.activity_void_caption
+                },
+            ),
+            style = ZarType.bodyS.copy(lineHeight = 18.sp),
+            color = colors.textSecondary,
+            modifier = Modifier.padding(horizontal = 22.dp),
         )
-        when (detail.editKind) {
-            EditKind.EXPENSE -> ZarButton(
-                text = stringResource(R.string.activity_edit),
-                onClick = { actions.onEdit(detail.entry.id.value) },
-                modifier = Modifier.weight(1f).testTag("detail-edit"),
+        Row(Modifier.padding(horizontal = 9.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            if (detail.entry.isVoided) {
+                ZarButton(
+                    text = stringResource(R.string.activity_add_again),
+                    onClick = actions.onAddAgain,
+                    modifier = Modifier.weight(1f).testTag("detail-add-again"),
+                )
+                return@Row
+            }
+            ZarButton(
+                text = stringResource(if (detail.isTransfer) R.string.activity_void_transfer else R.string.activity_void_entry),
+                onClick = actions.onVoid,
+                style = ZarButtonStyle.Outline,
+                icon = R.drawable.ic_ph_trash,
+                contentColor = colors.textAttention,
+                modifier = Modifier.weight(1f).testTag("detail-void"),
             )
-            EditKind.INCOME -> ZarButton(
-                text = stringResource(R.string.activity_edit),
-                onClick = { actions.onEditIncome(detail.entry.id.value) },
-                modifier = Modifier.weight(1f).testTag("detail-edit"),
-            )
-            EditKind.NONE -> Unit
+            when (detail.editKind) {
+                EditKind.EXPENSE -> ZarButton(
+                    text = stringResource(R.string.activity_edit),
+                    onClick = { actions.onEdit(detail.entry.id.value) },
+                    modifier = Modifier.weight(1f).testTag("detail-edit"),
+                )
+                EditKind.INCOME -> ZarButton(
+                    text = stringResource(R.string.activity_edit),
+                    onClick = { actions.onEditIncome(detail.entry.id.value) },
+                    modifier = Modifier.weight(1f).testTag("detail-edit"),
+                )
+                EditKind.NONE -> Unit
+            }
         }
     }
 }
@@ -491,38 +496,45 @@ private fun VoidSheet(state: EntryDetailUiState, detail: EntryDetail, actions: D
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
         shape = ZarShapes.sheet,
         containerColor = colors.surface,
+        scrimColor = SheetScrim,
+        dragHandle = { SheetGrabber() },
     ) {
         Column(
-            Modifier.navigationBarsPadding().padding(horizontal = ZarDimens.SheetGutter).padding(bottom = 22.dp).testTag("void-sheet"),
+            Modifier.navigationBarsPadding().padding(horizontal = ZarDimens.SheetGutter).padding(bottom = 14.dp).testTag("void-sheet"),
             verticalArrangement = Arrangement.spacedBy(20.dp),
         ) {
-            Text(
+            SheetHeader(
                 stringResource(if (detail.isTransfer) R.string.activity_void_title_transfer else R.string.activity_void_title),
-                style = ZarType.headingSheet,
-                color = colors.textPrimary,
+                onClose = actions.onDismissVoid,
             )
             Row(
-                Modifier.fillMaxWidth().clip(ZarShapes.md).background(colors.subtle).padding(horizontal = 14.dp, vertical = 12.dp),
+                Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(colors.subtle).padding(horizontal = 14.dp, vertical = 12.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                ZarIconChip(EntryDisplay.icon(tx), size = 40.dp, iconSize = 19.dp)
+                ZarIconChip(EntryDisplay.icon(tx), size = 40.dp, iconSize = 19.dp, background = colors.surface)
                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text(transferTitle(detail) ?: entryTitle(tx), style = ZarType.bodyM, color = colors.textPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(
+                        transferTitle(detail) ?: entryTitle(tx),
+                        style = ZarType.bodyM.copy(fontWeight = FontWeight.Medium, lineHeight = 20.sp),
+                        color = colors.textPrimary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
                     Text(
                         listOfNotNull(
                             if (detail.isTransfer) IncomeFormat.withCode(tx.amount) else "${if (tx.direction == Direction.IN) "+" else "−"} ${IncomeFormat.withCode(tx.amount)}",
                             detail.account?.name.takeIf { !detail.isTransfer },
                             IncomeFormat.shortDate(tx.date),
                         ).joinToString(" · "),
-                        style = ZarType.bodyCaption,
+                        style = ZarType.bodyS.copy(lineHeight = 18.sp),
                         color = colors.textSecondary,
                     )
                 }
             }
             Text(
                 voidBody(detail),
-                style = ZarType.bodyS.copy(lineHeight = 20.sp),
+                style = ZarType.bodyS.copy(lineHeight = 18.sp),
                 color = colors.textSecondary,
                 modifier = Modifier.testTag("void-body"),
             )

@@ -1,6 +1,15 @@
 package com.example.zar.features.transactions.presentation.screen
 
 import androidx.compose.foundation.background
+import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -26,7 +35,6 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -66,12 +74,9 @@ import com.example.zar.core.presentation.components.TopLevelDestination
 import com.example.zar.core.presentation.components.ZarButton
 import com.example.zar.core.presentation.components.ZarButtonStyle
 import com.example.zar.core.presentation.components.ZarCard
-import com.example.zar.core.presentation.components.ZarChip
 import com.example.zar.core.presentation.components.ZarDivider
 import com.example.zar.core.presentation.components.ZarIcon
 import com.example.zar.core.presentation.components.ZarIconChip
-import com.example.zar.core.presentation.components.ZarLabel
-import com.example.zar.core.presentation.components.ZarMonoLabel
 import com.example.zar.core.presentation.components.ZarScreenScaffold
 import com.example.zar.core.presentation.components.ZarSwitch
 import com.example.zar.core.presentation.theme.ZarDimens
@@ -79,7 +84,6 @@ import com.example.zar.core.presentation.theme.ZarShapes
 import com.example.zar.core.presentation.theme.ZarTheme
 import com.example.zar.core.presentation.theme.ZarType
 import com.example.zar.core.presentation.theme.ZarWhite
-import com.example.zar.features.accounts.presentation.screen.iconRes
 import com.example.zar.features.transactions.domain.activity.ActivityQuery
 import com.example.zar.features.transactions.domain.activity.model.ActivityFilter
 import com.example.zar.features.transactions.domain.activity.model.ActivityList
@@ -91,6 +95,9 @@ import com.example.zar.features.transactions.presentation.activity.entryTitle
 import com.example.zar.features.transactions.presentation.activity.screen.EmptyCard
 import com.example.zar.features.transactions.presentation.activity.screen.FilterPill
 import com.example.zar.features.transactions.presentation.activity.screen.InfoBanner
+import com.example.zar.features.transactions.presentation.activity.screen.SheetGrabber
+import com.example.zar.features.transactions.presentation.activity.screen.SheetHeader
+import com.example.zar.features.transactions.presentation.activity.screen.SheetScrim
 import com.example.zar.features.transactions.presentation.activity.screen.TagPill
 import com.example.zar.features.transactions.presentation.activity.viewmodel.ActivityContent
 import com.example.zar.features.transactions.presentation.activity.viewmodel.ActivityUiState
@@ -120,6 +127,7 @@ fun ActivityScreen(
         destination = TopLevelDestination.Activity,
         onNavigate = onNavigate,
         onAddOption = onAddOption,
+        heroUnderStatusBar = true,
     ) { padding ->
         ActivityBody(
             state = state,
@@ -132,7 +140,7 @@ fun ActivityScreen(
                 onRetry = viewModel::retry,
                 previewCount = viewModel::previewCount,
             ),
-            modifier = Modifier.padding(padding),
+            contentPadding = padding,
         )
     }
 }
@@ -148,17 +156,30 @@ internal class ActivityActions(
 )
 
 @Composable
-internal fun ActivityBody(state: ActivityUiState, actions: ActivityActions, modifier: Modifier = Modifier) {
+internal fun ActivityBody(
+    state: ActivityUiState,
+    actions: ActivityActions,
+    modifier: Modifier = Modifier,
+    contentPadding: PaddingValues = PaddingValues(),
+) {
     var showFilters by rememberSaveable { mutableStateOf(false) }
     var searchOpen by rememberSaveable { mutableStateOf(state.filter.query.isNotEmpty()) }
     // Only opening the search with its button takes focus; coming back to a screen that already has it open does not.
     var focusSearch by remember { mutableStateOf(false) }
     val list = (state.content as? ActivityContent.Ready)?.list
-    val gutter = Modifier.padding(horizontal = ZarDimens.ScreenGutter)
+    val layoutDirection = LocalLayoutDirection.current
+    val gutter = Modifier.padding(horizontal = ListGutter)
 
+    // The hero runs under the status bar and the list scrolls behind the floating nav, so only the sides are
+    // inset here; the bottom inset becomes scroll padding that lets the last row clear the nav.
     LazyColumn(
-        modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(bottom = ZarDimens.SpaceXl),
+        modifier = modifier
+            .fillMaxSize()
+            .padding(
+                start = contentPadding.calculateStartPadding(layoutDirection),
+                end = contentPadding.calculateEndPadding(layoutDirection),
+            ),
+        contentPadding = PaddingValues(bottom = contentPadding.calculateBottomPadding() + ZarDimens.SpaceXl),
         verticalArrangement = Arrangement.spacedBy(ZarDimens.SpaceXs),
     ) {
         item {
@@ -179,13 +200,13 @@ internal fun ActivityBody(state: ActivityUiState, actions: ActivityActions, modi
                     focusSearch = searchOpen
                 },
                 onApplyFilter = actions.onApplyFilter,
-                modifier = gutter.padding(top = ZarDimens.SpaceXs),
+                modifier = gutter.padding(top = 10.dp),
             )
         }
         if (searchOpen) {
             item { SearchField(state.filter.query, actions.onQuery, focusSearch, gutter) }
         }
-        item { RangeLine(state, list, actions.onClearFilters, gutter) }
+        item { RangeLine(state, list, actions.onClearFilters, Modifier.padding(start = 16.dp, end = 16.dp, top = 10.dp, bottom = 2.dp)) }
         if (!state.isOnline) {
             item {
                 InfoBanner(
@@ -270,49 +291,70 @@ internal fun ActivityBody(state: ActivityUiState, actions: ActivityActions, modi
 
 // --- Hero and controls ------------------------------------------------------------------------
 
+private val ListGutter = 10.dp
+private val HeroHeight = 224.dp
+private val HeroRadius = 40.dp
+private val FilterBorder = Color(0xFFE6E6E9)
+
+// Figma's gradients run past the bottom of the hero, so only the dark part of each shows. The stops are
+// scaled to a gradient that is [Received/SpentSpan] times the hero height.
+private const val ReceivedSpan = 1.2868f
+private val ReceivedStops = arrayOf(
+    0f to Color(0xFF05070B),
+    0.45f to Color(0xFF0C1A2B),
+    0.8f to Color(0xFF174257),
+    1f to Color(0xFF2E7F86),
+)
+private const val SpentSpan = 1.2445f
+private val SpentStops = arrayOf(
+    0f to Color(0xFF0A070C),
+    0.3818f to Color(0xFF2A1828),
+    0.8f to Color(0xFF7E3D52),
+    1f to Color(0xFFC9685A),
+)
+
+/** The hero is 224dp from the very top of the screen (the status bar sits on it); Received takes 277 of 412 and Spent the rest. */
 @Composable
 private fun ActivityHero(received: String, spent: String, rangeLabel: String, onRange: () -> Unit) {
-    Row(
-        modifier = Modifier
+    // Figma's hero spans the status bar. Pulling the list down past its top reveals the area above the hero,
+    // so each half's first colour is also painted far above it and the gradient never ends.
+    Box(
+        Modifier
             .fillMaxWidth()
-            .height(224.dp)
-            .clip(RoundedCornerShape(bottomStart = ZarDimens.HeroRadius, bottomEnd = ZarDimens.HeroRadius)),
+            .height(HeroHeight)
+            .drawBehind {
+                val split = size.width * 277f / 412f
+                val reach = 4000f
+                drawRect(Color(0xFF05070B), Offset(0f, -reach), Size(split, reach))
+                drawRect(Color(0xFF0A070C), Offset(split, -reach), Size(size.width - split, reach))
+            },
     ) {
-        Box(
-            modifier = Modifier
-                .weight(2f)
+        Row(
+            Modifier
                 .fillMaxSize()
-                .background(Brush.verticalGradient(listOf(Color(0xFF05070B), Color(0xFF0C1A2B), Color(0xFF174257)))),
+                .clip(RoundedCornerShape(bottomStart = HeroRadius, bottomEnd = HeroRadius)),
+        ) {
+            Box(Modifier.weight(277f).fillMaxSize().gradientBackground(ReceivedStops, ReceivedSpan))
+            Box(Modifier.weight(135f).fillMaxSize().gradientBackground(SpentStops, SpentSpan))
+        }
+        Row(
+            Modifier
+                .padding(start = 22.dp, end = 22.dp, top = 62.dp)
+                .fillMaxWidth()
+                .height(42.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
                 stringResource(R.string.nav_activity),
-                style = MaterialTheme.typography.headlineLarge,
+                style = ZarType.displayTitle.copy(lineHeight = 42.sp),
                 color = ZarWhite,
-                modifier = Modifier.padding(start = 22.dp, top = 22.dp),
             )
-            Column(Modifier.align(Alignment.BottomStart).padding(start = 22.dp, bottom = 20.dp)) {
-                Text(
-                    received,
-                    style = MaterialTheme.typography.headlineLarge,
-                    color = ZarWhite,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.testTag("activity-received"),
-                )
-                ZarLabel(stringResource(R.string.home_received), color = ZarWhite)
-            }
-        }
-        Box(
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxSize()
-                .background(Brush.verticalGradient(listOf(Color(0xFF0A070C), Color(0xFF2A1828), Color(0xFF7E3D52)))),
-        ) {
             val changeRange = stringResource(R.string.activity_change_range)
             Row(
                 Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(top = 20.dp, end = 14.dp)
+                    // The padding makes a roomy touch target; the offset pulls the label back to Figma's 22dp edge.
+                    .offset(x = 8.dp)
                     .clip(CircleShape)
                     .clickable(role = Role.Button, onClickLabel = changeRange, onClick = onRange)
                     .padding(horizontal = 8.dp, vertical = 8.dp)
@@ -320,22 +362,47 @@ private fun ActivityHero(received: String, spent: String, rangeLabel: String, on
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                ZarLabel(rangeLabel, color = ZarWhite)
+                Text(rangeLabel.uppercase(), style = ZarType.monoLabel.copy(lineHeight = 14.sp), color = ZarWhite)
                 ZarIcon(R.drawable.ic_ph_caret_down, size = 12.dp, tint = ZarWhite)
             }
-            Column(Modifier.align(Alignment.BottomStart).padding(start = 14.dp, bottom = 20.dp)) {
-                Text(
-                    spent,
-                    style = MaterialTheme.typography.headlineMedium,
-                    color = ZarWhite,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.testTag("activity-spent"),
-                )
-                ZarLabel(stringResource(R.string.home_spent), color = ZarWhite)
-            }
+        }
+        Row(
+            Modifier
+                .align(Alignment.BottomStart)
+                .fillMaxWidth()
+                .padding(start = 22.dp, end = 22.dp, bottom = 22.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.Bottom,
+        ) {
+            HeroTotal(received, stringResource(R.string.home_received), Alignment.Start, "activity-received")
+            HeroTotal(spent, stringResource(R.string.home_spent), Alignment.End, "activity-spent")
         }
     }
+}
+
+@Composable
+private fun HeroTotal(amount: String, label: String, align: Alignment.Horizontal, tag: String) {
+    Column(horizontalAlignment = align, verticalArrangement = Arrangement.spacedBy(3.dp)) {
+        Text(
+            amount,
+            style = ZarType.amountM.copy(lineHeight = 36.sp),
+            color = ZarWhite,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.testTag(tag),
+        )
+        Text(
+            label.uppercase(),
+            style = ZarType.monoCaption.copy(lineHeight = 13.sp, letterSpacing = 1.sp),
+            color = ZarWhite,
+            modifier = Modifier.padding(horizontal = 3.dp),
+        )
+    }
+}
+
+/** A vertical gradient whose [stops] are fractions of a gradient [span] times as tall as the box; the rest is cut off. */
+private fun Modifier.gradientBackground(stops: Array<Pair<Float, Color>>, span: Float): Modifier = drawBehind {
+    drawRect(Brush.verticalGradient(colorStops = stops, startY = 0f, endY = size.height * span))
 }
 
 @Composable
@@ -362,6 +429,7 @@ private fun FilterRow(
                     selected = true,
                     onClick = { onApplyFilter(filter.copy(accountId = null)) },
                     removeLabel = remove,
+                    removable = true,
                     modifier = Modifier.testTag("activity-chip-account"),
                 )
             }
@@ -371,6 +439,7 @@ private fun FilterRow(
                     selected = true,
                     onClick = { onApplyFilter(filter.copy(preset = DatePreset.THIS_MONTH, customFrom = null, customTo = null)) },
                     removeLabel = remove,
+                    removable = true,
                     modifier = Modifier.testTag("activity-chip-date"),
                 )
             }
@@ -380,6 +449,7 @@ private fun FilterRow(
                     selected = true,
                     onClick = { onApplyFilter(filter.copy(showVoided = false)) },
                     removeLabel = remove,
+                    removable = true,
                     modifier = Modifier.testTag("activity-chip-voided"),
                 )
             }
@@ -390,6 +460,7 @@ private fun FilterRow(
                 .size(40.dp)
                 .clip(CircleShape)
                 .background(colors.surface)
+                .border(1.dp, FilterBorder, CircleShape)
                 .clickable(role = Role.Button, onClickLabel = filterLabel, onClick = onOpenFilters)
                 .semantics { contentDescription = filterLabel }
                 .testTag("activity-filter-button"),
@@ -406,6 +477,7 @@ private fun FilterRow(
                 .size(40.dp)
                 .clip(CircleShape)
                 .background(colors.surface)
+                .border(1.dp, FilterBorder, CircleShape)
                 .clickable(role = Role.Button, onClickLabel = searchLabel, onClick = onToggleSearch)
                 .semantics { contentDescription = searchLabel }
                 .testTag("activity-search-button"),
@@ -437,14 +509,18 @@ private fun SearchField(query: String, onQuery: (String) -> Unit, requestFocus: 
 
 @Composable
 private fun RangeLine(state: ActivityUiState, list: ActivityList?, onClear: () -> Unit, modifier: Modifier = Modifier) {
-    Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-        ZarMonoLabel(rangeLabel(state), color = ZarTheme.colors.textPrimary)
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
+        Text(
+            rangeLabel(state).uppercase(),
+            style = ZarType.monoLabel.copy(lineHeight = 14.sp),
+            color = ZarTheme.colors.textPrimary,
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.Top) {
             if (list != null) {
                 Text(
                     pluralStringResource(R.plurals.activity_count, list.rows.size, list.rows.size),
-                    style = ZarType.bodyCaption,
-                    color = ZarTheme.colors.textPrimary,
+                    style = ZarType.bodyCaption.copy(lineHeight = 16.sp),
+                    color = ZarTheme.colors.textTertiary,
                     modifier = Modifier.testTag("activity-count"),
                 )
             }
@@ -467,19 +543,29 @@ private fun EntryRow(row: ActivityRow, onClick: () -> Unit, modifier: Modifier =
     val tx = row.entry.current
     val colors = ZarTheme.colors
     val voided = row.entry.isVoided
+    val inflow = EntryDisplay.isInflow(tx)
+    // Figma's card is 70dp: a 14/18dp inner padding plus the 1dp border.
     ZarCard(
-        modifier = modifier.fillMaxWidth().alpha(if (voided) 0.6f else 1f).testTag("activity-row-${row.entry.id.value}"),
+        modifier = modifier
+            .fillMaxWidth()
+            .alpha(if (voided) 0.6f else 1f)
+            .testTag("activity-row-${row.entry.id.value}"),
         onClick = onClick,
-        radius = ZarDimens.RowCardRadius,
-        contentPadding = PaddingValues(14.dp),
+        radius = 24.dp,
+        contentPadding = PaddingValues(start = 15.dp, end = 19.dp, top = 15.dp, bottom = 15.dp),
+        soft = true,
     ) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-            ZarIconChip(EntryDisplay.icon(tx))
+            ZarIconChip(
+                EntryDisplay.icon(tx),
+                background = if (inflow) colors.incomeTint else colors.subtle,
+                tint = if (inflow) colors.textIncome else colors.iconStrong,
+            )
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         entryTitle(tx),
-                        style = ZarType.bodyM.copy(fontWeight = FontWeight.Medium),
+                        style = ZarType.bodyM.copy(fontWeight = FontWeight.Medium, lineHeight = 20.sp, letterSpacing = (-0.15).sp),
                         color = colors.textPrimary,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -491,7 +577,7 @@ private fun EntryRow(row: ActivityRow, onClick: () -> Unit, modifier: Modifier =
                 }
                 Text(
                     entrySubtitle(tx, row.account?.name),
-                    style = ZarType.bodyCaption,
+                    style = ZarType.bodyCaption.copy(lineHeight = 16.sp),
                     color = colors.textSecondary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -499,8 +585,8 @@ private fun EntryRow(row: ActivityRow, onClick: () -> Unit, modifier: Modifier =
             }
             Text(
                 EntryDisplay.signed(tx),
-                style = ZarType.bodyL,
-                color = if (EntryDisplay.isInflow(tx)) colors.textIncome else colors.textPrimary,
+                style = ZarType.bodyL.copy(lineHeight = 21.sp),
+                color = if (inflow) colors.textIncome else colors.textPrimary,
                 textDecoration = if (voided) TextDecoration.LineThrough else null,
                 maxLines = 1,
             )
@@ -528,43 +614,35 @@ private fun ActivityFilterSheet(
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
         shape = ZarShapes.sheet,
         containerColor = ZarTheme.colors.surface,
+        scrimColor = SheetScrim,
+        dragHandle = { SheetGrabber() },
     ) {
+        // Figma Z45: 24dp margins, 20dp between blocks, 12dp from a label to its chips, 8dp between chip rows.
         Column(
             Modifier
                 .navigationBarsPadding()
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = ZarDimens.SheetGutter)
-                .padding(bottom = 22.dp)
+                .padding(bottom = 4.dp)
                 .testTag("activity-filter-sheet"),
             verticalArrangement = Arrangement.spacedBy(20.dp),
         ) {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Text(stringResource(R.string.activity_filter_title), style = ZarType.headingSheet, color = ZarTheme.colors.textPrimary)
-                Box(
-                    Modifier
-                        .size(40.dp)
-                        .clip(CircleShape)
-                        .clickable(role = Role.Button, onClickLabel = close, onClick = onDismiss)
-                        .semantics { contentDescription = close },
-                    Alignment.Center,
-                ) { ZarIcon(R.drawable.ic_ph_x, size = 20.dp) }
-            }
+            SheetHeader(stringResource(R.string.activity_filter_title), onClose = onDismiss)
 
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                ZarMonoLabel(stringResource(R.string.manual_field_account))
+                SheetLabel(stringResource(R.string.manual_field_account))
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    ZarChip(
+                    FilterPill(
                         label = stringResource(R.string.activity_filter_all_accounts),
                         selected = draft.accountId == null,
                         onClick = { draft = draft.copy(accountId = null) },
                         modifier = Modifier.testTag("activity-filter-account-all"),
                     )
                     accounts.forEach { account ->
-                        ZarChip(
+                        FilterPill(
                             label = account.name,
                             selected = draft.accountId == account.id,
                             onClick = { draft = draft.copy(accountId = account.id) },
-                            icon = account.type.iconRes(),
                             modifier = Modifier.testTag("activity-filter-account-${account.id.value}"),
                         )
                     }
@@ -572,7 +650,7 @@ private fun ActivityFilterSheet(
             }
 
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                ZarMonoLabel(stringResource(R.string.manual_field_date))
+                SheetLabel(stringResource(R.string.manual_field_date))
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     listOf(
                         DatePreset.THIS_MONTH to R.string.activity_preset_this_month,
@@ -580,7 +658,7 @@ private fun ActivityFilterSheet(
                         DatePreset.LAST_MONTH to R.string.activity_preset_last_month,
                         DatePreset.CUSTOM to R.string.activity_preset_custom,
                     ).forEach { (preset, label) ->
-                        ZarChip(
+                        FilterPill(
                             label = stringResource(label),
                             selected = draft.preset == preset,
                             onClick = {
@@ -626,6 +704,7 @@ private fun ActivityFilterSheet(
                     checked = draft.showVoided,
                     onCheckedChange = { draft = draft.copy(showVoided = it) },
                     modifier = Modifier.testTag("activity-filter-voided"),
+                    large = true,
                 )
             }
 
@@ -646,17 +725,23 @@ private fun ActivityFilterSheet(
     }
 }
 
+/** The small mono caption above a group of chips, with Figma's 14dp line. */
+@Composable
+private fun SheetLabel(text: String) {
+    Text(text.uppercase(), style = ZarType.monoLabel.copy(lineHeight = 14.sp), color = ZarTheme.colors.textTertiary)
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun DateField(label: String, date: LocalDate, onPick: (LocalDate) -> Unit, modifier: Modifier = Modifier) {
     var open by rememberSaveable { mutableStateOf(false) }
     val colors = ZarTheme.colors
     Column(
-        modifier.clip(ZarShapes.sm).background(colors.subtle).clickable(role = Role.Button) { open = true }.padding(horizontal = 14.dp, vertical = 10.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
+        modifier.clip(RoundedCornerShape(14.dp)).background(colors.subtle).clickable(role = Role.Button) { open = true }.padding(horizontal = 14.dp, vertical = 10.dp),
+        verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
-        ZarMonoLabel(label)
-        Text(IncomeFormat.fullDate(date), style = ZarType.bodyM, color = colors.textPrimary, maxLines = 1)
+        Text(label.uppercase(), style = ZarType.monoLabel.copy(lineHeight = 14.sp), color = colors.textTertiary)
+        Text(EntryDisplay.dayMonth(date), style = ZarType.bodyM.copy(lineHeight = 20.sp), color = colors.textPrimary, maxLines = 1)
     }
     if (!open) return
     val state = rememberDatePickerState(initialSelectedDateMillis = date.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli())
@@ -683,13 +768,16 @@ private fun heroRangeLabel(state: ActivityUiState): String = when (state.filter.
     DatePreset.CUSTOM -> stringResource(R.string.activity_hero_custom)
 }
 
-/** The line above the list: OCTOBER 2026, or the exact days when a range is chosen. */
+/** The line above the list: OCTOBER (with the year only when it is not this year), or the exact days of a range. */
 @Composable
 private fun rangeLabel(state: ActivityUiState): String = when (state.filter.preset) {
-    DatePreset.THIS_MONTH -> IncomeFormat.month(YearMonth.from(state.today))
-    DatePreset.LAST_MONTH -> IncomeFormat.month(YearMonth.from(state.today).minusMonths(1))
+    DatePreset.THIS_MONTH -> monthLine(YearMonth.from(state.today), state.today)
+    DatePreset.LAST_MONTH -> monthLine(YearMonth.from(state.today).minusMonths(1), state.today)
     else -> rangeText(ActivityQuery.rangeOf(state.filter, state.today))
 }
+
+private fun monthLine(month: YearMonth, today: LocalDate): String =
+    if (month.year == today.year) monthName(month, short = false) else IncomeFormat.month(month)
 
 /** The text of a date chip: "Last month", "Last 7 days" or "1–24 Oct". */
 @Composable

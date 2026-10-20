@@ -40,8 +40,8 @@ internal object EntryDisplay {
     /** "− 8,400" or "+ 125,000", signed by the direction of the money. */
     fun signed(tx: Transaction): String = "${if (tx.direction == Direction.IN) "+" else "−"} ${money(tx.amount)}"
 
-    /** Money that arrived as income or a refund is coloured; everything else is plain. */
-    fun isInflow(tx: Transaction): Boolean = tx.type == TransactionType.INCOME || tx.type == TransactionType.REFUND
+    /** Money coming in (income, a refund or a transfer in) is tinted teal; money going out is plain. */
+    fun isInflow(tx: Transaction): Boolean = tx.direction == Direction.IN
 
     @StringRes
     fun typeLabel(type: TransactionType): Int = when (type) {
