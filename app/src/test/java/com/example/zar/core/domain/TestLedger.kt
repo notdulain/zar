@@ -1,6 +1,7 @@
 package com.example.zar.core.domain
 
 import com.example.zar.core.domain.calculation.CurrencyConverter
+import com.example.zar.core.domain.calculation.LedgerProjector
 import com.example.zar.core.domain.model.Account
 import com.example.zar.core.domain.model.AccountId
 import com.example.zar.core.domain.model.AccountType
@@ -85,24 +86,34 @@ class FakeLedgerRepository : LedgerRepository {
 
     override fun observeLedger(): Flow<List<LedgerEntry>> = ledger
 
+    /** Re-projects the stored records so observers see every save, correction and undo. */
+    private fun publish() {
+        ledger.value = LedgerProjector.project(transactions.values, corrections, voids.values, links)
+    }
+
     override suspend fun saveTransaction(transaction: Transaction) {
         transactions.putIfAbsent(transaction.id, transaction)
+        publish()
     }
 
     override suspend fun saveTransfer(transfer: Transfer) {
         val records = listOf(transfer.outLeg(), transfer.inLeg()) + listOfNotNull(transfer.fee)
         if (records.none { it.id in transactions }) records.forEach { transactions[it.id] = it }
+        publish()
     }
 
     override suspend fun addCorrection(correction: Correction) {
         if (corrections.none { it.id == correction.id }) corrections += correction
+        publish()
     }
 
     override suspend fun void(markers: List<VoidMarker>) {
         markers.forEach { voids.putIfAbsent(it.transactionId, it) }
+        publish()
     }
 
     override suspend fun linkEvidence(link: EvidenceLink) {
         if (links.none { it.evidenceId == link.evidenceId }) links += link
+        publish()
     }
 }

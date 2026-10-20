@@ -52,3 +52,6 @@ data class Transfer(
 
 fun TransferId.outLegId() = TransactionId("$value-out")
 fun TransferId.inLegId() = TransactionId("$value-in")
+
+/** The separate expense that holds a transfer's fee, if it has one. */
+fun TransferId.feeId() = TransactionId("$value-fee")
