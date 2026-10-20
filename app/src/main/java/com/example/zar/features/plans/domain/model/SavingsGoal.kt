@@ -3,6 +3,7 @@ package com.example.zar.features.plans.domain.model
 import com.example.zar.core.domain.model.AccountId
 import com.example.zar.core.domain.model.money.Money
 import com.example.zar.core.domain.model.money.coerceAtLeastZero
+import java.time.LocalDate
 
 @JvmInline
 value class GoalId(val value: String)
@@ -23,6 +24,7 @@ data class SavingsGoal(
     val name: String,
     val target: Money,
     val allocations: List<GoalAllocation> = emptyList(),
+    val targetDate: LocalDate? = null,
 ) {
     init {
         require(name.isNotBlank()) { "Goal name is required" }
