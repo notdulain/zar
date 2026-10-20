@@ -24,7 +24,7 @@ interface LedgerRepository {
 
     suspend fun saveTransaction(transaction: Transaction)
 
-    /** Saves both legs in one atomic write. */
+    /** Saves both legs and any separate fee expense in one atomic write. */
     suspend fun saveTransfer(transfer: Transfer)
 
     suspend fun addCorrection(correction: Correction)

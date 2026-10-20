@@ -1,5 +1,7 @@
 package com.example.zar.features.transactions
 
+import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
@@ -254,4 +256,11 @@ class ManualEntryScreenUiTest {
 
         assertTrue(rec.closed == 1)
     }
+    @Test
+    fun entryKindAndCloseExposeTheirAccessibleStateAndName() {
+        show(state())
+        compose.onNodeWithTag("manual-kind-expense").assertIsSelected()
+        compose.onNodeWithContentDescription("Close").assertExists()
+    }
+
 }

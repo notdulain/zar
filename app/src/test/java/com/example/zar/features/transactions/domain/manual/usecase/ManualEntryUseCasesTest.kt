@@ -30,7 +30,7 @@ class ManualEntryUseCasesTest {
     private val repo = FakeLedgerRepository()
     private val saveTransaction = SaveTransactionUseCase(repo)
     private val recordExpense = RecordExpenseUseCase(saveTransaction)
-    private val recordTransfer = RecordTransferUseCase(SaveTransferUseCase(repo), saveTransaction)
+    private val recordTransfer = RecordTransferUseCase(SaveTransferUseCase(repo))
     private val oct10 = LocalDate.of(2026, 10, 10)
 
     private fun expense(account: com.example.zar.core.domain.model.Account = cash, amount: Long = 850) = ExpenseDetails(
@@ -148,4 +148,18 @@ class ManualEntryUseCasesTest {
         assertEquals(1, summary.spent.total.unresolvedCount)
         assertEquals(lkr(0), summary.spent.total.amount)
     }
+    @Test
+    fun invalidFeeCannotLeaveTransferLegsStored() = runBlocking {
+        val result = recordTransfer(TransferId("invalid"), transfer().copy(fee = TestLedger.usd(30)), T0)
+        assertTrue(result.isFailure)
+        assertTrue(repo.transactions.isEmpty())
+    }
+
+    @Test
+    fun retryingWithDifferentFeeCannotAddToAnAlreadyStoredTransfer() = runBlocking {
+        recordTransfer(TransferId("t1"), transfer(), T0).getOrThrow()
+        recordTransfer(TransferId("t1"), transfer(fee = 30), T0).getOrThrow()
+        assertEquals(2, repo.transactions.size)
+    }
+
 }

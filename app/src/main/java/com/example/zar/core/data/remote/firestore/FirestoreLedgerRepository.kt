@@ -64,11 +64,13 @@ class FirestoreLedgerRepository @Inject constructor(
         val transactions = collection(FirestoreCollections.TRANSACTIONS)
         val outLeg = transfer.outLeg()
         val inLeg = transfer.inLeg()
-        firestore.batch()
+        val batch = firestore.batch()
             .set(transactions.document(outLeg.id.value), LedgerDocumentMapper.transactionToMap(outLeg))
             .set(transactions.document(inLeg.id.value), LedgerDocumentMapper.transactionToMap(inLeg))
-            .commit()
-            .logFailure("saveTransfer ${transfer.id.value}")
+        transfer.fee?.let { fee ->
+            batch.set(transactions.document(fee.id.value), LedgerDocumentMapper.transactionToMap(fee))
+        }
+        batch.commit().logFailure("saveTransfer ${transfer.id.value}")
     }
 
     override suspend fun addCorrection(correction: Correction) {

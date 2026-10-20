@@ -1,6 +1,8 @@
 package com.example.zar.features.transactions.presentation.manual.screen
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -9,6 +11,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -149,6 +152,7 @@ internal class ManualEntryActions(
 @Composable
 internal fun ManualEntryContent(uiState: ManualEntryUiState, focusNote: Boolean, actions: ManualEntryActions) {
     val colors = ZarTheme.colors
+    val closeLabel = stringResource(R.string.manual_close)
     val noteFocus = remember { FocusRequester() }
     var quickNoteTaps by remember { mutableIntStateOf(0) }
     var openedWithFocus by rememberSaveable { mutableStateOf(false) }
@@ -174,6 +178,7 @@ internal fun ManualEntryContent(uiState: ManualEntryUiState, focusNote: Boolean,
                     .size(40.dp)
                     .clip(CircleShape)
                     .clickable(role = Role.Button, onClickLabel = stringResource(R.string.manual_close), onClick = actions.onClose)
+                    .semantics { contentDescription = closeLabel }
                     .testTag("manual-close"),
                 Alignment.Center,
             ) {
@@ -582,7 +587,7 @@ private fun Segmented(
 ) {
     val colors = ZarTheme.colors
     Row(
-        modifier.fillMaxWidth().clip(ZarShapes.lg).background(colors.subtle).padding(4.dp),
+        modifier.fillMaxWidth().selectableGroup().clip(ZarShapes.lg).background(colors.subtle).padding(4.dp),
         horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         labels.forEachIndexed { index, label ->
@@ -590,14 +595,15 @@ private fun Segmented(
             Box(
                 Modifier
                     .weight(1f)
-                    .height(segmentHeight)
+                    .heightIn(min = segmentHeight)
                     .clip(ZarShapes.sm)
                     .background(if (selected) colors.surface else colors.subtle)
-                    .clickable(role = Role.RadioButton, onClick = { onSelect(index) })
+                    .selectable(selected = selected, role = Role.RadioButton, onClick = { onSelect(index) })
+                    .padding(vertical = 8.dp)
                     .testTag("$tagPrefix-${tags[index]}"),
                 Alignment.Center,
             ) {
-                Text(label, style = ZarType.labelChip, color = if (selected) colors.textPrimary else colors.textTertiary, maxLines = 1)
+                Text(label, style = ZarType.labelChip, color = if (selected) colors.textPrimary else colors.textTertiary)
             }
         }
     }

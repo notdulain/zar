@@ -38,6 +38,9 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.runCurrent
+import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
@@ -71,19 +74,22 @@ private class FakeEntryLedger : LedgerRepository {
     val entries = MutableStateFlow<List<LedgerEntry>>(emptyList())
     var failure: Throwable? = null
     var failAfterStoring = false
+    var saveCalls = 0
 
     override fun observeLedger(): Flow<List<LedgerEntry>> = entries
 
     override suspend fun saveTransaction(transaction: Transaction) {
+        saveCalls++
         failure?.takeUnless { failAfterStoring }?.let { throw it }
         saved.putIfAbsent(transaction.id, transaction)
         failure?.let { throw it }
     }
 
     override suspend fun saveTransfer(transfer: Transfer) {
+        saveCalls++
         failure?.takeUnless { failAfterStoring }?.let { throw it }
-        saved.putIfAbsent(transfer.outLegId, transfer.outLeg())
-        saved.putIfAbsent(transfer.inLegId, transfer.inLeg())
+        val records = listOf(transfer.outLeg(), transfer.inLeg()) + listOfNotNull(transfer.fee)
+        if (records.none { it.id in saved }) records.forEach { saved[it.id] = it }
         failure?.let { throw it }
     }
 
@@ -108,7 +114,7 @@ class ManualEntryViewModelTest {
             observeSuggestions = ObserveEntrySuggestionsUseCase(ledger),
             observeOnline = ObserveOnlineStatusUseCase(connectivity),
             recordExpense = RecordExpenseUseCase(saveTransaction),
-            recordTransfer = RecordTransferUseCase(SaveTransferUseCase(ledger), saveTransaction),
+            recordTransfer = RecordTransferUseCase(SaveTransferUseCase(ledger)),
         )
     }
 
@@ -170,7 +176,7 @@ class ManualEntryViewModelTest {
             ObserveEntrySuggestionsUseCase(ledger),
             ObserveOnlineStatusUseCase(connectivity),
             RecordExpenseUseCase(SaveTransactionUseCase(ledger)),
-            RecordTransferUseCase(SaveTransferUseCase(ledger), SaveTransactionUseCase(ledger)),
+            RecordTransferUseCase(SaveTransferUseCase(ledger)),
         )
 
         assertFalse(vm.uiState.value.isLoading)
@@ -461,4 +467,48 @@ class ManualEntryViewModelTest {
             ledger.saved.values.map { it.type }.toSet(),
         )
     }
+    @Test
+    fun overflowInPreviewIsRejectedWithoutCrashing() {
+        val vm = viewModel()
+        vm.onKindSelect(ManualEntryKind.TRANSFER)
+        vm.onAmountChange("92233720368547758.07")
+        vm.onFeeChange("0.01")
+        assertNull(vm.uiState.value.transferOutTotal)
+        vm.save()
+        assertEquals(setOf(TransferProblem.FEE_INVALID), vm.uiState.value.transferProblems)
+        assertTrue(ledger.saved.isEmpty())
+    }
+
+    @Test
+    fun archivedAccountSuggestionsCannotMoveForeignAmountsToAnotherAccount() {
+        accounts.accounts.value = listOf(bank, payoneer)
+        val expense = TestLedger.tx("usd-expense", TransactionType.EXPENSE, TestLedger.usd(12), account = payoneer)
+            .copy(merchant = "Cab", categoryId = "transport")
+        ledger.entries.value = listOf(TestLedger.entry(expense))
+        val vm = viewModel()
+        vm.onTitleChange("Ca")
+        val suggestion = vm.uiState.value.suggestions.single()
+        accounts.accounts.value = listOf(bank, payoneer.copy(isArchived = true))
+        assertTrue(vm.uiState.value.suggestions.isEmpty())
+        vm.onSuggestionSelect(suggestion)
+        assertEquals(bank.id, vm.uiState.value.accountId)
+        assertEquals("", vm.uiState.value.amount)
+    }
+
+    @Test
+    fun saveIsClaimedBeforeTheCoroutineRunsAndCannotRepeatAfterFinishing() = runTest {
+        Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+        val vm = viewModel()
+        runCurrent()
+        vm.fillValidExpense()
+        vm.save()
+        vm.save()
+        assertTrue(vm.uiState.value.isSaving)
+        runCurrent()
+        assertEquals(1, ledger.saveCalls)
+        vm.save()
+        runCurrent()
+        assertEquals(1, ledger.saveCalls)
+    }
+
 }

@@ -242,4 +242,10 @@ class ManualEntryRulesTest {
         val details = (ManualEntryRules.validateTransfer(transfer(), today) as TransferFormResult.Valid).details
         assertNull(ManualEntryRules.newTransferFee(TransferId("t1"), details, T0))
     }
+    @Test
+    fun amountPlusFeeCannotOverflowTheSendingTotal() {
+        val result = ManualEntryRules.validateTransfer(transfer(amount = "92233720368547758.07", fee = "0.01"), today)
+        assertEquals(setOf(TransferProblem.FEE_INVALID), problems(result))
+    }
+
 }

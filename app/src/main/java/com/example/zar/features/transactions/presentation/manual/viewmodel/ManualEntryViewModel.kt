@@ -96,7 +96,7 @@ data class ManualEntryUiState(
 
     /** What leaves the sender: the amount plus any fee. Null until the amount is valid. */
     val transferOutTotal: Money?
-        get() = amountMoney?.let { amount -> feeMoney?.let { amount + it } ?: amount }
+        get() = amountMoney?.let { amount -> runCatching { feeMoney?.let { amount + it } ?: amount }.getOrNull() }
 
     /** What arrives. Null until the amount is valid. */
     val transferInTotal: Money? get() = amountMoney
@@ -185,13 +185,13 @@ class ManualEntryViewModel @Inject constructor(
 
     /** Fills the form from a recent entry. The amount is only filled if none was typed yet. */
     fun onSuggestionSelect(suggestion: EntrySuggestion) = _uiState.update {
-        val accountStillExists = it.accounts.any { account -> account.id == suggestion.accountId }
+        val account = it.accounts.firstOrNull { account -> account.id == suggestion.accountId && account.currency == suggestion.amount.currency } ?: return@update it
         it.copy(
             kind = ManualEntryKind.EXPENSE,
             title = suggestion.title,
             suggestions = emptyList(),
             category = suggestion.category ?: it.category,
-            accountId = if (accountStillExists) suggestion.accountId else it.accountId,
+            accountId = account.id,
             amount = it.amount.ifBlank { suggestion.amount.toDecimal().stripTrailingZeros().toPlainString() },
             spendingClass = suggestion.spendingClass,
             spendingClassChosen = true,
@@ -241,7 +241,7 @@ class ManualEntryViewModel @Inject constructor(
 
     fun save() {
         val state = _uiState.value
-        if (state.isSaving || state.isLoading) return
+        if (state.isSaving || state.isLoading || state.isFinished) return
         when (state.kind) {
             ManualEntryKind.EXPENSE -> saveExpense(state)
             ManualEntryKind.TRANSFER -> saveTransfer(state)
@@ -260,9 +260,9 @@ class ManualEntryViewModel @Inject constructor(
         )
         when (val result = ManualEntryRules.validateExpense(input, ZarTime.today())) {
             is ExpenseFormResult.Invalid -> _uiState.update { it.copy(expenseProblems = result.problems, message = null) }
-            is ExpenseFormResult.Valid -> viewModelScope.launch {
+            is ExpenseFormResult.Valid -> {
                 _uiState.update { it.copy(isSaving = true, expenseProblems = emptySet(), message = null) }
-                finish(recordExpense(expenseId, result.details, Instant.now()))
+                viewModelScope.launch { finish(recordExpense(expenseId, result.details, Instant.now())) }
             }
         }
     }
@@ -278,9 +278,9 @@ class ManualEntryViewModel @Inject constructor(
         )
         when (val result = ManualEntryRules.validateTransfer(input, ZarTime.today())) {
             is TransferFormResult.Invalid -> _uiState.update { it.copy(transferProblems = result.problems, message = null) }
-            is TransferFormResult.Valid -> viewModelScope.launch {
+            is TransferFormResult.Valid -> {
                 _uiState.update { it.copy(isSaving = true, transferProblems = emptySet(), message = null) }
-                finish(recordTransfer(transferId, result.details, Instant.now()))
+                viewModelScope.launch { finish(recordTransfer(transferId, result.details, Instant.now())) }
             }
         }
     }
@@ -292,8 +292,10 @@ class ManualEntryViewModel @Inject constructor(
         )
     }
 
-    private fun suggestionsFor(typed: String): List<EntrySuggestion> =
-        EntrySuggestions.matching(allSuggestions, typed).filterNot { it.title.equals(typed.trim(), ignoreCase = true) }
+    private fun suggestionsFor(typed: String, accounts: List<Account> = _uiState.value.accounts): List<EntrySuggestion> =
+        EntrySuggestions.matching(allSuggestions.filter { suggestion ->
+            accounts.any { it.id == suggestion.accountId && it.currency == suggestion.amount.currency }
+        }, typed).filterNot { it.title.equals(typed.trim(), ignoreCase = true) }
 
     /** Keeps each choice that is still valid and fills the rest with the first sensible account. */
     private fun ManualEntryUiState.withAccounts(list: List<Account>): ManualEntryUiState {
@@ -308,6 +310,7 @@ class ManualEntryViewModel @Inject constructor(
             accountId = expenseAccount?.id,
             fromId = from?.id,
             toId = to?.id,
+            suggestions = suggestionsFor(title, list),
         )
     }
 

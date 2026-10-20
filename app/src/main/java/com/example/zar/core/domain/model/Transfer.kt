@@ -6,7 +6,7 @@ import java.time.Instant
 import java.time.LocalDate
 
 /**
- * Money moved between two owned accounts. Saved as two [Transaction] legs in one atomic write;
+ * Money moved between two owned accounts. Its two [Transaction] legs and optional fee share one atomic write;
  * [received] may differ from [sent] when currencies differ. Fees are a separate expense.
  */
 data class Transfer(
@@ -21,10 +21,17 @@ data class Transfer(
     val note: String? = null,
     val source: RecordSource = RecordSource.MANUAL,
     val createdAt: Instant,
+    /** Separate expense stored atomically with the legs when the transfer has a fee. */
+    val fee: Transaction? = null,
 ) {
     init {
         require(fromAccountId != toAccountId) { "A transfer needs two different accounts" }
         require(sent.isPositive && received.isPositive) { "Transfer amounts must be positive" }
+        fee?.let {
+            require(it.type == TransactionType.EXPENSE && it.accountId == fromAccountId) { "A transfer fee must be an expense on the sending account" }
+            require(it.amount.currency == sent.currency) { "A transfer fee must use the sending currency" }
+            require(it.id != outLegId && it.id != inLegId) { "A fee cannot replace a transfer leg" }
+        }
     }
 
     val outLegId: TransactionId get() = id.outLegId()

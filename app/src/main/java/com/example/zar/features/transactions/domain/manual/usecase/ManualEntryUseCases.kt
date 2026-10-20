@@ -28,24 +28,14 @@ class RecordExpenseUseCase @Inject constructor(
     }
 }
 
-/**
- * Saves a manual transfer: both legs together, never counted as income or spending. A fee is saved
- * afterwards as its own expense with a stable ID, so retrying the whole save can't charge it twice.
- */
+/** Saves both transfer legs and any separate fee expense in one atomic write. */
 class RecordTransferUseCase @Inject constructor(
     private val saveTransfer: SaveTransferUseCase,
-    private val saveTransaction: SaveTransactionUseCase,
 ) {
     suspend operator fun invoke(id: TransferId, details: TransferDetails, createdAt: Instant): Result<Unit> {
         val transfer = runCatching { ManualEntryRules.newTransfer(id, details, createdAt) }
             .getOrElse { return Result.failure(LedgerError.InvalidRecord(it.message ?: "Invalid transfer")) }
-        val saved = saveTransfer(transfer, details.from, details.to)
-        if (saved.isFailure) return saved
-
-        val fee = runCatching { ManualEntryRules.newTransferFee(id, details, createdAt) }
-            .getOrElse { return Result.failure(LedgerError.InvalidRecord(it.message ?: "Invalid fee")) }
-            ?: return Result.success(Unit)
-        return saveTransaction(fee, details.from)
+        return saveTransfer(transfer, details.from, details.to)
     }
 }
 

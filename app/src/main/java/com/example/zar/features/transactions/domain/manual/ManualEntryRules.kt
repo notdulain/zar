@@ -105,6 +105,9 @@ object ManualEntryRules {
             }
         }
 
+        if (amount != null && fee != null && runCatching { amount + fee }.isFailure) {
+            problems += TransferProblem.FEE_INVALID
+        }
         if (input.date.isAfter(today)) problems += TransferProblem.DATE_IN_FUTURE
         val note = input.note.trim()
         if (note.length > MAX_NOTE) problems += TransferProblem.NOTE_TOO_LONG
@@ -146,6 +149,7 @@ object ManualEntryRules {
             date = details.date,
             sentConversion = conversion,
             receivedConversion = conversion,
+            fee = newTransferFee(id, details, createdAt),
             note = details.note,
             createdAt = createdAt,
         )
