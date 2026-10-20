@@ -49,6 +49,7 @@ fun ZarNavHost(modifier: Modifier = Modifier) {
             MoreScreen(
                 onNavigate = onNavigate,
                 onAddOption = onAddOption,
+                onOpenAccounts = { navController.navigate(AccountsRoute) },
                 onOpenSettings = { navController.navigate(SettingsRoute) },
             )
         }

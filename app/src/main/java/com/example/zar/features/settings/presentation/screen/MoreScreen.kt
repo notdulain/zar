@@ -27,13 +27,14 @@ import com.example.zar.core.presentation.theme.ZarSubtle
 import com.example.zar.core.presentation.theme.ZarTheme
 
 /**
- * The More tab: a list of option cards. Settings opens today; the other cards stay inactive
- * until the Accounts, Capture, Privacy and Export features own their destinations.
+ * The More tab: a list of option cards. Implemented features receive a real destination;
+ * remaining cards stay inactive until their owners add one.
  */
 @Composable
 fun MoreScreen(
     onNavigate: (TopLevelDestination) -> Unit,
     onAddOption: (AddEntryOption) -> Unit,
+    onOpenAccounts: () -> Unit,
     onOpenSettings: () -> Unit,
 ) {
     ZarScreenScaffold(
@@ -57,7 +58,7 @@ fun MoreScreen(
                     color = ZarSubtle,
                 )
             }
-            MoreOption(R.string.more_accounts, R.string.more_accounts_detail, onClick = null)
+            MoreOption(R.string.more_accounts, R.string.more_accounts_detail, onClick = onOpenAccounts, tag = "open-accounts")
             MoreOption(R.string.more_capture, R.string.more_capture_detail, onClick = null)
             MoreOption(R.string.more_privacy, R.string.more_privacy_detail, onClick = null)
             MoreOption(R.string.more_export, R.string.more_export_detail, onClick = null)
@@ -93,5 +94,5 @@ private fun MoreOption(title: Int, detail: Int, onClick: (() -> Unit)?, tag: Str
 @Preview(showBackground = true)
 @Composable
 private fun MoreScreenPreview() {
-    ZarTheme { MoreScreen(onNavigate = {}, onAddOption = {}, onOpenSettings = {}) }
+    ZarTheme { MoreScreen(onNavigate = {}, onAddOption = {}, onOpenAccounts = {}, onOpenSettings = {}) }
 }
