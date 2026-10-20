@@ -369,8 +369,8 @@
     <string name="plans_remaining">%1$s still needed</string>
     <string name="plans_create">Create</string>
     <string name="plans_create_note">Your account balances stay unallocated until you choose an amount.</string>
-    <string name="plans_create_action">CREATE MACBOOK FUND →</string>
-    <string name="plans_allocate_action">SET ASIDE MONEY →</string>
+    <string name="plans_create_action">Create MacBook fund</string>
+    <string name="plans_allocate_action">Set aside money</string>
     <string name="plans_no_accounts">Add a known LKR account balance before allocating money.</string>
     <string name="plans_load_failed">Could not load your plan.</string>
     <string name="plans_edit_goal">MacBook fund</string>
@@ -384,6 +384,25 @@
     <string name="plans_invalid_amount">Enter zero or a positive amount.</string>
     <string name="plans_allocation_too_large">That amount is more than the available balance or remaining target.</string>
     <string name="plans_save_failed">Could not save. Please try again.</string>
+    <string name="plans_backed_label">Backed %1$s</string>
+    <string name="plans_allocated_label">Allocated %1$s</string>
+    <string name="plans_recorded_backing">Backed by recorded funds, not expected income.</string>
+    <string name="plans_estimated_backing">Estimate: a backing account has an approximate opening balance.</string>
+    <string name="plans_unknown_backing">At least this much is backed; another balance needs checking.</string>
+    <string name="plans_unknown_balance">A backing account has no known balance. Shortfall and pace cannot be confirmed.</string>
+    <string name="plans_balance_unknown_short">Unknown balance</string>
+    <string name="plans_mismatched_balance">An account has entries in the wrong currency. Fix them to confirm backing.</string>
+    <string name="plans_allocation_gap">Allocated but not backed: %1$s</string>
+    <string name="plans_target_shortfall">Still needed for target: %1$s</string>
+    <string name="plans_balance_as_of">Balance based on records through %1$s</string>
+    <string name="plans_set_date_hint">Set a target date to see the weekly saving pace.</string>
+    <string name="plans_goal_overdue">The target date has passed. Update it to calculate a new pace.</string>
+    <string name="plans_pace_unavailable">Weekly pace will appear when backing can be valued.</string>
+    <string name="plans_goal_backed">The goal is fully backed.</string>
+    <string name="plans_weekly_pace">Save %1$s per week until %2$s</string>
+    <string name="plans_target_date_empty">Set target date</string>
+    <string name="plans_target_date_value">Target date: %1$s</string>
+    <string name="plans_clear_target_date">Remove target date</string>
 
     <!-- Manual expense and transfer entry -->
     <string name="manual_title">Add transaction</string>
@@ -447,4 +466,9 @@
     <string name="manual_message_not_signed_in">Sign in to save.</string>
     <string name="manual_message_archived">That account is archived. Choose another one.</string>
     <string name="manual_message_failed">Could not save. Please try again.</string>
+    <string name="plans_backed_heading">Backed by your accounts</string>
+    <string name="plans_progress_heading">Goal progress</string>
+    <string name="plans_remaining_heading">Still needed</string>
+    <string name="plans_pace_heading">Saving pace</string>
+    <string name="plans_saving">Saving…</string>
 </resources>
