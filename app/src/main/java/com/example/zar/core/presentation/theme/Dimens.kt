@@ -38,4 +38,6 @@ object ZarDimens {
     val CardPadding = 20.dp
     val AddButtonSize = 68.dp
     val NavHeight = 68.dp
+    /** Figma floats the nav 36dp above the screen edge: this gap plus the 24dp gesture inset. */
+    val NavBottomGap = 12.dp
 }

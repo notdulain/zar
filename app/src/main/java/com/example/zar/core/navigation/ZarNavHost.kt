@@ -20,6 +20,8 @@ import com.example.zar.features.home.presentation.screen.HomeScreen
 import com.example.zar.features.plans.presentation.screen.PlansScreen
 import com.example.zar.features.settings.presentation.screen.MoreScreen
 import com.example.zar.features.settings.presentation.screen.SettingsScreen
+import com.example.zar.features.transactions.presentation.activity.screen.EditEntryScreen
+import com.example.zar.features.transactions.presentation.activity.screen.EntryDetailScreen
 import com.example.zar.features.transactions.presentation.income.screen.IncomeFormScreen
 import com.example.zar.features.transactions.presentation.income.screen.IncomeListScreen
 import com.example.zar.features.transactions.presentation.manual.screen.ManualEntryScreen
@@ -49,7 +51,7 @@ fun ZarNavHost(modifier: Modifier = Modifier) {
             ActivityScreen(
                 onNavigate = onNavigate,
                 onAddOption = onAddOption,
-                onOpenIncome = { navController.navigate(IncomeRoute) },
+                onOpenEntry = { id -> navController.navigate(EntryDetailRoute(id)) },
             )
         }
         composable<PlansRoute> {
@@ -88,6 +90,17 @@ fun ZarNavHost(modifier: Modifier = Modifier) {
                 },
                 onAddAccount = { navController.navigate(AccountFormRoute()) },
             )
+        }
+        composable<EntryDetailRoute> {
+            EntryDetailScreen(
+                onBack = { navController.popBackStack() },
+                onEdit = { id -> navController.navigate(EditEntryRoute(id)) },
+                onEditIncome = { id -> navController.navigate(IncomeFormRoute(incomeId = id)) },
+                onAddAgain = { navController.navigate(ManualEntryRoute()) },
+            )
+        }
+        composable<EditEntryRoute> {
+            EditEntryScreen(onDone = { navController.popBackStack() })
         }
         composable<FreelanceRoute> {
             FreelanceScreen(

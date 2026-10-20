@@ -62,9 +62,16 @@ fun ZarIcon(@DrawableRes icon: Int, modifier: Modifier = Modifier, size: Dp = 18
 
 /** 40dp icon holder used by Figma's transaction and account rows. */
 @Composable
-fun ZarIconChip(@DrawableRes icon: Int, modifier: Modifier = Modifier, size: Dp = 40.dp, iconSize: Dp = 19.dp) {
-    Box(modifier.size(size).clip(CircleShape).background(ZarTheme.colors.subtle), Alignment.Center) {
-        ZarIcon(icon, size = iconSize)
+fun ZarIconChip(
+    @DrawableRes icon: Int,
+    modifier: Modifier = Modifier,
+    size: Dp = 40.dp,
+    iconSize: Dp = 19.dp,
+    background: Color = ZarTheme.colors.subtle,
+    tint: Color = ZarTheme.colors.iconStrong,
+) {
+    Box(modifier.size(size).clip(CircleShape).background(background), Alignment.Center) {
+        ZarIcon(icon, size = iconSize, tint = tint)
     }
 }
 
@@ -134,6 +141,7 @@ fun ZarButton(
     enabled: Boolean = true,
     size: ZarButtonSize = ZarButtonSize.Large,
     @DrawableRes icon: Int? = null,
+    contentColor: Color? = null,
 ) {
     val colors = ZarTheme.colors
     val shape = if (size == ZarButtonSize.Large) ZarShapes.lg else androidx.compose.foundation.shape.RoundedCornerShape(16.dp)
@@ -144,7 +152,7 @@ fun ZarButton(
         ZarButtonStyle.Soft -> colors.subtle
         ZarButtonStyle.Outline -> colors.surface
     }
-    val content = if (style == ZarButtonStyle.Primary) colors.textOnInverse else colors.textPrimary
+    val content = contentColor ?: if (style == ZarButtonStyle.Primary) colors.textOnInverse else colors.textPrimary
     Box(
         modifier
             .height(height)

@@ -38,6 +38,14 @@ data class IncomeFormRoute(val incomeId: String? = null)
 @Serializable
 data class ManualEntryRoute(val focusNote: Boolean = false)
 
+/** One saved entry in full: its details, corrections and void state. [entryId] is the transaction ID. */
+@Serializable
+data class EntryDetailRoute(val entryId: String)
+
+/** Correct an expense. The original record is kept; the edit is saved as a correction. */
+@Serializable
+data class EditEntryRoute(val entryId: String)
+
 @Serializable
 data object FreelanceRoute
 

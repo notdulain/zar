@@ -21,6 +21,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -36,9 +37,17 @@ fun ZarCard(
     onClick: (() -> Unit)? = null,
     radius: Dp = ZarDimens.CardRadius,
     contentPadding: PaddingValues = PaddingValues(ZarDimens.CardPadding),
+    shadowElevation: Dp = 6.dp,
+    soft: Boolean = false,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val shape = RoundedCornerShape(radius)
+    // Figma's card lift is a faint navy shadow, softer than Material's black elevation.
+    val lift = if (soft) {
+        modifier.shadow(3.dp, shape, ambientColor = Color(0x0A0F1A2B), spotColor = Color(0x140F1A2B))
+    } else {
+        modifier
+    }
     val colors = ZarTheme.colors
     val border = BorderStroke(ZarDimens.Hairline, colors.borderDefault)
     val inner: @Composable () -> Unit = {
@@ -47,19 +56,19 @@ fun ZarCard(
     if (onClick != null) {
         Surface(
             onClick = onClick,
-            modifier = modifier,
+            modifier = lift,
             shape = shape,
             color = colors.surface,
             border = border,
-            shadowElevation = 6.dp,
+            shadowElevation = if (soft) 0.dp else shadowElevation,
         ) { inner() }
     } else {
         Surface(
-            modifier = modifier,
+            modifier = lift,
             shape = shape,
             color = colors.surface,
             border = border,
-            shadowElevation = 6.dp,
+            shadowElevation = if (soft) 0.dp else shadowElevation,
         ) { inner() }
     }
 }
