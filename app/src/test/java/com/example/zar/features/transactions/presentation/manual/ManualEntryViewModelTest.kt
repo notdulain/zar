@@ -1,0 +1,464 @@
+package com.example.zar.features.transactions.presentation.manual
+
+import com.example.zar.core.domain.TestLedger
+import com.example.zar.core.domain.TestLedger.bank
+import com.example.zar.core.domain.TestLedger.cash
+import com.example.zar.core.domain.TestLedger.lkr
+import com.example.zar.core.domain.TestLedger.payoneer
+import com.example.zar.core.domain.model.Account
+import com.example.zar.core.domain.model.Correction
+import com.example.zar.core.domain.model.EvidenceLink
+import com.example.zar.core.domain.model.LedgerEntry
+import com.example.zar.core.domain.model.LedgerError
+import com.example.zar.core.domain.model.SpendingClass
+import com.example.zar.core.domain.model.Transaction
+import com.example.zar.core.domain.model.TransactionId
+import com.example.zar.core.domain.model.TransactionType
+import com.example.zar.core.domain.model.Transfer
+import com.example.zar.core.domain.model.VoidMarker
+import com.example.zar.core.domain.repository.AccountRepository
+import com.example.zar.core.domain.repository.ConnectivityMonitor
+import com.example.zar.core.domain.repository.LedgerRepository
+import com.example.zar.core.domain.usecase.SaveTransactionUseCase
+import com.example.zar.core.domain.usecase.SaveTransferUseCase
+import com.example.zar.features.accounts.domain.usecase.ObserveActiveAccountsUseCase
+import com.example.zar.features.transactions.domain.manual.model.ExpenseCategory
+import com.example.zar.features.transactions.domain.manual.model.ExpenseProblem
+import com.example.zar.features.transactions.domain.manual.model.TransferProblem
+import com.example.zar.features.transactions.domain.manual.usecase.ObserveEntrySuggestionsUseCase
+import com.example.zar.features.transactions.domain.manual.usecase.ObserveOnlineStatusUseCase
+import com.example.zar.features.transactions.domain.manual.usecase.RecordExpenseUseCase
+import com.example.zar.features.transactions.domain.manual.usecase.RecordTransferUseCase
+import com.example.zar.features.transactions.presentation.manual.viewmodel.ManualEntryKind
+import com.example.zar.features.transactions.presentation.manual.viewmodel.ManualEntryMessage
+import com.example.zar.features.transactions.presentation.manual.viewmodel.ManualEntryViewModel
+import java.io.IOException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.setMain
+import org.junit.After
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
+import org.junit.Before
+import org.junit.Test
+
+private class FakeAccounts(initial: List<Account>) : AccountRepository {
+    val accounts = MutableStateFlow(initial)
+    override fun observeAccounts(): Flow<List<Account>> = accounts
+    override suspend fun saveAccount(account: Account) = Unit
+}
+
+private class FakeConnectivity(initial: Boolean = true) : ConnectivityMonitor {
+    val online = MutableStateFlow(initial)
+    override fun observeOnline(): Flow<Boolean> = online
+}
+
+/**
+ * A ledger that keeps saved records by ID (write-once, like Firestore). [failAfterStoring] makes a
+ * save store the record and then report an error, which is what a lost acknowledgement looks like.
+ */
+private class FakeEntryLedger : LedgerRepository {
+    val saved = linkedMapOf<TransactionId, Transaction>()
+    val entries = MutableStateFlow<List<LedgerEntry>>(emptyList())
+    var failure: Throwable? = null
+    var failAfterStoring = false
+
+    override fun observeLedger(): Flow<List<LedgerEntry>> = entries
+
+    override suspend fun saveTransaction(transaction: Transaction) {
+        failure?.takeUnless { failAfterStoring }?.let { throw it }
+        saved.putIfAbsent(transaction.id, transaction)
+        failure?.let { throw it }
+    }
+
+    override suspend fun saveTransfer(transfer: Transfer) {
+        failure?.takeUnless { failAfterStoring }?.let { throw it }
+        saved.putIfAbsent(transfer.outLegId, transfer.outLeg())
+        saved.putIfAbsent(transfer.inLegId, transfer.inLeg())
+        failure?.let { throw it }
+    }
+
+    override suspend fun addCorrection(correction: Correction) = error("not used")
+    override suspend fun void(markers: List<VoidMarker>) = error("not used")
+    override suspend fun linkEvidence(link: EvidenceLink) = error("not used")
+}
+
+@OptIn(ExperimentalCoroutinesApi::class)
+class ManualEntryViewModelTest {
+    private val accounts = FakeAccounts(listOf(bank, cash))
+    private val ledger = FakeEntryLedger()
+    private val connectivity = FakeConnectivity()
+
+    @Before fun setUp() = Dispatchers.setMain(UnconfinedTestDispatcher())
+    @After fun tearDown() = Dispatchers.resetMain()
+
+    private fun viewModel(): ManualEntryViewModel {
+        val saveTransaction = SaveTransactionUseCase(ledger)
+        return ManualEntryViewModel(
+            observeAccounts = ObserveActiveAccountsUseCase(accounts),
+            observeSuggestions = ObserveEntrySuggestionsUseCase(ledger),
+            observeOnline = ObserveOnlineStatusUseCase(connectivity),
+            recordExpense = RecordExpenseUseCase(saveTransaction),
+            recordTransfer = RecordTransferUseCase(SaveTransferUseCase(ledger), saveTransaction),
+        )
+    }
+
+    private fun ManualEntryViewModel.fillValidExpense() {
+        onAmountChange("850")
+        onCategorySelect(ExpenseCategory.TRANSPORT)
+    }
+
+    private fun recentExpense(id: String, title: String, category: String, amount: Long = 850, account: Account = cash) {
+        val tx = TestLedger.tx(id, TransactionType.EXPENSE, lkr(amount), account = account).copy(merchant = title, categoryId = category)
+        ledger.entries.value = ledger.entries.value + TestLedger.entry(tx)
+    }
+
+    // --- Loading --------------------------------------------------------------------------
+
+    @Test
+    fun startsOnExpenseWithTheFirstAccountSelected() {
+        accounts.accounts.value = listOf(bank)
+        val state = viewModel().uiState.value
+
+        assertFalse(state.isLoading)
+        assertEquals(ManualEntryKind.EXPENSE, state.kind)
+        assertEquals(bank.id, state.accountId)
+        assertEquals(SpendingClass.DISCRETIONARY, state.spendingClass)
+        assertEquals("LKR", state.currency.code)
+    }
+
+    @Test
+    fun transferStartsWithTwoDifferentAccountsOfTheSameCurrency() {
+        accounts.accounts.value = listOf(bank, cash, payoneer)
+        val state = viewModel().uiState.value
+
+        assertNotNull(state.fromAccount)
+        assertNotNull(state.toAccount)
+        assertNotEquals(state.fromId, state.toId)
+        assertEquals(state.fromAccount!!.currency, state.toAccount!!.currency)
+    }
+
+    @Test
+    fun withNoAccountsNothingCanBeSaved() {
+        accounts.accounts.value = emptyList()
+        val vm = viewModel()
+        vm.fillValidExpense()
+        vm.save()
+
+        assertTrue(vm.uiState.value.accounts.isEmpty())
+        assertTrue(ExpenseProblem.ACCOUNT_MISSING in vm.uiState.value.expenseProblems)
+        assertTrue(ledger.saved.isEmpty())
+    }
+
+    @Test
+    fun accountLoadFailureStopsLoadingAndShowsAnError() {
+        val failing = object : AccountRepository {
+            override fun observeAccounts(): Flow<List<Account>> = flow { throw IOException("offline") }
+            override suspend fun saveAccount(account: Account) = Unit
+        }
+        val vm = ManualEntryViewModel(
+            ObserveActiveAccountsUseCase(failing),
+            ObserveEntrySuggestionsUseCase(ledger),
+            ObserveOnlineStatusUseCase(connectivity),
+            RecordExpenseUseCase(SaveTransactionUseCase(ledger)),
+            RecordTransferUseCase(SaveTransferUseCase(ledger), SaveTransactionUseCase(ledger)),
+        )
+
+        assertFalse(vm.uiState.value.isLoading)
+        assertEquals(ManualEntryMessage.FAILED, vm.uiState.value.message)
+    }
+
+    @Test
+    fun anAccountThatDisappearsFallsBackToAnotherOne() {
+        val vm = viewModel()
+        vm.onAccountSelect(cash.id)
+
+        accounts.accounts.value = listOf(bank)
+
+        assertEquals(bank.id, vm.uiState.value.accountId)
+    }
+
+    @Test
+    fun reportsWhetherThePhoneIsOnline() {
+        val vm = viewModel()
+        assertTrue(vm.uiState.value.isOnline)
+
+        connectivity.online.value = false
+        assertFalse(vm.uiState.value.isOnline)
+    }
+
+    // --- Expense --------------------------------------------------------------------------
+
+    @Test
+    fun savingAnEmptyExpenseShowsEveryMissingFieldAndSavesNothing() {
+        val vm = viewModel()
+        vm.save()
+
+        val state = vm.uiState.value
+        assertEquals(setOf(ExpenseProblem.AMOUNT_MISSING, ExpenseProblem.CATEGORY_MISSING), state.expenseProblems)
+        assertFalse(state.isFinished)
+        assertTrue(ledger.saved.isEmpty())
+    }
+
+    @Test
+    fun editingAFieldClearsItsOwnProblem() {
+        val vm = viewModel()
+        vm.save()
+
+        vm.onAmountChange("5")
+        assertEquals(setOf(ExpenseProblem.CATEGORY_MISSING), vm.uiState.value.expenseProblems)
+
+        vm.onCategorySelect(ExpenseCategory.OTHER)
+        assertTrue(vm.uiState.value.expenseProblems.isEmpty())
+    }
+
+    @Test
+    fun aValidExpenseIsSavedOnTheChosenAccountAndFinishesTheScreen() {
+        val vm = viewModel()
+        vm.onAccountSelect(cash.id)
+        vm.fillValidExpense()
+        vm.onTitleChange("Bus to Kandy")
+        vm.onSpendingClassSelect(SpendingClass.COMMITTED)
+        vm.save()
+
+        val saved = ledger.saved.values.single()
+        assertEquals(TransactionType.EXPENSE, saved.type)
+        assertEquals(cash.id, saved.accountId)
+        assertEquals(lkr(850), saved.amount)
+        assertEquals("transport", saved.categoryId)
+        assertEquals("Bus to Kandy", saved.merchant)
+        assertEquals(SpendingClass.COMMITTED, saved.spendingClass)
+        assertTrue(vm.uiState.value.isFinished)
+        assertFalse(vm.uiState.value.isSaving)
+    }
+
+    @Test
+    fun aFailedSaveKeepsTheFormAndRetryNeverDuplicatesTheEntry() {
+        val vm = viewModel()
+        vm.fillValidExpense()
+        // The write lands but the acknowledgement is lost, so the user taps Save again.
+        ledger.failure = IOException("timeout")
+        ledger.failAfterStoring = true
+        vm.save()
+
+        assertEquals(ManualEntryMessage.FAILED, vm.uiState.value.message)
+        assertFalse(vm.uiState.value.isFinished)
+        assertEquals("850", vm.uiState.value.amount)
+
+        ledger.failure = null
+        vm.save()
+
+        assertEquals(1, ledger.saved.size)
+        assertTrue(vm.uiState.value.isFinished)
+        assertNull(vm.uiState.value.message)
+    }
+
+    @Test
+    fun notBeingSignedInIsReportedSeparately() {
+        val vm = viewModel()
+        vm.fillValidExpense()
+        ledger.failure = LedgerError.NotSignedIn()
+        vm.save()
+
+        assertEquals(ManualEntryMessage.NOT_SIGNED_IN, vm.uiState.value.message)
+        assertTrue(ledger.saved.isEmpty())
+    }
+
+    @Test
+    fun aCategoryPresetsCountsAsUntilTheUserChoosesOne() {
+        val vm = viewModel()
+
+        vm.onCategorySelect(ExpenseCategory.RENT)
+        assertEquals(SpendingClass.COMMITTED, vm.uiState.value.spendingClass)
+
+        vm.onCategorySelect(ExpenseCategory.TRANSPORT)
+        assertEquals("a category without a usual class keeps the current one", SpendingClass.COMMITTED, vm.uiState.value.spendingClass)
+
+        vm.onSpendingClassSelect(SpendingClass.UNKNOWN)
+        vm.onCategorySelect(ExpenseCategory.GROCERIES)
+        assertEquals("the user's own choice wins", SpendingClass.UNKNOWN, vm.uiState.value.spendingClass)
+    }
+
+    // --- Quick note suggestions -----------------------------------------------------------
+
+    @Test
+    fun typingTheStartOfARecentTitleOffersItAndPickingFillsTheForm() {
+        recentExpense("e1", "Bus to Kandy", "transport", amount = 850, account = bank)
+        val vm = viewModel()
+
+        vm.onTitleChange("bu")
+        assertEquals(listOf("Bus to Kandy"), vm.uiState.value.suggestions.map { it.title })
+
+        vm.onSuggestionSelect(vm.uiState.value.suggestions.single())
+        val state = vm.uiState.value
+        assertEquals("Bus to Kandy", state.title)
+        assertEquals(ExpenseCategory.TRANSPORT, state.category)
+        assertEquals(bank.id, state.accountId)
+        assertEquals("850", state.amount)
+        assertTrue(state.suggestions.isEmpty())
+    }
+
+    @Test
+    fun aSuggestionNeverOverwritesAnAmountTheUserAlreadyTyped() {
+        recentExpense("e1", "Bus to Kandy", "transport", amount = 850)
+        val vm = viewModel()
+        vm.onAmountChange("900")
+        vm.onTitleChange("Bus")
+
+        vm.onSuggestionSelect(vm.uiState.value.suggestions.single())
+
+        assertEquals("900", vm.uiState.value.amount)
+    }
+
+    @Test
+    fun anExactMatchIsNotSuggestedBackToTheUser() {
+        recentExpense("e1", "Bus to Kandy", "transport")
+        val vm = viewModel()
+
+        vm.onTitleChange("bus to kandy")
+
+        assertTrue(vm.uiState.value.suggestions.isEmpty())
+    }
+
+    // --- Transfer -------------------------------------------------------------------------
+
+    @Test
+    fun amountAndDateAreKeptWhenSwitchingBetweenExpenseAndTransfer() {
+        val vm = viewModel()
+        vm.onAmountChange("1200")
+
+        vm.onKindSelect(ManualEntryKind.TRANSFER)
+
+        assertEquals("1200", vm.uiState.value.amount)
+        assertEquals(ManualEntryKind.TRANSFER, vm.uiState.value.kind)
+    }
+
+    @Test
+    fun theSendingAccountAndOtherCurrenciesCannotBeChosenAsTheDestination() {
+        accounts.accounts.value = listOf(bank, cash, payoneer)
+        val vm = viewModel()
+        vm.onFromSelect(bank.id)
+        vm.onToSelect(cash.id)
+
+        vm.onToSelect(bank.id)
+        assertEquals(cash.id, vm.uiState.value.toId)
+
+        vm.onToSelect(payoneer.id)
+        assertEquals(cash.id, vm.uiState.value.toId)
+        assertTrue(vm.uiState.value.hidesOtherCurrencies)
+    }
+
+    @Test
+    fun pickingTheDestinationAsTheSenderMovesTheDestinationAway() {
+        accounts.accounts.value = listOf(bank, cash)
+        val vm = viewModel()
+        vm.onFromSelect(bank.id)
+        vm.onToSelect(cash.id)
+
+        vm.onFromSelect(cash.id)
+
+        assertEquals(cash.id, vm.uiState.value.fromId)
+        assertEquals(bank.id, vm.uiState.value.toId)
+    }
+
+    @Test
+    fun swappingExchangesTheTwoAccounts() {
+        accounts.accounts.value = listOf(bank, cash)
+        val vm = viewModel()
+        vm.onFromSelect(bank.id)
+        vm.onToSelect(cash.id)
+
+        vm.onSwapAccounts()
+
+        assertEquals(cash.id, vm.uiState.value.fromId)
+        assertEquals(bank.id, vm.uiState.value.toId)
+    }
+
+    @Test
+    fun theTransferPreviewAddsTheFeeToWhatLeavesTheSender() {
+        val vm = viewModel()
+        vm.onKindSelect(ManualEntryKind.TRANSFER)
+        vm.onAmountChange("5000")
+        vm.onFeeChange("30")
+
+        assertEquals(lkr(5_030), vm.uiState.value.transferOutTotal)
+        assertEquals(lkr(5_000), vm.uiState.value.transferInTotal)
+
+        vm.onAmountChange("")
+        assertNull(vm.uiState.value.transferOutTotal)
+    }
+
+    @Test
+    fun aTransferWithOneAccountOnlyAsksForADestination() {
+        accounts.accounts.value = listOf(bank)
+        val vm = viewModel()
+        vm.onKindSelect(ManualEntryKind.TRANSFER)
+        vm.onAmountChange("5000")
+        vm.save()
+
+        assertEquals(setOf(TransferProblem.TO_MISSING), vm.uiState.value.transferProblems)
+        assertTrue(ledger.saved.isEmpty())
+    }
+
+    @Test
+    fun savingATransferStoresBothLegsAndTheFeeThenFinishes() {
+        accounts.accounts.value = listOf(bank, cash)
+        val vm = viewModel()
+        vm.onKindSelect(ManualEntryKind.TRANSFER)
+        vm.onFromSelect(bank.id)
+        vm.onToSelect(cash.id)
+        vm.onAmountChange("5000")
+        vm.onFeeChange("30")
+        vm.onTransferNoteChange("rent top-up")
+        vm.save()
+
+        val types = ledger.saved.values.groupBy { it.type }.mapValues { it.value.size }
+        assertEquals(mapOf(TransactionType.TRANSFER_OUT to 1, TransactionType.TRANSFER_IN to 1, TransactionType.EXPENSE to 1), types)
+        assertEquals(bank.id, ledger.saved.values.single { it.type == TransactionType.TRANSFER_OUT }.accountId)
+        assertEquals(cash.id, ledger.saved.values.single { it.type == TransactionType.TRANSFER_IN }.accountId)
+        assertEquals(lkr(30), ledger.saved.values.single { it.type == TransactionType.EXPENSE }.amount)
+        assertTrue(vm.uiState.value.isFinished)
+    }
+
+    @Test
+    fun retryingATransferNeverDuplicatesAnyLeg() {
+        accounts.accounts.value = listOf(bank, cash)
+        val vm = viewModel()
+        vm.onKindSelect(ManualEntryKind.TRANSFER)
+        vm.onAmountChange("5000")
+        vm.onFeeChange("30")
+        ledger.failure = IOException("timeout")
+        ledger.failAfterStoring = true
+        vm.save()
+        assertEquals(ManualEntryMessage.FAILED, vm.uiState.value.message)
+
+        ledger.failure = null
+        vm.save()
+
+        assertEquals(3, ledger.saved.size)
+        assertTrue(vm.uiState.value.isFinished)
+    }
+
+    @Test
+    fun aTransferIsNeverSavedAsAnExpenseOrIncome() {
+        accounts.accounts.value = listOf(bank, cash)
+        val vm = viewModel()
+        vm.onKindSelect(ManualEntryKind.TRANSFER)
+        vm.onAmountChange("5000")
+        vm.save()
+
+        assertEquals(
+            setOf(TransactionType.TRANSFER_OUT, TransactionType.TRANSFER_IN),
+            ledger.saved.values.map { it.type }.toSet(),
+        )
+    }
+}

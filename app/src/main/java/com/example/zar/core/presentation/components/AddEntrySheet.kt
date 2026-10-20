@@ -50,8 +50,7 @@ fun AddEntrySheet(
                     Text(stringResource(R.string.action_close), style = MaterialTheme.typography.labelLarge)
                 }
             }
-            AddOption(R.string.add_voice, R.string.add_voice_hint, "add-voice") { onOption(AddEntryOption.Voice) }
-            HorizontalDivider(color = MaterialTheme.colorScheme.outline)
+            // Voice is optional stretch work, outside the launch scope, so it isn't offered (Figma Z31).
             AddOption(R.string.add_quick_note, R.string.add_quick_note_hint, "add-quick-note") {
                 onOption(AddEntryOption.QuickNote)
             }

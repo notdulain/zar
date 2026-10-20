@@ -6,6 +6,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.toRoute
 import com.example.zar.core.presentation.components.AddEntryOption
 import com.example.zar.core.presentation.components.TopLevelDestination
 import com.example.zar.features.accounts.presentation.screen.AccountDetailScreen
@@ -21,14 +22,21 @@ import com.example.zar.features.settings.presentation.screen.MoreScreen
 import com.example.zar.features.settings.presentation.screen.SettingsScreen
 import com.example.zar.features.transactions.presentation.income.screen.IncomeFormScreen
 import com.example.zar.features.transactions.presentation.income.screen.IncomeListScreen
+import com.example.zar.features.transactions.presentation.manual.screen.ManualEntryScreen
 import com.example.zar.features.transactions.presentation.screen.ActivityScreen
 
 @Composable
 fun ZarNavHost(modifier: Modifier = Modifier) {
     val navController = rememberNavController()
     val onNavigate: (TopLevelDestination) -> Unit = { navController.navigateToTopLevel(it) }
-    // Capture and manual transaction entry are supplied by their feature owners.
-    val onAddOption: (AddEntryOption) -> Unit = {}
+    val onAddOption: (AddEntryOption) -> Unit = { option ->
+        when (option) {
+            AddEntryOption.Manual -> navController.navigate(ManualEntryRoute())
+            AddEntryOption.QuickNote -> navController.navigate(ManualEntryRoute(focusNote = true))
+            // Voice is outside the launch scope and is no longer offered in the Add sheet.
+            AddEntryOption.Voice -> Unit
+        }
+    }
     NavHost(
         navController = navController,
         startDestination = HomeRoute,
@@ -69,6 +77,17 @@ fun ZarNavHost(modifier: Modifier = Modifier) {
         }
         composable<IncomeFormRoute> {
             IncomeFormScreen(onDone = { navController.popBackStack() })
+        }
+        composable<ManualEntryRoute> { entry ->
+            ManualEntryScreen(
+                focusNote = entry.toRoute<ManualEntryRoute>().focusNote,
+                onDone = { navController.popBackStack() },
+                // The Income tab of the Add form is the existing income screen; swap it in place.
+                onOpenIncome = {
+                    navController.navigate(IncomeFormRoute()) { popUpTo<ManualEntryRoute> { inclusive = true } }
+                },
+                onAddAccount = { navController.navigate(AccountFormRoute()) },
+            )
         }
         composable<FreelanceRoute> {
             FreelanceScreen(
