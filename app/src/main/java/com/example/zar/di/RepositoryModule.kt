@@ -13,6 +13,11 @@ import com.example.zar.features.accounts.data.repository.FirestoreAccountReposit
 import com.example.zar.features.auth.data.repository.FirebaseAuthRepository
 import com.example.zar.features.auth.domain.repository.AuthRepository
 import com.example.zar.features.auth.domain.repository.SignOutHandler
+import com.example.zar.features.catchup.data.DataStoreCatchUpPreferencesRepository
+import com.example.zar.features.catchup.data.ResetCatchUpOnSignOut
+import com.example.zar.features.catchup.data.WorkManagerReminderScheduler
+import com.example.zar.features.catchup.domain.repository.CatchUpPreferencesRepository
+import com.example.zar.features.catchup.domain.repository.ReminderScheduler
 import com.example.zar.features.freelance.data.repository.FirestoreProjectRepository
 import com.example.zar.features.freelance.domain.repository.ProjectRepository
 import com.example.zar.features.plans.data.repository.FirestoreGoalRepository
@@ -23,6 +28,7 @@ import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
+import dagger.multibindings.IntoSet
 import dagger.multibindings.Multibinds
 import javax.inject.Singleton
 
@@ -72,4 +78,18 @@ abstract class RepositoryModule {
     abstract fun bindAppPreferencesRepository(
         impl: InMemoryAppPreferencesRepository,
     ): AppPreferencesRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindCatchUpPreferencesRepository(
+        impl: DataStoreCatchUpPreferencesRepository,
+    ): CatchUpPreferencesRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindReminderScheduler(impl: WorkManagerReminderScheduler): ReminderScheduler
+
+    @Binds
+    @IntoSet
+    abstract fun bindResetCatchUpOnSignOut(impl: ResetCatchUpOnSignOut): SignOutHandler
 }

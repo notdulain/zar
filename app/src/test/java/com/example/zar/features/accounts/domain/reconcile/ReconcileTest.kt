@@ -45,6 +45,19 @@ class ReconcileTest {
     private suspend fun summary() = LedgerSummaryCalculator.summarize(repo.observeLedger().first(), october)
 
     @Test
+    fun aWeeklyCatchUpCanMarkItsAdjustmentWithItsOwnSource() = runBlocking {
+        cashAt1500()
+
+        record(TransactionId("a1"), cash, lkr(1_000), today, T0, RecordSource.CASH_CATCH_UP).getOrThrow()
+
+        val adjustment = repo.transactions.getValue(TransactionId("a1"))
+        assertEquals(RecordSource.CASH_CATCH_UP, adjustment.source)
+        // Only the source differs: it is still an unclassified adjustment and still unknown spending.
+        assertNull(adjustment.categoryId)
+        assertEquals(lkr(500), summary().spent.unknown.amount)
+    }
+
+    @Test
     fun aShortfallIsSavedAsAnOutgoingAdjustmentWithNoCategory() = runBlocking {
         cashAt1500()
 

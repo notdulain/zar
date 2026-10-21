@@ -3,6 +3,7 @@ package com.example.zar.features.accounts.domain.usecase
 import com.example.zar.core.domain.calculation.AccountBalanceCalculator
 import com.example.zar.core.domain.model.Account
 import com.example.zar.core.domain.model.LedgerError
+import com.example.zar.core.domain.model.RecordSource
 import com.example.zar.core.domain.model.TransactionId
 import com.example.zar.core.domain.model.money.Money
 import com.example.zar.core.domain.repository.LedgerRepository
@@ -32,6 +33,7 @@ class RecordBalanceCheckUseCase @Inject constructor(
         counted: Money,
         date: LocalDate,
         createdAt: Instant,
+        source: RecordSource = RecordSource.RECONCILIATION,
     ): Result<BalanceCheck> = resultOf {
         if (counted.currency != account.currency) throw LedgerError.CurrencyMismatch(account.currency.code, counted.currency.code)
         val balance = AccountBalanceCalculator.calculate(account, ledger.observeLedger().first())
@@ -39,7 +41,7 @@ class RecordBalanceCheckUseCase @Inject constructor(
             throw LedgerError.InvalidRecord("This balance cannot be checked yet")
         }
         val check = BalanceCheck(account, balance.current!!, counted)
-        ReconcileRules.newAdjustment(id, check, date, createdAt)?.let { saveTransaction(it, account).getOrThrow() }
+        ReconcileRules.newAdjustment(id, check, date, createdAt, source)?.let { saveTransaction(it, account).getOrThrow() }
         check
     }
 }
