@@ -1,5 +1,6 @@
 package com.example.zar.features.bills.domain.usecase
 
+import com.example.zar.core.domain.model.Account
 import com.example.zar.core.domain.model.ExpectedPaymentStatus
 import com.example.zar.core.domain.model.PaymentMatch
 import com.example.zar.core.domain.model.TransactionType
@@ -49,6 +50,14 @@ class ObserveBillsUseCase @Inject constructor(
     ) { billList, accountList, payments, matches, entries ->
         BillsCalculator.overview(billList, accountList, payments, matches, entries, today)
     }
+}
+
+/** Accounts a bill can be paid from: every account that isn't archived. */
+class ObserveBillAccountsUseCase @Inject constructor(
+    private val accounts: AccountRepository,
+) {
+    operator fun invoke(): Flow<List<Account>> =
+        accounts.observeAccounts().map { list -> list.filterNot { it.isArchived } }
 }
 
 /** The next bill's name, date and expected amount for Home; null when nothing is due. */
