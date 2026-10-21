@@ -70,6 +70,7 @@ import com.example.zar.core.domain.calculation.ZarTime
 import com.example.zar.core.domain.model.Account
 import com.example.zar.core.domain.model.AccountId
 import com.example.zar.core.domain.model.SpendingClass
+import com.example.zar.core.domain.model.money.Money
 import com.example.zar.core.presentation.components.ZarButton
 import com.example.zar.core.presentation.components.ZarButtonStyle
 import com.example.zar.core.presentation.components.ZarChip
@@ -87,6 +88,7 @@ import com.example.zar.features.transactions.domain.manual.model.EntrySuggestion
 import com.example.zar.features.transactions.domain.manual.model.ExpenseCategory
 import com.example.zar.features.transactions.domain.manual.model.ExpenseProblem
 import com.example.zar.features.transactions.domain.manual.model.TransferProblem
+import com.example.zar.features.transactions.presentation.activity.screen.InfoBanner
 import com.example.zar.features.transactions.presentation.income.IncomeFormat
 import com.example.zar.features.transactions.presentation.manual.viewmodel.ManualEntryKind
 import com.example.zar.features.transactions.presentation.manual.viewmodel.ManualEntryMessage
@@ -210,7 +212,11 @@ internal fun ManualEntryContent(uiState: ManualEntryUiState, focusNote: Boolean,
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(stringResource(R.string.manual_title), style = ZarType.headingSheet, color = colors.textPrimary)
+                Text(
+                    stringResource(if (uiState.gapAmount != null) R.string.manual_gap_sheet_title else R.string.manual_title),
+                    style = ZarType.headingSheet,
+                    color = colors.textPrimary,
+                )
                 Box(
                     Modifier.size(24.dp).clip(CircleShape)
                         .clickable(role = Role.Button, onClickLabel = stringResource(R.string.manual_close), onClick = actions.onClose)
@@ -218,7 +224,7 @@ internal fun ManualEntryContent(uiState: ManualEntryUiState, focusNote: Boolean,
                     Alignment.Center,
                 ) { ZarIcon(R.drawable.ic_ph_x, size = 20.dp) }
             }
-        Segmented(
+        if (uiState.gapAmount == null) Segmented(
             labels = listOf(
                 stringResource(R.string.manual_kind_expense),
                 stringResource(R.string.manual_kind_income),
@@ -287,11 +293,19 @@ private fun ExpenseFields(state: ManualEntryUiState, actions: ManualEntryActions
     val problems = state.expenseProblems
     var allAccounts by rememberSaveable { mutableStateOf(false) }
     var allCategories by rememberSaveable { mutableStateOf(false) }
+    state.gapAmount?.let { gap ->
+        InfoBanner(
+            title = stringResource(R.string.manual_gap_title, Money.parse(gap, state.currency)?.let { IncomeFormat.withCode(it) } ?: gap),
+            body = stringResource(R.string.manual_gap_body),
+            icon = R.drawable.ic_ph_info,
+            modifier = Modifier.testTag("manual-gap-banner"),
+        )
+    }
     AmountRow(state.amount, state.currency.code, actions.onAmount)
     FieldError(if (ExpenseProblem.AMOUNT_MISSING in problems || ExpenseProblem.AMOUNT_INVALID in problems) R.string.manual_error_amount else null)
     ZarDivider()
 
-    Section(stringResource(R.string.manual_field_account), stringResource(R.string.manual_all_accounts), { allAccounts = !allAccounts }) {
+    if (state.accountLocked) LockedAccountRow(state) else Section(stringResource(R.string.manual_field_account), stringResource(R.string.manual_all_accounts), { allAccounts = !allAccounts }) {
         if (state.accounts.isEmpty()) {
             NoAccountsCard(actions.onAddAccount)
         } else if (allAccounts) {
@@ -386,6 +400,19 @@ private fun ExpenseFields(state: ManualEntryUiState, actions: ManualEntryActions
         )
     }
     FieldError(if (ExpenseProblem.DESCRIPTION_TOO_LONG in problems) R.string.manual_error_description_too_long else null)
+}
+
+/** The account a balance check was for: shown, but not chosen again. */
+@Composable
+private fun LockedAccountRow(state: ManualEntryUiState) {
+    val colors = ZarTheme.colors
+    ZarFormRow(stringResource(R.string.manual_field_account)) {
+        Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text(state.selectedAccount?.name.orEmpty(), style = ZarType.bodyM, color = colors.textPrimary, modifier = Modifier.testTag("manual-account-locked"))
+            ZarIcon(R.drawable.ic_ph_lock, size = 14.dp, tint = colors.iconMuted)
+            Text(stringResource(R.string.activity_edit_locked), style = ZarType.bodyCaption, color = colors.textSecondary)
+        }
+    }
 }
 
 @Composable

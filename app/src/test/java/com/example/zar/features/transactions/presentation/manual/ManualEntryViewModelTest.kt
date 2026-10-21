@@ -1,5 +1,6 @@
 package com.example.zar.features.transactions.presentation.manual
 
+import androidx.lifecycle.SavedStateHandle
 import com.example.zar.core.domain.TestLedger
 import com.example.zar.core.domain.TestLedger.bank
 import com.example.zar.core.domain.TestLedger.cash
@@ -108,9 +109,10 @@ class ManualEntryViewModelTest {
     @Before fun setUp() = Dispatchers.setMain(UnconfinedTestDispatcher())
     @After fun tearDown() = Dispatchers.resetMain()
 
-    private fun viewModel(): ManualEntryViewModel {
+    private fun viewModel(handle: SavedStateHandle = SavedStateHandle()): ManualEntryViewModel {
         val saveTransaction = SaveTransactionUseCase(ledger)
         return ManualEntryViewModel(
+            handle,
             observeAccounts = ObserveActiveAccountsUseCase(accounts),
             observeSuggestions = ObserveEntrySuggestionsUseCase(ledger),
             observeOnline = ObserveOnlineStatusUseCase(connectivity),
@@ -173,6 +175,7 @@ class ManualEntryViewModelTest {
             override suspend fun saveAccount(account: Account) = Unit
         }
         val vm = ManualEntryViewModel(
+            SavedStateHandle(),
             ObserveActiveAccountsUseCase(failing),
             ObserveEntrySuggestionsUseCase(ledger),
             ObserveOnlineStatusUseCase(connectivity),
@@ -523,4 +526,76 @@ class ManualEntryViewModelTest {
         assertEquals(1, ledger.saveCalls)
     }
 
+
+    // --- Add the missing entry: opened from a balance check with the gap filled in -----------------
+
+    private fun gapHandle(accountId: String = cash.id.value, amount: String = "450") =
+        SavedStateHandle(mapOf("prefillAmount" to amount, "prefillAccountId" to accountId))
+
+    @Test
+    fun openedFromABalanceCheckTheGapAndAccountAreFilledAndTheAccountIsLocked() {
+        val vm = viewModel(gapHandle())
+
+        val state = vm.uiState.value
+        assertEquals("450", state.amount)
+        assertEquals("450", state.gapAmount)
+        assertEquals(cash.id, state.accountId)
+        assertTrue(state.accountLocked)
+        assertEquals(ManualEntryKind.EXPENSE, state.kind)
+    }
+
+    @Test
+    fun theLockedAccountAndTheExpenseKindCannotBeChangedWhileExplainingAGap() {
+        val vm = viewModel(gapHandle())
+
+        vm.onAccountSelect(bank.id)
+        vm.onKindSelect(ManualEntryKind.TRANSFER)
+
+        assertEquals(cash.id, vm.uiState.value.accountId)
+        assertEquals(ManualEntryKind.EXPENSE, vm.uiState.value.kind)
+    }
+
+    @Test
+    fun savingTheMissingExpenseRecordsItOnTheCheckedAccountForTheGap() {
+        val vm = viewModel(gapHandle())
+        vm.onCategorySelect(ExpenseCategory.GROCERIES)
+
+        vm.save()
+
+        assertTrue(vm.uiState.value.isFinished)
+        val saved = ledger.saved.values.single()
+        assertEquals(TransactionType.EXPENSE, saved.type)
+        assertEquals(cash.id, saved.accountId)
+        assertEquals(lkr(450), saved.amount)
+    }
+
+    @Test
+    fun theGapAmountCanStillBeEditedBeforeSaving() {
+        val vm = viewModel(gapHandle())
+
+        vm.onAmountChange("300")
+
+        assertEquals("300", vm.uiState.value.amount)
+        assertEquals("450", vm.uiState.value.gapAmount)
+    }
+
+    @Test
+    fun ifTheCheckedAccountIsNoLongerAvailableTheFormIsAnOrdinaryOne() {
+        val vm = viewModel(gapHandle(accountId = "archived-account"))
+
+        val state = vm.uiState.value
+        assertFalse(state.accountLocked)
+        assertNull(state.gapAmount)
+        vm.onAccountSelect(bank.id)
+        assertEquals(bank.id, vm.uiState.value.accountId)
+    }
+
+    @Test
+    fun anOrdinaryFormHasNoGapAndAnUnlockedAccount() {
+        val state = viewModel().uiState.value
+
+        assertNull(state.gapAmount)
+        assertFalse(state.accountLocked)
+        assertEquals("", state.amount)
+    }
 }

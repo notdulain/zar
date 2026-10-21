@@ -1,5 +1,6 @@
 package com.example.zar.features.transactions.presentation.manual.viewmodel
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.zar.core.domain.calculation.ZarTime
@@ -13,6 +14,7 @@ import com.example.zar.core.domain.model.TransferId
 import com.example.zar.core.domain.model.money.Currencies
 import com.example.zar.core.domain.model.money.Currency
 import com.example.zar.core.domain.model.money.Money
+import com.example.zar.core.navigation.ManualEntryRoute
 import com.example.zar.features.accounts.domain.usecase.ObserveActiveAccountsUseCase
 import com.example.zar.features.transactions.domain.manual.EntrySuggestions
 import com.example.zar.features.transactions.domain.manual.ManualEntryRules
@@ -74,6 +76,12 @@ data class ManualEntryUiState(
     val message: ManualEntryMessage? = null,
     val isSaving: Boolean = false,
     val isFinished: Boolean = false,
+    /**
+     * Set when the form was opened from a balance check as "Add the missing entry": the gap being explained,
+     * as typed into the amount. The account is then fixed to the one that was checked.
+     */
+    val gapAmount: String? = null,
+    val accountLocked: Boolean = false,
 ) {
     val selectedAccount: Account? get() = accounts.firstOrNull { it.id == accountId }
     val fromAccount: Account? get() = accounts.firstOrNull { it.id == fromId }
@@ -107,6 +115,7 @@ data class ManualEntryUiState(
 
 @HiltViewModel
 class ManualEntryViewModel @Inject constructor(
+    savedStateHandle: SavedStateHandle,
     private val observeAccounts: ObserveActiveAccountsUseCase,
     private val observeSuggestions: ObserveEntrySuggestionsUseCase,
     private val observeOnline: ObserveOnlineStatusUseCase,
@@ -114,12 +123,16 @@ class ManualEntryViewModel @Inject constructor(
     private val recordTransfer: RecordTransferUseCase,
 ) : ViewModel() {
 
+    // Read by name instead of toRoute so the ViewModel can be created in plain unit tests.
+    private val prefillAmount: String? = savedStateHandle.get<String>(ManualEntryRoute::prefillAmount.name)
+    private val prefillAccountId: String? = savedStateHandle.get<String>(ManualEntryRoute::prefillAccountId.name)
+
     // Created once per screen and reused on every retry, so a repeated save can't duplicate.
     private val expenseId = TransactionId(RecordIds.newId())
     private val transferId = TransferId(RecordIds.newId())
     private var allSuggestions: List<EntrySuggestion> = emptyList()
 
-    private val _uiState = MutableStateFlow(ManualEntryUiState())
+    private val _uiState = MutableStateFlow(ManualEntryUiState(amount = if (prefillAccountId != null) prefillAmount.orEmpty() else ""))
     val uiState: StateFlow<ManualEntryUiState> = _uiState.asStateFlow()
 
     init {
@@ -139,7 +152,10 @@ class ManualEntryViewModel @Inject constructor(
         }
     }
 
-    fun onKindSelect(kind: ManualEntryKind) = _uiState.update { it.copy(kind = kind, message = null) }
+    fun onKindSelect(kind: ManualEntryKind) = _uiState.update {
+        // Explaining a gap is always an expense.
+        if (it.gapAmount != null) it else it.copy(kind = kind, message = null)
+    }
 
     fun onAmountChange(value: String) = _uiState.update {
         it.copy(
@@ -162,6 +178,7 @@ class ManualEntryViewModel @Inject constructor(
     }
 
     fun onAccountSelect(id: AccountId) = _uiState.update {
+        if (it.accountLocked) return@update it
         it.copy(accountId = id, expenseProblems = it.expenseProblems - ExpenseProblem.ACCOUNT_MISSING)
     }
 
@@ -309,7 +326,9 @@ class ManualEntryViewModel @Inject constructor(
     /** Keeps each choice that is still valid and fills the rest with the first sensible account. */
     private fun ManualEntryUiState.withAccounts(list: List<Account>): ManualEntryUiState {
         val first = list.firstOrNull()
-        val expenseAccount = list.firstOrNull { it.id == accountId } ?: first
+        // A balance check fixes the account; if it is no longer available the form is an ordinary one.
+        val locked = prefillAccountId?.let { id -> list.firstOrNull { it.id.value == id } }
+        val expenseAccount = locked ?: list.firstOrNull { it.id == accountId } ?: first
         val from = list.firstOrNull { it.id == fromId } ?: first
         val to = list.firstOrNull { it.id == toId && it.id != from?.id && it.currency == from?.currency }
             ?: list.firstOrNull { it.id != from?.id && it.currency == from?.currency }
@@ -317,6 +336,8 @@ class ManualEntryViewModel @Inject constructor(
             isLoading = false,
             accounts = list,
             accountId = expenseAccount?.id,
+            accountLocked = locked != null,
+            gapAmount = if (locked != null) prefillAmount else null,
             fromId = from?.id,
             toId = to?.id,
             suggestions = suggestionsFor(title, list),

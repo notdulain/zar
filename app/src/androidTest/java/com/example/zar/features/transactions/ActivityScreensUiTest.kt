@@ -37,6 +37,7 @@ import com.example.zar.features.transactions.domain.activity.model.ActivityFilte
 import com.example.zar.features.transactions.domain.activity.model.ActivitySnapshot
 import com.example.zar.features.transactions.domain.activity.model.EditKind
 import com.example.zar.features.transactions.domain.activity.model.EntryDetail
+import com.example.zar.features.transactions.domain.refund.RefundSummary
 import com.example.zar.features.transactions.presentation.activity.screen.DetailActions
 import com.example.zar.features.transactions.presentation.activity.screen.EditActions
 import com.example.zar.features.transactions.presentation.activity.screen.EditEntryBody
@@ -309,10 +310,26 @@ class ActivityScreensUiTest {
         var edited: String? = null
         var editedIncome: String? = null
         var addAgain = 0
+        var refund: String? = null
+        var opened: String? = null
     }
 
-    private fun detailOf(entry: LedgerEntry, kind: EditKind = EditKind.EXPENSE, account: Account? = cash, fee: LedgerEntry? = null, counterpart: LedgerEntry? = null, counterpartAccount: Account? = null) =
-        EntryDetail(entry, account, counterpart, counterpartAccount, fee, EntryHistory.build(entry), kind, canVoid = !entry.isVoided)
+    private fun detailOf(
+        entry: LedgerEntry,
+        kind: EditKind = EditKind.EXPENSE,
+        account: Account? = cash,
+        fee: LedgerEntry? = null,
+        counterpart: LedgerEntry? = null,
+        counterpartAccount: Account? = null,
+        refunds: RefundSummary? = null,
+        canRefund: Boolean = false,
+        refundedPurchase: LedgerEntry? = null,
+        refundedPurchaseAccount: Account? = null,
+    ) = EntryDetail(
+        entry, account, counterpart, counterpartAccount, fee, EntryHistory.build(entry), kind,
+        canVoid = !entry.isVoided && refunds?.hasRefunds != true,
+        refunds = refunds, canRefund = canRefund, refundedPurchase = refundedPurchase, refundedPurchaseAccount = refundedPurchaseAccount,
+    )
 
     private fun showDetail(
         detail: EntryDetail?,
@@ -338,6 +355,8 @@ class ActivityScreensUiTest {
                         onEdit = { rec.edited = it },
                         onEditIncome = { rec.editedIncome = it },
                         onAddAgain = { rec.addAgain++ },
+                        onRefund = { rec.refund = it },
+                        onOpenEntry = { rec.opened = it },
                         onVoid = { rec.voidTapped++ },
                         onDismissVoid = { rec.dismissed++ },
                         onConfirmVoid = { rec.confirmed++ },

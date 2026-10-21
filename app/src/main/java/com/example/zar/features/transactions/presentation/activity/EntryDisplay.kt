@@ -6,6 +6,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import com.example.zar.R
 import com.example.zar.core.domain.calculation.ZarTime
+import com.example.zar.core.domain.model.AccountType
 import com.example.zar.core.domain.model.Direction
 import com.example.zar.core.domain.model.Transaction
 import com.example.zar.core.domain.model.TransactionType
@@ -84,16 +85,31 @@ internal object EntryDisplay {
     }
 }
 
-/** The title a person gave the entry, or else what kind of entry it is. */
+/**
+ * The title a person gave the entry, or else what kind of entry it is. A refund reads "Refund · Keells Super" and a
+ * balance adjustment says what was checked, so neither can be mistaken for a purchase or income.
+ */
 @Composable
-internal fun entryTitle(tx: Transaction): String =
-    tx.merchant?.takeIf { it.isNotBlank() } ?: stringResource(EntryDisplay.typeLabel(tx.type))
+internal fun entryTitle(tx: Transaction, accountType: AccountType? = null): String {
+    val title = tx.merchant?.takeIf { it.isNotBlank() }
+    return when (tx.type) {
+        TransactionType.REFUND ->
+            title?.let { stringResource(R.string.activity_refund_title_of, it) } ?: stringResource(EntryDisplay.typeLabel(tx.type))
+        TransactionType.ADJUSTMENT_IN, TransactionType.ADJUSTMENT_OUT ->
+            stringResource(if (accountType == AccountType.CASH) R.string.activity_adjustment_title_cash else R.string.activity_adjustment_title_other)
+        else -> title ?: stringResource(EntryDisplay.typeLabel(tx.type))
+    }
+}
 
-/** "Groceries · Oct 24 · Cash": the category (when known), the day and the account. */
+/** "Groceries · Oct 24 · Cash": the category (when known) or kind of entry, the day and the account. */
 @Composable
 internal fun entrySubtitle(tx: Transaction, accountName: String?): String {
     val category = EntryDisplay.categoryLabel(tx.categoryId)?.let { stringResource(it) }
-    val isTransfer = tx.type == TransactionType.TRANSFER_IN || tx.type == TransactionType.TRANSFER_OUT
-    val kind = if (isTransfer) stringResource(R.string.activity_kind_transfer) else null
+    val kind = when (tx.type) {
+        TransactionType.TRANSFER_IN, TransactionType.TRANSFER_OUT -> stringResource(R.string.activity_kind_transfer)
+        TransactionType.REFUND -> stringResource(R.string.activity_kind_refund)
+        TransactionType.ADJUSTMENT_IN, TransactionType.ADJUSTMENT_OUT -> stringResource(R.string.activity_kind_adjustment)
+        else -> null
+    }
     return listOfNotNull(category ?: kind, IncomeFormat.shortDate(tx.date), accountName).joinToString(" · ")
 }

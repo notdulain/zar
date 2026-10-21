@@ -69,6 +69,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.zar.R
 import com.example.zar.core.domain.model.Account
+import com.example.zar.core.domain.model.TransactionType
 import com.example.zar.core.presentation.components.AddEntryOption
 import com.example.zar.core.presentation.components.TopLevelDestination
 import com.example.zar.core.presentation.components.ZarButton
@@ -225,6 +226,16 @@ internal fun ActivityBody(
                         style = ZarType.bodyCaption,
                         color = ZarTheme.colors.textSecondary,
                         modifier = gutter.testTag("activity-unresolved"),
+                    )
+                }
+            }
+            if (list.summary.unclassifiedAdjustmentCount > 0) {
+                item {
+                    Text(
+                        stringResource(R.string.activity_has_adjustments_note),
+                        style = ZarType.bodyCaption,
+                        color = ZarTheme.colors.textSecondary,
+                        modifier = gutter.testTag("activity-adjustments"),
                     )
                 }
             }
@@ -564,7 +575,7 @@ private fun EntryRow(row: ActivityRow, onClick: () -> Unit, modifier: Modifier =
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        entryTitle(tx),
+                        entryTitle(tx, row.account?.type),
                         style = ZarType.bodyM.copy(fontWeight = FontWeight.Medium, lineHeight = 20.sp, letterSpacing = (-0.15).sp),
                         color = colors.textPrimary,
                         maxLines = 1,
@@ -574,6 +585,7 @@ private fun EntryRow(row: ActivityRow, onClick: () -> Unit, modifier: Modifier =
                     )
                     if (voided) TagPill(stringResource(R.string.activity_tag_void), attention = true)
                     else if (row.entry.isCorrected) TagPill(stringResource(R.string.activity_tag_edited))
+                    else if (tx.type == TransactionType.ADJUSTMENT_OUT) TagPill(stringResource(R.string.activity_tag_unknown))
                 }
                 Text(
                     entrySubtitle(tx, row.account?.name),

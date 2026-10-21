@@ -32,7 +32,7 @@ sealed interface EntryDetailContent {
     data class Ready(val detail: EntryDetail) : EntryDetailContent
 }
 
-enum class VoidProblem { NOT_SIGNED_IN, FAILED }
+enum class VoidProblem { NOT_SIGNED_IN, HAS_REFUNDS, FAILED }
 
 data class EntryDetailUiState(
     val content: EntryDetailContent = EntryDetailContent.Loading,
@@ -83,7 +83,11 @@ class EntryDetailViewModel @Inject constructor(
             voidTransaction(detail.entry, Instant.now()).fold(
                 onSuccess = { local.update { Local() } },
                 onFailure = { error ->
-                    val problem = if (error is LedgerError.NotSignedIn) VoidProblem.NOT_SIGNED_IN else VoidProblem.FAILED
+                    val problem = when (error) {
+                        is LedgerError.NotSignedIn -> VoidProblem.NOT_SIGNED_IN
+                        is LedgerError.HasActiveRefunds -> VoidProblem.HAS_REFUNDS
+                        else -> VoidProblem.FAILED
+                    }
                     local.update { it.copy(isVoiding = false, problem = problem) }
                 },
             )
