@@ -90,7 +90,10 @@
     <string name="auth_error_unknown">Something went wrong. Try again.</string>
 
     <!-- Sign out -->
+    <string name="settings_subtitle">Your sign-in and where Zar keeps your settings.</string>
     <string name="settings_signed_in_as">Signed in as</string>
+    <string name="settings_where_title">Where your settings live</string>
+    <string name="settings_where_body">Your accounts and entries sync to your Zar account. The catch-up reminder stays on this phone and resets when you sign out.</string>
     <string name="settings_sign_out">Sign out</string>
     <string name="sign_out_unsynced_title">Some changes haven’t synced</string>
     <string name="sign_out_unsynced_body">Your latest changes are only on this phone. If you sign out now they will be lost. Connect to the internet and wait a moment, or sign out anyway.</string>
