@@ -18,7 +18,10 @@ import com.example.zar.features.catchup.data.ResetCatchUpOnSignOut
 import com.example.zar.features.catchup.data.WorkManagerReminderScheduler
 import com.example.zar.features.catchup.domain.repository.CatchUpPreferencesRepository
 import com.example.zar.features.catchup.domain.repository.ReminderScheduler
+import com.example.zar.features.bills.data.repository.DataStoreSuggestionPreferences
 import com.example.zar.features.bills.data.repository.FirestoreBillRepository
+import com.example.zar.features.bills.data.repository.ResetSuggestionsOnSignOut
+import com.example.zar.features.bills.domain.usecase.SuggestionPreferencesRepository
 import com.example.zar.features.bills.domain.repository.BillRepository
 import com.example.zar.features.crypto.data.repository.FirestoreOpeningCostRepository
 import com.example.zar.features.crypto.domain.repository.OpeningCostRepository
@@ -133,4 +136,12 @@ abstract class RepositoryModule {
     @Binds
     @IntoSet
     abstract fun bindResetRemindersOnSignOut(impl: ResetRemindersOnSignOut): SignOutHandler
+
+    @Binds
+    @Singleton
+    abstract fun bindSuggestionPreferences(impl: DataStoreSuggestionPreferences): SuggestionPreferencesRepository
+
+    @Binds
+    @IntoSet
+    abstract fun bindResetSuggestionsOnSignOut(impl: ResetSuggestionsOnSignOut): SignOutHandler
 }
