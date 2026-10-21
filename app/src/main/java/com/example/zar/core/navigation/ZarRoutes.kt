@@ -58,6 +58,18 @@ data class EditEntryRoute(val entryId: String)
 @Serializable
 data class RefundRoute(val purchaseId: String)
 
+/** Saved entries that still need a look, with the weekly catch-up card. */
+@Serializable
+data object NeedsReviewRoute
+
+/** The weekly cash catch-up: review what is open, count the cash, save at most one adjustment. */
+@Serializable
+data object CatchUpRoute
+
+/** Day, time and skip for the weekly catch-up reminder. */
+@Serializable
+data object ReminderSettingsRoute
+
 @Serializable
 data object FreelanceRoute
 

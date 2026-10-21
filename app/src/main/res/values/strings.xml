@@ -682,5 +682,144 @@
     <string name="manual_gap_sheet_title">Add the missing entry</string>
     <string name="manual_gap_title">Explaining the %1$s gap</string>
     <string name="manual_gap_body">Saving this expense explains the gap, so no adjustment is saved.</string>
+
+    <!-- Needs review and weekly catch-up (S04) -->
+    <string name="review_title">Needs review</string>
+    <plurals name="review_subtitle">
+        <item quantity="one">%1$d to sort out · anything you leave stays here and on the Home card</item>
+        <item quantity="other">%1$d to sort out · anything you leave stays here and on the Home card</item>
+    </plurals>
+    <string name="review_subtitle_none">Nothing to sort out right now.</string>
+    <string name="review_load_failed">Could not load your entries. Please try again.</string>
+    <string name="review_open_entry">Open entry →</string>
+    <string name="review_kind_uncategorised">Uncategorised</string>
+    <string name="review_kind_missing_rate">Missing rate</string>
+    <string name="review_kind_adjustment">Unexplained gap</string>
+    <string name="review_all_clear_title">All clear</string>
+    <string name="review_all_clear_body">Items that need a look will appear here and on the Home card.</string>
+    <string name="review_catch_up_label">Weekly catch-up</string>
+    <string name="review_catch_up_last_days">Last catch-up %1$d days ago</string>
+    <string name="review_catch_up_last_today">Last catch-up today</string>
+    <string name="review_catch_up_last_yesterday">Last catch-up yesterday</string>
+    <string name="review_catch_up_never">No catch-up yet</string>
+    <plurals name="review_catch_up_open">
+        <item quantity="one">%1$d item to sort out</item>
+        <item quantity="other">%1$d items to sort out</item>
+    </plurals>
+    <string name="review_catch_up_none_open">Nothing open</string>
+    <string name="review_catch_up_start">Start catch-up →</string>
+    <string name="review_catch_up_anyway">Check my cash anyway</string>
+
+    <string name="catch_up_title">Weekly catch-up</string>
+    <string name="catch_up_subtitle">Look over what\'s still open, count your cash, and save at most one adjustment.</string>
+    <string name="catch_up_subtitle_first">You haven\'t recorded much yet, and that\'s fine. Start from what you hold.</string>
+    <string name="catch_up_step_review">Step 1 of 3 · Review</string>
+    <string name="catch_up_step_count">Step 2 of 3 · Count</string>
+    <string name="catch_up_step_save">Step 3 of 3 · Save</string>
+    <string name="catch_up_none_title">No open items</string>
+    <string name="catch_up_none_body">Nothing recorded this week needs a look.</string>
+    <string name="catch_up_note_title">Catch-up uses what you\'ve recorded</string>
+    <string name="catch_up_note_body">A quiet week doesn\'t mean nothing was spent. You don\'t have to fix every item to continue.</string>
+    <string name="catch_up_note_first_title">Quiet doesn\'t mean complete</string>
+    <string name="catch_up_note_first_body">Catch-up only knows what you\'ve entered. A week with no entries may still have had spending. Checking cash does not confirm that all spending was recorded.</string>
+    <string name="catch_up_continue">Continue to counting</string>
+    <string name="catch_up_count_cash">Count my cash</string>
+    <string name="catch_up_skip_week">Skip catch-up this week</string>
+    <string name="catch_up_not_now">Not now</string>
+
+    <string name="catch_up_count_title">Count your cash</string>
+    <string name="catch_up_count_subtitle">Count what\'s in your wallet now. Bank accounts stay as they are; check those from the account screen.</string>
+    <string name="catch_up_counted">Counted</string>
+    <string name="catch_up_recorded_cash">Recorded cash</string>
+    <string name="catch_up_you_counted">You counted</string>
+    <string name="catch_up_difference">Difference</string>
+    <string name="catch_up_not_saved_title">Nothing is saved yet</string>
+    <string name="catch_up_not_saved_body">You\'ll see the adjustment first and can still change your mind.</string>
+    <string name="catch_up_review_adjustment">Review the adjustment</string>
+    <string name="catch_up_skip_counting">Skip counting</string>
+    <string name="catch_up_no_cash_title">No cash account to count</string>
+    <string name="catch_up_no_cash_body">Add a cash account first, then count it here. Nothing else is needed for this catch-up.</string>
+    <string name="catch_up_add_cash_account">Add a cash account</string>
+    <string name="catch_up_done">Done</string>
+    <string name="catch_up_unavailable_unknown">This account has no opening value, so there is no recorded balance to compare. Add it from the account screen.</string>
+    <string name="catch_up_unavailable_fix">Some entries on this account use another currency, so its recorded balance is incomplete. Fix them first.</string>
+    <string name="catch_up_error_amount">Enter the amount, or 0</string>
+    <string name="catch_up_error_invalid">Enter a valid amount</string>
+
+    <string name="catch_up_save_title">Save the gap?</string>
+    <string name="catch_up_save_subtitle">This is the only change catch-up makes to your records.</string>
+    <string name="catch_up_save_matches_title">Your cash matches</string>
+    <string name="catch_up_save_matches_subtitle">Nothing needs adjusting, so no entry is added.</string>
+    <string name="catch_up_adjustment_title">Cash adjustment</string>
+    <string name="catch_up_adjustment_meta">Unclassified · no category · dated today</string>
+    <string name="catch_up_adjustment_in">+ %1$s</string>
+    <string name="catch_up_adjustment_out">− %1$s</string>
+    <string name="catch_up_balance_after">Balance after saving</string>
+    <string name="catch_up_incomplete_title">Your totals stay marked incomplete</string>
+    <string name="catch_up_incomplete_body">The %1$s is not counted as food, transport or any category until you explain it.</string>
+    <string name="catch_up_extra_title">The extra is not income</string>
+    <string name="catch_up_extra_body">The %1$s only moves your balance. It isn\'t counted as received money.</string>
+    <string name="catch_up_save">Save adjustment</string>
+    <string name="catch_up_finish">Finish catch-up</string>
+    <string name="catch_up_back">Back</string>
+    <string name="catch_up_offline_body">The adjustment is saved on this phone and syncs when you\'re back online.</string>
+    <string name="catch_up_offline_body_matches">Nothing is added, so there is nothing to sync.</string>
+    <string name="catch_up_message_failed">Could not save. Please try again.</string>
+    <string name="catch_up_message_sign_in">Sign in to save.</string>
+
+    <string name="catch_up_saved_title">Catch-up saved</string>
+    <string name="catch_up_saved_subtitle">Your cash now matches what you counted.</string>
+    <string name="catch_up_saved_cash_is">Cash is %1$s</string>
+    <string name="catch_up_saved_adjustment_row">Adjustment saved</string>
+    <string name="catch_up_saved_adjustment_one">1 · unclassified</string>
+    <string name="catch_up_saved_adjustment_none">None needed</string>
+    <string name="catch_up_saved_left_row">Items left to look at</string>
+    <string name="catch_up_saved_next_row">Next reminder</string>
+    <string name="catch_up_saved_next_off">Off</string>
+    <string name="catch_up_saved_incomplete_title">Home and category totals show as incomplete</string>
+    <string name="catch_up_saved_incomplete_body">Catch-up fixed your cash balance. It did not find what the money was spent on.</string>
+    <string name="catch_up_saved_complete_title">Your cash is up to date</string>
+    <string name="catch_up_saved_complete_body">This only covers the cash you counted. It says nothing about spending you haven\'t recorded.</string>
+    <string name="catch_up_back_home">Back to Home</string>
+
+    <string name="reminder_title">Catch-up reminder</string>
+    <string name="reminder_subtitle">A weekly nudge to check your cash. It never says your data is complete.</string>
+    <string name="reminder_weekly">Weekly reminder</string>
+    <string name="reminder_day">Day</string>
+    <string name="reminder_time">Time</string>
+    <string name="reminder_zone">Time zone</string>
+    <string name="reminder_zone_value">Asia/Colombo · default</string>
+    <string name="reminder_next_title">Next reminder: %1$s</string>
+    <string name="reminder_next_body">Move it to another day or time, or skip just this week. A quiet week never means complete data.</string>
+    <string name="reminder_skip_week">Skip this week</string>
+    <string name="reminder_undo_skip">Undo skip</string>
+    <string name="reminder_skipped_title">This week\'s reminder is skipped</string>
+    <string name="reminder_skipped_body">Next reminder: %1$s. Nothing else changes.</string>
+    <string name="reminder_off_title">The reminder is off</string>
+    <string name="reminder_off_body">Catch-up still works from Needs review whenever you open it.</string>
+    <string name="reminder_notifications_off_title">Notifications are off for Zar</string>
+    <string name="reminder_notifications_off_body">The reminder can\'t reach you until you turn them on.</string>
+    <string name="reminder_open_notification_settings">Open notification settings</string>
+    <string name="reminder_blocked_title">No reminder will be sent</string>
+    <string name="reminder_blocked_body">Your settings are saved. Catch-up still works from Needs review whenever you open it.</string>
+
+    <string name="reminder_sheet_title">Move the reminder</string>
+    <string name="reminder_sheet_day">Day</string>
+    <string name="reminder_sheet_time">Time</string>
+    <string name="reminder_sheet_other">Other…</string>
+    <string name="reminder_sheet_note">Times use Asia/Colombo. You can also skip a single week from the reminder screen.</string>
+    <string name="reminder_time_dialog_title">Choose a time</string>
+    <string name="reminder_time_dialog_ok">OK</string>
+
+    <string name="reminder_channel_name">Weekly catch-up</string>
+    <string name="reminder_channel_description">A weekly reminder to check your cash.</string>
+    <string name="reminder_notification_title">Weekly catch-up</string>
+    <string name="reminder_notification_body">Check your cash and sort what\'s left. It takes about a minute, and gaps can stay unexplained.</string>
+
+    <string name="catch_up_open_adjustment">Open the adjustment</string>
+    <string name="catch_up_skip_failed">Could not skip the reminder. Please try again.</string>
+    <string name="reminder_save_failed">Could not update the reminder. Please try again.</string>
+    <string name="more_reminder">Catch-up reminder</string>
+    <string name="more_reminder_detail">A weekly nudge to check your cash</string>
     <string name="activity_edit_refunded_amount">The amount cannot be less than its active refunds. Undo the refunds first.</string>
 </resources>

@@ -1,6 +1,7 @@
 package com.example.zar.core.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.window.DialogProperties
 import androidx.navigation.NavHostController
@@ -14,6 +15,9 @@ import com.example.zar.core.presentation.components.TopLevelDestination
 import com.example.zar.features.accounts.presentation.screen.AccountDetailScreen
 import com.example.zar.features.accounts.presentation.screen.AccountFormScreen
 import com.example.zar.features.accounts.presentation.screen.AccountsScreen
+import com.example.zar.features.catchup.presentation.screen.CatchUpScreen
+import com.example.zar.features.catchup.presentation.screen.NeedsReviewScreen
+import com.example.zar.features.catchup.presentation.screen.ReminderSettingsScreen
 import com.example.zar.features.freelance.presentation.screen.FreelanceScreen
 import com.example.zar.features.freelance.presentation.screen.MilestoneScreen
 import com.example.zar.features.freelance.presentation.screen.ProjectFormScreen
@@ -31,8 +35,19 @@ import com.example.zar.features.transactions.presentation.refund.screen.RefundFo
 import com.example.zar.features.transactions.presentation.screen.ActivityScreen
 
 @Composable
-fun ZarNavHost(modifier: Modifier = Modifier) {
+fun ZarNavHost(
+    modifier: Modifier = Modifier,
+    openCatchUp: Boolean = false,
+    onCatchUpOpened: () -> Unit = {},
+) {
     val navController = rememberNavController()
+    // The weekly reminder opens the catch-up on top of Home.
+    LaunchedEffect(openCatchUp) {
+        if (openCatchUp) {
+            navController.navigate(CatchUpRoute) { launchSingleTop = true }
+            onCatchUpOpened()
+        }
+    }
     val onNavigate: (TopLevelDestination) -> Unit = { navController.navigateToTopLevel(it) }
     val onAddOption: (AddEntryOption) -> Unit = { option ->
         when (option) {
@@ -48,7 +63,11 @@ fun ZarNavHost(modifier: Modifier = Modifier) {
         modifier = modifier,
     ) {
         composable<HomeRoute> {
-            HomeScreen(onNavigate = onNavigate, onAddOption = onAddOption)
+            HomeScreen(
+                onNavigate = onNavigate,
+                onAddOption = onAddOption,
+                onOpenReview = { navController.navigate(NeedsReviewRoute) },
+            )
         }
         composable<ActivityRoute> {
             ActivityScreen(
@@ -68,7 +87,26 @@ fun ZarNavHost(modifier: Modifier = Modifier) {
                 onOpenAccounts = { navController.navigate(AccountsRoute) },
                 onOpenIncome = { navController.navigate(IncomeRoute) },
                 onOpenFreelance = { navController.navigate(FreelanceRoute) },
+                onOpenReminder = { navController.navigate(ReminderSettingsRoute) },
             )
+        }
+        composable<NeedsReviewRoute> {
+            NeedsReviewScreen(
+                onBack = { navController.popBackStack() },
+                onOpenEntry = { id -> navController.navigate(EntryDetailRoute(id)) },
+                onStartCatchUp = { navController.navigate(CatchUpRoute) },
+            )
+        }
+        composable<CatchUpRoute> {
+            CatchUpScreen(
+                onClose = { navController.popBackStack() },
+                onGoHome = { navController.popBackStack(HomeRoute, inclusive = false) },
+                onOpenEntry = { id -> navController.navigate(EntryDetailRoute(id)) },
+                onAddCashAccount = { navController.navigate(AccountFormRoute()) },
+            )
+        }
+        composable<ReminderSettingsRoute> {
+            ReminderSettingsScreen(onBack = { navController.popBackStack() })
         }
         composable<SettingsRoute> {
             SettingsScreen(onBack = { navController.popBackStack() })

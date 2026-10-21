@@ -82,6 +82,31 @@ class HomeScreenUiTest {
     }
 
     @Test
+    fun theReviewPromptOpensNeedsReview() {
+        var opened = 0
+        val overview = HomeOverview(
+            month = month,
+            summary = PeriodSummary(zero.copy(unresolvedCount = 1), SpendingBreakdown(zero, zero, zero), 0),
+            recent = emptyList(),
+            hasRecordsInMonth = true,
+            receivedByDay = List(month.lengthOfMonth()) { zero },
+        )
+        compose.setContent {
+            ZarTheme {
+                HomeScreenContent(
+                    state = HomeUiState(month, canGoForward = false, HomeContent.Ready(overview)),
+                    onPreviousMonth = {}, onNextMonth = {}, onRetry = {}, onNavigate = {}, onAddOption = {},
+                    onOpenReview = { opened++ },
+                )
+            }
+        }
+
+        compose.onNodeWithTag("home-review").performScrollTo().assertIsDisplayed().performClick()
+
+        assertEquals(1, opened)
+    }
+
+    @Test
     fun chartDescribesActualDailyIncomeAndTheSelectedMonth() {
         val paid = ReportingTotal(FiatMoney(125_050, Currencies.LKR))
         val overview = HomeOverview(

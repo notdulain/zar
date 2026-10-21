@@ -39,8 +39,17 @@ object ReconcileRules {
         return CheckResult.Valid(check)
     }
 
-    /** The adjustment that closes the gap, or null when the balance already matches. */
-    fun newAdjustment(id: TransactionId, check: BalanceCheck, date: LocalDate, createdAt: Instant): Transaction? {
+    /**
+     * The adjustment that closes the gap, or null when the balance already matches. [source] says where the
+     * count came from: a balance check (the default) or a weekly cash catch-up.
+     */
+    fun newAdjustment(
+        id: TransactionId,
+        check: BalanceCheck,
+        date: LocalDate,
+        createdAt: Instant,
+        source: RecordSource = RecordSource.RECONCILIATION,
+    ): Transaction? {
         val type = when (check.outcome) {
             CheckOutcome.MATCHES -> return null
             CheckOutcome.SHORTFALL -> TransactionType.ADJUSTMENT_OUT
@@ -54,7 +63,7 @@ object ReconcileRules {
             amount = gap,
             date = date,
             reportingConversion = CurrencyConverter.toReporting(gap, null),
-            source = RecordSource.RECONCILIATION,
+            source = source,
             createdAt = createdAt,
         )
     }
