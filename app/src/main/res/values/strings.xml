@@ -954,4 +954,24 @@
     <string name="bills_message_not_signed_in">Sign in to save.</string>
     <string name="bills_message_currency">The amount must stay in the bill\'s currency.</string>
     <string name="bills_message_failed">Could not save. Please try again.</string>
+
+    <!-- Payment reminders (L07) -->
+    <string name="payment_reminder_channel_name">Bills and payments</string>
+    <string name="payment_reminder_channel_description">Bill reminders you chose, and a single alert when a client milestone becomes overdue.</string>
+    <string name="payment_reminder_public_title">A payment reminder from Zar</string>
+    <string name="payment_reminder_bill_today">%1$s is due today</string>
+    <string name="payment_reminder_bill_tomorrow">%1$s is due tomorrow</string>
+    <string name="payment_reminder_bill_days">%1$s is due in %2$d days</string>
+    <string name="payment_reminder_bill_body">%1$s expected on %2$s. Link the payment in Bills once you\'ve paid.</string>
+    <string name="payment_reminder_milestone_title">%1$s · %2$s is overdue</string>
+    <string name="payment_reminder_milestone_body">%1$s still to receive. It was due on %2$s. You won\'t be reminded about it again.</string>
+    <string name="bill_reminder">Reminder</string>
+    <string name="bill_reminder_off">None</string>
+    <string name="bill_reminder_day">On the day</string>
+    <string name="bill_reminder_1">1 day before</string>
+    <string name="bill_reminder_3">3 days before</string>
+    <string name="bill_reminder_7">1 week before</string>
+    <string name="bill_reminder_hint">One reminder per bill, in the morning. No reminder once a payment is matched.</string>
+    <string name="reminders_notifications_off">Notifications are off for Zar, so no reminder will be shown. You can turn them on in your phone\'s settings.</string>
+    <string name="freelance_overdue_alerts">Tell me once when a milestone becomes overdue</string>
 </resources>
