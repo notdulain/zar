@@ -50,6 +50,8 @@ fun MoreScreen(
         destination = TopLevelDestination.More,
         onNavigate = onNavigate,
         onAddOption = onAddOption,
+        // The dusk hero runs under the status bar, so the system glyphs must be white.
+        heroUnderStatusBar = true,
     ) { padding ->
         Column(
             Modifier.fillMaxSize()
