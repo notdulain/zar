@@ -9,5 +9,8 @@ sealed class LedgerError(message: String) : Exception(message) {
     class AlreadyVoided(transactionId: TransactionId) :
         LedgerError("Transaction ${transactionId.value} was undone and cannot change")
     class NothingToChange : LedgerError("The correction does not change anything")
+    class RefundTooHigh : LedgerError("A refund cannot be more than what is left of the purchase")
+    class HasActiveRefunds(transactionId: TransactionId) :
+        LedgerError("Transaction ${transactionId.value} has refunds; undo them first")
     class InvalidRecord(reason: String) : LedgerError(reason)
 }

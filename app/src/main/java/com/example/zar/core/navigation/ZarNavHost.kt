@@ -27,6 +27,7 @@ import com.example.zar.features.transactions.presentation.activity.screen.EntryD
 import com.example.zar.features.transactions.presentation.income.screen.IncomeFormScreen
 import com.example.zar.features.transactions.presentation.income.screen.IncomeListScreen
 import com.example.zar.features.transactions.presentation.manual.screen.ManualEntryScreen
+import com.example.zar.features.transactions.presentation.refund.screen.RefundFormScreen
 import com.example.zar.features.transactions.presentation.screen.ActivityScreen
 
 @Composable
@@ -101,10 +102,15 @@ fun ZarNavHost(modifier: Modifier = Modifier) {
                 onEdit = { id -> navController.navigate(EditEntryRoute(id)) },
                 onEditIncome = { id -> navController.navigate(IncomeFormRoute(incomeId = id)) },
                 onAddAgain = { navController.navigate(ManualEntryRoute()) },
+                onRefund = { id -> navController.navigate(RefundRoute(id)) },
+                onOpenEntry = { id -> navController.navigate(EntryDetailRoute(id)) },
             )
         }
         composable<EditEntryRoute> {
             EditEntryScreen(onDone = { navController.popBackStack() })
+        }
+        composable<RefundRoute> {
+            RefundFormScreen(onDone = { navController.popBackStack() })
         }
         composable<FreelanceRoute> {
             FreelanceScreen(
@@ -145,6 +151,9 @@ fun ZarNavHost(modifier: Modifier = Modifier) {
             AccountDetailScreen(
                 onBack = { navController.popBackStack() },
                 onEdit = { id -> navController.navigate(AccountFormRoute(accountId = id)) },
+                onAddMissingEntry = { id, amount ->
+                    navController.navigate(ManualEntryRoute(prefillAmount = amount, prefillAccountId = id))
+                },
             )
         }
         composable<AccountFormRoute> {

@@ -17,6 +17,7 @@ import com.example.zar.features.transactions.domain.activity.EntryHistory
 import com.example.zar.features.transactions.domain.activity.model.ActivitySnapshot
 import com.example.zar.features.transactions.domain.activity.model.EditKind
 import com.example.zar.features.transactions.domain.activity.model.EntryDetail
+import com.example.zar.features.transactions.domain.refund.RefundRules
 import java.time.Instant
 import javax.inject.Inject
 import kotlinx.coroutines.flow.Flow
@@ -45,9 +46,12 @@ class ObserveEntryDetailUseCase @Inject constructor(
                 byId[if (entry.id == it.outLegId()) it.inLegId() else it.outLegId()]
             }
             val tx = entry.original
+            val account = list.firstOrNull { it.id == tx.accountId }
+            val refunds = if (entry.current.type == TransactionType.EXPENSE) RefundRules.summary(entry, entries) else null
+            val purchase = if (entry.current.type == TransactionType.REFUND) entry.current.refundOf?.let { byId[it] } else null
             EntryDetail(
                 entry = entry,
-                account = list.firstOrNull { it.id == tx.accountId },
+                account = account,
                 counterpart = counterpart,
                 counterpartAccount = counterpart?.let { c -> list.firstOrNull { it.id == c.original.accountId } },
                 fee = transferId?.let { byId[it.feeId()] },
@@ -61,7 +65,12 @@ class ObserveEntryDetailUseCase @Inject constructor(
                         else -> EditKind.NONE
                     }
                 },
-                canVoid = !entry.isVoided,
+                // A purchase with active refunds must have them undone first, or they would keep adding money back.
+                canVoid = !entry.isVoided && refunds?.hasRefunds != true,
+                refunds = refunds,
+                canRefund = refunds?.canRefund == true && account != null && !account.isArchived,
+                refundedPurchase = purchase,
+                refundedPurchaseAccount = purchase?.let { p -> list.firstOrNull { it.id == p.current.accountId } },
             )
         }
 }

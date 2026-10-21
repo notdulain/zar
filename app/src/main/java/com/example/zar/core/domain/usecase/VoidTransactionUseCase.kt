@@ -1,6 +1,8 @@
 package com.example.zar.core.domain.usecase
 
 import com.example.zar.core.domain.model.LedgerEntry
+import com.example.zar.core.domain.model.LedgerError
+import com.example.zar.core.domain.model.TransactionType
 import com.example.zar.core.domain.model.VoidMarker
 import com.example.zar.core.domain.model.feeId
 import com.example.zar.core.domain.model.inLegId
@@ -12,7 +14,8 @@ import kotlinx.coroutines.flow.first
 
 /**
  * Undo. Voiding a transfer leg voids both legs, and the transfer's separate fee expense when it
- * has one that is still active, in one atomic write. Voiding twice is harmless.
+ * has one that is still active, in one atomic write. Voiding twice is harmless. A purchase that still has
+ * active refunds cannot be undone: its refunds would keep adding money back to the account.
  */
 class VoidTransactionUseCase @Inject constructor(
     private val ledger: LedgerRepository,
@@ -20,6 +23,12 @@ class VoidTransactionUseCase @Inject constructor(
     suspend operator fun invoke(entry: LedgerEntry, voidedAt: Instant, reason: String? = null): Result<Unit> =
         resultOf {
             if (entry.isVoided) return@resultOf
+            if (entry.original.type == TransactionType.EXPENSE) {
+                val hasRefunds = ledger.observeLedger().first().any {
+                    !it.isVoided && it.current.type == TransactionType.REFUND && it.current.refundOf == entry.id
+                }
+                if (hasRefunds) throw LedgerError.HasActiveRefunds(entry.id)
+            }
             val transferId = entry.original.transferId
             val ids = if (transferId == null) {
                 listOf(entry.id)

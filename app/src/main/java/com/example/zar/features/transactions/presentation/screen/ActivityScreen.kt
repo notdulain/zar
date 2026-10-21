@@ -1,5 +1,7 @@
 package com.example.zar.features.transactions.presentation.screen
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.layout.calculateEndPadding
@@ -33,6 +35,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDefaults
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
@@ -69,6 +72,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.zar.R
 import com.example.zar.core.domain.model.Account
+import com.example.zar.core.domain.model.TransactionType
 import com.example.zar.core.presentation.components.AddEntryOption
 import com.example.zar.core.presentation.components.TopLevelDestination
 import com.example.zar.core.presentation.components.ZarButton
@@ -84,6 +88,7 @@ import com.example.zar.core.presentation.theme.ZarShapes
 import com.example.zar.core.presentation.theme.ZarTheme
 import com.example.zar.core.presentation.theme.ZarType
 import com.example.zar.core.presentation.theme.ZarWhite
+import com.example.zar.features.transactions.domain.activity.ActivityBalance
 import com.example.zar.features.transactions.domain.activity.ActivityQuery
 import com.example.zar.features.transactions.domain.activity.model.ActivityFilter
 import com.example.zar.features.transactions.domain.activity.model.ActivityList
@@ -187,6 +192,7 @@ internal fun ActivityBody(
             ActivityHero(
                 received = summary?.let { EntryDisplay.money(it.received.amount) } ?: stringResource(R.string.activity_amount_pending),
                 spent = summary?.let { EntryDisplay.money(it.spent.total.amount) } ?: stringResource(R.string.activity_amount_pending),
+                receivedFraction = ActivityBalance.receivedFraction(summary),
                 rangeLabel = heroRangeLabel(state),
                 onRange = { showFilters = true },
             )
@@ -225,6 +231,16 @@ internal fun ActivityBody(
                         style = ZarType.bodyCaption,
                         color = ZarTheme.colors.textSecondary,
                         modifier = gutter.testTag("activity-unresolved"),
+                    )
+                }
+            }
+            if (list.summary.unclassifiedAdjustmentCount > 0) {
+                item {
+                    Text(
+                        stringResource(R.string.activity_has_adjustments_note),
+                        style = ZarType.bodyCaption,
+                        color = ZarTheme.colors.textSecondary,
+                        modifier = gutter.testTag("activity-adjustments"),
                     )
                 }
             }
@@ -313,30 +329,48 @@ private val SpentStops = arrayOf(
     1f to Color(0xFFC9685A),
 )
 
-/** The hero is 224dp from the very top of the screen (the status bar sits on it); Received takes 277 of 412 and Spent the rest. */
+/** The color boundary follows Received / (Received + Spent); labels keep a stable, readable layout. */
 @Composable
-private fun ActivityHero(received: String, spent: String, rangeLabel: String, onRange: () -> Unit) {
+private fun ActivityHero(received: String, spent: String, receivedFraction: Float?, rangeLabel: String, onRange: () -> Unit) {
+    val tealShare by animateFloatAsState(
+        targetValue = receivedFraction ?: 0.5f,
+        animationSpec = tween(300),
+        label = "Activity received share",
+    )
+    val neutral = Color(0xFF0C1625)
     // Figma's hero spans the status bar. Pulling the list down past its top reveals the area above the hero,
     // so each half's first colour is also painted far above it and the gradient never ends.
     Box(
         Modifier
             .fillMaxWidth()
             .height(HeroHeight)
+            .testTag("activity-hero")
             .drawBehind {
-                val split = size.width * 277f / 412f
+                val split = size.width * tealShare
                 val reach = 4000f
-                drawRect(Color(0xFF05070B), Offset(0f, -reach), Size(split, reach))
-                drawRect(Color(0xFF0A070C), Offset(split, -reach), Size(size.width - split, reach))
+                drawRect(if (receivedFraction == null) neutral else ReceivedStops.first().second, Offset(0f, -reach), Size(split, reach))
+                drawRect(if (receivedFraction == null) neutral else SpentStops.first().second, Offset(split, -reach), Size(size.width - split, reach))
             },
     ) {
-        Row(
-            Modifier
-                .fillMaxSize()
-                .clip(RoundedCornerShape(bottomStart = HeroRadius, bottomEnd = HeroRadius)),
-        ) {
-            Box(Modifier.weight(277f).fillMaxSize().gradientBackground(ReceivedStops, ReceivedSpan))
-            Box(Modifier.weight(135f).fillMaxSize().gradientBackground(SpentStops, SpentSpan))
-        }
+        Box(
+            Modifier.fillMaxSize()
+                .clip(RoundedCornerShape(bottomStart = HeroRadius, bottomEnd = HeroRadius))
+                .drawBehind {
+                    if (receivedFraction == null) {
+                        drawRect(neutral)
+                    } else {
+                        val split = size.width * tealShare
+                        if (split > 0f) drawRect(
+                            Brush.verticalGradient(colorStops = ReceivedStops, endY = size.height * ReceivedSpan),
+                            size = Size(split, size.height),
+                        )
+                        if (split < size.width) drawRect(
+                            Brush.verticalGradient(colorStops = SpentStops, endY = size.height * SpentSpan),
+                            topLeft = Offset(split, 0f), size = Size(size.width - split, size.height),
+                        )
+                    }
+                },
+        )
         Row(
             Modifier
                 .padding(start = 22.dp, end = 22.dp, top = 62.dp)
@@ -374,15 +408,15 @@ private fun ActivityHero(received: String, spent: String, rangeLabel: String, on
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.Bottom,
         ) {
-            HeroTotal(received, stringResource(R.string.home_received), Alignment.Start, "activity-received")
-            HeroTotal(spent, stringResource(R.string.home_spent), Alignment.End, "activity-spent")
+            HeroTotal(received, stringResource(R.string.home_received), Alignment.Start, "activity-received", Modifier.weight(1f))
+            HeroTotal(spent, stringResource(R.string.home_spent), Alignment.End, "activity-spent", Modifier.weight(1f))
         }
     }
 }
 
 @Composable
-private fun HeroTotal(amount: String, label: String, align: Alignment.Horizontal, tag: String) {
-    Column(horizontalAlignment = align, verticalArrangement = Arrangement.spacedBy(3.dp)) {
+private fun HeroTotal(amount: String, label: String, align: Alignment.Horizontal, tag: String, modifier: Modifier) {
+    Column(modifier, horizontalAlignment = align, verticalArrangement = Arrangement.spacedBy(3.dp)) {
         Text(
             amount,
             style = ZarType.amountM.copy(lineHeight = 36.sp),
@@ -400,10 +434,6 @@ private fun HeroTotal(amount: String, label: String, align: Alignment.Horizontal
     }
 }
 
-/** A vertical gradient whose [stops] are fractions of a gradient [span] times as tall as the box; the rest is cut off. */
-private fun Modifier.gradientBackground(stops: Array<Pair<Float, Color>>, span: Float): Modifier = drawBehind {
-    drawRect(Brush.verticalGradient(colorStops = stops, startY = 0f, endY = size.height * span))
-}
 
 @Composable
 private fun FilterRow(
@@ -564,7 +594,7 @@ private fun EntryRow(row: ActivityRow, onClick: () -> Unit, modifier: Modifier =
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        entryTitle(tx),
+                        entryTitle(tx, row.account?.type),
                         style = ZarType.bodyM.copy(fontWeight = FontWeight.Medium, lineHeight = 20.sp, letterSpacing = (-0.15).sp),
                         color = colors.textPrimary,
                         maxLines = 1,
@@ -574,6 +604,7 @@ private fun EntryRow(row: ActivityRow, onClick: () -> Unit, modifier: Modifier =
                     )
                     if (voided) TagPill(stringResource(R.string.activity_tag_void), attention = true)
                     else if (row.entry.isCorrected) TagPill(stringResource(R.string.activity_tag_edited))
+                    else if (tx.type == TransactionType.ADJUSTMENT_OUT) TagPill(stringResource(R.string.activity_tag_unknown))
                 }
                 Text(
                     entrySubtitle(tx, row.account?.name),
@@ -745,7 +776,10 @@ private fun DateField(label: String, date: LocalDate, onPick: (LocalDate) -> Uni
     }
     if (!open) return
     val state = rememberDatePickerState(initialSelectedDateMillis = date.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli())
+    val pickerColors = DatePickerDefaults.colors(containerColor = ZarTheme.colors.surface, selectedDayContainerColor = ZarTheme.colors.accentSelected)
     DatePickerDialog(
+        colors = pickerColors,
+        tonalElevation = 0.dp,
         onDismissRequest = { open = false },
         confirmButton = {
             TextButton(onClick = {
@@ -754,7 +788,7 @@ private fun DateField(label: String, date: LocalDate, onPick: (LocalDate) -> Uni
             }) { Text(stringResource(R.string.action_ok)) }
         },
         dismissButton = { TextButton(onClick = { open = false }) { Text(stringResource(R.string.action_cancel)) } },
-    ) { DatePicker(state = state) }
+    ) { DatePicker(state = state, colors = pickerColors) }
 }
 
 // --- Labels -----------------------------------------------------------------------------------
