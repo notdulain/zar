@@ -17,17 +17,28 @@ async function call(data, token) {
   return { status: res.status, body: await res.json() };
 }
 
-const valid = { note: 'lunch 850 card', today: '2026-10-21', accounts: [] };
+// Notes carry this marker so emulator/run.mjs can prove the function never logs note content.
+const marker = 'EMU-NOTE-SENTINEL-9013';
+const valid = { note: `lunch 850 card ${marker}`, today: '2026-10-21', accounts: [] };
 
 const anon = await call(valid);
 assert.equal(anon.status, 401);
 assert.equal(anon.body.error.status, 'UNAUTHENTICATED');
 console.log('ok  unauthenticated request rejected');
 
-for (const bad of [{ ...valid, note: '   ' }, { ...valid, note: 'x'.repeat(501) }, { ...valid, accounts: [{ id: 'a', name: 'A', type: 'BANK', currency: 'LKR', balance: '5' }] }]) {
+const rejected = [
+  { ...valid, note: '   ' },
+  { ...valid, note: marker + 'x'.repeat(500) },
+  { ...valid, note: 42 },
+  { ...valid, today: '2026-02-30' },
+  { ...valid, rawSms: 'balance 5' },
+  { ...valid, accounts: [{ id: 'a', name: 'A', type: 'BANK', currency: 'LKR', balance: '5' }] },
+  { ...valid, accounts: Array.from({ length: 31 }, (_, i) => ({ id: `a${i}`, name: 'A', type: 'BANK', currency: 'LKR' })) },
+];
+for (const bad of rejected) {
   const out = await call(bad, idToken);
   assert.equal(out.status, 400);
   assert.equal(out.body.error.status, 'INVALID_ARGUMENT');
   assert.equal(out.body.error.details.reason, 'INVALID_INPUT');
 }
-console.log('ok  blank, oversized and balance-carrying requests rejected before any provider call');
+console.log(`ok  ${rejected.length} blank, oversized, malformed and balance-carrying requests rejected before any provider call`);

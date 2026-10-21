@@ -1,4 +1,5 @@
 import { DraftError, Reason } from './errors.js';
+import { isCalendarDate } from './validation.js';
 import {
   DIRECTIONS, DRAFT_FIELDS, PROPOSAL_KINDS, SPENDING_CLASSES, TRANSACTION_TYPES,
 } from './prompt.js';
@@ -31,7 +32,7 @@ function nullableEnum(value, allowed) {
  * Parses the provider's JSON text into a bounded, known-fields-only list. The model's schema is a hint, not a
  * guarantee, so shape, kinds, enums and sizes are all re-checked. Anything unexpected fails the whole response.
  */
-export function parseProposals(text) {
+export function parseProposals(text, { accounts = [] } = {}) {
   let parsed;
   try {
     parsed = JSON.parse(text);
@@ -40,7 +41,20 @@ export function parseProposals(text) {
   }
   if (!isPlainObject(parsed) || !Array.isArray(parsed.proposals)) throw bad();
   if (parsed.proposals.length > MAX_PROPOSALS) throw bad();
-  return parsed.proposals.map(parseProposal);
+  const accountIds = new Set(accounts.map((a) => a.id));
+  return parsed.proposals.map((raw) => sanitize(parseProposal(raw), accountIds));
+}
+
+// Defence in depth: the app re-checks everything, but the wire contract never carries a malformed amount, an
+// impossible date or an account id the caller did not supply. Such values become missing (null), never guessed.
+const DECIMAL = /^\d+(\.\d+)?$/;
+
+function sanitize(proposal, accountIds) {
+  const clean = { ...proposal };
+  for (const field of ['amount', 'receivedAmount']) if (clean[field] !== null && !DECIMAL.test(clean[field])) clean[field] = null;
+  for (const field of ['date', 'dueDate']) if (clean[field] !== null && !isCalendarDate(clean[field])) clean[field] = null;
+  for (const field of ['accountId', 'toAccountId']) if (clean[field] !== null && !accountIds.has(clean[field])) clean[field] = null;
+  return clean;
 }
 
 function parseProposal(raw) {

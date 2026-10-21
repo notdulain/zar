@@ -25,7 +25,7 @@ export function createDraftHandler({ provider, logger, HttpsError, requireAppChe
 
       const input = validateRequest(request.data);
       const { text, usage } = await provider.generate(input);
-      const proposals = parseProposals(text);
+      const proposals = parseProposals(text, input);
 
       logger.info('quick note draft generated', {
         outcome: 'success', latencyMs: now() - started, proposals: proposals.length, ...usage,

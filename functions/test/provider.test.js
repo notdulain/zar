@@ -66,3 +66,31 @@ test('empty, blocked, truncated or malformed envelopes are BAD_RESPONSE', async 
   const notJson = { ok: true, status: 200, json: async () => { throw new SyntaxError('bad'); } };
   await failsWith(make(async () => notJson).generate(input), 'BAD_RESPONSE');
 });
+
+test('a response body that stalls past the budget is aborted, not awaited forever', async () => {
+  const stalled = async (url, init) => ({
+    ok: true,
+    status: 200,
+    json: () => new Promise((_, reject) => init.signal.addEventListener('abort', () => reject(init.signal.reason))),
+  });
+  await failsWith(make(stalled, { timeoutMs: 20 }).generate(input), 'TIMEOUT');
+});
+
+test('the default provider budget stays below the 8 s client budget', async () => {
+  const { PROVIDER_TIMEOUT_MS } = await import('../src/provider.js');
+  assert.equal(PROVIDER_TIMEOUT_MS, 6500);
+});
+
+test('a failing secret lookup is a safe provider failure that never reaches the network', async () => {
+  const fetchImpl = fakeFetch({ body: geminiBody('{"proposals":[]}') });
+  const provider = createGeminiProvider({ getApiKey: () => { throw new Error(`no secret ${NOTE_SENTINEL}`); }, fetchImpl });
+  const error = await provider.generate(input).catch((e) => e);
+  assert.equal(error.reason, 'PROVIDER_UNAVAILABLE');
+  assert.ok(!error.message.includes(NOTE_SENTINEL));
+  assert.equal(fetchImpl.calls.length, 0);
+});
+
+test('a candidate with only non-text parts is BAD_RESPONSE, not a crash', async () => {
+  const body = { candidates: [{ content: { parts: [{ inlineData: {} }] }, finishReason: 'STOP' }] };
+  await failsWith(make(fakeFetch({ body })).generate(input), 'BAD_RESPONSE');
+});

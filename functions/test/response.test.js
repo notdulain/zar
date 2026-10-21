@@ -52,3 +52,37 @@ test('de-duplicates uncertain fields and blank strings become null', () => {
   assert.equal(p.merchant, null);
   assert.deepEqual(p.uncertainFields, ['AMOUNT']);
 });
+
+const accounts = [{ id: 'boc' }, { id: 'cash' }];
+const parseWith = (obj) => parseProposals(JSON.stringify(obj), { accounts });
+
+test('amounts that are not plain decimals become missing; exact strings are untouched', () => {
+  const amounts = ['1,250', '-5', '+5', '1e3', 'NaN', 'Infinity', '12.', '.5', '5 000', 'Rs 100', '０５', '١٢٣', '0x10'];
+  for (const amount of amounts) {
+    const [p] = parseWith({ proposals: [{ ...base, amount, receivedAmount: amount }] });
+    assert.equal(p.amount, null, `${amount} must be dropped`);
+    assert.equal(p.receivedAmount, null);
+  }
+  const [p] = parseWith({ proposals: [{ ...base, amount: '2500', receivedAmount: '0.00012345' }] });
+  assert.equal(p.amount, '2500');
+  assert.equal(p.receivedAmount, '0.00012345');
+});
+
+test('impossible or malformed dates become missing', () => {
+  for (const date of ['2026-02-30', '21/10/2026', '2026-13-01', 'tomorrow', '2026-10-21T00:00:00Z']) {
+    const [p] = parseWith({ proposals: [{ ...base, date, dueDate: date }] });
+    assert.equal(p.date, null, `${date} must be dropped`);
+    assert.equal(p.dueDate, null);
+  }
+  const [p] = parseWith({ proposals: [{ ...base, date: '2026-10-21', dueDate: '2026-11-01' }] });
+  assert.equal(p.date, '2026-10-21');
+  assert.equal(p.dueDate, '2026-11-01');
+});
+
+test('account references outside the supplied list become missing', () => {
+  const [p] = parseWith({ proposals: [{ ...base, kind: 'TRANSFER', accountId: 'boc', toAccountId: 'someone-elses-account' }] });
+  assert.equal(p.accountId, 'boc');
+  assert.equal(p.toAccountId, null);
+  const [none] = parseProposals(JSON.stringify({ proposals: [{ ...base, accountId: 'boc' }] }));
+  assert.equal(none.accountId, null, 'with no supplied accounts every reference is missing');
+});

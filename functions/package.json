@@ -9,7 +9,7 @@
   "scripts": {
     "test": "node --test \"test/**/*.test.js\"",
     "serve": "firebase emulators:start --only functions,auth --project demo-zar --config ../firebase.json",
-    "test:emulator": "firebase emulators:exec --only functions --project demo-zar --config ../firebase.json \"node emulator/contract.mjs\""
+    "test:emulator": "node emulator/run.mjs"
   },
   "dependencies": {
     "firebase-admin": "^14.5.0",
