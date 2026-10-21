@@ -13,6 +13,19 @@ import java.time.LocalDate
 
 enum class BillFrequency { WEEKLY, MONTHLY, YEARLY }
 
+/** The choices for a bill's single reminder. */
+enum class BillReminder(val daysBefore: Int) {
+    ON_THE_DAY(0),
+    ONE_DAY_BEFORE(1),
+    THREE_DAYS_BEFORE(3),
+    ONE_WEEK_BEFORE(7),
+    ;
+
+    companion object {
+        fun fromDays(days: Int?): BillReminder? = entries.firstOrNull { it.daysBefore == days }
+    }
+}
+
 enum class BillStatus {
     ACTIVE,
 
@@ -34,6 +47,8 @@ data class Bill(
     val firstDue: LocalDate,
     val status: BillStatus,
     val createdAt: Instant,
+    /** The bill's one reminder: days before a due date to notify, or null for none. */
+    val reminder: BillReminder? = null,
 ) {
     init {
         require(name.isNotBlank()) { "Bill name is required" }

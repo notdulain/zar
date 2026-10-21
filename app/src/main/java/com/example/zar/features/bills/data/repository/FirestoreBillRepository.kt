@@ -9,6 +9,7 @@ import com.example.zar.core.domain.repository.UserSessionProvider
 import com.example.zar.features.bills.domain.model.Bill
 import com.example.zar.features.bills.domain.model.BillFrequency
 import com.example.zar.features.bills.domain.model.BillId
+import com.example.zar.features.bills.domain.model.BillReminder
 import com.example.zar.features.bills.domain.model.BillStatus
 import com.example.zar.features.bills.domain.repository.BillRepository
 import com.google.firebase.firestore.FirebaseFirestore
@@ -70,16 +71,17 @@ class FirestoreBillRepository @Inject constructor(
 /** Field names match firestore.rules. Returns null for malformed documents. */
 object BillDocumentMapper {
 
-    fun toMap(bill: Bill): Map<String, Any> = mapOf(
-        "id" to bill.id.value,
-        "name" to bill.name,
-        "accountId" to bill.accountId.value,
-        "amount" to LedgerDocumentMapper.moneyToMap(bill.amount),
-        "frequency" to bill.frequency.name,
-        "firstDue" to bill.firstDue.toString(),
-        "status" to bill.status.name,
-        "createdAt" to bill.createdAt.toEpochMilli(),
-    )
+    fun toMap(bill: Bill): Map<String, Any> = buildMap {
+        put("id", bill.id.value)
+        put("name", bill.name)
+        put("accountId", bill.accountId.value)
+        put("amount", LedgerDocumentMapper.moneyToMap(bill.amount))
+        put("frequency", bill.frequency.name)
+        put("firstDue", bill.firstDue.toString())
+        put("status", bill.status.name)
+        put("createdAt", bill.createdAt.toEpochMilli())
+        bill.reminder?.let { put("reminderDaysBefore", it.daysBefore.toLong()) }
+    }
 
     fun fromMap(map: Map<String, Any?>): Bill? = runCatching {
         Bill(
@@ -91,6 +93,7 @@ object BillDocumentMapper {
             firstDue = LocalDate.parse(map["firstDue"] as String),
             status = BillStatus.valueOf(map["status"] as String),
             createdAt = Instant.ofEpochMilli((map["createdAt"] as Number).toLong()),
+            reminder = BillReminder.fromDays((map["reminderDaysBefore"] as Number?)?.toInt()),
         )
     }.getOrNull()
 }
