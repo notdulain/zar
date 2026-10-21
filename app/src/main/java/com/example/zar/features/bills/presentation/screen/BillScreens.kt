@@ -48,6 +48,7 @@ import com.example.zar.core.domain.calculation.ZarTime
 import com.example.zar.core.domain.model.MatchState
 import com.example.zar.features.bills.domain.BillProblem
 import com.example.zar.features.bills.domain.model.BillFrequency
+import com.example.zar.features.bills.domain.model.BillReminder
 import com.example.zar.features.bills.domain.model.BillOccurrence
 import com.example.zar.features.bills.domain.model.BillSummary
 import com.example.zar.features.bills.presentation.viewmodel.BillFormViewModel
@@ -56,6 +57,8 @@ import com.example.zar.features.bills.presentation.viewmodel.BillOccurrenceViewM
 import com.example.zar.features.bills.presentation.viewmodel.BillViewModel
 import com.example.zar.features.bills.presentation.viewmodel.BillsViewModel
 import com.example.zar.features.freelance.presentation.screen.CenteredText
+import com.example.zar.features.reminders.presentation.NotificationsOffNote
+import com.example.zar.features.reminders.presentation.rememberNotificationAccess
 import com.example.zar.features.freelance.presentation.screen.DateField
 import com.example.zar.features.freelance.presentation.screen.Loading
 import com.example.zar.features.freelance.presentation.screen.SectionLabel
@@ -69,6 +72,14 @@ private fun BillFrequency.labelRes(): Int = when (this) {
     BillFrequency.WEEKLY -> R.string.bill_frequency_weekly
     BillFrequency.MONTHLY -> R.string.bill_frequency_monthly
     BillFrequency.YEARLY -> R.string.bill_frequency_yearly
+}
+
+private fun BillReminder?.labelRes(): Int = when (this) {
+    null -> R.string.bill_reminder_off
+    BillReminder.ON_THE_DAY -> R.string.bill_reminder_day
+    BillReminder.ONE_DAY_BEFORE -> R.string.bill_reminder_1
+    BillReminder.THREE_DAYS_BEFORE -> R.string.bill_reminder_3
+    BillReminder.ONE_WEEK_BEFORE -> R.string.bill_reminder_7
 }
 
 private fun BillMessage.textRes(): Int = when (this) {
@@ -228,6 +239,9 @@ fun BillScreen(
                         ),
                     )
                 }
+                item {
+                    Detail("${stringResource(R.string.bill_reminder)}: ${stringResource(summary.bill.reminder.labelRes())}")
+                }
                 item { Detail(stringResource(R.string.bill_never_posts)) }
                 item { SectionLabel(stringResource(R.string.bill_due_dates), Modifier.padding(top = 8.dp)) }
                 if (summary.occurrences.isEmpty()) item { CenteredText(stringResource(R.string.bill_no_due_dates)) }
@@ -342,6 +356,24 @@ fun BillFormScreen(
             DateField(stringResource(R.string.bill_first_due), uiState.firstDue, enabled = true, onSelect = viewModel::onFirstDueSelect)
             if (uiState.frequency != BillFrequency.WEEKLY && uiState.firstDue.dayOfMonth > 28) {
                 Detail(stringResource(R.string.bill_month_end_hint))
+            }
+            val notifications = rememberNotificationAccess()
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                SectionLabel(stringResource(R.string.bill_reminder))
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    (listOf<BillReminder?>(null) + BillReminder.entries).forEach { choice ->
+                        FilterChip(
+                            selected = uiState.reminder == choice,
+                            onClick = {
+                                viewModel.onReminderSelect(choice)
+                                if (choice != null) notifications.request()
+                            },
+                            label = { Text(stringResource(choice.labelRes()), fontFamily = ZarMono) },
+                        )
+                    }
+                }
+                Detail(stringResource(R.string.bill_reminder_hint))
+                if (uiState.reminder != null && !notifications.enabled) NotificationsOffNote()
             }
             uiState.message?.let { Text(stringResource(it.textRes()), color = MaterialTheme.colorScheme.error, fontFamily = ZarMono) }
             Button(onClick = viewModel::save, enabled = !uiState.isSaving, modifier = Modifier.fillMaxWidth().height(52.dp)) {

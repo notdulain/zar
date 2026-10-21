@@ -18,6 +18,7 @@ import com.example.zar.features.bills.domain.BillRules
 import com.example.zar.features.bills.domain.model.Bill
 import com.example.zar.features.bills.domain.model.BillFrequency
 import com.example.zar.features.bills.domain.model.BillId
+import com.example.zar.features.bills.domain.model.BillReminder
 import com.example.zar.features.bills.domain.model.BillOccurrence
 import com.example.zar.features.bills.domain.model.BillSummary
 import com.example.zar.features.bills.domain.model.BillsOverview
@@ -30,6 +31,7 @@ import com.example.zar.features.bills.domain.usecase.ObserveBillsUseCase
 import com.example.zar.features.bills.domain.usecase.ObservePaymentCandidatesUseCase
 import com.example.zar.features.bills.domain.usecase.SaveBillUseCase
 import com.example.zar.features.bills.domain.usecase.UnlinkBillPaymentUseCase
+import com.example.zar.features.reminders.domain.RefreshRemindersUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.time.Instant
 import java.time.LocalDate
@@ -89,6 +91,7 @@ data class BillFormUiState(
     val amount: String = "",
     val frequency: BillFrequency = BillFrequency.MONTHLY,
     val firstDue: LocalDate = ZarTime.today(),
+    val reminder: BillReminder? = null,
     val problems: Set<BillProblem> = emptySet(),
     val message: BillMessage? = null,
     val notFound: Boolean = false,
@@ -105,6 +108,7 @@ class BillFormViewModel @Inject constructor(
     private val observeAccounts: ObserveBillAccountsUseCase,
     private val observeBills: ObserveBillsUseCase,
     private val saveBill: SaveBillUseCase,
+    private val refreshReminders: RefreshRemindersUseCase,
 ) : ViewModel() {
     private val editingId = savedStateHandle.toRoute<BillFormRoute>().billId?.let(::BillId)
 
@@ -124,6 +128,7 @@ class BillFormViewModel @Inject constructor(
                     bill != null -> state.copy(
                         isLoading = false, bill = bill, accounts = accountList, name = bill.name, accountId = bill.accountId,
                         amount = bill.amount.toDecimal().toPlainString(), frequency = bill.frequency, firstDue = bill.firstDue,
+                        reminder = bill.reminder,
                     )
                     else -> state.copy(isLoading = false, accounts = accountList, accountId = accountList.firstOrNull()?.id)
                 }
@@ -136,11 +141,12 @@ class BillFormViewModel @Inject constructor(
     fun onAmountChange(value: String) = edit(BillProblem.AMOUNT_MISSING, BillProblem.AMOUNT_INVALID) { copy(amount = value) }
     fun onFrequencySelect(value: BillFrequency) = edit { copy(frequency = value) }
     fun onFirstDueSelect(value: LocalDate) = edit { copy(firstDue = value) }
+    fun onReminderSelect(value: BillReminder?) = edit { copy(reminder = value) }
 
     fun save() {
         val state = _uiState.value
         if (state.isSaving || state.isLoading) return
-        when (val checked = BillRules.checkBill(state.name, state.account, state.amount, state.frequency, state.firstDue)) {
+        when (val checked = BillRules.checkBill(state.name, state.account, state.amount, state.frequency, state.firstDue, state.reminder)) {
             is BillCheck.Invalid -> _uiState.update { it.copy(problems = checked.problems) }
             is BillCheck.Valid -> run(state.bill?.id ?: newBillId) {
                 state.bill?.let { saveBill.update(it, checked.value) } ?: saveBill.create(newBillId, checked.value, Instant.now())
@@ -157,7 +163,11 @@ class BillFormViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isSaving = true, message = null) }
             block().fold(
-                onSuccess = { _uiState.update { it.copy(isSaving = false, savedBillId = id.value) } },
+                onSuccess = {
+                    // A reminder due today shouldn't wait for tomorrow's check.
+                    runCatching { refreshReminders() }
+                    _uiState.update { it.copy(isSaving = false, savedBillId = id.value) }
+                },
                 onFailure = { e -> _uiState.update { it.copy(isSaving = false, message = e.toBillMessage()) } },
             )
         }
