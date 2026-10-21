@@ -71,7 +71,7 @@ Every failure leaves manual entry usable. The caller still holds the user's text
 
 ## Model
 
-Gemini 3.5 Flash-Lite (`gemini-3.5-flash-lite`), `generateContent` REST (v1beta), temperature 0, `thinkingLevel: minimal`, schema-constrained JSON, 2,048 output tokens, 6.5 s provider budget inside the app's 8 s. Verified against the current Gemini docs on 21 October 2026: the model code is listed as stable and accepts `minimal`. If the model is retired or unavailable to the account, requests fail as `PROVIDER_UNAVAILABLE`. The service does **not** switch models on its own; changing it needs a new evaluation (`tools/quicknote-eval`).
+Gemini 3.5 Flash-Lite (`gemini-3.5-flash-lite`), `generateContent` REST (v1beta), temperature 0, `thinkingLevel: minimal`, schema-constrained JSON, 2,048 output tokens, 6.5 s provider budget inside the app's 8 s. Google's [model guide](https://ai.google.dev/gemini-api/docs/generate-content/whats-new-gemini-3.6), checked on 21 October 2026, lists this model for production use with `minimal` thinking. This documentation check is not a live API test. If the model is retired or unavailable to the account, requests fail as `PROVIDER_UNAVAILABLE`. The service does **not** switch models on its own; changing it needs a new evaluation (`tools/quicknote-eval`).
 
 ## Setup (one-time, by an owner of `zar-app-35602`)
 
@@ -81,16 +81,18 @@ Not done by this change. Nothing was deployed.
 2. `firebase functions:secrets:set GEMINI_API_KEY` (paste the key when prompted).
 3. Firebase console, Security, App Check: register the Android app with **Play Integrity** (needs the app linked to Google Play and the SHA-256 of the signing certificate). Watch the metrics, then enforce for Cloud Functions. The function already rejects calls without a token, so enforce only after a release build with App Check is in testers' hands.
 4. Debug builds: run the app once and copy the debug token printed in Logcat (`DebugAppCheckProvider`) into App Check, Manage debug tokens. Never commit it. Release builds do not contain the debug provider.
-5. `cd functions && npm install`, then `firebase deploy --only functions:createQuickNoteDraft`.
+5. `cd functions && npm ci`, then `npx firebase deploy --only functions:createQuickNoteDraft`.
 
 ### Local development
 
 ```bash
 cd functions
-npm install
+npm ci
 npm test                 # unit and contract tests, no network, no Gemini
 npm run test:emulator    # starts the Functions emulator, checks auth and input rejection, shuts down
 ```
+
+The emulator contract uses `demo-zar` and creates a placeholder `.secret.local` only when none exists. It removes that placeholder afterward, preserves any existing local secret, and checks emulator output for note content and Secret Manager access. It sends only rejected requests and makes no live Gemini call.
 
 To try the whole flow locally, put a throwaway key in `functions/.secret.local` (`GEMINI_API_KEY=...`, git-ignored), run `npm run serve`, and build the app with `./gradlew installDebug -Pzar.useEmulators=true`. Debug builds then use the Auth (9099), Firestore (8080) and Functions (5001) emulators. That calls the real Gemini API with your key and costs a little: use made-up notes.
 
@@ -117,6 +119,7 @@ class QuickNoteViewModel @Inject constructor(
 - It trims and validates the note.
 - It reads the user's non-archived accounts and sends only id, name, type and currency.
 - It calls the repository. Coroutine cancellation is rethrown and never turned into a result.
+- Its eight-second deadline covers waiting for accounts and generation together; a caller's shorter deadline still cancels the operation.
 
 The returned `Draft` has `source = QUICK_NOTE`, `status = PENDING_REVIEW`, a new `DraftId`, `createdAt` and structured proposals. Use `draft.recordIdFor(index)` when saving a confirmed proposal so a double tap saves once.
 
@@ -137,7 +140,8 @@ The returned `Draft` has `source = QUICK_NOTE`, `status = PENDING_REVIEW`, a new
 
 - Unknown account ids become missing; a transfer from an account to itself clears both sides.
 - Amounts must match `\d+(\.\d+)?`, parse exactly through `Money.parse` and be positive. Too many decimals, signs, exponents, separators and overflow become missing. There is no floating point.
-- The amount's currency must equal a known account's currency, otherwise the amount is cleared. A missing currency falls back to the known account, never to LKR.
+- The amount's currency must equal a known account's currency, otherwise the amount is cleared. A missing currency falls back to the known account, never to LKR. An explicitly invalid currency is cleared rather than replaced.
+- An amount inferred only from a numeric range or alternatives (such as `2-3k` or `1000 or 1500`) becomes missing, including guessed endpoints. An independently stated amount in the same note remains usable.
 - **Grounding.** An amount not written in the note is kept but `AMOUNT` is flagged uncertain. The note is scanned for numbers in any script's digits (Latin, Sinhala, Tamil, Arabic-Indic, full-width) with `k`, `thousand`, `lakh/lakhs/lac/lk`, `mn/m/million` and `cr/crore` applied. Number words and magnitude words that are not listed ("ලක්ෂ", "ஆயிரம்") are not understood, so those amounts are flagged for review. That is safe, just noisy.
 - Only `INCOME`, `EXPENSE` and `REFUND` are accepted as types. Spending class applies to expenses only.
 - An invalid top level (not a map, no `proposals` list, more than five proposals, unknown kind) is `InvalidResponse`.
