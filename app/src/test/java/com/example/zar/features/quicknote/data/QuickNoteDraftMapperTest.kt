@@ -176,6 +176,8 @@ class QuickNoteDraftMapperTest {
 
     @Test fun unknownCurrencyIsCleared() {
         assertNull(only<DraftProposal.ActualTransaction>(map("lunch 850", actual("currency" to "XYZ", "accountId" to null))).amount)
+        assertNull(only<DraftProposal.ActualTransaction>(map("lunch 850", actual("currency" to "XYZ"))).amount)
+        assertNull(only<DraftProposal.ActualTransaction>(map("lunch 850", actual("currency" to 123))).amount)
     }
 
     @Test fun amountKeepsItsCurrencyWhenNoAccountIsKnown() {
@@ -234,9 +236,16 @@ class QuickNoteDraftMapperTest {
         assertTrue(only<DraftProposal.ActualTransaction>(sinhala).uncertainFields.isEmpty())
     }
 
-    @Test fun midpointOfARangeIsFlagged() {
-        val p = only<DraftProposal.ActualTransaction>(map("2-3k for food", actual("amount" to "2500")))
-        assertTrue(DraftField.AMOUNT in p.uncertainFields)
+    @Test fun rangeAloneCannotSupplyAnExactAmount() {
+        for (amount in listOf("2000", "2500", "3000")) {
+            val p = only<DraftProposal.ActualTransaction>(map("2-3k for food", actual("amount" to amount)))
+            assertNull(p.amount)
+            assertTrue(DraftField.AMOUNT in p.missingFields)
+        }
+        val alternatives = only<DraftProposal.ActualTransaction>(map("paid 1000 or 1500", actual("amount" to "1000")))
+        assertNull(alternatives.amount)
+        val independent = only<DraftProposal.ActualTransaction>(map("paid 2500 today, next month 2-3k", actual("amount" to "2500")))
+        assertEquals(lkr(250_000), independent.amount)
     }
 
     @Test fun modelUncertaintyIsPreservedAndUnknownFieldNamesAreDropped() {
@@ -280,17 +289,18 @@ class QuickNoteDraftMapperTest {
     // --- dates ---------------------------------------------------------------------------------------------
 
     @Test fun invalidAndImpossibleDatesBecomeMissing() {
-        for (bad in listOf("2026-02-30", "21-10-2026", "tomorrow", "2026-10-22", "1999-12-31", "2026-1-5", "", 20261021)) {
+        for (bad in listOf("2026-02-30", "21-10-2026", "tomorrow", "2026-10-22", "2026-1-5", "", 20261021)) {
             val p = only<DraftProposal.ActualTransaction>(map("lunch 850", actual("date" to bad)))
             assertNull("'$bad'", p.date)
             assertTrue(DraftField.DATE in p.missingFields)
         }
     }
 
-    @Test fun dueDatesMayBeInTheFutureButNotAbsurdlyFar() {
+    @Test fun validDatesAreNotSubjectToInventedCalendarLimits() {
         fun due(value: String) = only<DraftProposal.Expected>(map("pay 100", mapOf("kind" to "EXPECTED", "direction" to "OUT", "amount" to "100", "currency" to "LKR", "dueDate" to value, "title" to "t"))).dueDate
         assertEquals(LocalDate.of(2026, 12, 1), due("2026-12-01"))
-        assertNull(due("2099-01-01"))
+        assertEquals(LocalDate.of(2099, 1, 1), due("2099-01-01"))
+        assertEquals(LocalDate.of(1999, 12, 31), only<DraftProposal.ActualTransaction>(map("paid 850 in 1999", actual("date" to "1999-12-31"))).date)
         assertNull(due("2026-13-01"))
     }
 

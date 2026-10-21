@@ -16,6 +16,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.currentTime
 import kotlinx.coroutines.test.runTest
@@ -99,6 +100,15 @@ class CallableQuickNoteDraftRepositoryTest {
     @Test fun anAnswerJustInsideTheBudgetSucceeds() = runTest {
         val repository = repo(Transport { delay(7_999); empty })
         assertTrue(repository.generate(QuickNoteTestSupport.request("x 1")).proposals.isEmpty())
+    }
+
+    @Test fun shorterCallerDeadlinePropagatesThroughTheRepository() = runTest {
+        val repository = repo(Transport { delay(60_000); empty })
+        val result = withTimeoutOrNull(1_000) {
+            runCatching { repository.generate(QuickNoteTestSupport.request("x 1")) }
+        }
+        assertEquals(null, result)
+        assertEquals(1_000L, currentTime)
     }
 
     @Test fun callerCancellationPropagatesAndIsNotATimeout() = runTest {

@@ -13,6 +13,7 @@ import java.time.LocalDate
 import javax.inject.Inject
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withTimeoutOrNull
 
 /**
  * Interprets a typed note as a pending draft. The caller keeps [note] for manual entry if this fails, and must
@@ -27,7 +28,9 @@ class GenerateQuickNoteDraftUseCase internal constructor(
     constructor(drafts: QuickNoteDraftRepository, accounts: AccountRepository) : this(drafts, accounts, ZarTime::today)
 
     suspend operator fun invoke(note: String): Result<Draft> = try {
-        Result.success(generate(note))
+        val draft = withTimeoutOrNull(QuickNoteLimits.GENERATION_BUDGET_MILLIS) { generate(note) }
+            ?: throw QuickNoteDraftError.TimedOut()
+        Result.success(draft)
     } catch (e: CancellationException) {
         throw e
     } catch (e: QuickNoteDraftError) {

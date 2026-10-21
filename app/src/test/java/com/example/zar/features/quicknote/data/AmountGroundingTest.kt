@@ -35,6 +35,11 @@ class AmountGroundingTest {
     @Test fun rangesAreNotGroundedToTheirMidpoint() {
         assertFalse(grounded("2500", "2-3k for food"))
         assertTrue(grounded("3000", "2-3k for food"))
+        assertTrue(AmountGrounding.isAmbiguousRangeAmount(BigDecimal("2500"), "2-3k for food"))
+        assertTrue(AmountGrounding.isAmbiguousRangeAmount(BigDecimal("1000"), "1000 or 1500"))
+        assertTrue(AmountGrounding.isAmbiguousRangeAmount(BigDecimal("1500"), "1k to 2k"))
+        assertFalse(AmountGrounding.isAmbiguousRangeAmount(BigDecimal("2500"), "paid 2500, later 2-3k"))
+        assertFalse(AmountGrounding.isAmbiguousRangeAmount(BigDecimal("500"), "paid 500, later 2-3k"))
     }
 
     @Test fun nonLatinNumerals() {

@@ -15,6 +15,8 @@ import java.time.Instant
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withTimeout
 
 /**
@@ -42,6 +44,8 @@ class CallableQuickNoteDraftRepository internal constructor(
         val raw = try {
             withTimeout(budgetMillis) { transport.createDraft(QuickNotePayload.from(request)) }
         } catch (_: TimeoutCancellationException) {
+            // A caller's shorter deadline must still cancel this operation.
+            currentCoroutineContext().ensureActive()
             throw QuickNoteDraftError.TimedOut()
         }
         return QuickNoteDraftMapper.toDraft(raw, request, DraftId(newId()), now())

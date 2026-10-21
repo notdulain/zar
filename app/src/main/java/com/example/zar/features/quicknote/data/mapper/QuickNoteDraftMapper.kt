@@ -32,8 +32,6 @@ internal object QuickNoteDraftMapper {
 
     private val AMOUNT = Regex("""\d{1,20}(\.\d{1,18})?""")
     private val CATEGORY = Regex("""[a-z0-9][a-z0-9 _-]{0,39}""")
-    private val EARLIEST_DATE = LocalDate.of(2000, 1, 1)
-    private const val MAX_DUE_YEARS_AHEAD = 5L
 
     fun toDraft(raw: Any?, request: QuickNoteDraftRequest, id: DraftId, createdAt: Instant): Draft {
         val proposals = (raw as? Map<*, *>)?.get("proposals") as? List<*> ?: throw QuickNoteDraftError.InvalidResponse()
@@ -142,18 +140,24 @@ internal object QuickNoteDraftMapper {
         private fun amount(rawAmount: Any?, rawCurrency: Any?, account: QuickNoteAccountContext?, uncertain: MutableSet<DraftField>): Money? {
             val text = (rawAmount as? String)?.trim()
             if (text == null || !AMOUNT.matches(text)) return null
-            val currency = (rawCurrency as? String)?.let(Currencies::find) ?: account?.currency ?: return null
+            val currency = when (rawCurrency) {
+                null -> account?.currency
+                is String -> account?.currency?.takeIf { it.code == rawCurrency.trim().uppercase() }
+                    ?: Currencies.find(rawCurrency)
+                else -> null
+            } ?: return null
             if (account != null && account.currency != currency) return null
             val money = Money.parse(text, currency)?.takeIf { it.isPositive } ?: return null
+            if (AmountGrounding.isAmbiguousRangeAmount(money.toDecimal(), request.note)) return null
             if (!AmountGrounding.isGrounded(money.toDecimal(), request.note)) uncertain.add(DraftField.AMOUNT)
             return money
         }
 
         private fun pastDate(raw: Any?): LocalDate? =
-            parseDate(raw)?.takeIf { it >= EARLIEST_DATE && it <= request.today }
+            parseDate(raw)?.takeIf { it <= request.today }
 
         private fun dueDate(raw: Any?): LocalDate? =
-            parseDate(raw)?.takeIf { it >= EARLIEST_DATE && it <= request.today.plusYears(MAX_DUE_YEARS_AHEAD) }
+            parseDate(raw)
 
         private fun parseDate(raw: Any?): LocalDate? = try {
             (raw as? String)?.takeIf { it.length == 10 }?.let(LocalDate::parse)

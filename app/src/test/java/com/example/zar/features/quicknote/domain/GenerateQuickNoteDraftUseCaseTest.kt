@@ -24,6 +24,9 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.test.currentTime
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -138,5 +141,30 @@ class GenerateQuickNoteDraftUseCaseTest {
         val drafts = FakeDrafts { pending }
         useCase(drafts, (1..40).map { account("a$it", "Account ${it.toString().padStart(2, '0')}") })("hi 5")
         assertEquals(30, drafts.requests.single().accounts.size)
+    }
+
+    @Test
+    fun accountContextWaitIsIncludedInTheEightSecondBudget() = runTest {
+        val drafts = FakeDrafts { pending }
+        val waitingAccounts = object : AccountRepository {
+            override fun observeAccounts(): Flow<List<Account>> = flow { delay(60_000); emit(emptyList()) }
+            override suspend fun saveAccount(account: Account) = error("must not save")
+        }
+        val generate = GenerateQuickNoteDraftUseCase(drafts, waitingAccounts) { TODAY }
+        assertTrue(generate("lunch 850").exceptionOrNull() is QuickNoteDraftError.TimedOut)
+        assertEquals(8_000L, currentTime)
+        assertTrue(drafts.requests.isEmpty())
+    }
+
+    @Test
+    fun generationBudgetIncludesContextAndRepositoryTogether() = runTest {
+        val drafts = FakeDrafts { delay(5_000); pending }
+        val slowAccounts = object : AccountRepository {
+            override fun observeAccounts(): Flow<List<Account>> = flow { delay(4_000); emit(emptyList()) }
+            override suspend fun saveAccount(account: Account) = error("must not save")
+        }
+        val generate = GenerateQuickNoteDraftUseCase(drafts, slowAccounts) { TODAY }
+        assertTrue(generate("lunch 850").exceptionOrNull() is QuickNoteDraftError.TimedOut)
+        assertEquals(8_000L, currentTime)
     }
 }
