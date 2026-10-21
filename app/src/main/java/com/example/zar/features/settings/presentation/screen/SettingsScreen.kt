@@ -80,7 +80,7 @@ private fun SettingsContent(
         ZarBackButton(onBack, stringResource(R.string.action_back), Modifier.padding(start = 10.dp, top = backTop))
         ZarTitleBlock(stringResource(R.string.settings_title), stringResource(R.string.settings_subtitle), Modifier.padding(top = 6.dp))
         Column(
-            Modifier.fillMaxWidth().navigationBarsPadding().padding(start = 9.dp, end = 9.dp, top = 40.dp, bottom = 16.dp),
+            Modifier.fillMaxWidth().navigationBarsPadding().padding(start = 9.dp, end = 9.dp, top = 43.dp, bottom = 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             ZarCard(Modifier.fillMaxWidth(), contentPadding = PaddingValues(horizontal = 20.dp, vertical = 6.dp)) {
