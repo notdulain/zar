@@ -32,7 +32,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-enum class EditMessage { NOT_SIGNED_IN, ALREADY_VOIDED, FAILED }
+enum class EditMessage { REFUNDED_AMOUNT, NOT_SIGNED_IN, ALREADY_VOIDED, FAILED }
 
 data class EditEntryUiState(
     val isLoading: Boolean = true,
@@ -132,6 +132,7 @@ class EditEntryViewModel @Inject constructor(
                         onFailure = { error ->
                             _uiState.update {
                                 when (error) {
+                                    is LedgerError.RefundTooHigh -> it.copy(isSaving = false, message = EditMessage.REFUNDED_AMOUNT)
                                     is LedgerError.NothingToChange ->
                                         it.copy(isSaving = false, problems = setOf(EditProblem.NOTHING_CHANGED))
                                     is LedgerError.AlreadyVoided -> it.copy(isSaving = false, message = EditMessage.ALREADY_VOIDED)

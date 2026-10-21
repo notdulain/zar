@@ -33,7 +33,10 @@ object ReconcileRules {
         if (input.isBlank()) return CheckResult.Invalid(setOf(CheckProblem.AMOUNT_MISSING))
         val counted: Money = Money.parse(input, balance.account.currency)
             ?: return CheckResult.Invalid(setOf(CheckProblem.AMOUNT_INVALID))
-        return CheckResult.Valid(BalanceCheck(balance.account, recorded, counted))
+        val check = runCatching {
+            BalanceCheck(balance.account, recorded, counted).also { it.gap }
+        }.getOrElse { return CheckResult.Invalid(setOf(CheckProblem.AMOUNT_INVALID)) }
+        return CheckResult.Valid(check)
     }
 
     /** The adjustment that closes the gap, or null when the balance already matches. */

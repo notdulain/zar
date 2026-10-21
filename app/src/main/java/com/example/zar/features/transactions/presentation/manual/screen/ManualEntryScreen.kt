@@ -3,6 +3,7 @@ package com.example.zar.features.transactions.presentation.manual.screen
 import androidx.activity.compose.BackHandler
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDefaults
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.SelectableDates
 import androidx.compose.material3.rememberDatePickerState
@@ -800,7 +801,10 @@ internal fun DateRow(date: LocalDate, onSelect: (LocalDate) -> Unit) {
             override fun isSelectableDate(utcTimeMillis: Long) = utcTimeMillis <= todayMillis
         },
     )
+    val pickerColors = DatePickerDefaults.colors(containerColor = ZarTheme.colors.surface, selectedDayContainerColor = ZarTheme.colors.accentSelected)
     DatePickerDialog(
+        colors = pickerColors,
+        tonalElevation = 0.dp,
         onDismissRequest = { showPicker = false },
         confirmButton = {
             TextButton(onClick = {
@@ -809,7 +813,7 @@ internal fun DateRow(date: LocalDate, onSelect: (LocalDate) -> Unit) {
             }) { Text(stringResource(R.string.action_ok)) }
         },
         dismissButton = { TextButton(onClick = { showPicker = false }) { Text(stringResource(R.string.action_cancel)) } },
-    ) { DatePicker(state = state) }
+    ) { DatePicker(state = state, colors = pickerColors) }
 }
 
 internal fun ExpenseCategory.labelRes(): Int = when (this) {

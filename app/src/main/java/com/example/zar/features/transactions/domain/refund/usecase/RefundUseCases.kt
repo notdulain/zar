@@ -33,7 +33,8 @@ class ObserveRefundContextUseCase @Inject constructor(
 
 /**
  * Saves a refund linked to its purchase. The cap is checked against the ledger as it is now, not as the form
- * last saw it, so two refunds can never add up to more than the purchase. Reuse the same [id] when retrying:
+ * last saw it. This validates the locally observed ledger, including pending offline writes.
+ * Reuse the same [id] when retrying:
  * a refund that is already stored is not saved a second time.
  */
 class RecordRefundUseCase @Inject constructor(

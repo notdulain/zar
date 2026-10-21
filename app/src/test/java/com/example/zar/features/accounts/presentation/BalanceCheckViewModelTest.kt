@@ -27,6 +27,7 @@ import com.example.zar.features.transactions.domain.manual.usecase.ObserveOnline
 import com.example.zar.features.transactions.presentation.activity.FakeAccounts
 import com.example.zar.features.transactions.presentation.activity.FakeConnectivity
 import java.io.IOException
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
@@ -46,10 +47,12 @@ import org.junit.Test
 
 /** A ledger whose save can fail, or fail after it was already stored (a lost acknowledgement). */
 private class FlakySaveLedger(val inner: FakeLedgerRepository = FakeLedgerRepository()) : LedgerRepository by inner {
+    var pause: CompletableDeferred<Unit>? = null
     var saveError: Throwable? = null
     var storedBeforeError = false
 
     override suspend fun saveTransaction(transaction: Transaction) {
+        pause?.await()
         val error = saveError
         if (error != null && !storedBeforeError) throw error
         inner.saveTransaction(transaction)
@@ -264,5 +267,19 @@ class BalanceCheckViewModelTest {
         connectivity.online.value = false
 
         assertFalse(vm.uiState.value.isOnline)
+    }
+
+    @Test fun resetCannotStartANewCheckWhileTheCurrentSaveIsPending() = runSheet { vm ->
+        val gate = CompletableDeferred<Unit>()
+        ledger.pause = gate
+        vm.onCountedChange("1000")
+        vm.confirm()
+        assertTrue(vm.uiState.value.isSaving)
+        vm.reset()
+        assertTrue(vm.uiState.value.isSaving)
+        vm.confirm()
+        gate.complete(Unit)
+        assertTrue(vm.uiState.value.isFinished)
+        assertEquals(1, adjustments().size)
     }
 }

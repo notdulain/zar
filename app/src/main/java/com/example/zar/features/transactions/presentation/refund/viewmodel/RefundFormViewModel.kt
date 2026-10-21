@@ -79,7 +79,8 @@ class RefundFormViewModel @Inject constructor(
                             context = context,
                             // Once saving starts the form is on its way out; the last refund making the purchase
                             // "fully refunded" must not flash the not-refundable message.
-                            notRefundable = !it.isSaving && !it.isFinished && (context == null || !context.canRefund),
+                            notRefundable = !it.isSaving && !it.isFinished && (context == null ||
+                                (!context.canRefund && context.summary.refunds.none { refund -> refund.id == refundId })),
                         )
                     }
                 }
@@ -105,6 +106,12 @@ class RefundFormViewModel @Inject constructor(
         val context = state.context ?: return
         val account = context.account ?: return
         if (state.isSaving || state.isFinished || state.isLoading) return
+        if (context.summary.refunds.any { it.id == refundId }) {
+            // The local write succeeded but its acknowledgement was lost. A full refund now has
+            // nothing left to validate; retrying this form must still finish without another write.
+            _uiState.update { it.copy(isFinished = true, message = null) }
+            return
+        }
         val input = RefundFormInput(state.amount, state.date, state.note)
         when (val result = RefundRules.validate(context.summary, account, input, ZarTime.today())) {
             is RefundFormResult.Invalid -> _uiState.update { it.copy(problems = result.problems, message = null) }

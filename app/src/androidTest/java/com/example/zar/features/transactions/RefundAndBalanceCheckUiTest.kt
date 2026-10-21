@@ -1,5 +1,8 @@
 package com.example.zar.features.transactions
 
+import android.graphics.Bitmap
+import androidx.test.platform.app.InstrumentationRegistry
+import java.io.File
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
@@ -172,6 +175,7 @@ class RefundAndBalanceCheckUiTest {
     fun anAmountOverWhatIsLeftShowsTheLimitInRed() {
         showRefund(refundState(listOf(refundEntry("r1", 2_000))) { copy(amount = "9000", problems = setOf(RefundProblem.AMOUNT_TOO_HIGH)) })
 
+        capture("refund-too-high-reviewed.png")
         compose.onNodeWithTag("refund-error-amount")
             .assertTextContains("More than is left to refund: LKR 6,400 (LKR 2,000 already refunded).")
     }
@@ -317,6 +321,7 @@ class RefundAndBalanceCheckUiTest {
         compose.onNodeWithText("October · the purchase's month").assertExists()
         compose.onNodeWithTag("detail-linked-purchase").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Not income.", substring = true).assertExists()
+        capture("refund-detail-reviewed.png")
         compose.onNodeWithText("Void refund").assertExists()
         compose.onNodeWithTag("detail-edit").assertDoesNotExist()
 
@@ -444,6 +449,7 @@ class RefundAndBalanceCheckUiTest {
 
         compose.onNodeWithTag("check-choice-find").performClick()
         assertEquals(GapChoice.FIND, rec.choice)
+        capture("check-balance-shortfall-reviewed.png")
     }
 
     @Test
@@ -512,5 +518,33 @@ class RefundAndBalanceCheckUiTest {
 
         compose.onNodeWithTag("check-amount").assertDoesNotExist()
         compose.onNodeWithTag("check-unavailable").assertDoesNotExist()
+    }
+
+    @Test
+    fun refundDatePickerAndFormAreVisible() {
+        val date = com.example.zar.core.domain.calculation.ZarTime.today()
+        val datedPurchase = purchase.copy(original = purchase.original.copy(date = date), current = purchase.current.copy(date = date))
+        val summary = RefundRules.summary(datedPurchase, listOf(datedPurchase))
+        showRefund(RefundFormUiState(isLoading = false, context = RefundContext(summary, cash), date = date))
+        capture("refund-form-reviewed.png")
+        compose.onNodeWithTag("manual-date").performClick()
+        compose.onNodeWithText("OK").assertIsDisplayed()
+        capture("refund-date-picker-reviewed.png")
+    }
+
+    @Test
+    fun extremeBalanceInputShowsAnErrorWithoutCrashing() {
+        showCheck(checkState(counted = "-92233720368547758.08") { copy(problems = setOf(CheckProblem.AMOUNT_INVALID)) })
+        compose.onNodeWithTag("check-error-amount").assertIsDisplayed()
+        capture("check-balance-invalid-reviewed.png")
+    }
+
+    private fun capture(name: String) {
+        compose.waitForIdle()
+        android.os.SystemClock.sleep(500) // Include the fully opened platform window.
+        val bitmap = InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot()
+        val dir = File(InstrumentationRegistry.getInstrumentation().targetContext.cacheDir, "pr16").apply { mkdirs() }
+        File(dir, name).outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
+        bitmap.recycle()
     }
 }

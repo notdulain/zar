@@ -261,4 +261,19 @@ class RefundFormViewModelTest {
         assertFalse(vm.uiState.value.isOnline)
         assertNull(vm.uiState.value.message)
     }
+
+    @Test fun fullRefundCanFinishOnRetryAfterALostAcknowledgement() = runTest(UnconfinedTestDispatcher()) {
+        savePurchase()
+        val vm = viewModel()
+        vm.onAmountChange("8400")
+        ledger.saveError = IOException("lost")
+        ledger.storedBeforeError = true
+        vm.save()
+        assertFalse(vm.uiState.value.isFinished)
+        assertFalse(vm.uiState.value.notRefundable)
+        ledger.saveError = null
+        vm.save()
+        assertTrue(vm.uiState.value.isFinished)
+        assertEquals(1, ledger.inner.transactions.values.count { it.type == TransactionType.REFUND })
+    }
 }
