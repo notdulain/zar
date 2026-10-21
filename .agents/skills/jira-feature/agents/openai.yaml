@@ -1,0 +1,4 @@
+interface:
+  display_name: "Jira feature to PR"
+  short_description: "Jira, OpenSpec, Sonnet 5.5, Figma, commits and PR"
+  default_prompt: "Use $jira-feature to implement the supplied Jira task through OpenSpec, Sonnet 5.5 task commits and a PR using this project's template."

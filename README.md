@@ -100,6 +100,19 @@ AI quick-note hosting, cost, privacy and the draft format are documented in [doc
 - Add new destinations to `core/navigation/ZarRoutes.kt` and `ZarNavHost.kt`.
 - Firestore rules live in `firestore.rules`; run `npm install && npm test` in `firestore-tests/` (needs Java) after changing them, and deploy with `npx -y firebase-tools@latest deploy --only firestore:rules`.
 
+## Jira feature command
+
+Run a Jira task through OpenSpec planning, Sonnet 5.5 implementation in a separate worktree, Figma verification, one commit per completed task, and a PR using the repository template:
+
+- **Claude Code:** `/jira-feature SCRUM-42`
+- **Codex:** `$jira-feature SCRUM-42` (or select `jira-feature` with `/skills`).
+
+Both accept a Jira URL, an optional Figma selection URL and `base=<branch>`. The default base is the latest `origin/main`.
+
+The shared workflow is in [.agents/skills/jira-feature/SKILL.md](.agents/skills/jira-feature/SKILL.md). Jira, Figma for UI tasks, OpenSpec and GitHub access must be available. In T3, it discovers the exact Sonnet 5.5 model from the provider catalog. Native Claude Code can use the included Sonnet worker; Codex needs a Claude delegation provider such as T3. If that provider is unavailable, the command reports the blocker instead of switching models. Restart the agent session if the new command is not listed.
+
+OpenSpec plans remain git-ignored. UI PRs include screenshots captured from the running app. Invocation includes feature commits, pushing and PR creation; merging and deployment are separate actions.
+
 ## Team backlog
 
 [Jira backlog](https://03dulain.atlassian.net/jira/software/projects/SCRUM/boards/1/backlog) · [Approved wireframes](https://www.figma.com/design/p5SITMwzIDaa76eHLI3zB0/Places-App?node-id=91-2)
