@@ -249,7 +249,9 @@ fun BillScreen(
                 item {
                     SummaryHeaderCard(
                         label = stringResource(R.string.bill_next_label),
-                        amount = summary.next?.let { IncomeFormat.fullDate(it.dueDate) } ?: stringResource(R.string.bills_stopped),
+                        amount = summary.next?.let { IncomeFormat.fullDate(it.dueDate) } ?: stringResource(
+                            if (summary.bill.cancellation is BillCancellation.Confirmed) R.string.bills_cancelled else R.string.bills_stopped,
+                        ),
                         caption = stringResource(
                             R.string.bill_caption,
                             summary.bill.amount.display(),
