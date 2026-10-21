@@ -18,6 +18,8 @@ import com.example.zar.features.catchup.data.ResetCatchUpOnSignOut
 import com.example.zar.features.catchup.data.WorkManagerReminderScheduler
 import com.example.zar.features.catchup.domain.repository.CatchUpPreferencesRepository
 import com.example.zar.features.catchup.domain.repository.ReminderScheduler
+import com.example.zar.features.bills.data.repository.FirestoreBillRepository
+import com.example.zar.features.bills.domain.repository.BillRepository
 import com.example.zar.features.crypto.data.repository.FirestoreOpeningCostRepository
 import com.example.zar.features.crypto.domain.repository.OpeningCostRepository
 import com.example.zar.features.freelance.data.repository.FirestoreProjectRepository
@@ -66,6 +68,10 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun bindProjectRepository(impl: FirestoreProjectRepository): ProjectRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindBillRepository(impl: FirestoreBillRepository): BillRepository
 
     @Binds
     @Singleton
