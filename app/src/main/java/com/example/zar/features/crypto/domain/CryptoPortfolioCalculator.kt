@@ -7,6 +7,7 @@ import com.example.zar.core.domain.model.AccountId
 import com.example.zar.core.domain.model.AccountType
 import com.example.zar.core.domain.model.LedgerEntry
 import com.example.zar.core.domain.model.OpeningBalance
+import com.example.zar.core.domain.model.Transaction
 import com.example.zar.core.domain.model.TransactionId
 import com.example.zar.core.domain.model.TransactionType
 import com.example.zar.core.domain.model.TransferId
@@ -51,17 +52,19 @@ object CryptoPortfolioCalculator {
         val active = entries.active()
         val byId = active.associateBy { it.id }
 
-        // Same-asset moves between owned wallets carry cost across; they are skipped entirely.
-        fun isInternalMove(transferId: TransferId?): Boolean {
-            transferId ?: return false
-            val out = byId[transferId.outLegId()]?.current ?: return false
-            val inLeg = byId[transferId.inLegId()]?.current ?: return false
-            return out.accountId in walletsById && inLeg.accountId in walletsById && out.amount.currency == inLeg.amount.currency
+        // Same-asset moves between owned wallets carry cost across, so their legs are skipped; only a
+        // difference between what left and what arrived (a network fee) changes holdings.
+        fun internalMoveIn(transferId: TransferId?): Transaction? {
+            transferId ?: return null
+            val out = byId[transferId.outLegId()]?.current ?: return null
+            val inLeg = byId[transferId.inLegId()]?.current ?: return null
+            val internal = out.accountId in walletsById && inLeg.accountId in walletsById && out.amount.currency == inLeg.amount.currency
+            return inLeg.takeIf { internal }
         }
 
         val results = mutableMapOf<TransactionId, RealizedResult>()
         val assets = wallets.groupBy { it.currency }.map { (currency, assetWallets) ->
-            calculateAsset(currency, assetWallets, active, openingCosts, ::isInternalMove, results)
+            calculateAsset(currency, assetWallets, active, openingCosts, ::internalMoveIn, results)
         }.sortedBy { it.currency.code }
 
         val movements = active
@@ -128,7 +131,7 @@ object CryptoPortfolioCalculator {
         wallets: List<Account>,
         active: List<LedgerEntry>,
         openingCosts: Map<AccountId, OpeningCost>,
-        isInternalMove: (TransferId?) -> Boolean,
+        internalMoveIn: (TransferId?) -> Transaction?,
         results: MutableMap<TransactionId, RealizedResult>,
     ): AssetPosition {
         val pool = Pool()
@@ -157,7 +160,7 @@ object CryptoPortfolioCalculator {
         val openingDates = wallets.associate { it.id to it.openingDate }
         active.map { it.current }
             .filter { it.accountId in walletIds && it.amount.currency == currency && it.date >= openingDates.getValue(it.accountId) }
-            .filterNot { isInternalMove(it.transferId) }
+            .filter { internalMoveIn(it.transferId) == null }
             .forEach { tx ->
                 val qty = tx.amount.toDecimal()
                 val value = CurrencyConverter.reportingAmount(tx.amount, tx.reportingConversion)
@@ -175,6 +178,20 @@ object CryptoPortfolioCalculator {
                     TransactionType.ADJUSTMENT_OUT -> { -> pool.dispose(qty) }
                 }
                 events += Event(tx.date, 1, tx.createdAt, run)
+            }
+
+        // A move that arrives short loses the difference at average cost (nothing is realized); one that
+        // arrives with more adds the extra coins at an unknown cost.
+        active.map { it.current }
+            .filter { it.type == TransactionType.TRANSFER_OUT && it.accountId in walletIds && it.amount.currency == currency }
+            .forEach { out ->
+                val inLeg = internalMoveIn(out.transferId) ?: return@forEach
+                if (out.date < openingDates.getValue(out.accountId) || inLeg.date < openingDates.getValue(inLeg.accountId)) return@forEach
+                val difference = out.amount.toDecimal() - inLeg.amount.toDecimal()
+                if (difference.signum() == 0) return@forEach
+                events += Event(out.date, 1, out.createdAt) {
+                    if (difference.signum() > 0) pool.dispose(difference) else pool.acquire(difference.negate(), null)
+                }
             }
 
         events.sortedWith(compareBy<Event>({ it.date }, { it.order }, { it.createdAt })).forEach { it.run() }

@@ -100,6 +100,31 @@ class CryptoPortfolioCalculatorTest {
     }
 
     @Test
+    fun moveThatArrivesShortLosesTheDifferenceWithoutARealizedResult() {
+        // 0.01 BTC leaves Binance but 0.009 BTC reaches Ledger: 0.001 BTC went in a network fee.
+        val txs = move("b1", bank, binanceBtc, lkr(300_000), btc("0.01"), null, 1) +
+            move("m1", binanceBtc, ledgerBtc, btc("0.01"), btc("0.009"), null, 2)
+        val portfolio = calc(txs)
+        val position = portfolio.assets.single { it.currency == Currencies.BTC }
+        assertEquals(btc("0.009"), position.quantity)
+        assertEquals(lkr(270_000), position.knownCost)
+        assertEquals(lkr(30_000_000), position.averageCost)
+        assertEquals(lkr(0), portfolio.realized)
+        assertEquals(0, portfolio.unknownResultCount)
+    }
+
+    @Test
+    fun moveThatArrivesWithMoreAddsTheExtraCoinsAtAnUnknownCost() {
+        val txs = move("b1", bank, binanceBtc, lkr(300_000), btc("0.01"), null, 1) +
+            move("m1", binanceBtc, ledgerBtc, btc("0.01"), btc("0.011"), null, 2)
+        val position = calc(txs).assets.single { it.currency == Currencies.BTC }
+        assertEquals(btc("0.011"), position.quantity)
+        assertEquals(btc("0.001"), position.unknownCostQuantity)
+        assertEquals(lkr(300_000), position.knownCost)
+        assertNull(position.averageCost)
+    }
+
+    @Test
     fun cryptoMovesNeverCountAsIncomeOrSpending() {
         val txs = move("b1", bank, binanceBtc, lkr(300_000), btc("0.01"), null, 1) +
             move("s1", binanceBtc, bank, btc("0.01"), lkr(360_000), null, 3)

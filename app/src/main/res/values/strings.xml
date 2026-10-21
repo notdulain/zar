@@ -858,6 +858,7 @@
     <string name="crypto_profit">Profit %1$s</string>
     <string name="crypto_loss">Loss %1$s</string>
     <string name="crypto_result_unknown">Profit/loss unknown</string>
+    <string name="crypto_add_movement">Add crypto movement</string>
     <string name="crypto_undo_title">Undo this movement?</string>
     <string name="crypto_undo_body">Both sides are removed from your balances, holdings and profit or loss. This can\'t be reversed.</string>
     <string name="crypto_undo">Undo</string>
