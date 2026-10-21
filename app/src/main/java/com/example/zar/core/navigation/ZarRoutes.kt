@@ -99,3 +99,17 @@ data object CryptoRoute
 
 @Serializable
 data object CryptoMovementRoute
+
+@Serializable
+data object BillsRoute
+
+/** New bill when [billId] is null; otherwise edit it. */
+@Serializable
+data class BillFormRoute(val billId: String? = null)
+
+@Serializable
+data class BillRoute(val billId: String)
+
+/** One due date of a bill, where actual payments are linked. [dueDate] is yyyy-MM-dd. */
+@Serializable
+data class BillOccurrenceRoute(val billId: String, val dueDate: String)
