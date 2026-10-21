@@ -1,4 +1,5 @@
-// Quick-note prompt and output schema. D06 moves these into a server prompt template.
+// Quick-note prompt and output schema for the evaluation harness. The deployed copy is functions/src/prompt.js (D06);
+// keep the two in sync and re-run the evaluation after any prompt change.
 
 export const DRAFT_FIELDS = ['TYPE', 'AMOUNT', 'ACCOUNT', 'COUNTERPART_ACCOUNT', 'DATE', 'CATEGORY', 'MERCHANT', 'TITLE'];
 
