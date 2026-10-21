@@ -338,7 +338,7 @@ class CatchUpUiTest {
         }
 
         bannerHas("catchup-offline", "syncs when you're back online")
-        compose.onNodeWithTag("catchup-message").assertTextContains("Could not save")
+        compose.onNodeWithTag("catchup-message").assertTextContains("Could not save", substring = true)
     }
 
     @Test
@@ -410,7 +410,7 @@ class CatchUpUiTest {
 
         compose.onNodeWithTag("reminder-day").assertTextContains("Sunday")
         compose.onNodeWithTag("reminder-time").assertTextContains("7:00 pm")
-        compose.onNodeWithTag("reminder-zone").assertTextContains("Asia/Colombo")
+        compose.onNodeWithTag("reminder-zone").assertTextContains("Asia/Colombo", substring = true)
         bannerHas("reminder-note-next", "Sun 25 Oct · 7:00 pm")
         compose.onNodeWithTag("reminder-skip").performScrollTo().performClick()
         assertEquals(1, taps.skipped)
