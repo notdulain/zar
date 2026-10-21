@@ -84,6 +84,7 @@ private val DayFormat = DateTimeFormatter.ofPattern("MMM d", Locale.ENGLISH)
 fun HomeScreen(
     onNavigate: (TopLevelDestination) -> Unit,
     onAddOption: (AddEntryOption) -> Unit,
+    onOpenReview: () -> Unit,
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -94,6 +95,7 @@ fun HomeScreen(
         onRetry = viewModel::retry,
         onNavigate = onNavigate,
         onAddOption = onAddOption,
+        onOpenReview = onOpenReview,
     )
 }
 
@@ -105,6 +107,7 @@ internal fun HomeScreenContent(
     onRetry: () -> Unit,
     onNavigate: (TopLevelDestination) -> Unit,
     onAddOption: (AddEntryOption) -> Unit,
+    onOpenReview: () -> Unit = {},
 ) {
     ZarScreenScaffold(
         destination = TopLevelDestination.Home,
@@ -134,6 +137,7 @@ internal fun HomeScreenContent(
                     onPreviousMonth = onPreviousMonth,
                     onNextMonth = onNextMonth,
                     onNavigate = onNavigate,
+                    onOpenReview = onOpenReview,
                 )
             }
         }
@@ -164,6 +168,7 @@ private fun OverviewBlock(
     onPreviousMonth: () -> Unit,
     onNextMonth: () -> Unit,
     onNavigate: (TopLevelDestination) -> Unit,
+    onOpenReview: () -> Unit,
 ) {
     ReceivedHero(overview, canGoForward, onPreviousMonth, onNextMonth)
 
@@ -173,7 +178,7 @@ private fun OverviewBlock(
     ) {
         QuickNavigation(onNavigate)
         if (overview.hasIncompleteData) {
-            ReviewPrompt(overview, onClick = { onNavigate(TopLevelDestination.Activity) })
+            ReviewPrompt(overview, onClick = onOpenReview)
         }
         SpendingCard(overview, onClick = { onNavigate(TopLevelDestination.Activity) })
         GoalLinkCard(onClick = { onNavigate(TopLevelDestination.Plans) })
