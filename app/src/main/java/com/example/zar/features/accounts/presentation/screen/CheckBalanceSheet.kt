@@ -71,8 +71,10 @@ fun CheckBalanceSheet(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     // The ViewModel outlives the sheet, so every way out starts the next check from scratch.
     val close = {
-        viewModel.reset()
-        onDismiss()
+        if (!viewModel.uiState.value.isSaving) {
+            viewModel.reset()
+            onDismiss()
+        }
     }
     LaunchedEffect(state.isFinished) { if (state.isFinished) close() }
     LaunchedEffect(state.missingEntry) {
@@ -106,7 +108,7 @@ internal fun CheckBalanceBody(state: BalanceCheckUiState, actions: CheckActions)
     val colors = ZarTheme.colors
     val isCash = state.balance?.account?.type == AccountType.CASH
     ModalBottomSheet(
-        onDismissRequest = actions.onDismiss,
+        onDismissRequest = { if (!state.isSaving) actions.onDismiss() },
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
         shape = ZarShapes.sheet,
         containerColor = colors.surface,
@@ -124,7 +126,7 @@ internal fun CheckBalanceBody(state: BalanceCheckUiState, actions: CheckActions)
         ) {
             SheetHeader(
                 stringResource(if (isCash) R.string.balance_check_title_cash else R.string.balance_check_title),
-                onClose = actions.onDismiss,
+                onClose = { if (!state.isSaving) actions.onDismiss() },
             )
             when {
                 state.isLoading -> Box(Modifier.fillMaxWidth().padding(vertical = 32.dp), Alignment.Center) {

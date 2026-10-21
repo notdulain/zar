@@ -36,11 +36,15 @@ class RecordBalanceCheckUseCase @Inject constructor(
         source: RecordSource = RecordSource.RECONCILIATION,
     ): Result<BalanceCheck> = resultOf {
         if (counted.currency != account.currency) throw LedgerError.CurrencyMismatch(account.currency.code, counted.currency.code)
-        val balance = AccountBalanceCalculator.calculate(account, ledger.observeLedger().first())
+        val entries = ledger.observeLedger().first()
+        val balance = AccountBalanceCalculator.calculate(account, entries, date)
         if (ReconcileRules.availability(balance) != CheckAvailability.AVAILABLE) {
             throw LedgerError.InvalidRecord("This balance cannot be checked yet")
         }
         val check = BalanceCheck(account, balance.current!!, counted)
+        // A lost acknowledgement must never rewrite an immutable adjustment, even if the ledger
+        // or typed count changed before retrying. A fresh check gets a fresh ID.
+        if (entries.any { it.id == id }) return@resultOf check
         ReconcileRules.newAdjustment(id, check, date, createdAt, source)?.let { saveTransaction(it, account).getOrThrow() }
         check
     }

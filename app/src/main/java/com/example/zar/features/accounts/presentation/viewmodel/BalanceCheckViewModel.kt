@@ -151,6 +151,7 @@ class BalanceCheckViewModel @Inject constructor(
 
     /** Starts a fresh check the next time the sheet opens. */
     fun reset() {
+        if (local.value.isSaving) return
         adjustmentId = TransactionId(RecordIds.newId())
         local.value = Local()
     }

@@ -288,6 +288,7 @@ private fun EditFields(state: EditEntryUiState, amount: String, actions: EditAct
 }
 
 private fun EditMessage.textRes(): Int = when (this) {
+    EditMessage.REFUNDED_AMOUNT -> R.string.activity_edit_refunded_amount
     EditMessage.NOT_SIGNED_IN -> R.string.manual_message_not_signed_in
     EditMessage.ALREADY_VOIDED -> R.string.activity_edit_voided
     EditMessage.FAILED -> R.string.activity_edit_failed

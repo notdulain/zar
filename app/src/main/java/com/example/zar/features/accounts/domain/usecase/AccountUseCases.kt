@@ -1,6 +1,7 @@
 package com.example.zar.features.accounts.domain.usecase
 
 import com.example.zar.core.domain.calculation.AccountBalance
+import com.example.zar.core.domain.calculation.ZarTime
 import com.example.zar.core.domain.calculation.AccountBalanceCalculator
 import com.example.zar.core.domain.calculation.active
 import com.example.zar.core.domain.model.Account
@@ -29,7 +30,7 @@ class ObserveAccountsOverviewUseCase @Inject constructor(
     private val ledger: LedgerRepository,
 ) {
     operator fun invoke(): Flow<AccountsOverview> = combine(accounts.observeAccounts(), ledger.observeLedger()) { list, entries ->
-        val balances = list.sortedWith(accountOrder).map { AccountBalanceCalculator.calculate(it, entries) }
+        val balances = list.sortedWith(accountOrder).map { AccountBalanceCalculator.calculate(it, entries, ZarTime.today()) }
         val (archived, active) = balances.partition { it.account.isArchived }
 
         // Only reporting-currency balances can be added up until exchange rates exist.
@@ -52,7 +53,7 @@ class ObserveAccountDetailUseCase @Inject constructor(
     operator fun invoke(id: AccountId, recentCount: Int = RECENT_COUNT): Flow<AccountDetail?> =
         combine(accounts.observeAccounts(), ledger.observeLedger()) { list, entries ->
             val account = list.firstOrNull { it.id == id } ?: return@combine null
-            val balance: AccountBalance = AccountBalanceCalculator.calculate(account, entries)
+            val balance: AccountBalance = AccountBalanceCalculator.calculate(account, entries, ZarTime.today())
             val recent = entries.active()
                 .filter { it.current.accountId == id }
                 .sortedWith(compareByDescending<LedgerEntry> { it.current.date }.thenByDescending { it.current.createdAt })

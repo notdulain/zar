@@ -237,4 +237,27 @@ class ReconcileTest {
         assertEquals(lkr(500), valid.check.gap)
         assertEquals(lkr(-500), valid.check.difference)
     }
+
+    @Test fun anUnrepresentableGapIsAnInputErrorInsteadOfACrash() {
+        val balance = AccountBalanceCalculator.calculate(cash, emptyList())
+        val result = ReconcileRules.evaluate(balance, "-92233720368547758.08")
+        assertEquals(setOf(CheckProblem.AMOUNT_INVALID), (result as CheckResult.Invalid).problems)
+    }
+
+    @Test fun retryAfterOtherEntriesNeverRewritesTheOriginalAdjustment() = runBlocking {
+        cashAt1500()
+        record(TransactionId("a1"), cash, lkr(1_000), today, T0).getOrThrow()
+        val original = repo.transactions.getValue(TransactionId("a1"))
+        repo.saveTransaction(tx("later", TransactionType.EXPENSE, lkr(100), cash, date = today))
+        record(TransactionId("a1"), cash, lkr(800), today, T0.plusSeconds(30)).getOrThrow()
+        assertEquals(original, repo.transactions.getValue(TransactionId("a1")))
+        assertEquals(lkr(900), balance().current)
+    }
+
+    @Test fun futureEntriesDoNotChangeTodaysAdjustment() = runBlocking {
+        repo.saveTransaction(tx("future", TransactionType.INCOME, lkr(5_000), cash, date = today.plusDays(1)))
+        record(TransactionId("a1"), cash, lkr(1_000), today, T0).getOrThrow()
+        assertEquals(lkr(1_000), repo.transactions.getValue(TransactionId("a1")).amount)
+        assertEquals(lkr(1_000), AccountBalanceCalculator.calculate(cash, repo.observeLedger().first(), today).current)
+    }
 }

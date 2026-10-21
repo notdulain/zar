@@ -587,4 +587,19 @@ class ActivityScreensUiTest {
 
         assertEquals(2, rec.closed)
     }
+
+    @Test
+    fun aPurchaseAmountBelowActiveRefundsExplainsWhyItCannotSave() {
+        showEdit(editState { copy(input = input?.copy(amount = "3000"), message = EditMessage.REFUNDED_AMOUNT) })
+        compose.onNodeWithTag("edit-message").performScrollTo().assertIsDisplayed()
+        val instrumentation = androidx.test.platform.app.InstrumentationRegistry.getInstrumentation()
+        compose.waitForIdle()
+        android.os.SystemClock.sleep(500)
+        val bitmap = instrumentation.uiAutomation.takeScreenshot()
+        val dir = java.io.File(instrumentation.targetContext.cacheDir, "pr16").apply { mkdirs() }
+        java.io.File(dir, "edit-refunded-amount-reviewed.png").outputStream().use {
+            bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it)
+        }
+        bitmap.recycle()
+    }
 }

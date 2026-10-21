@@ -610,7 +610,7 @@
     <string name="activity_refunded_line">Refunded %1$s</string>
     <string name="activity_refunded_line_detail">%1$s · back to %2$s</string>
     <string name="activity_refund_remaining">Still refundable: %1$s</string>
-    <string name="activity_refund_cap_note">Refunds can never add up to more than the purchase.</string>
+    <string name="activity_refund_cap_note">Refunds are limited to the purchase amount.</string>
     <string name="activity_refund_nothing_left">Fully refunded</string>
     <string name="activity_refunded_net">Refunded %1$s · net %2$s in %3$s</string>
     <string name="activity_void_caption_has_refunds">Undo this purchase\'s refunds first. Voiding it now would leave their money in your balance.</string>
@@ -621,10 +621,10 @@
     <string name="activity_linked_purchase_title">Linked purchase</string>
     <string name="activity_linked_purchase_note">Not income. It lowers spending in the purchase\'s month, never below zero.</string>
     <string name="activity_linked_purchase_missing">The purchase this refund belongs to could not be found.</string>
-    <string name="activity_void_caption_refund">Voiding the refund makes the purchase count in full again.</string>
+    <string name="activity_void_caption_refund">Voiding this refund adds its amount back to spending.</string>
     <string name="activity_void_refund">Void refund</string>
     <string name="activity_void_title_refund">Void this refund?</string>
-    <string name="activity_void_body_refund">The refund stops counting and the purchase counts in full again. A void is final.</string>
+    <string name="activity_void_body_refund">This refund stops counting. Its amount is added back to spending. A void is final.</string>
     <string name="activity_void_blocked_refunds">Void its refunds first, then this purchase.</string>
 
     <string name="activity_kind_refund">Refund</string>
@@ -818,4 +818,5 @@
 
     <string name="more_reminder">Catch-up reminder</string>
     <string name="more_reminder_detail">A weekly nudge to check your cash</string>
+    <string name="activity_edit_refunded_amount">The amount cannot be less than its active refunds. Undo the refunds first.</string>
 </resources>
