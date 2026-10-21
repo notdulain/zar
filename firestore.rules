@@ -49,6 +49,10 @@ rules_version = '2';
 //   status 'ACTIVE'|'ARCHIVED', createdAt (immutable). Milestones are expectedPayments
 //   with source FREELANCE_MILESTONE pointing at the project.
 //
+// cryptoOpeningCosts/{accountId}  create, update, delete (optional; delete clears it)
+//   accountId (== doc id), cost (positive FIAT Money in LKR), approximate (bool), updatedAt (int).
+//   What a crypto wallet's opening coins cost, so profit or loss on them can be worked out.
+//
 // goals/{goalId}                  create, update (no delete in U04)
 //   id (== doc id), name (1-80), target (positive Money), targetDate? (YYYY-MM-DD), allocations (max 10),
 //   allocation {accountId, amount}; allocations reserve money but do not write ledger entries.
@@ -362,6 +366,18 @@ service cloud.firestore {
         && (count < 10 || isGoalAllocation(a[9], target));
     }
 
+    function isValidOpeningCost(accountId) {
+      let d = data();
+      return hasOnlyAllowedFields(['accountId', 'cost', 'approximate', 'updatedAt'])
+        && hasRequiredFields(['accountId', 'cost', 'approximate', 'updatedAt'])
+        && d.accountId == accountId
+        && isPositiveMoney(d.cost)
+        && d.cost.kind == 'FIAT'
+        && d.cost.currency == 'LKR'
+        && d.approximate is bool
+        && isMillis(d.updatedAt);
+    }
+
     function isValidProposal(p) {
       return p is map
         && p.keys().hasOnly(['kind', 'type', 'direction', 'amount', 'sent', 'received', 'accountId', 'fromAccountId',
@@ -476,6 +492,13 @@ service cloud.firestore {
         allow update: if isOwner(userId) && isValidGoal(goalId)
           && areImmutableFieldsUnchanged(['id']);
         allow delete: if false;
+      }
+
+      match /cryptoOpeningCosts/{accountId} {
+        allow read: if isOwner(userId);
+        allow create, update: if isOwner(userId) && isValidOpeningCost(accountId);
+        // Clearing an optional opening cost removes it.
+        allow delete: if isOwner(userId);
       }
 
       match /drafts/{draftId} {

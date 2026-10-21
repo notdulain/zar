@@ -822,4 +822,75 @@
     <string name="more_reminder">Catch-up reminder</string>
     <string name="more_reminder_detail">A weekly nudge to check your cash</string>
     <string name="activity_edit_refunded_amount">The amount cannot be less than its active refunds. Undo the refunds first.</string>
+
+    <!-- Crypto (L04) -->
+    <string name="crypto_title">Crypto</string>
+    <string name="crypto_open">Crypto</string>
+    <string name="more_crypto_detail">Holdings, trades and profit or loss</string>
+    <string name="crypto_realized_label">REALIZED PROFIT / LOSS</string>
+    <string name="crypto_realized_caption">Worked out at average cost. Never counted as income.</string>
+    <plurals name="crypto_unknown_results">
+        <item quantity="one">%d sale is missing a cost or value and is not included</item>
+        <item quantity="other">%d sales are missing a cost or value and are not included</item>
+    </plurals>
+    <string name="crypto_no_wallets">No crypto wallets yet. Add one under More → Accounts (type Crypto), then record your movements here.</string>
+    <string name="crypto_load_failed">Could not load your crypto. Check your connection and try again.</string>
+    <string name="crypto_holdings">HOLDINGS</string>
+    <string name="crypto_wallets">WALLETS</string>
+    <string name="crypto_movements">MOVEMENTS</string>
+    <string name="crypto_no_movements">No movements yet. Tap + to record a buy, sale, trade or move.</string>
+    <string name="crypto_at_least">at least %1$s</string>
+    <string name="crypto_cost">Cost %1$s</string>
+    <string name="crypto_avg_cost">avg %1$s</string>
+    <string name="crypto_approximate">approximate</string>
+    <string name="crypto_cost_unknown_for">Cost unknown for %1$s</string>
+    <string name="crypto_realized_asset">Realized %1$s</string>
+    <string name="crypto_opening">Opening %1$s</string>
+    <string name="crypto_opening_unknown">Opening amount unknown</string>
+    <string name="crypto_opening_cost">opening cost %1$s</string>
+    <string name="crypto_opening_cost_missing">opening cost not set</string>
+    <string name="crypto_set_cost">Set cost</string>
+    <string name="crypto_kind_buy">Bought %1$s</string>
+    <string name="crypto_kind_sell">Sold %1$s</string>
+    <string name="crypto_kind_trade">Traded %1$s → %2$s</string>
+    <string name="crypto_kind_move">Moved %1$s</string>
+    <string name="crypto_no_value">No LKR value</string>
+    <string name="crypto_profit">Profit %1$s</string>
+    <string name="crypto_loss">Loss %1$s</string>
+    <string name="crypto_result_unknown">Profit/loss unknown</string>
+    <string name="crypto_add_movement">Add crypto movement</string>
+    <string name="crypto_undo_title">Undo this movement?</string>
+    <string name="crypto_undo_body">Both sides are removed from your balances, holdings and profit or loss. This can\'t be reversed.</string>
+    <string name="crypto_undo">Undo</string>
+
+    <string name="crypto_cost_title">Opening cost of %1$s</string>
+    <string name="crypto_cost_body">What did the coins this wallet started with cost you in LKR? Leave empty if you don\'t know.</string>
+    <string name="crypto_cost_field">Cost in LKR</string>
+    <string name="crypto_cost_approximate">This is an estimate</string>
+    <string name="crypto_cost_invalid">Enter a valid amount above zero, or leave it empty</string>
+
+    <string name="crypto_movement_title">Crypto movement</string>
+    <string name="crypto_from">From</string>
+    <string name="crypto_to">To</string>
+    <string name="crypto_sent">Amount sent</string>
+    <string name="crypto_received">Amount received</string>
+    <string name="crypto_received_same">Same as sent if left empty</string>
+    <string name="crypto_value">Value in LKR (optional)</string>
+    <string name="crypto_value_hint">What it was worth in LKR at the time. Leave empty if unknown; profit/loss will show as unknown.</string>
+    <string name="crypto_date">Date</string>
+    <string name="crypto_note">Note (optional)</string>
+    <string name="crypto_explain_buy">Buying crypto. It is a transfer between your accounts, not spending.</string>
+    <string name="crypto_explain_sell">Selling crypto. Not income: only the profit or loss is worked out, on the Crypto screen.</string>
+    <string name="crypto_explain_trade">Trading one coin for another. Profit or loss is worked out on the coin you give up.</string>
+    <string name="crypto_explain_move">Moving coins between your own wallets. Nothing is bought or sold.</string>
+    <string name="crypto_error_account">Choose an account</string>
+    <string name="crypto_error_same">Choose two different accounts</string>
+    <string name="crypto_error_no_crypto">One side must be a crypto wallet. Use a normal transfer for other moves.</string>
+    <string name="crypto_error_amount_missing">Enter an amount</string>
+    <string name="crypto_error_amount_invalid">Enter a valid amount above zero</string>
+    <string name="crypto_error_value_invalid">Enter a valid LKR amount, or leave it empty</string>
+    <string name="crypto_error_date_future">The date can\'t be in the future</string>
+    <string name="crypto_error_too_long">Too long</string>
+    <string name="crypto_message_not_signed_in">Sign in to save.</string>
+    <string name="crypto_message_failed">Could not save. Please try again.</string>
 </resources>

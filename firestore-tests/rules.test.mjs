@@ -203,3 +203,18 @@ test('goals: allocation boundary and update schema stay enforced', async () => {
   await assertFails(updateDoc(doc(bob(), path('alice', 'goals', goal.id)), { name: 'Changed' }));
   await assertFails(getDoc(doc(anon(), path('alice', 'goals', goal.id))));
 });
+
+test('crypto opening costs: LKR only, owner only, can be cleared', async () => {
+  const c = { accountId: 'binance-btc', cost: lkr(30000000), approximate: true, updatedAt: 1790000000000 };
+  const r = doc(alice(), path('alice', 'cryptoOpeningCosts', 'binance-btc'));
+  await assertSucceeds(setDoc(r, c));
+  await assertSucceeds(updateDoc(r, { cost: lkr(32000000), approximate: false, updatedAt: 1790000000001 }));
+  await assertFails(setDoc(doc(alice(), path('alice', 'cryptoOpeningCosts', 'other')), c));
+  await assertFails(setDoc(doc(alice(), path('alice', 'cryptoOpeningCosts', 'usd')), { ...c, accountId: 'usd',
+    cost: { currency: 'USD', kind: 'FIAT', digits: 2, minor: 100 } }));
+  await assertFails(setDoc(doc(alice(), path('alice', 'cryptoOpeningCosts', 'zero')), { ...c, accountId: 'zero', cost: lkr(0) }));
+  await assertFails(setDoc(doc(alice(), path('alice', 'cryptoOpeningCosts', 'extra')), { ...c, accountId: 'extra', rate: '300' }));
+  await assertFails(getDoc(doc(bob(), path('alice', 'cryptoOpeningCosts', 'binance-btc'))));
+  await assertFails(deleteDoc(doc(bob(), path('alice', 'cryptoOpeningCosts', 'binance-btc'))));
+  await assertSucceeds(deleteDoc(r));
+});
