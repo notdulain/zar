@@ -41,6 +41,7 @@ import com.example.zar.features.catchup.domain.model.UnresolvedKind
 import com.example.zar.features.transactions.presentation.activity.EntryDisplay
 import com.example.zar.features.transactions.presentation.activity.entrySubtitle
 import com.example.zar.features.transactions.presentation.activity.entryTitle
+import com.example.zar.features.transactions.presentation.activity.screen.DarkStatusBarIcons
 import java.time.DayOfWeek
 import java.time.LocalTime
 import java.time.ZonedDateTime
@@ -77,6 +78,7 @@ internal fun CatchUpScaffold(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val colors = ZarTheme.colors
+    DarkStatusBarIcons()
     val backTop = maxOf(4.dp, 54.dp - WindowInsets.statusBars.asPaddingValues().calculateTopPadding())
     Column(modifier.fillMaxSize().background(colors.canvas).statusBarsPadding()) {
         ZarBackButton(onBack, backLabel, Modifier.padding(start = 10.dp, top = backTop))
