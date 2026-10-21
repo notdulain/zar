@@ -45,3 +45,8 @@ firebase-debug.log
 firestore-debug.log
 ui-debug.log
 node_modules/
+
+# Local OpenSpec plans and specifications
+openspec/
+spec/
+specs/

@@ -1,8 +1,10 @@
 package com.example.zar.di
 
 import com.example.zar.BuildConfig
+import com.example.zar.features.quicknote.data.remote.FirebaseQuickNoteDraftTransport
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.functions.FirebaseFunctions
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -29,4 +31,12 @@ object FirebaseModule {
     fun provideFirebaseFirestore(): FirebaseFirestore = FirebaseFirestore.getInstance().apply {
         if (BuildConfig.USE_FIREBASE_EMULATORS) useEmulator(EMULATOR_HOST, 8080)
     }
+
+    // The quick-note draft callable lives in asia-south1 (D05). Emulator builds use the Functions emulator.
+    @Provides
+    @Singleton
+    fun provideFirebaseFunctions(): FirebaseFunctions =
+        FirebaseFunctions.getInstance(FirebaseQuickNoteDraftTransport.REGION).apply {
+            if (BuildConfig.USE_FIREBASE_EMULATORS) useEmulator(EMULATOR_HOST, 5001)
+        }
 }

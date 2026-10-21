@@ -1,6 +1,7 @@
 package com.example.zar
 
 import android.app.Application
+import com.example.zar.core.data.remote.AppCheckInstaller
 import com.example.zar.features.catchup.domain.usecase.ScheduleReminderUseCase
 import dagger.hilt.android.HiltAndroidApp
 import javax.inject.Inject
@@ -16,7 +17,8 @@ class ZarApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
-        // Arrange the weekly catch-up reminder from the saved settings, in case it was lost (reinstall, cleared data).
+        AppCheckInstaller.install(this)
+        // Restore the weekly reminder without delaying startup.
         CoroutineScope(SupervisorJob() + Dispatchers.Default).launch { runCatching { scheduleReminder() } }
     }
 }
