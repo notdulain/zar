@@ -49,13 +49,31 @@ data class Bill(
     val createdAt: Instant,
     /** The bill's one reminder: days before a due date to notify, or null for none. */
     val reminder: BillReminder? = null,
+    /** Null while the bill runs normally. */
+    val cancellation: BillCancellation? = null,
 ) {
     init {
         require(name.isNotBlank()) { "Bill name is required" }
         require(amount.isPositive) { "Bill amount must be positive" }
     }
 
-    val isActive: Boolean get() = status == BillStatus.ACTIVE
+    /** Still producing due dates: not stopped and not confirmed cancelled. */
+    val isActive: Boolean get() = status == BillStatus.ACTIVE && cancellation !is BillCancellation.Confirmed
+
+    /** The last day a cancelled bill can be due, or null when it isn't cancelled. */
+    val lastDueDay: LocalDate? get() = (cancellation as? BillCancellation.Confirmed)?.effectiveFrom?.minusDays(1)
+}
+
+/**
+ * Cancelling is two steps so the record stays honest. Intending to cancel changes nothing:
+ * due dates keep coming. Only a confirmed cancellation stops them, from its date; earlier due
+ * dates and their payments are kept.
+ */
+sealed interface BillCancellation {
+    data object Intended : BillCancellation
+
+    /** No due dates on or after [effectiveFrom]. */
+    data class Confirmed(val effectiveFrom: LocalDate) : BillCancellation
 }
 
 /** An actual expense linked to a due date, and how much of it counts there. */
@@ -79,8 +97,10 @@ data class BillSummary(
     val annualCost: Money,
     /** Recent and next due dates, newest first. */
     val occurrences: List<BillOccurrence>,
-    /** The next due date on or after today; null for a stopped bill. */
+    /** The next due date on or after today; null for a stopped or cancelled bill. */
     val next: BillOccurrence?,
+    /** Expenses that look like this bill but arrived after it was confirmed cancelled. */
+    val chargesAfterCancellation: List<LedgerEntry> = emptyList(),
 )
 
 /** What Home shows for the next bill, with the IDs needed to open its detail. */

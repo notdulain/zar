@@ -7,6 +7,7 @@ import com.example.zar.core.domain.model.AccountId
 import com.example.zar.core.domain.model.LedgerError
 import com.example.zar.core.domain.repository.UserSessionProvider
 import com.example.zar.features.bills.domain.model.Bill
+import com.example.zar.features.bills.domain.model.BillCancellation
 import com.example.zar.features.bills.domain.model.BillFrequency
 import com.example.zar.features.bills.domain.model.BillId
 import com.example.zar.features.bills.domain.model.BillReminder
@@ -81,6 +82,14 @@ object BillDocumentMapper {
         put("status", bill.status.name)
         put("createdAt", bill.createdAt.toEpochMilli())
         bill.reminder?.let { put("reminderDaysBefore", it.daysBefore.toLong()) }
+        when (val cancellation = bill.cancellation) {
+            null -> Unit
+            BillCancellation.Intended -> put("cancellation", "INTENDED")
+            is BillCancellation.Confirmed -> {
+                put("cancellation", "CONFIRMED")
+                put("cancelledFrom", cancellation.effectiveFrom.toString())
+            }
+        }
     }
 
     fun fromMap(map: Map<String, Any?>): Bill? = runCatching {
@@ -94,6 +103,11 @@ object BillDocumentMapper {
             status = BillStatus.valueOf(map["status"] as String),
             createdAt = Instant.ofEpochMilli((map["createdAt"] as Number).toLong()),
             reminder = BillReminder.fromDays((map["reminderDaysBefore"] as Number?)?.toInt()),
+            cancellation = when (map["cancellation"]) {
+                "INTENDED" -> BillCancellation.Intended
+                "CONFIRMED" -> BillCancellation.Confirmed(LocalDate.parse(map["cancelledFrom"] as String))
+                else -> null
+            },
         )
     }.getOrNull()
 }

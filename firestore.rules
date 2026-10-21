@@ -56,7 +56,8 @@ rules_version = '2';
 // bills/{billId}                  create, update (no delete: stop instead)
 //   id (== doc id), name (1-80), accountId, amount (positive Money), frequency
 //   'WEEKLY'|'MONTHLY'|'YEARLY', firstDue (date), status 'ACTIVE'|'STOPPED', createdAt (immutable),
-//   reminderDaysBefore? (0, 1, 3 or 7: the bill's one reminder).
+//   reminderDaysBefore? (0, 1, 3 or 7: the bill's one reminder),
+//   cancellation? 'INTENDED'|'CONFIRMED', cancelledFrom (date, required with CONFIRMED only).
 //   Due dates are expectedPayments with source BILL_OCCURRENCE; a bill never posts an expense.
 //
 // goals/{goalId}                  create, update (no delete in U04)
@@ -386,7 +387,8 @@ service cloud.firestore {
 
     function isValidBill(billId) {
       let d = data();
-      return hasOnlyAllowedFields(['id', 'name', 'accountId', 'amount', 'frequency', 'firstDue', 'status', 'createdAt', 'reminderDaysBefore'])
+      return hasOnlyAllowedFields(['id', 'name', 'accountId', 'amount', 'frequency', 'firstDue', 'status', 'createdAt',
+            'reminderDaysBefore', 'cancellation', 'cancelledFrom'])
         && hasRequiredFields(['id', 'name', 'accountId', 'amount', 'frequency', 'firstDue', 'status', 'createdAt'])
         && d.id == billId
         && isShortString(d.name, 80)
@@ -396,7 +398,10 @@ service cloud.firestore {
         && isDateString(d.firstDue)
         && d.status in ['ACTIVE', 'STOPPED']
         && isMillis(d.createdAt)
-        && (!('reminderDaysBefore' in d) || d.reminderDaysBefore in [0, 1, 3, 7]);
+        && (!('reminderDaysBefore' in d) || d.reminderDaysBefore in [0, 1, 3, 7])
+        && (!('cancellation' in d) || d.cancellation in ['INTENDED', 'CONFIRMED'])
+        && (('cancellation' in d && d.cancellation == 'CONFIRMED') == ('cancelledFrom' in d))
+        && (!('cancelledFrom' in d) || isDateString(d.cancelledFrom));
     }
 
     function isValidProposal(p) {

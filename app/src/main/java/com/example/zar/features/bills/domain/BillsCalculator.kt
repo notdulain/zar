@@ -12,6 +12,7 @@ import com.example.zar.core.domain.model.TransactionType
 import com.example.zar.core.domain.model.money.Currencies
 import com.example.zar.core.domain.model.money.Money
 import com.example.zar.features.bills.domain.model.Bill
+import com.example.zar.features.bills.domain.model.BillCancellation
 import com.example.zar.features.bills.domain.model.BillOccurrence
 import com.example.zar.features.bills.domain.model.BillSummary
 import com.example.zar.features.bills.domain.model.BillsOverview
@@ -72,6 +73,7 @@ object BillsCalculator {
                 annualCost = BillSchedule.annualCost(bill),
                 occurrences = occurrences,
                 next = if (bill.isActive) occurrences.filter { it.dueDate >= today }.minByOrNull { it.dueDate } else null,
+                chargesAfterCancellation = chargesAfterCancellation(bill, entries),
             )
         }.sortedWith(
             compareBy<BillSummary> { !it.bill.isActive }
@@ -102,7 +104,12 @@ object BillsCalculator {
         val savedIds = saved.map { it.id }.toSet()
         val virtual = bills.flatMap { bill ->
             val from = maxOf(bill.firstDue, today.minusDays(HISTORY_DAYS))
-            val to = if (bill.isActive) BillSchedule.nextDueDate(bill, today) else today.minusDays(1)
+            val to = when {
+                bill.isActive -> BillSchedule.nextDueDate(bill, today)
+                // Confirmed cancelled: due dates stop before the cancellation date; history stays.
+                bill.lastDueDay != null -> minOf(bill.lastDueDay!!, today.minusDays(1))
+                else -> today.minusDays(1)
+            }
             BillSchedule.dueDates(bill, from, to)
                 .map { BillSchedule.expectedPayment(bill, it) }
                 .filterNot { it.id in savedIds }
@@ -139,6 +146,23 @@ object BillsCalculator {
                 compareBy<PaymentCandidate> { abs(it.entry.current.date.toEpochDay() - occurrence.dueDate.toEpochDay()) }
                     .thenBy { if (it.entry.current.accountId == occurrence.accountId) 0 else 1 },
             )
+    }
+
+    /**
+     * Expenses on the bill's account and currency, on or after its cancellation date, that
+     * match it by name or by exact amount. Only flagged for the user; nothing is changed.
+     */
+    fun chargesAfterCancellation(bill: Bill, entries: List<LedgerEntry>): List<LedgerEntry> {
+        val cancelledFrom = (bill.cancellation as? BillCancellation.Confirmed)?.effectiveFrom ?: return emptyList()
+        val name = RecurrenceDetector.normalize(bill.name)
+        return entries.active()
+            .filter { it.current.type == TransactionType.EXPENSE && it.current.accountId == bill.accountId }
+            .filter { it.current.amount.currency == bill.amount.currency && it.current.date >= cancelledFrom }
+            .filter { entry ->
+                val merchant = RecurrenceDetector.normalize(entry.current.merchant)
+                (name != null && merchant != null && (merchant.contains(name) || name.contains(merchant))) || entry.current.amount == bill.amount
+            }
+            .sortedBy { it.current.date }
     }
 
     private fun List<Money>.totalsByCurrency(): List<Money> = groupBy { it.currency }
