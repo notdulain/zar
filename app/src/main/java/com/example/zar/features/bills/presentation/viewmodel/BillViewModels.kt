@@ -30,6 +30,7 @@ import com.example.zar.features.bills.domain.usecase.ObserveBillAccountsUseCase
 import com.example.zar.features.bills.domain.usecase.ObserveBillsUseCase
 import com.example.zar.features.bills.domain.usecase.ObservePaymentCandidatesUseCase
 import com.example.zar.features.bills.domain.usecase.SaveBillUseCase
+import com.example.zar.features.bills.domain.usecase.SetBillCancellationUseCase
 import com.example.zar.features.bills.domain.usecase.UnlinkBillPaymentUseCase
 import com.example.zar.features.reminders.domain.RefreshRemindersUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -71,13 +72,38 @@ class BillsViewModel @Inject constructor(observeBills: ObserveBillsUseCase) : Vi
 data class BillUiState(val isLoading: Boolean = true, val summary: BillSummary? = null, val loadFailed: Boolean = false)
 
 @HiltViewModel
-class BillViewModel @Inject constructor(savedStateHandle: SavedStateHandle, observeBills: ObserveBillsUseCase) : ViewModel() {
+class BillViewModel @Inject constructor(
+    savedStateHandle: SavedStateHandle,
+    observeBills: ObserveBillsUseCase,
+    private val setCancellation: SetBillCancellationUseCase,
+    private val refreshReminders: RefreshRemindersUseCase,
+) : ViewModel() {
     private val billId = BillId(savedStateHandle.toRoute<BillRoute>().billId)
 
     val uiState: StateFlow<BillUiState> = observeBills(ZarTime.today())
         .map { overview -> BillUiState(isLoading = false, summary = overview.bills.firstOrNull { it.bill.id == billId }) }
         .catch { emit(BillUiState(isLoading = false, loadFailed = true)) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), BillUiState())
+
+    private val _message = MutableStateFlow<BillMessage?>(null)
+    val message: StateFlow<BillMessage?> = _message.asStateFlow()
+
+    /** Planning to cancel changes nothing yet: due dates keep coming. */
+    fun intendToCancel() = change { setCancellation.intend(it) }
+
+    /** Stops due dates on and after [from]; earlier ones and their payments are kept. */
+    fun confirmCancelled(from: LocalDate) = change { setCancellation.confirm(it, from) }
+
+    fun keep() = change { setCancellation.keep(it) }
+
+    private fun change(block: suspend (Bill) -> Result<Unit>) {
+        val bill = uiState.value.summary?.bill ?: return
+        viewModelScope.launch {
+            val result = block(bill)
+            _message.value = result.exceptionOrNull()?.toBillMessage()
+            if (result.isSuccess) runCatching { refreshReminders() }
+        }
+    }
 }
 
 // --- Form ----------------------------------------------------------------------------------

@@ -19,6 +19,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
@@ -33,10 +34,15 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -47,8 +53,10 @@ import com.example.zar.R
 import com.example.zar.core.domain.calculation.ZarTime
 import com.example.zar.core.domain.model.MatchState
 import com.example.zar.features.bills.domain.BillProblem
+import com.example.zar.features.bills.domain.model.BillCancellation
 import com.example.zar.features.bills.domain.model.BillFrequency
 import com.example.zar.features.bills.domain.model.BillReminder
+import com.example.zar.features.bills.domain.model.BillStatus
 import com.example.zar.features.bills.domain.model.BillOccurrence
 import com.example.zar.features.bills.domain.model.BillSummary
 import com.example.zar.features.bills.presentation.viewmodel.BillFormViewModel
@@ -156,6 +164,7 @@ fun BillsScreen(
                             ?: stringResource(R.string.bills_annual_none),
                     )
                 }
+                item { SubscriptionSuggestionsSection() }
                 if (overview.bills.isEmpty()) item { CenteredText(stringResource(R.string.bills_empty), Modifier.padding(top = 32.dp)) }
                 items(overview.bills, key = { it.bill.id.value }) { summary ->
                     BillCard(summary, today, onClick = { onOpenBill(summary.bill.id.value) })
@@ -179,9 +188,18 @@ private fun BillCard(summary: BillSummary, today: LocalDate, onClick: () -> Unit
                         stringResource(bill.frequency.labelRes()),
                         summary.account?.name,
                         summary.next?.let { stringResource(R.string.bills_next_on, IncomeFormat.shortDate(it.dueDate)) },
-                        if (!bill.isActive) stringResource(R.string.bills_stopped) else null,
+                        when {
+                            bill.cancellation is BillCancellation.Confirmed -> stringResource(R.string.bills_cancelled)
+                            bill.cancellation is BillCancellation.Intended -> stringResource(R.string.bills_planning_cancel)
+                            !bill.isActive -> stringResource(R.string.bills_stopped)
+                            else -> null
+                        },
                     ).joinToString(" · "),
                 )
+                if (summary.chargesAfterCancellation.isNotEmpty()) {
+                    val count = summary.chargesAfterCancellation.size
+                    Detail(pluralStringResource(R.plurals.bills_charged_after, count, count), warning = true)
+                }
             }
             Spacer(Modifier.width(12.dp))
             Column(horizontalAlignment = Alignment.End) {
@@ -207,6 +225,7 @@ fun BillScreen(
     viewModel: BillViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val message by viewModel.message.collectAsStateWithLifecycle()
     val summary = uiState.summary
     val today = ZarTime.today()
     Scaffold(
@@ -243,6 +262,15 @@ fun BillScreen(
                     Detail("${stringResource(R.string.bill_reminder)}: ${stringResource(summary.bill.reminder.labelRes())}")
                 }
                 item { Detail(stringResource(R.string.bill_never_posts)) }
+                item {
+                    CancellationSection(
+                        summary = summary,
+                        onIntend = viewModel::intendToCancel,
+                        onConfirm = viewModel::confirmCancelled,
+                        onKeep = viewModel::keep,
+                    )
+                }
+                message?.let { item { Text(stringResource(it.textRes()), color = MaterialTheme.colorScheme.error, fontFamily = ZarMono) } }
                 item { SectionLabel(stringResource(R.string.bill_due_dates), Modifier.padding(top = 8.dp)) }
                 if (summary.occurrences.isEmpty()) item { CenteredText(stringResource(R.string.bill_no_due_dates)) }
                 items(summary.occurrences, key = { it.progress.expected.id.value }) { occurrence ->
@@ -262,6 +290,67 @@ fun BillScreen(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun CancellationSection(
+    summary: BillSummary,
+    onIntend: () -> Unit,
+    onConfirm: (LocalDate) -> Unit,
+    onKeep: () -> Unit,
+) {
+    val bill = summary.bill
+    if (bill.status == BillStatus.STOPPED) return
+    var confirming by rememberSaveable { mutableStateOf(false) }
+    var from by remember { mutableStateOf(ZarTime.today()) }
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        SectionLabel(stringResource(R.string.bill_cancel_label), Modifier.padding(top = 8.dp))
+        when (val cancellation = bill.cancellation) {
+            null -> OutlinedButton(onClick = onIntend, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.bill_cancel_intend)) }
+            BillCancellation.Intended -> {
+                Detail(stringResource(R.string.bill_cancel_intended_note))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(onClick = { confirming = true }) { Text(stringResource(R.string.bill_cancel_confirm)) }
+                    TextButton(onClick = onKeep) { Text(stringResource(R.string.bill_cancel_keep)) }
+                }
+            }
+            is BillCancellation.Confirmed -> {
+                Detail(stringResource(R.string.bill_cancel_confirmed_note, IncomeFormat.fullDate(cancellation.effectiveFrom)))
+                // Shown as text only: an estimate never becomes money in a goal.
+                Detail(stringResource(R.string.bill_cancel_savings, summary.annualCost.display()))
+                if (summary.chargesAfterCancellation.isNotEmpty()) {
+                    SectionLabel(stringResource(R.string.bill_charged_after), Modifier.padding(top = 4.dp))
+                    Detail(stringResource(R.string.bill_charged_after_note), warning = true)
+                    summary.chargesAfterCancellation.forEach { entry ->
+                        Detail(
+                            listOfNotNull(IncomeFormat.shortDate(entry.current.date), entry.current.merchant, entry.current.amount.display()).joinToString(" · "),
+                            warning = true,
+                        )
+                    }
+                }
+                TextButton(onClick = onKeep) { Text(stringResource(R.string.bill_cancel_undo)) }
+            }
+        }
+    }
+    if (confirming) {
+        AlertDialog(
+            onDismissRequest = { confirming = false },
+            title = { Text(stringResource(R.string.bill_cancel_dialog_title)) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(stringResource(R.string.bill_cancel_dialog_body))
+                    DateField(stringResource(R.string.bill_cancel_from), from, enabled = true, onSelect = { from = it })
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirming = false
+                    onConfirm(from)
+                }) { Text(stringResource(R.string.bill_cancel_confirm), color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = { TextButton(onClick = { confirming = false }) { Text(stringResource(R.string.action_cancel)) } },
+        )
     }
 }
 
