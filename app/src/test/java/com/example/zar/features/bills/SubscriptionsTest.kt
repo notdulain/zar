@@ -128,6 +128,16 @@ class SubscriptionsTest {
     }
 
     @Test
+    fun aChargeAlreadyLinkedToTheBillIsNotFlagged() {
+        val b = bill(BillCancellation.Confirmed(LocalDate.of(2026, 10, 9)))
+        val linked = charge("linked", LocalDate.of(2026, 10, 9))
+        val later = charge("later", LocalDate.of(2026, 10, 20))
+        val due = com.example.zar.features.bills.domain.BillSchedule.expectedPayment(b.copy(cancellation = null), LocalDate.of(2026, 10, 9))
+        val summary = BillsCalculator.overview(listOf(b), listOf(bank), listOf(due), listOf(PaymentMatch(due.id, linked.id, lkr(2_643), T0)), listOf(linked, later), today).bills.single()
+        assertEquals(listOf("later"), summary.chargesAfterCancellation.map { it.id.value })
+    }
+
+    @Test
     fun cancellationRoundTripsThroughFirestoreMaps() {
         listOf(null, BillCancellation.Intended, BillCancellation.Confirmed(LocalDate.of(2026, 11, 1))).forEach { cancellation ->
             val b = bill(cancellation)

@@ -73,7 +73,9 @@ object BillsCalculator {
                 annualCost = BillSchedule.annualCost(bill),
                 occurrences = occurrences,
                 next = if (bill.isActive) occurrences.filter { it.dueDate >= today }.minByOrNull { it.dueDate } else null,
-                chargesAfterCancellation = chargesAfterCancellation(bill, entries),
+                // A charge already linked as one of this bill's payments isn't a surprise.
+                chargesAfterCancellation = chargesAfterCancellation(bill, entries)
+                    .filterNot { entry -> occurrences.any { o -> o.payments.any { it.entry.id == entry.id } } },
             )
         }.sortedWith(
             compareBy<BillSummary> { !it.bill.isActive }
