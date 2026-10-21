@@ -99,3 +99,10 @@ data object CryptoRoute
 
 @Serializable
 data object CryptoMovementRoute
+
+/** Paste or share a bank message; also shows supported banks and capture health. */
+@Serializable
+data object CaptureRoute
+
+@Serializable
+data class CaptureReviewRoute(val draftId: String)
