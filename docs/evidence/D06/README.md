@@ -36,3 +36,7 @@ The initial subagent build used ignored local Firebase configuration. The final 
 - **No billing or quota check** on the Gemini account.
 - **SmartRail agents** were not consulted: the local server was unreachable (exit 3). No persisted-draft retention period was invented; generated drafts live only in the caller's memory.
 - **Emulator test scope.** The Functions emulator decodes but does not verify tokens, so it proves routing, error shape and pre-provider rejection, not production token verification (that is Firebase's own code with `enforceAppCheck: true`).
+
+## Final PR review
+
+The subsequent review integrated current main, fixed session-change handling and wire-version validation, and reran backend checks on Node 22. See [pr-review.md](pr-review.md) for the final 575 Android tests, 49 backend tests and emulator/dependency checks. Counts and Node 26 notes above describe the earlier checkpoint. No screens changed.

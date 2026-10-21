@@ -90,7 +90,7 @@ Machine paths, IDE files, build output, Firebase configuration and credentials a
 
 Models, repository interfaces, saving rules and total calculations shared by every feature are described in [docs/domain-contracts.md](docs/domain-contracts.md). Read it before saving or totalling money.
 
-AI quick-note hosting, cost, privacy and the draft format are documented in [docs/ai-quick-notes-feasibility.md](docs/ai-quick-notes-feasibility.md). The draft-generation service, its setup and how the app uses it are in [docs/ai-quick-notes-service.md](docs/ai-quick-notes-service.md); backend tests run with `npm install && npm test` in `functions/`.
+AI quick-note hosting, cost, privacy and the draft format are documented in [docs/ai-quick-notes-feasibility.md](docs/ai-quick-notes-feasibility.md). The draft-generation service, its setup and how the app uses it are in [docs/ai-quick-notes-service.md](docs/ai-quick-notes-service.md); backend tests run with `npm ci && npm test` in `functions/`.
 
 ## Layer rules
 

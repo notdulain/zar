@@ -40,7 +40,7 @@ class CallableQuickNoteDraftRepository internal constructor(
     )
 
     override suspend fun generate(request: QuickNoteDraftRequest): Draft {
-        if (session.currentUserId() == null) throw QuickNoteDraftError.NotSignedIn()
+        val user = session.currentUserId() ?: throw QuickNoteDraftError.NotSignedIn()
         val raw = try {
             withTimeout(budgetMillis) { transport.createDraft(QuickNotePayload.from(request)) }
         } catch (_: TimeoutCancellationException) {
@@ -48,6 +48,9 @@ class CallableQuickNoteDraftRepository internal constructor(
             currentCoroutineContext().ensureActive()
             throw QuickNoteDraftError.TimedOut()
         }
+        currentCoroutineContext().ensureActive()
+        // Never return the previous user's draft into a new session.
+        if (session.currentUserId() != user) throw QuickNoteDraftError.NotSignedIn()
         return QuickNoteDraftMapper.toDraft(raw, request, DraftId(newId()), now())
     }
 }

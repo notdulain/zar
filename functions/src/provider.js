@@ -1,7 +1,7 @@
 import { DraftError, Reason } from './errors.js';
 import { responseSchema, systemInstruction, userPrompt } from './prompt.js';
 
-// D05 decision: Gemini 3.5 Flash-Lite, temperature 0, minimal thinking. Do not change without a new evaluation.
+// D05 model and prompt are unchanged. Sampling parameters are deprecated/ignored by this model.
 export const MODEL = 'gemini-3.5-flash-lite';
 export const ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta';
 // The Android client gives up after 8 s, so the provider call must end sooner to return a typed error.
@@ -22,7 +22,6 @@ export function createGeminiProvider({ getApiKey, fetchImpl = fetch, timeoutMs =
         systemInstruction: { parts: [{ text: systemInstruction() }] },
         contents: [{ role: 'user', parts: [{ text: userPrompt({ note, today, accounts }) }] }],
         generationConfig: {
-          temperature: 0,
           maxOutputTokens: MAX_OUTPUT_TOKENS,
           responseMimeType: 'application/json',
           responseSchema,

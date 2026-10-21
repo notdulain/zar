@@ -12,6 +12,8 @@ import com.example.zar.core.domain.model.money.Currencies
 import com.example.zar.core.domain.model.money.FiatMoney
 import com.example.zar.core.domain.repository.AccountRepository
 import com.example.zar.features.quicknote.QuickNoteTestSupport.TODAY
+import com.example.zar.features.quicknote.QuickNoteTestSupport.Session
+import com.example.zar.core.domain.model.UserId
 import com.example.zar.features.quicknote.domain.model.QuickNoteDraftError
 import com.example.zar.features.quicknote.domain.model.QuickNoteDraftError.InputProblem
 import com.example.zar.features.quicknote.domain.model.QuickNoteDraftRequest
@@ -61,7 +63,7 @@ class GenerateQuickNoteDraftUseCaseTest {
     private val pending = Draft(DraftId("d1"), DraftSource.QUICK_NOTE, emptyList(), DraftStatus.PENDING_REVIEW, Instant.EPOCH)
 
     private fun useCase(drafts: FakeDrafts, accounts: List<Account> = listOf(account("boc", "BOC Savings"))) =
-        GenerateQuickNoteDraftUseCase(drafts, FakeAccounts(accounts)) { TODAY }
+        GenerateQuickNoteDraftUseCase(drafts, FakeAccounts(accounts), Session()) { TODAY }
 
     @Test
     fun returnsThePendingDraftAndSendsMinimalContext() = runTest {
@@ -150,7 +152,7 @@ class GenerateQuickNoteDraftUseCaseTest {
             override fun observeAccounts(): Flow<List<Account>> = flow { delay(60_000); emit(emptyList()) }
             override suspend fun saveAccount(account: Account) = error("must not save")
         }
-        val generate = GenerateQuickNoteDraftUseCase(drafts, waitingAccounts) { TODAY }
+        val generate = GenerateQuickNoteDraftUseCase(drafts, waitingAccounts, Session()) { TODAY }
         assertTrue(generate("lunch 850").exceptionOrNull() is QuickNoteDraftError.TimedOut)
         assertEquals(8_000L, currentTime)
         assertTrue(drafts.requests.isEmpty())
@@ -163,8 +165,44 @@ class GenerateQuickNoteDraftUseCaseTest {
             override fun observeAccounts(): Flow<List<Account>> = flow { delay(4_000); emit(emptyList()) }
             override suspend fun saveAccount(account: Account) = error("must not save")
         }
-        val generate = GenerateQuickNoteDraftUseCase(drafts, slowAccounts) { TODAY }
+        val generate = GenerateQuickNoteDraftUseCase(drafts, slowAccounts, Session()) { TODAY }
         assertTrue(generate("lunch 850").exceptionOrNull() is QuickNoteDraftError.TimedOut)
         assertEquals(8_000L, currentTime)
+    }
+
+    @Test
+    fun signingOutWhileAccountsLoadDoesNotSendTheNoteOrContext() = runTest {
+        val session = Session()
+        val drafts = FakeDrafts { pending }
+        val changingAccounts = object : AccountRepository {
+            override fun observeAccounts(): Flow<List<Account>> = flow {
+                session.user = null
+                emit(listOf(account("private", "Private account")))
+            }
+            override suspend fun saveAccount(account: Account) = error("must not save")
+        }
+        val generate = GenerateQuickNoteDraftUseCase(drafts, changingAccounts, session) { TODAY }
+        assertTrue(generate("lunch 850").exceptionOrNull() is QuickNoteDraftError.NotSignedIn)
+        assertTrue(drafts.requests.isEmpty())
+    }
+
+    @Test
+    fun switchingAccountsDuringGenerationDiscardsTheOldUsersResult() = runTest {
+        val session = Session()
+        val drafts = FakeDrafts { session.user = UserId("u2"); pending }
+        val generate = GenerateQuickNoteDraftUseCase(drafts, FakeAccounts(emptyList()), session) { TODAY }
+        assertTrue(generate("lunch 850").exceptionOrNull() is QuickNoteDraftError.NotSignedIn)
+    }
+
+    @Test
+    fun signedOutDoesNotWaitForAccountsOrSendTheNote() = runTest {
+        val drafts = FakeDrafts { pending }
+        val unreadableAccounts = object : AccountRepository {
+            override fun observeAccounts(): Flow<List<Account>> = error("must not read signed-out accounts")
+            override suspend fun saveAccount(account: Account) = error("must not save")
+        }
+        val generate = GenerateQuickNoteDraftUseCase(drafts, unreadableAccounts, Session(null)) { TODAY }
+        assertTrue(generate("lunch 850").exceptionOrNull() is QuickNoteDraftError.NotSignedIn)
+        assertTrue(drafts.requests.isEmpty())
     }
 }

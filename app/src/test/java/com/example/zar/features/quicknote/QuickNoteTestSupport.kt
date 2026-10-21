@@ -2,12 +2,21 @@ package com.example.zar.features.quicknote
 
 import com.example.zar.core.domain.model.AccountId
 import com.example.zar.core.domain.model.AccountType
+import com.example.zar.core.domain.model.UserId
+import com.example.zar.core.domain.repository.UserSessionProvider
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOf
 import com.example.zar.core.domain.model.money.Currencies
 import com.example.zar.features.quicknote.domain.model.QuickNoteAccountContext
 import com.example.zar.features.quicknote.domain.model.QuickNoteDraftRequest
 import java.time.LocalDate
 
 internal object QuickNoteTestSupport {
+    class Session(var user: UserId? = UserId("u1")) : UserSessionProvider {
+        override fun currentUserId(): UserId? = user
+        override fun observeUserId(): Flow<UserId?> = flowOf(user)
+    }
+
     val TODAY: LocalDate = LocalDate.of(2026, 10, 21)
 
     val boc = QuickNoteAccountContext(AccountId("boc"), "BOC Savings", AccountType.BANK, Currencies.LKR)

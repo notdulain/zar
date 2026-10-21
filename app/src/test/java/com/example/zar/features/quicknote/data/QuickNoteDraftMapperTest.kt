@@ -323,7 +323,7 @@ class QuickNoteDraftMapperTest {
 
     private fun assertInvalid(raw: Any?) {
         assertThrows(QuickNoteDraftError.InvalidResponse::class.java) {
-            QuickNoteDraftMapper.toDraft(raw, QuickNoteTestSupport.request("lunch 850"), DraftId("d1"), created)
+            QuickNoteDraftMapper.toDraft(if (raw is Map<*, *>) mapOf("version" to 1) + raw else raw, QuickNoteTestSupport.request("lunch 850"), DraftId("d1"), created)
         }
     }
 
@@ -362,5 +362,17 @@ class QuickNoteDraftMapperTest {
     @Test fun moneyIsMoney() {
         val m: Money = only<DraftProposal.ActualTransaction>(map("lunch 850", actual())).amount!!
         assertTrue(m.isPositive)
+    }
+
+    @Test fun unsupportedMissingOrMalformedWireVersionsAreRejected() {
+        for (version in listOf(null, 2, 1.5, "1", true)) {
+            assertThrows(QuickNoteDraftError.InvalidResponse::class.java) {
+                QuickNoteDraftMapper.toDraft(mapOf("version" to version, "proposals" to emptyList<Any>()),
+                    QuickNoteTestSupport.request("lunch 850"), DraftId("d1"), created)
+            }
+        }
+        val supported = QuickNoteDraftMapper.toDraft(mapOf("version" to 1L, "proposals" to emptyList<Any>()),
+            QuickNoteTestSupport.request("lunch 850"), DraftId("d1"), created)
+        assertTrue(supported.proposals.isEmpty())
     }
 }

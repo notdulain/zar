@@ -124,4 +124,13 @@ class CallableQuickNoteDraftRepositoryTest {
         assertTrue(job.isCancelled)
         assertFalse("cancelled work must not be reported as a result or a TimedOut error", outcome?.exceptionOrNull() is QuickNoteDraftError.TimedOut)
     }
+
+    @Test fun aResponseAfterSignOutOrAccountSwitchIsNotReturnedToTheCaller() = runTest {
+        for (nextUser in listOf(null, UserId("u2"))) {
+            val session = Session()
+            val repository = repo(Transport { session.user = nextUser; empty }, session)
+            val error = runCatching { repository.generate(QuickNoteTestSupport.request("private note 850")) }.exceptionOrNull()
+            assertTrue(error is QuickNoteDraftError.NotSignedIn)
+        }
+    }
 }

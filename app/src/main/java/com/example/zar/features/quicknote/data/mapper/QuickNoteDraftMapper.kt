@@ -34,7 +34,10 @@ internal object QuickNoteDraftMapper {
     private val CATEGORY = Regex("""[a-z0-9][a-z0-9 _-]{0,39}""")
 
     fun toDraft(raw: Any?, request: QuickNoteDraftRequest, id: DraftId, createdAt: Instant): Draft {
-        val proposals = (raw as? Map<*, *>)?.get("proposals") as? List<*> ?: throw QuickNoteDraftError.InvalidResponse()
+        val envelope = raw as? Map<*, *> ?: throw QuickNoteDraftError.InvalidResponse()
+        val version = envelope["version"] as? Number
+        if (version?.toDouble() != 1.0) throw QuickNoteDraftError.InvalidResponse()
+        val proposals = envelope["proposals"] as? List<*> ?: throw QuickNoteDraftError.InvalidResponse()
         if (proposals.size > QuickNoteLimits.MAX_PROPOSALS) throw QuickNoteDraftError.InvalidResponse()
         val context = Context(request)
         return Draft(

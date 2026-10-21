@@ -71,7 +71,7 @@ Every failure leaves manual entry usable. The caller still holds the user's text
 
 ## Model
 
-Gemini 3.5 Flash-Lite (`gemini-3.5-flash-lite`), `generateContent` REST (v1beta), temperature 0, `thinkingLevel: minimal`, schema-constrained JSON, 2,048 output tokens, 6.5 s provider budget inside the app's 8 s. Google's [model guide](https://ai.google.dev/gemini-api/docs/generate-content/whats-new-gemini-3.6), checked on 21 October 2026, lists this model for production use with `minimal` thinking. This documentation check is not a live API test. If the model is retired or unavailable to the account, requests fail as `PROVIDER_UNAVAILABLE`. The service does **not** switch models on its own; changing it needs a new evaluation (`tools/quicknote-eval`).
+Gemini 3.5 Flash-Lite (`gemini-3.5-flash-lite`), `generateContent` REST (v1beta), `thinkingLevel: minimal`, schema-constrained JSON, 2,048 output tokens, 6.5 s provider budget inside the app's 8 s. The model and evaluated prompt are unchanged. The current Google guide says sampling parameters such as `temperature` are deprecated and ignored for this model, so the service omits them; D05's historical harness still sent temperature 0. Google's [model guide](https://ai.google.dev/gemini-api/docs/generate-content/whats-new-gemini-3.6), checked on 21 October 2026, lists this model for production use with `minimal` thinking. This documentation check is not a live API test. If the model is retired or unavailable to the account, requests fail as `PROVIDER_UNAVAILABLE`. The service does **not** switch models on its own; changing it needs a new evaluation (`tools/quicknote-eval`).
 
 ## Setup (one-time, by an owner of `zar-app-35602`)
 
@@ -117,7 +117,7 @@ class QuickNoteViewModel @Inject constructor(
 
 `GenerateQuickNoteDraftUseCase.invoke(note: String): Result<Draft>` does the following.
 - It trims and validates the note.
-- It reads the user's non-archived accounts and sends only id, name, type and currency.
+- It captures the signed-in user, reads their non-archived accounts and sends only id, name, type and currency. If the user signs out or changes while accounts load, it sends nothing; if the session changes during generation, the late result is discarded. The repository also guards its own in-flight result.
 - It calls the repository. Coroutine cancellation is rethrown and never turned into a result.
 - Its eight-second deadline covers waiting for accounts and generation together; a caller's shorter deadline still cancels the operation.
 
@@ -144,7 +144,7 @@ The returned `Draft` has `source = QUICK_NOTE`, `status = PENDING_REVIEW`, a new
 - An amount inferred only from a numeric range or alternatives (such as `2-3k` or `1000 or 1500`) becomes missing, including guessed endpoints. An independently stated amount in the same note remains usable.
 - **Grounding.** An amount not written in the note is kept but `AMOUNT` is flagged uncertain. The note is scanned for numbers in any script's digits (Latin, Sinhala, Tamil, Arabic-Indic, full-width) with `k`, `thousand`, `lakh/lakhs/lac/lk`, `mn/m/million` and `cr/crore` applied. Number words and magnitude words that are not listed ("ලක්ෂ", "ஆயிரம்") are not understood, so those amounts are flagged for review. That is safe, just noisy.
 - Only `INCOME`, `EXPENSE` and `REFUND` are accepted as types. Spending class applies to expenses only.
-- An invalid top level (not a map, no `proposals` list, more than five proposals, unknown kind) is `InvalidResponse`.
+- An invalid top level (not a map, missing/unsupported wire `version`, no `proposals` list, more than five proposals, unknown kind) is `InvalidResponse`. Version 1 is the supported contract.
 
 ## Limits to be honest about
 

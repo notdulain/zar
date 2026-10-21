@@ -3,6 +3,7 @@ package com.example.zar.features.quicknote.domain.usecase
 import com.example.zar.core.domain.calculation.ZarTime
 import com.example.zar.core.domain.model.Draft
 import com.example.zar.core.domain.repository.AccountRepository
+import com.example.zar.core.domain.repository.UserSessionProvider
 import com.example.zar.features.quicknote.domain.model.QuickNoteAccountContext
 import com.example.zar.features.quicknote.domain.model.QuickNoteDraftError
 import com.example.zar.features.quicknote.domain.model.QuickNoteDraftError.InputProblem
@@ -22,10 +23,12 @@ import kotlinx.coroutines.withTimeoutOrNull
 class GenerateQuickNoteDraftUseCase internal constructor(
     private val drafts: QuickNoteDraftRepository,
     private val accounts: AccountRepository,
+    private val session: UserSessionProvider,
     private val today: () -> LocalDate,
 ) {
     @Inject
-    constructor(drafts: QuickNoteDraftRepository, accounts: AccountRepository) : this(drafts, accounts, ZarTime::today)
+    constructor(drafts: QuickNoteDraftRepository, accounts: AccountRepository, session: UserSessionProvider) :
+        this(drafts, accounts, session, ZarTime::today)
 
     suspend operator fun invoke(note: String): Result<Draft> = try {
         val draft = withTimeoutOrNull(QuickNoteLimits.GENERATION_BUDGET_MILLIS) { generate(note) }
@@ -45,6 +48,7 @@ class GenerateQuickNoteDraftUseCase internal constructor(
         if (text.isEmpty()) throw QuickNoteDraftError.InvalidInput(InputProblem.BLANK)
         if (text.length > QuickNoteLimits.MAX_NOTE_LENGTH) throw QuickNoteDraftError.InvalidInput(InputProblem.TOO_LONG)
 
+        val user = session.currentUserId() ?: throw QuickNoteDraftError.NotSignedIn()
         val context = accounts.observeAccounts().first()
             .filterNot { it.isArchived }
             .sortedBy { it.name.lowercase() }
@@ -57,6 +61,10 @@ class GenerateQuickNoteDraftUseCase internal constructor(
                     currency = it.currency,
                 )
             }
-        return drafts.generate(QuickNoteDraftRequest(note = text, today = today(), accounts = context))
+        // Account loading can suspend while the signed-in user changes. Do not send that stale context.
+        if (session.currentUserId() != user) throw QuickNoteDraftError.NotSignedIn()
+        val draft = drafts.generate(QuickNoteDraftRequest(note = text, today = today(), accounts = context))
+        if (session.currentUserId() != user) throw QuickNoteDraftError.NotSignedIn()
+        return draft
     }
 }

@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { setTimeout as delay } from 'node:timers/promises';
 import { createGeminiProvider, ENDPOINT, MODEL } from '../src/provider.js';
 import { fakeFetch, geminiBody, NOTE_SENTINEL } from './helpers.js';
 
@@ -7,7 +8,7 @@ const input = { note: `lunch 850 ${NOTE_SENTINEL}`, today: '2026-10-21', account
 const make = (fetchImpl, extra = {}) => createGeminiProvider({ getApiKey: () => 'test-key', fetchImpl, ...extra });
 const failsWith = (promise, reason) => assert.rejects(promise, { reason });
 
-test('sends the D05 request: model, temperature 0, minimal thinking, schema, key in header only', async () => {
+test('sends the D05 request: model, minimal thinking, schema, key in header only', async () => {
   const fetchImpl = fakeFetch({ body: geminiBody('{"proposals":[]}') });
   const out = await make(fetchImpl).generate(input);
   assert.equal(out.text, '{"proposals":[]}');
@@ -19,7 +20,7 @@ test('sends the D05 request: model, temperature 0, minimal thinking, schema, key
   assert.equal(init.headers['x-goog-api-key'], 'test-key');
   assert.ok(!url.includes('test-key'));
   const body = JSON.parse(init.body);
-  assert.equal(body.generationConfig.temperature, 0);
+  assert.ok(!('temperature' in body.generationConfig), 'deprecated sampling parameters are omitted');
   assert.equal(body.generationConfig.thinkingConfig.thinkingLevel, 'minimal');
   assert.equal(body.generationConfig.responseMimeType, 'application/json');
   assert.ok(body.generationConfig.responseSchema.properties.proposals);
@@ -50,7 +51,8 @@ test('a network abort or timeout is a TIMEOUT', async () => {
 });
 
 test('a real slow provider is aborted by the time budget', async () => {
-  const slow = (url, init) => new Promise((_, reject) => init.signal.addEventListener('abort', () => reject(init.signal.reason)));
+  // A referenced timer models active I/O; AbortSignal.timeout alone does not keep Node 22 alive.
+  const slow = async (url, init) => { await delay(60_000, undefined, { signal: init.signal }); };
   await failsWith(make(slow, { timeoutMs: 20 }).generate(input), 'TIMEOUT');
 });
 
@@ -71,7 +73,7 @@ test('a response body that stalls past the budget is aborted, not awaited foreve
   const stalled = async (url, init) => ({
     ok: true,
     status: 200,
-    json: () => new Promise((_, reject) => init.signal.addEventListener('abort', () => reject(init.signal.reason))),
+    json: () => delay(60_000, undefined, { signal: init.signal }),
   });
   await failsWith(make(stalled, { timeoutMs: 20 }).generate(input), 'TIMEOUT');
 });
