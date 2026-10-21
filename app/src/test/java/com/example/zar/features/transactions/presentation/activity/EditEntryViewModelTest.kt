@@ -233,4 +233,18 @@ class EditEntryViewModelTest {
 
         assertFalse(vm.uiState.value.isOnline)
     }
+
+    @Test fun purchaseCannotBeReducedBelowItsActiveRefunds() = runTest(UnconfinedTestDispatcher()) {
+        saveExpense()
+        ledger.save(tx("refund", TransactionType.REFUND, lkr(4_000), cash, today, refundOf = "e1"))
+        val vm = viewModel()
+        vm.onAmountChange("3000")
+        vm.save()
+        assertEquals(EditMessage.REFUNDED_AMOUNT, vm.uiState.value.message)
+        assertTrue(ledger.inner.corrections.isEmpty())
+        vm.onAmountChange("4000")
+        vm.save()
+        assertTrue(vm.uiState.value.isFinished)
+        assertEquals(lkr(4000), entry().current.amount)
+    }
 }

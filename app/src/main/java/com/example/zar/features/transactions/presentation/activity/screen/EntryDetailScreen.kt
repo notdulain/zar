@@ -53,10 +53,12 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.zar.R
+import com.example.zar.core.domain.model.AccountType
 import com.example.zar.core.domain.model.Direction
 import com.example.zar.core.domain.model.RecordSource
 import com.example.zar.core.domain.model.SpendingClass
 import com.example.zar.core.domain.model.TransactionType
+import com.example.zar.core.domain.model.money.coerceAtLeastZero
 import com.example.zar.core.presentation.components.ZarBackButton
 import com.example.zar.core.presentation.components.ZarButton
 import com.example.zar.core.presentation.components.ZarButtonStyle
@@ -74,6 +76,7 @@ import com.example.zar.features.transactions.domain.activity.model.EditKind
 import com.example.zar.features.transactions.domain.activity.model.EntryDetail
 import com.example.zar.features.transactions.domain.activity.model.FieldValue
 import com.example.zar.features.transactions.presentation.activity.EntryDisplay
+import com.example.zar.features.transactions.presentation.activity.entrySubtitle
 import com.example.zar.features.transactions.presentation.activity.entryTitle
 import com.example.zar.features.transactions.presentation.activity.viewmodel.EntryDetailContent
 import com.example.zar.features.transactions.presentation.activity.viewmodel.EntryDetailUiState
@@ -81,6 +84,8 @@ import com.example.zar.features.transactions.presentation.activity.viewmodel.Ent
 import com.example.zar.features.transactions.presentation.activity.viewmodel.VoidProblem
 import com.example.zar.features.transactions.presentation.income.IncomeFormat
 import com.example.zar.features.transactions.presentation.manual.screen.labelRes
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 /**
  * One entry in full: what was recorded, what has been corrected since, and whether it is voided.
@@ -92,6 +97,8 @@ fun EntryDetailScreen(
     onEdit: (String) -> Unit,
     onEditIncome: (String) -> Unit,
     onAddAgain: () -> Unit,
+    onRefund: (String) -> Unit,
+    onOpenEntry: (String) -> Unit,
     viewModel: EntryDetailViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -102,6 +109,8 @@ fun EntryDetailScreen(
             onEdit = onEdit,
             onEditIncome = onEditIncome,
             onAddAgain = onAddAgain,
+            onRefund = onRefund,
+            onOpenEntry = onOpenEntry,
             onVoid = viewModel::showVoidSheet,
             onDismissVoid = viewModel::dismissVoidSheet,
             onConfirmVoid = viewModel::confirmVoid,
@@ -114,6 +123,10 @@ internal class DetailActions(
     val onEdit: (String) -> Unit,
     val onEditIncome: (String) -> Unit,
     val onAddAgain: () -> Unit,
+    /** Starts a refund for the purchase with this transaction ID. */
+    val onRefund: (String) -> Unit,
+    /** Opens another entry's detail, such as a refund's purchase. */
+    val onOpenEntry: (String) -> Unit,
     val onVoid: () -> Unit,
     val onDismissVoid: () -> Unit,
     val onConfirmVoid: () -> Unit,
@@ -134,7 +147,7 @@ internal fun EntryDetailBody(state: EntryDetailUiState, actions: DetailActions) 
                 }
                 EntryDetailContent.NotFound -> Message(stringResource(R.string.activity_detail_not_found), "activity-detail-not-found")
                 EntryDetailContent.Error -> Message(stringResource(R.string.activity_detail_failed), "activity-detail-error")
-                is EntryDetailContent.Ready -> DetailContent(state, (state.content as EntryDetailContent.Ready).detail)
+                is EntryDetailContent.Ready -> DetailContent(state, (state.content as EntryDetailContent.Ready).detail, actions)
             }
             // Room so the last card clears the action buttons.
             Spacer(Modifier.height(168.dp))
@@ -158,7 +171,7 @@ private fun Message(text: String, tag: String) {
 // --- Content ----------------------------------------------------------------------------------
 
 @Composable
-private fun DetailContent(state: EntryDetailUiState, detail: EntryDetail) {
+private fun DetailContent(state: EntryDetailUiState, detail: EntryDetail, actions: DetailActions) {
     val entry = detail.entry
     val tx = entry.current
     val colors = ZarTheme.colors
@@ -170,7 +183,7 @@ private fun DetailContent(state: EntryDetailUiState, detail: EntryDetail) {
         ZarIconChip(EntryDisplay.icon(tx), size = 56.dp, iconSize = 26.dp, modifier = Modifier.alpha(if (voided) 0.6f else 1f))
         Row(Modifier.padding(top = 16.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(
-                transferTitle ?: entryTitle(tx),
+                transferTitle ?: entryTitle(tx, detail.account?.type),
                 style = ZarType.headingSheet.copy(lineHeight = 23.sp),
                 color = colors.textPrimary,
                 maxLines = 2,
@@ -214,6 +227,19 @@ private fun DetailContent(state: EntryDetailUiState, detail: EntryDetail) {
                 modifier = Modifier.padding(top = 4.dp).testTag("detail-edited"),
             )
         }
+        detail.refunds?.takeIf { it.hasRefunds }?.let { summary ->
+            Text(
+                stringResource(
+                    R.string.activity_refunded_net,
+                    IncomeFormat.withCode(summary.refunded),
+                    IncomeFormat.withCode((tx.amount - summary.refunded).coerceAtLeastZero()),
+                    tx.date.format(MONTH_NAME),
+                ),
+                style = ZarType.bodyCaption.copy(lineHeight = 16.sp),
+                color = colors.textSecondary,
+                modifier = Modifier.padding(top = 4.dp).testTag("detail-refunded"),
+            )
+        }
     }
 
     entry.voidMarker?.let { marker ->
@@ -233,7 +259,16 @@ private fun DetailContent(state: EntryDetailUiState, detail: EntryDetail) {
     if (detail.history.isNotEmpty()) {
         HistoryCard(detail, Modifier.padding(horizontal = ZarDimens.ScreenGutter).padding(top = 8.dp))
     }
+    when (entry.current.type) {
+        TransactionType.EXPENSE -> if (!voided) RefundsCard(detail, actions, Modifier.padding(horizontal = ZarDimens.ScreenGutter).padding(top = 8.dp))
+        TransactionType.REFUND -> LinkedPurchaseCard(detail, actions, Modifier.padding(horizontal = ZarDimens.ScreenGutter).padding(top = 8.dp))
+        TransactionType.ADJUSTMENT_IN, TransactionType.ADJUSTMENT_OUT ->
+            AdjustmentCard(detail, Modifier.padding(horizontal = ZarDimens.ScreenGutter).padding(top = 8.dp))
+        else -> Unit
+    }
 }
+
+private val MONTH_NAME: DateTimeFormatter = DateTimeFormatter.ofPattern("MMMM", Locale.ENGLISH)
 
 @Composable
 private fun pluralText(@PluralsRes id: Int, count: Int): String = pluralStringResource(id, count, count)
@@ -268,6 +303,35 @@ private fun DetailsCard(state: EntryDetailUiState, detail: EntryDetail, modifier
                 add { ValueRow(stringResource(R.string.manual_field_fees), stringResource(R.string.activity_fee_value, IncomeFormat.withCode(fee.current.amount))) }
             }
             add { ValueRow(stringResource(R.string.manual_field_note), tx.note ?: none, placeholder = tx.note == null) }
+        } else if (tx.type == TransactionType.REFUND) {
+            val purchase = detail.refundedPurchase?.current
+            add { ValueRow(stringResource(R.string.manual_field_account), detail.account?.name ?: none) }
+            add {
+                ValueRow(
+                    stringResource(R.string.activity_field_refund_of),
+                    purchase?.let { "${it.merchant?.takeIf { title -> title.isNotBlank() } ?: stringResource(EntryDisplay.typeLabel(it.type))} · ${IncomeFormat.withCode(it.amount)}" } ?: none,
+                    placeholder = purchase == null,
+                )
+            }
+            add {
+                ValueRow(
+                    stringResource(R.string.activity_field_counted_in),
+                    purchase?.let { stringResource(R.string.activity_counted_in_value, it.date.format(MONTH_NAME)) } ?: none,
+                    placeholder = purchase == null,
+                )
+            }
+            add { ValueRow(stringResource(R.string.manual_field_note), tx.note ?: none, placeholder = tx.note == null) }
+        } else if (tx.type == TransactionType.ADJUSTMENT_IN || tx.type == TransactionType.ADJUSTMENT_OUT) {
+            add { ValueRow(stringResource(R.string.manual_field_account), detail.account?.name ?: none) }
+            add { ValueRow(stringResource(R.string.activity_field_reason), adjustmentReason(detail)) }
+            add {
+                if (tx.type == TransactionType.ADJUSTMENT_OUT) {
+                    ValueRow(stringResource(R.string.manual_field_counts_as), stringResource(SpendingClass.UNKNOWN.labelRes()), dot = colors.chartUnknown)
+                } else {
+                    ValueRow(stringResource(R.string.manual_field_counts_as), stringResource(R.string.activity_adjustment_counts_balance))
+                }
+            }
+            add { ValueRow(stringResource(R.string.activity_field_added), stringResource(sourceLabel(entry.original.source))) }
         } else {
             add { ValueRow(stringResource(R.string.manual_field_account), detail.account?.name ?: none) }
             EntryDisplay.categoryLabel(tx.categoryId)?.let { label ->
@@ -423,6 +487,150 @@ private fun sourceLabel(source: RecordSource): Int = when (source) {
     RecordSource.RECONCILIATION -> R.string.activity_source_reconciliation
 }
 
+@Composable
+private fun adjustmentReason(detail: EntryDetail): String {
+    val tx = detail.entry.current
+    val isCash = detail.account?.type == AccountType.CASH
+    val gap = IncomeFormat.withCode(tx.amount)
+    val short = tx.type == TransactionType.ADJUSTMENT_OUT
+    return stringResource(
+        when {
+            isCash && short -> R.string.activity_adjustment_reason_cash_short
+            isCash -> R.string.activity_adjustment_reason_cash_over
+            short -> R.string.activity_adjustment_reason_short
+            else -> R.string.activity_adjustment_reason_over
+        },
+        gap,
+    )
+}
+
+/** Z63 (nothing refunded yet: one row that starts a refund) and Z64 (the refunds so far and what is still refundable). */
+@Composable
+private fun RefundsCard(detail: EntryDetail, actions: DetailActions, modifier: Modifier = Modifier) {
+    val summary = detail.refunds ?: return
+    if (!summary.hasRefunds && !detail.canRefund) return
+    val colors = ZarTheme.colors
+    if (!summary.hasRefunds) {
+        ZarCard(
+            modifier.fillMaxWidth().testTag("detail-refund-prompt"),
+            onClick = { actions.onRefund(detail.entry.id.value) },
+            contentPadding = PaddingValues(horizontal = 20.dp, vertical = 17.dp),
+            soft = true,
+        ) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(stringResource(R.string.activity_refund_prompt_title), style = ZarType.bodyS, color = colors.textPrimary)
+                    Text(stringResource(R.string.activity_refund_prompt_body), style = ZarType.bodyCaption, color = colors.textSecondary)
+                }
+                Text(stringResource(R.string.activity_refund_action), style = ZarType.labelChip, color = colors.textSelected)
+            }
+        }
+        return
+    }
+    ZarCard(modifier.fillMaxWidth().testTag("detail-refunds"), contentPadding = PaddingValues(horizontal = 20.dp, vertical = 18.dp), soft = true) {
+        Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            ZarMonoLabel(stringResource(R.string.activity_refunds_title))
+            summary.refunds.forEach { refund ->
+                val tx = refund.current
+                Box(Modifier.fillMaxWidth().clickable(role = Role.Button) { actions.onOpenEntry(refund.id.value) }.testTag("detail-refund-${refund.id.value}")) {
+                    HistoryLine(
+                        title = stringResource(R.string.activity_refunded_line, IncomeFormat.withCode(tx.amount)),
+                        detail = stringResource(R.string.activity_refunded_line_detail, IncomeFormat.shortDate(tx.date), detail.account?.name.orEmpty()),
+                        dot = colors.accentFresh,
+                    )
+                }
+            }
+            if (detail.canRefund) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.Top) {
+                    Box(Modifier.weight(1f)) {
+                        HistoryLine(
+                            title = stringResource(R.string.activity_refund_remaining, IncomeFormat.withCode(summary.remaining)),
+                            detail = stringResource(R.string.activity_refund_cap_note),
+                            dot = colors.textTertiary,
+                        )
+                    }
+                    Text(
+                        stringResource(R.string.activity_refund_more_action),
+                        style = ZarType.labelChip,
+                        color = colors.textSelected,
+                        modifier = Modifier
+                            .clickable(role = Role.Button) { actions.onRefund(detail.entry.id.value) }
+                            .padding(vertical = 2.dp)
+                            .testTag("detail-refund-more"),
+                    )
+                }
+            } else {
+                HistoryLine(
+                    title = stringResource(R.string.activity_refund_nothing_left),
+                    detail = stringResource(R.string.activity_refund_cap_note),
+                    dot = colors.textTertiary,
+                )
+            }
+        }
+    }
+}
+
+/** Z65: the purchase a refund belongs to. Tapping it opens that purchase. */
+@Composable
+private fun LinkedPurchaseCard(detail: EntryDetail, actions: DetailActions, modifier: Modifier = Modifier) {
+    val colors = ZarTheme.colors
+    val purchase = detail.refundedPurchase
+    ZarCard(
+        modifier.fillMaxWidth().testTag("detail-linked-purchase"),
+        onClick = purchase?.let { { actions.onOpenEntry(it.id.value) } },
+        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp),
+        soft = true,
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            ZarMonoLabel(stringResource(R.string.activity_linked_purchase_title))
+            if (purchase == null) {
+                Text(stringResource(R.string.activity_linked_purchase_missing), style = ZarType.bodyCaption, color = colors.textSecondary)
+            } else {
+                val tx = purchase.current
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                    ZarIconChip(EntryDisplay.icon(tx), size = 36.dp, iconSize = 18.dp)
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text(
+                            entryTitle(tx, detail.refundedPurchaseAccount?.type),
+                            style = ZarType.bodyM.copy(fontWeight = FontWeight.Medium),
+                            color = colors.textPrimary,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        Text(
+                            entrySubtitle(tx, detail.refundedPurchaseAccount?.name),
+                            style = ZarType.bodyCaption,
+                            color = colors.textSecondary,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                    Text(EntryDisplay.signed(tx), style = ZarType.bodyM, color = colors.textPrimary)
+                }
+            }
+            Text(stringResource(R.string.activity_linked_purchase_note), style = ZarType.bodyCaption, color = colors.textSecondary)
+        }
+    }
+}
+
+/** Z71: why a balance adjustment shows the way it does. */
+@Composable
+private fun AdjustmentCard(detail: EntryDetail, modifier: Modifier = Modifier) {
+    val colors = ZarTheme.colors
+    val outgoing = detail.entry.current.type == TransactionType.ADJUSTMENT_OUT
+    ZarCard(modifier.fillMaxWidth().testTag("detail-adjustment"), contentPadding = PaddingValues(horizontal = 20.dp, vertical = 18.dp), soft = true) {
+        Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            ZarMonoLabel(stringResource(if (outgoing) R.string.activity_adjustment_out_card_title else R.string.activity_adjustment_in_card_title))
+            if (outgoing) {
+                HistoryLine(stringResource(R.string.activity_adjustment_out_line1_title), stringResource(R.string.activity_adjustment_out_line1_body), colors.chartUnknown)
+                HistoryLine(stringResource(R.string.activity_adjustment_out_line2_title), stringResource(R.string.activity_adjustment_out_line2_body), colors.textTertiary)
+            } else {
+                HistoryLine(stringResource(R.string.activity_adjustment_in_line1_title), stringResource(R.string.activity_adjustment_in_line1_body), colors.textTertiary)
+            }
+        }
+    }
+}
+
 // --- Actions and the void sheet ---------------------------------------------------------------
 
 @Composable
@@ -444,6 +652,8 @@ private fun DetailActionsBar(detail: EntryDetail, actions: DetailActions, modifi
                 when {
                     detail.entry.isVoided -> R.string.activity_void_final
                     detail.isTransfer -> R.string.activity_void_caption_transfer
+                    detail.hasActiveRefunds -> R.string.activity_void_caption_has_refunds
+                    detail.entry.current.type == TransactionType.REFUND -> R.string.activity_void_caption_refund
                     else -> R.string.activity_void_caption
                 },
             ),
@@ -461,8 +671,9 @@ private fun DetailActionsBar(detail: EntryDetail, actions: DetailActions, modifi
                 return@Row
             }
             ZarButton(
-                text = stringResource(if (detail.isTransfer) R.string.activity_void_transfer else R.string.activity_void_entry),
+                text = stringResource(voidLabel(detail)),
                 onClick = actions.onVoid,
+                enabled = detail.canVoid,
                 style = ZarButtonStyle.Outline,
                 icon = R.drawable.ic_ph_trash,
                 contentColor = colors.textAttention,
@@ -504,7 +715,13 @@ private fun VoidSheet(state: EntryDetailUiState, detail: EntryDetail, actions: D
             verticalArrangement = Arrangement.spacedBy(20.dp),
         ) {
             SheetHeader(
-                stringResource(if (detail.isTransfer) R.string.activity_void_title_transfer else R.string.activity_void_title),
+                stringResource(
+                    when {
+                        detail.isTransfer -> R.string.activity_void_title_transfer
+                        tx.type == TransactionType.REFUND -> R.string.activity_void_title_refund
+                        else -> R.string.activity_void_title
+                    },
+                ),
                 onClose = actions.onDismissVoid,
             )
             Row(
@@ -515,7 +732,7 @@ private fun VoidSheet(state: EntryDetailUiState, detail: EntryDetail, actions: D
                 ZarIconChip(EntryDisplay.icon(tx), size = 40.dp, iconSize = 19.dp, background = colors.surface)
                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(
-                        transferTitle(detail) ?: entryTitle(tx),
+                        transferTitle(detail) ?: entryTitle(tx, detail.account?.type),
                         style = ZarType.bodyM.copy(fontWeight = FontWeight.Medium, lineHeight = 20.sp),
                         color = colors.textPrimary,
                         maxLines = 1,
@@ -547,7 +764,13 @@ private fun VoidSheet(state: EntryDetailUiState, detail: EntryDetail, actions: D
             }
             state.voidProblem?.let { problem ->
                 Text(
-                    stringResource(if (problem == VoidProblem.NOT_SIGNED_IN) R.string.manual_message_not_signed_in else R.string.activity_void_failed),
+                    stringResource(
+                        when (problem) {
+                            VoidProblem.NOT_SIGNED_IN -> R.string.manual_message_not_signed_in
+                            VoidProblem.HAS_REFUNDS -> R.string.activity_void_blocked_refunds
+                            VoidProblem.FAILED -> R.string.activity_void_failed
+                        },
+                    ),
                     style = ZarType.bodyCaption,
                     color = colors.danger,
                     modifier = Modifier.testTag("void-error"),
@@ -574,7 +797,7 @@ private fun VoidSheet(state: EntryDetailUiState, detail: EntryDetail, actions: D
                     Alignment.Center,
                 ) {
                     Text(
-                        stringResource(if (detail.isTransfer) R.string.activity_void_transfer else R.string.activity_void_entry),
+                        stringResource(voidLabel(detail)),
                         style = ZarType.labelButton,
                         color = colors.textOnInverse,
                     )
@@ -584,8 +807,16 @@ private fun VoidSheet(state: EntryDetailUiState, detail: EntryDetail, actions: D
     }
 }
 
+@StringRes
+private fun voidLabel(detail: EntryDetail): Int = when {
+    detail.isTransfer -> R.string.activity_void_transfer
+    detail.entry.current.type == TransactionType.REFUND -> R.string.activity_void_refund
+    else -> R.string.activity_void_entry
+}
+
 @Composable
 private fun voidBody(detail: EntryDetail): String = when {
+    detail.entry.current.type == TransactionType.REFUND -> stringResource(R.string.activity_void_body_refund)
     !detail.isTransfer -> stringResource(R.string.activity_void_body)
     detail.fee != null -> stringResource(R.string.activity_void_body_transfer_fee, IncomeFormat.withCode(detail.fee.current.amount))
     else -> stringResource(R.string.activity_void_body_transfer)

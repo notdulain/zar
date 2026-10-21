@@ -7,6 +7,7 @@ import com.example.zar.core.domain.model.Correction
 import com.example.zar.core.domain.model.LedgerEntry
 import com.example.zar.core.domain.model.SpendingClass
 import com.example.zar.core.domain.model.money.Money
+import com.example.zar.features.transactions.domain.refund.RefundSummary
 import java.time.LocalDate
 
 enum class DatePreset { THIS_MONTH, LAST_7_DAYS, LAST_MONTH, CUSTOM }
@@ -77,8 +78,18 @@ data class EntryDetail(
     val history: List<HistoryEvent>,
     val editKind: EditKind,
     val canVoid: Boolean,
+    /** For an expense: its linked refunds and what can still be refunded. Null for every other kind of entry. */
+    val refunds: RefundSummary? = null,
+    /** Whether a refund can be started from here: an active expense with something left, on an account that accepts entries. */
+    val canRefund: Boolean = false,
+    /** For a refund: the purchase it belongs to, and that purchase's account. */
+    val refundedPurchase: LedgerEntry? = null,
+    val refundedPurchaseAccount: Account? = null,
 ) {
     val isTransfer: Boolean get() = entry.original.transferId != null
+
+    /** An expense with active refunds cannot be undone until those are undone first. */
+    val hasActiveRefunds: Boolean get() = refunds?.hasRefunds == true
 }
 
 enum class CorrectedField { AMOUNT, DATE, CATEGORY, SPENDING_CLASS, TITLE, NOTE }

@@ -278,4 +278,25 @@ class ManualEntryScreenUiTest {
         compose.onNodeWithContentDescription("Close").assertExists()
     }
 
+
+    @Test
+    fun theMissingEntryFormExplainsTheGapAndLocksTheAccount() {
+        show(state { copy(amount = "450", gapAmount = "450", accountId = cash.id, accountLocked = true) })
+
+        compose.onNodeWithText("Add the missing entry").assertIsDisplayed()
+        compose.onNodeWithTag("manual-gap-banner").assertIsDisplayed()
+        compose.onNodeWithText("Explaining the LKR 450 gap").assertIsDisplayed()
+        compose.onNodeWithTag("manual-account-locked").assertIsDisplayed()
+        compose.onNodeWithTag("manual-account-bank").assertDoesNotExist()
+        compose.onNodeWithTag("manual-kind-transfer").assertDoesNotExist()
+    }
+
+    @Test
+    fun anOrdinaryFormHasNoGapBannerAndKeepsItsAccountChoice() {
+        show(state())
+
+        compose.onNodeWithTag("manual-gap-banner").assertDoesNotExist()
+        compose.onNodeWithTag("manual-account-locked").assertDoesNotExist()
+        compose.onNodeWithTag("manual-account-bank").assertIsDisplayed()
+    }
 }

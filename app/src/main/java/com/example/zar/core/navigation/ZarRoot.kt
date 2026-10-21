@@ -19,13 +19,17 @@ import com.example.zar.features.auth.presentation.viewmodel.SessionViewModel
  * signed-in graph, so no screen, back-stack entry or ViewModel of the previous user survives.
  */
 @Composable
-fun ZarRoot(viewModel: SessionViewModel = hiltViewModel()) {
+fun ZarRoot(
+    openCatchUp: Boolean = false,
+    onCatchUpOpened: () -> Unit = {},
+    viewModel: SessionViewModel = hiltViewModel(),
+) {
     val session by viewModel.session.collectAsStateWithLifecycle()
     when (val current = session) {
         SessionState.Loading -> SessionLoadingScreen()
         SessionState.SignedOut -> AuthNavHost()
         // A different user gets a brand-new graph.
-        is SessionState.SignedIn -> key(current.user.id) { ZarNavHost() }
+        is SessionState.SignedIn -> key(current.user.id) { ZarNavHost(openCatchUp = openCatchUp, onCatchUpOpened = onCatchUpOpened) }
     }
 }
 

@@ -46,6 +46,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.zar.R
@@ -75,6 +76,7 @@ fun ManualDatePickerSheet(
     modifier: Modifier = Modifier,
     datesWithEntries: Set<LocalDate> = emptySet(),
 ) {
+    val locale = LocalConfiguration.current.locales[0]
     val today = remember { ZarTime.today() }
     var selected by remember(date) { mutableStateOf(date.coerceAtMost(today)) }
     var month by remember(date) { mutableStateOf(YearMonth.from(selected)) }
@@ -92,7 +94,7 @@ fun ManualDatePickerSheet(
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(Modifier.fillMaxWidth().padding(bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                 Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text(month.format(DateTimeFormatter.ofPattern("MMMM yyyy", Locale.getDefault())), style = ZarType.bodyL.copy(fontWeight = FontWeight.Medium), color = colors.textPrimary)
+                    Text(month.format(DateTimeFormatter.ofPattern("MMMM yyyy", locale)), style = ZarType.bodyL.copy(fontWeight = FontWeight.Medium), color = colors.textPrimary)
                     ZarIcon(R.drawable.ic_ph_caret_down, size = 14.dp, tint = colors.iconMuted)
                 }
                 MonthArrow("Previous month", enabled = true, rotated = true) { month = month.minusMonths(1) }

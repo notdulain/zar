@@ -26,6 +26,10 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -40,6 +44,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.zar.R
+import com.example.zar.core.domain.model.AccountType
 import com.example.zar.core.domain.model.Direction
 import com.example.zar.core.domain.model.LedgerEntry
 import com.example.zar.core.domain.model.OpeningBalance
@@ -66,9 +71,11 @@ import com.example.zar.features.transactions.presentation.income.IncomeFormat
 fun AccountDetailScreen(
     onBack: () -> Unit,
     onEdit: (String) -> Unit,
+    onAddMissingEntry: (accountId: String, amount: String) -> Unit,
     viewModel: AccountDetailViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    var showCheck by rememberSaveable { mutableStateOf(false) }
     val colors = ZarTheme.colors
     val detail = uiState.detail
     val backTop = maxOf(4.dp, 54.dp - WindowInsets.statusBars.asPaddingValues().calculateTopPadding())
@@ -92,27 +99,38 @@ fun AccountDetailScreen(
                 }
             }
             // Room so the last card clears the action buttons.
-            Spacer(Modifier.height(120.dp))
+            Spacer(Modifier.height(190.dp))
         }
         if (detail != null) {
-            Row(
+            Column(
                 Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(start = 9.dp, end = 9.dp, bottom = 22.dp).fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 ZarButton(
-                    text = stringResource(if (detail.account.isArchived) R.string.account_restore else R.string.account_archive),
-                    onClick = viewModel::toggleArchived,
-                    style = ZarButtonStyle.Outline,
-                    enabled = !uiState.isWorking,
-                    modifier = Modifier.weight(1f),
+                    text = stringResource(if (detail.account.type == AccountType.CASH) R.string.balance_check_button_cash else R.string.balance_check_button),
+                    onClick = { showCheck = true },
+                    style = ZarButtonStyle.Soft,
+                    modifier = Modifier.fillMaxWidth().testTag("account-check"),
                 )
-                ZarButton(
-                    text = stringResource(R.string.account_edit),
-                    onClick = { onEdit(detail.account.id.value) },
-                    style = ZarButtonStyle.Primary,
-                    modifier = Modifier.weight(1f),
-                )
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    ZarButton(
+                        text = stringResource(if (detail.account.isArchived) R.string.account_restore else R.string.account_archive),
+                        onClick = viewModel::toggleArchived,
+                        style = ZarButtonStyle.Outline,
+                        enabled = !uiState.isWorking,
+                        modifier = Modifier.weight(1f),
+                    )
+                    ZarButton(
+                        text = stringResource(R.string.account_edit),
+                        onClick = { onEdit(detail.account.id.value) },
+                        style = ZarButtonStyle.Primary,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
             }
+        }
+        if (detail != null && showCheck) {
+            CheckBalanceSheet(onDismiss = { showCheck = false }, onAddMissingEntry = onAddMissingEntry)
         }
     }
 }

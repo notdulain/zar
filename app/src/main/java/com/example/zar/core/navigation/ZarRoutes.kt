@@ -34,9 +34,17 @@ data object IncomeRoute
 @Serializable
 data class IncomeFormRoute(val incomeId: String? = null)
 
-/** Add a manual expense or transfer. [focusNote] opens it with the note focused (Quick note). */
+/**
+ * Add a manual expense or transfer. [focusNote] opens it with the note focused (Quick note).
+ * With [prefillAmount] and [prefillAccountId] it opens as "Add the missing entry": an expense on that
+ * account with the gap from a balance check already filled in.
+ */
 @Serializable
-data class ManualEntryRoute(val focusNote: Boolean = false)
+data class ManualEntryRoute(
+    val focusNote: Boolean = false,
+    val prefillAmount: String? = null,
+    val prefillAccountId: String? = null,
+)
 
 /** One saved entry in full: its details, corrections and void state. [entryId] is the transaction ID. */
 @Serializable
@@ -45,6 +53,22 @@ data class EntryDetailRoute(val entryId: String)
 /** Correct an expense. The original record is kept; the edit is saved as a correction. */
 @Serializable
 data class EditEntryRoute(val entryId: String)
+
+/** Link a refund to the purchase [purchaseId] (a transaction ID). */
+@Serializable
+data class RefundRoute(val purchaseId: String)
+
+/** Saved entries that still need a look, with the weekly catch-up card. */
+@Serializable
+data object NeedsReviewRoute
+
+/** The weekly cash catch-up: review what is open, count the cash, save at most one adjustment. */
+@Serializable
+data object CatchUpRoute
+
+/** Day, time and skip for the weekly catch-up reminder. */
+@Serializable
+data object ReminderSettingsRoute
 
 @Serializable
 data object FreelanceRoute

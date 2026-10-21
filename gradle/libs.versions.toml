@@ -11,6 +11,8 @@ composeBom = "2026.09.00"
 navigation = "2.10.2"
 kotlinxSerialization = "1.11.0"
 coroutines = "1.10.2"
+datastore = "1.2.1"
+work = "2.12.0"
 firebaseBom = "35.0.0"
 googleServices = "4.5.0"
 junit = "4.13.2"
@@ -42,6 +44,8 @@ firebase-functions = { group = "com.google.firebase", name = "firebase-functions
 firebase-appcheck-playintegrity = { group = "com.google.firebase", name = "firebase-appcheck-playintegrity" }
 firebase-appcheck-debug = { group = "com.google.firebase", name = "firebase-appcheck-debug" }
 kotlinx-coroutines-play-services = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-play-services", version.ref = "coroutines" }
+androidx-datastore-preferences = { group = "androidx.datastore", name = "datastore-preferences", version.ref = "datastore" }
+androidx-work-runtime-ktx = { group = "androidx.work", name = "work-runtime-ktx", version.ref = "work" }
 kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "coroutines" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
