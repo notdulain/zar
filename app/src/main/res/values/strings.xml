@@ -306,6 +306,7 @@
     <string name="plans_allowance_empty">Not set</string>
     <string name="plans_bills_empty">No bills added</string>
     <string name="more_description">Accounts, privacy and settings</string>
+    <string name="more_hero_subtitle">Your accounts and app settings</string>
     <string name="more_accounts">Accounts</string>
     <string name="more_accounts_detail">Bank, cash, freelance and crypto</string>
     <string name="more_capture">Capture sources</string>
