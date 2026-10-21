@@ -44,6 +44,7 @@ fun MoreScreen(
     onOpenAccounts: () -> Unit,
     onOpenIncome: () -> Unit,
     onOpenFreelance: () -> Unit,
+    onOpenCrypto: () -> Unit,
     onOpenReminder: () -> Unit,
 ) {
     ZarScreenScaffold(
@@ -65,6 +66,7 @@ fun MoreScreen(
                 MoreOption(R.string.more_accounts, R.string.more_accounts_detail, R.drawable.ic_ph_wallet, onOpenAccounts, "open-accounts")
                 MoreOption(R.string.income_open, R.string.more_income_detail, R.drawable.ic_ph_receipt, onOpenIncome, "open-income")
                 MoreOption(R.string.freelance_open, R.string.more_freelance_detail, R.drawable.ic_ph_briefcase, onOpenFreelance, "open-freelance")
+                MoreOption(R.string.crypto_open, R.string.more_crypto_detail, R.drawable.ic_ph_currency_btc, onOpenCrypto, "open-crypto")
                 MoreOption(R.string.more_reminder, R.string.more_reminder_detail, R.drawable.ic_ph_lightning, onOpenReminder, "open-reminder")
                 MoreOption(R.string.settings_title, R.string.more_settings_detail, R.drawable.ic_ph_gearsix_inactive, onOpenSettings, "open-settings")
             }

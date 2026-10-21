@@ -18,6 +18,8 @@ import com.example.zar.features.accounts.presentation.screen.AccountsScreen
 import com.example.zar.features.catchup.presentation.screen.CatchUpScreen
 import com.example.zar.features.catchup.presentation.screen.NeedsReviewScreen
 import com.example.zar.features.catchup.presentation.screen.ReminderSettingsScreen
+import com.example.zar.features.crypto.presentation.screen.CryptoMovementScreen
+import com.example.zar.features.crypto.presentation.screen.CryptoScreen
 import com.example.zar.features.freelance.presentation.screen.FreelanceScreen
 import com.example.zar.features.freelance.presentation.screen.MilestoneScreen
 import com.example.zar.features.freelance.presentation.screen.ProjectFormScreen
@@ -87,6 +89,7 @@ fun ZarNavHost(
                 onOpenAccounts = { navController.navigate(AccountsRoute) },
                 onOpenIncome = { navController.navigate(IncomeRoute) },
                 onOpenFreelance = { navController.navigate(FreelanceRoute) },
+                onOpenCrypto = { navController.navigate(CryptoRoute) },
                 onOpenReminder = { navController.navigate(ReminderSettingsRoute) },
             )
         }
@@ -149,6 +152,15 @@ fun ZarNavHost(
         }
         composable<RefundRoute> {
             RefundFormScreen(onDone = { navController.popBackStack() })
+        }
+        composable<CryptoRoute> {
+            CryptoScreen(
+                onBack = { navController.popBackStack() },
+                onAddMovement = { navController.navigate(CryptoMovementRoute) },
+            )
+        }
+        composable<CryptoMovementRoute> {
+            CryptoMovementScreen(onDone = { navController.popBackStack() })
         }
         composable<FreelanceRoute> {
             FreelanceScreen(

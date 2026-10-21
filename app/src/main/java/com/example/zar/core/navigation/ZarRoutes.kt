@@ -93,3 +93,9 @@ data class AccountRoute(val accountId: String)
 /** Add an account when [accountId] is null; otherwise edit that account. */
 @Serializable
 data class AccountFormRoute(val accountId: String? = null)
+
+@Serializable
+data object CryptoRoute
+
+@Serializable
+data object CryptoMovementRoute
