@@ -16,9 +16,10 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -38,11 +39,16 @@ import com.example.zar.core.presentation.components.ZarButtonStyle
 import com.example.zar.core.presentation.components.ZarCard
 import com.example.zar.core.presentation.components.ZarDivider
 import com.example.zar.core.presentation.components.ZarTitleBlock
+import com.example.zar.core.presentation.theme.ZarDimens
+import com.example.zar.core.presentation.theme.ZarShapes
 import com.example.zar.core.presentation.theme.ZarTheme
 import com.example.zar.core.presentation.theme.ZarType
 import com.example.zar.features.settings.presentation.viewmodel.SettingsUiState
 import com.example.zar.features.settings.presentation.viewmodel.SettingsViewModel
 import com.example.zar.features.transactions.presentation.activity.screen.DarkStatusBarIcons
+import com.example.zar.features.transactions.presentation.activity.screen.SheetGrabber
+import com.example.zar.features.transactions.presentation.activity.screen.SheetHeader
+import com.example.zar.features.transactions.presentation.activity.screen.SheetScrim
 
 @Composable
 fun SettingsScreen(
@@ -94,17 +100,37 @@ private fun SettingsContent(
         }
     }
     if (uiState.showUnsyncedWarning) {
-        AlertDialog(
-            onDismissRequest = onDismissWarning,
-            title = { Text(stringResource(R.string.sign_out_unsynced_title)) },
-            text = { Text(stringResource(R.string.sign_out_unsynced_body)) },
-            confirmButton = {
-                TextButton(onClick = onConfirmSignOut) { Text(stringResource(R.string.sign_out_anyway)) }
-            },
-            dismissButton = {
-                TextButton(onClick = onDismissWarning) { Text(stringResource(R.string.action_cancel)) }
-            },
-        )
+        SignOutUnsyncedSheet(onCancel = onDismissWarning, onConfirm = onConfirmSignOut)
+    }
+}
+
+/** Z88: the sign-out warning. Cancel, the cross and a swipe down all close it; "Sign out anyway" signs out. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+internal fun SignOutUnsyncedSheet(onCancel: () -> Unit, onConfirm: () -> Unit) {
+    ModalBottomSheet(
+        onDismissRequest = onCancel,
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        shape = ZarShapes.sheet,
+        containerColor = ZarTheme.colors.surface,
+        scrimColor = SheetScrim,
+        dragHandle = { SheetGrabber() },
+    ) {
+        Column(
+            Modifier
+                .navigationBarsPadding()
+                .padding(horizontal = ZarDimens.SheetGutter)
+                .padding(bottom = 14.dp)
+                .testTag("sign-out-sheet"),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            SheetHeader(stringResource(R.string.sign_out_unsynced_title), onClose = onCancel)
+            Text(stringResource(R.string.sign_out_unsynced_body), style = ZarType.bodyS, color = ZarTheme.colors.textSecondary)
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                ZarButton(stringResource(R.string.action_cancel), onCancel, Modifier.weight(1f).testTag("sign-out-cancel"), style = ZarButtonStyle.Soft)
+                ZarButton(stringResource(R.string.sign_out_anyway), onConfirm, Modifier.weight(1f).testTag("sign-out-anyway"))
+            }
+        }
     }
 }
 
