@@ -44,7 +44,7 @@ fun ZarNavHost(
     // The weekly reminder opens the catch-up on top of Home.
     LaunchedEffect(openCatchUp) {
         if (openCatchUp) {
-            navController.navigate(CatchUpRoute)
+            navController.navigate(CatchUpRoute) { launchSingleTop = true }
             onCatchUpOpened()
         }
     }

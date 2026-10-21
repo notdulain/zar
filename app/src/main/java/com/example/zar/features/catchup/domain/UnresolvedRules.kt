@@ -40,5 +40,5 @@ object UnresolvedRules {
     }
 
     // The types whose reporting value feeds Received or Spent.
-    private val RATE_DEPENDENT = setOf(TransactionType.INCOME, TransactionType.EXPENSE)
+    private val RATE_DEPENDENT = setOf(TransactionType.INCOME, TransactionType.EXPENSE, TransactionType.REFUND)
 }

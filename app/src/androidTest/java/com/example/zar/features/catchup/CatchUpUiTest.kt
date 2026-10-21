@@ -1,6 +1,10 @@
 package com.example.zar.features.catchup
 
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.test.platform.app.InstrumentationRegistry
+import android.graphics.Bitmap
+import java.io.File
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -98,6 +102,16 @@ class CatchUpUiTest {
         compose.onNodeWithText(text, substring = true).assertIsDisplayed()
     }
 
+    private fun capture(name: String) {
+        compose.waitForIdle()
+        android.os.SystemClock.sleep(500)
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val bitmap = checkNotNull(instrumentation.uiAutomation.takeScreenshot())
+        val dir = File(instrumentation.targetContext.cacheDir, "pr18").apply { mkdirs() }
+        File(dir, "$name.png").outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
+        bitmap.recycle()
+    }
+
     // --- Needs review (Z73, Z84) ---------------------------------------------------------------
 
     @Test
@@ -118,6 +132,7 @@ class CatchUpUiTest {
         compose.onNodeWithText("Unexplained gap", ignoreCase = true).assertIsDisplayed()
         compose.onNodeWithText("Last catch-up 9 days ago").assertIsDisplayed()
         compose.onNodeWithText("2 items to sort out").assertIsDisplayed()
+        capture("01-needs-review")
         compose.onNodeWithTag("unresolved-pickme").performClick()
         assertEquals("pickme", opened)
     }
@@ -145,6 +160,7 @@ class CatchUpUiTest {
         compose.onNodeWithText("Last catch-up yesterday").assertIsDisplayed()
         compose.onNodeWithText("Nothing open").assertIsDisplayed()
         compose.onNodeWithTag("review-start").assertTextContains("Check my cash anyway")
+        capture("02-needs-review-empty")
     }
 
     @Test
@@ -216,6 +232,7 @@ class CatchUpUiTest {
         compose.onNodeWithText("Step 1 of 3 · Review", ignoreCase = true).assertIsDisplayed()
         compose.onNodeWithTag("catchup-items").assertIsDisplayed()
         bannerHas("catchup-honest-note", "A quiet week")
+        capture("03-catch-up-review")
         compose.onNodeWithTag("unresolved-pickme").performClick()
         assertEquals("pickme", taps.opened)
         compose.onNodeWithTag("catchup-continue").assertTextContains("Continue to counting").performClick()
@@ -241,6 +258,7 @@ class CatchUpUiTest {
         compose.onNodeWithTag("catchup-none").assertIsDisplayed()
         bannerHas("catchup-honest-note", "Quiet doesn't mean complete")
         compose.onNodeWithTag("catchup-continue").assertTextContains("Count my cash")
+        capture("04-first-catch-up")
         // "Not now" only closes: it does not skip the week's reminder.
         compose.onNodeWithTag("catchup-skip-week").assertTextContains("Not now").performClick()
         assertEquals(1, taps.closed)
@@ -255,6 +273,7 @@ class CatchUpUiTest {
         compose.onNodeWithText("Step 2 of 3 · Count", ignoreCase = true).assertIsDisplayed()
         compose.onNodeWithTag("catchup-recorded").assertTextContains("LKR 3,450")
         compose.onNodeWithTag("catchup-not-saved").assertIsDisplayed()
+        capture("05-count-cash-empty")
         compose.onNodeWithTag("catchup-amount").performTextInput("3000")
         assertEquals("3000", taps.counted)
         compose.onNodeWithTag("catchup-review").performClick()
@@ -267,6 +286,7 @@ class CatchUpUiTest {
 
         compose.onNodeWithTag("catchup-difference").assertTextContains("450", substring = true)
         compose.onNodeWithText("LKR 3,000").assertIsDisplayed()
+        capture("06-count-cash-gap")
     }
 
     @Test
@@ -309,6 +329,7 @@ class CatchUpUiTest {
         compose.onNodeWithTag("catchup-adjustment-amount").assertTextContains("450", substring = true)
         compose.onNodeWithText("Unclassified · no category · dated today").assertIsDisplayed()
         bannerHas("catchup-incomplete-note", "not counted as food")
+        capture("07-save-the-gap")
         compose.onNodeWithTag("catchup-save").assertTextContains("Save adjustment").performClick()
         assertEquals(1, taps.saved)
         compose.onNodeWithTag("catchup-back").performClick()
@@ -320,6 +341,7 @@ class CatchUpUiTest {
         setContent { CatchUpBody(catchUp(CatchUpStep.SAVE) { copy(check = check(3_800)) }, actions(Taps())) }
 
         bannerHas("catchup-extra-note", "isn't counted as received money")
+        capture("08-cash-surplus")
     }
 
     @Test
@@ -329,16 +351,18 @@ class CatchUpUiTest {
         compose.onNodeWithText("Your cash matches").assertIsDisplayed()
         compose.onAllNodesWithTag("catchup-adjustment-amount").assertCountEquals(0)
         compose.onNodeWithTag("catchup-save").assertTextContains("Finish catch-up")
+        capture("09-cash-matches")
     }
 
     @Test
     fun theSaveStepSaysSoWhenOfflineAndWhenSavingFails() {
         setContent {
-            CatchUpBody(catchUp(CatchUpStep.SAVE) { copy(check = check(3_000), isOnline = false, message = CatchUpMessage.FAILED) }, actions(Taps()))
+            CatchUpBody(catchUp(CatchUpStep.SAVE) { copy(check = check(3_000), isOnline = false, hasSaveAttempt = true, message = CatchUpMessage.FAILED) }, actions(Taps()))
         }
 
         bannerHas("catchup-offline", "syncs when you're back online")
         compose.onNodeWithTag("catchup-message").assertTextContains("Could not save", substring = true)
+        capture("10-offline-save-error")
     }
 
     @Test
@@ -346,7 +370,7 @@ class CatchUpUiTest {
         val taps = Taps()
         val next = ZonedDateTime.of(2026, 10, 25, 19, 0, 0, 0, ZoneId.of("Asia/Colombo"))
         setContent {
-            CatchUpBody(catchUp(CatchUpStep.DONE) { copy(result = check(3_000), nextReminder = next) }, actions(taps))
+            CatchUpBody(catchUp(CatchUpStep.DONE) { copy(result = check(3_000), nextReminder = next, adjustmentId = TransactionId("saved-gap")) }, actions(taps))
         }
 
         compose.onNodeWithText("Catch-up saved").assertIsDisplayed()
@@ -355,6 +379,9 @@ class CatchUpUiTest {
         compose.onNodeWithTag("catchup-result-left").assertTextContains("2")
         compose.onNodeWithTag("catchup-result-next").assertTextContains("Sun 25 Oct · 7:00 pm")
         bannerHas("catchup-result-note", "show as incomplete")
+        compose.onNodeWithTag("catchup-open-adjustment").performClick()
+        assertEquals("saved-gap", taps.opened)
+        capture("11-catch-up-saved")
         compose.onNodeWithTag("catchup-home").performClick()
         assertEquals(1, taps.home)
     }
@@ -412,6 +439,7 @@ class CatchUpUiTest {
         compose.onNodeWithTag("reminder-time").assertTextContains("7:00 pm")
         compose.onNodeWithTag("reminder-zone").assertTextContains("Asia/Colombo", substring = true)
         bannerHas("reminder-note-next", "Sun 25 Oct · 7:00 pm")
+        capture("12-reminder-default")
         compose.onNodeWithTag("reminder-skip").performScrollTo().performClick()
         assertEquals(1, taps.skipped)
     }
@@ -439,6 +467,7 @@ class CatchUpUiTest {
         }
 
         bannerHas("reminder-note-skipped", "Next reminder: Sun 1 Nov · 7:00 pm")
+        capture("13-reminder-skipped")
         compose.onAllNodesWithTag("reminder-skip").assertCountEquals(0)
         compose.onNodeWithTag("reminder-undo-skip").performScrollTo().performClick()
         assertEquals(1, taps.undone)
@@ -455,6 +484,7 @@ class CatchUpUiTest {
         }
 
         compose.onNodeWithTag("reminder-note-off").assertIsDisplayed()
+        capture("14-reminder-off")
         compose.onAllNodesWithTag("reminder-skip").assertCountEquals(0)
         compose.onAllNodesWithTag("reminder-note-next").assertCountEquals(0)
     }
@@ -465,6 +495,7 @@ class CatchUpUiTest {
         setContent { ReminderBody(reminder(), notificationsAllowed = false, actions = reminderActions(taps)) }
 
         compose.onNodeWithTag("reminder-blocked-card").assertIsDisplayed()
+        capture("15-notifications-off")
         bannerHas("reminder-note-blocked", "No reminder will be sent")
         compose.onAllNodesWithTag("reminder-skip").assertCountEquals(0)
         compose.onNodeWithTag("reminder-open-settings").performClick()
@@ -478,6 +509,7 @@ class CatchUpUiTest {
 
         compose.onNodeWithTag("reminder-day").performClick()
         compose.onNodeWithTag("reminder-sheet").assertIsDisplayed()
+        capture("16-reminder-sheet")
         compose.onNodeWithTag("reminder-day-FRIDAY").performClick()
         compose.onNodeWithTag("reminder-time-20").performClick()
         compose.onNodeWithTag("reminder-sheet-save").performClick()
@@ -496,5 +528,43 @@ class CatchUpUiTest {
 
         assertNull(taps.moved)
         compose.onAllNodesWithTag("reminder-sheet").assertCountEquals(0)
+    }
+
+    @Test
+    fun aFailedSaveCanBeRetriedOrClosedWithoutChangingTheConfirmedCount() {
+        val taps = Taps()
+        setContent { CatchUpBody(catchUp(CatchUpStep.SAVE) {
+            copy(counted = "3000", check = check(3_000), hasSaveAttempt = true, message = CatchUpMessage.FAILED)
+        }, actions(taps)) }
+        compose.onNodeWithTag("catchup-back").assertTextContains("Close").performClick()
+        assertEquals(1, taps.back)
+        compose.onNodeWithTag("catchup-save").performClick()
+        assertEquals(1, taps.saved)
+    }
+
+    @Test
+    fun aPendingSaveDisablesBothActions() {
+        setContent { CatchUpBody(catchUp(CatchUpStep.SAVE) { copy(check = check(3_000), isSaving = true) }, actions(Taps())) }
+        compose.onNodeWithTag("catchup-save").assertIsNotEnabled()
+        compose.onNodeWithTag("catchup-back").assertIsNotEnabled()
+    }
+
+    @Test
+    fun theCustomTimePickerKeepsTheZarPaletteAndReturnsTheSelectedTime() {
+        val taps = ReminderTaps()
+        setContent { ReminderBody(reminder(), true, reminderActions(taps)) }
+        compose.onNodeWithTag("reminder-time").performClick()
+        compose.onNodeWithTag("reminder-time-other").performClick()
+        compose.onNodeWithText("Choose a time").assertIsDisplayed()
+        capture("17-custom-time-picker")
+        compose.onNodeWithText("OK").performClick()
+        compose.onNodeWithTag("reminder-sheet-save").performClick()
+        assertEquals(DayOfWeek.SUNDAY to LocalTime.of(19, 0), taps.moved)
+    }
+
+    @Test
+    fun aFailedReminderChangeIsVisible() {
+        setContent { ReminderBody(reminder { copy(saveFailed = true) }, true, reminderActions(ReminderTaps())) }
+        compose.onNodeWithTag("reminder-save-error").assertIsDisplayed()
     }
 }

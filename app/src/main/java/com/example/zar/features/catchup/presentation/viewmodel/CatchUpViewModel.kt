@@ -10,6 +10,7 @@ import com.example.zar.core.domain.model.RecordIds
 import com.example.zar.core.domain.model.TransactionId
 import com.example.zar.features.accounts.domain.reconcile.BalanceCheck
 import com.example.zar.features.accounts.domain.reconcile.CheckAvailability
+import com.example.zar.features.accounts.domain.reconcile.CheckOutcome
 import com.example.zar.features.accounts.domain.reconcile.CheckProblem
 import com.example.zar.features.accounts.domain.reconcile.CheckResult
 import com.example.zar.features.accounts.domain.reconcile.ReconcileRules
@@ -36,7 +37,7 @@ import kotlinx.coroutines.launch
 
 enum class CatchUpStep { REVIEW, COUNT, SAVE, DONE }
 
-enum class CatchUpMessage { NOT_SIGNED_IN, FAILED }
+enum class CatchUpMessage { NOT_SIGNED_IN, FAILED, SKIP_FAILED }
 
 data class CatchUpUiState(
     val isLoading: Boolean = true,
@@ -52,6 +53,8 @@ data class CatchUpUiState(
     val problems: Set<CheckProblem> = emptySet(),
     val isOnline: Boolean = true,
     val isSaving: Boolean = false,
+    val hasSaveAttempt: Boolean = false,
+    val adjustmentId: TransactionId? = null,
     val message: CatchUpMessage? = null,
     /** What was saved. Set once the catch-up is finished. */
     val result: BalanceCheck? = null,
@@ -76,15 +79,13 @@ class CatchUpViewModel @Inject constructor(
     // Created once per catch-up and reused on every retry, so a repeated save can't adjust the balance twice.
     private val adjustmentId = TransactionId(RecordIds.newId())
 
-    // The check the person confirmed. A retry keeps it, because by then the first attempt may already have closed the gap.
-    private var confirmed: BalanceCheck? = null
-
     private data class Local(
         val step: CatchUpStep = CatchUpStep.REVIEW,
         val accountId: AccountId? = null,
         val counted: String = "",
         val problems: Set<CheckProblem> = emptySet(),
         val isSaving: Boolean = false,
+        val confirmed: BalanceCheck? = null,
         val message: CatchUpMessage? = null,
         val result: BalanceCheck? = null,
         val isLeaving: Boolean = false,
@@ -107,10 +108,12 @@ class CatchUpViewModel @Inject constructor(
             balance = balance,
             availability = balance?.let(ReconcileRules::availability),
             counted = l.counted,
-            check = check,
+            check = l.confirmed ?: check,
             problems = l.problems,
             isOnline = online,
             isSaving = l.isSaving,
+            hasSaveAttempt = l.confirmed != null,
+            adjustmentId = if (l.result?.outcome != null && l.result.outcome != CheckOutcome.MATCHES) adjustmentId else null,
             message = l.message,
             result = l.result,
             nextReminder = ReminderSchedule.next(prefs.reminder, Instant.now()),
@@ -120,12 +123,12 @@ class CatchUpViewModel @Inject constructor(
         .catch { emit(CatchUpUiState(isLoading = false, loadFailed = true)) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), CatchUpUiState())
 
-    fun onCountedChange(value: String) = local.update { it.copy(counted = value, problems = emptySet(), message = null) }
+    fun onCountedChange(value: String) = local.update { if (it.step == CatchUpStep.COUNT && !it.isSaving) it.copy(counted = value, problems = emptySet(), message = null) else it }
 
-    fun onAccountSelect(id: AccountId) = local.update { it.copy(accountId = id, counted = "", problems = emptySet(), message = null) }
+    fun onAccountSelect(id: AccountId) = local.update { if (it.step == CatchUpStep.COUNT && !it.isSaving) it.copy(accountId = id, counted = "", problems = emptySet(), message = null) else it }
 
     /** Moves on from the list of open items to counting the cash. */
-    fun startCounting() = local.update { if (it.step == CatchUpStep.REVIEW) it.copy(step = CatchUpStep.COUNT) else it }
+    fun startCounting() = local.update { if (it.step == CatchUpStep.REVIEW && !it.isSaving) it.copy(step = CatchUpStep.COUNT) else it }
 
     /** Shows what will be saved. A count that can't be read stays on the count step with its problem. */
     fun reviewAdjustment() {
@@ -140,13 +143,14 @@ class CatchUpViewModel @Inject constructor(
 
     /** One step back. False when there is nothing earlier, so the screen should close instead. */
     fun back(): Boolean {
+        if (local.value.isSaving) return true
+        // After an uncertain save, Back closes this catch-up. Editing needs a fresh flow and ID.
+        if (local.value.confirmed != null) return false
         val previous = when (local.value.step) {
             CatchUpStep.SAVE -> CatchUpStep.COUNT
             CatchUpStep.COUNT -> CatchUpStep.REVIEW
             CatchUpStep.REVIEW, CatchUpStep.DONE -> return false
         }
-        if (local.value.isSaving) return true
-        confirmed = null
         local.update { it.copy(step = previous, message = null) }
         return true
     }
@@ -154,13 +158,11 @@ class CatchUpViewModel @Inject constructor(
     /** Saves the gap as one explicit adjustment, or nothing when the cash already matches. */
     fun save() {
         val state = uiState.value
-        val balance = state.balance ?: return
-        val check = confirmed ?: state.check ?: return
+        val check = local.value.confirmed ?: state.check ?: return
         if (state.step != CatchUpStep.SAVE || local.value.isSaving || local.value.result != null) return
-        confirmed = check
-        local.update { it.copy(isSaving = true, message = null) }
+        local.update { it.copy(isSaving = true, confirmed = check, message = null) }
         viewModelScope.launch {
-            recordCatchUp(adjustmentId, balance.account, check.counted, ZarTime.today(), Instant.now()).fold(
+            recordCatchUp(adjustmentId, check.account, check.counted, ZarTime.today(), Instant.now()).fold(
                 // Show what the person confirmed, even if a retry found the gap already closed by the first attempt.
                 onSuccess = { local.update { it.copy(isSaving = false, step = CatchUpStep.DONE, result = check) } },
                 onFailure = { error ->
@@ -173,12 +175,16 @@ class CatchUpViewModel @Inject constructor(
 
     /** Skips this week's reminder and closes the flow. Nothing in the ledger changes. */
     fun skipThisWeek() {
+        if (local.value.isSaving || local.value.step != CatchUpStep.REVIEW) return
+        local.update { it.copy(isSaving = true, message = null) }
         viewModelScope.launch {
             runCatching {
                 val settings = observePreferences().first().reminder
                 updateReminder(ReminderSchedule.skipNext(settings, Instant.now()))
-            }
-            local.update { it.copy(isLeaving = true) }
+            }.fold(
+                onSuccess = { local.update { it.copy(isSaving = false, isLeaving = true) } },
+                onFailure = { local.update { it.copy(isSaving = false, message = CatchUpMessage.SKIP_FAILED) } },
+            )
         }
     }
 }

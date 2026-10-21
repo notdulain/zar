@@ -3,6 +3,9 @@ package com.example.zar.features.catchup.presentation.screen
 import androidx.annotation.StringRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -32,6 +35,7 @@ import com.example.zar.R
 import com.example.zar.core.presentation.components.ZarBackButton
 import com.example.zar.core.presentation.components.ZarCard
 import com.example.zar.core.presentation.components.ZarIconChip
+import com.example.zar.core.presentation.components.ZarIcon
 import com.example.zar.core.presentation.components.ZarMonoLabel
 import com.example.zar.core.presentation.components.ZarTitleBlock
 import com.example.zar.core.presentation.theme.ZarTheme
@@ -84,7 +88,7 @@ internal fun CatchUpScaffold(
         ZarBackButton(onBack, backLabel, Modifier.padding(start = 10.dp, top = backTop))
         ZarTitleBlock(title, subtitle, Modifier.padding(top = 6.dp))
         Column(
-            Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 10.dp, vertical = 18.dp),
+            Modifier.weight(1f).then(if (actions == null) Modifier.navigationBarsPadding() else Modifier).verticalScroll(rememberScrollState()).padding(horizontal = 10.dp, vertical = 18.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
             content = content,
         )
@@ -116,11 +120,11 @@ internal fun StepLabel(text: String, modifier: Modifier = Modifier) {
 internal fun KeyValueRow(label: String, value: String, modifier: Modifier = Modifier, valueColor: Color = ZarTheme.colors.textPrimary) {
     Row(
         modifier.fillMaxWidth().semantics(mergeDescendants = true) {},
-        horizontalArrangement = Arrangement.SpaceBetween,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(label, style = ZarType.bodyS, color = ZarTheme.colors.textSecondary)
-        Text(value, style = ZarType.bodyS, color = valueColor)
+        Text(label, Modifier.weight(1f), style = ZarType.bodyS, color = ZarTheme.colors.textSecondary)
+        Text(value, Modifier.weight(1.15f), style = ZarType.bodyS, color = valueColor, textAlign = TextAlign.End)
     }
 }
 
@@ -129,7 +133,7 @@ internal fun KeyValueRow(label: String, value: String, modifier: Modifier = Modi
  * says so, so nothing about the entry can be changed from here by accident.
  */
 @Composable
-internal fun UnresolvedRow(item: UnresolvedItem, modifier: Modifier = Modifier, onOpen: (() -> Unit)? = null) {
+internal fun UnresolvedRow(item: UnresolvedItem, modifier: Modifier = Modifier, onOpen: (() -> Unit)? = null, compact: Boolean = false) {
     val colors = ZarTheme.colors
     val tx = item.transaction
     Row(
@@ -140,16 +144,21 @@ internal fun UnresolvedRow(item: UnresolvedItem, modifier: Modifier = Modifier, 
         horizontalArrangement = Arrangement.spacedBy(14.dp),
         verticalAlignment = Alignment.Top,
     ) {
-        ZarIconChip(EntryDisplay.icon(tx))
+        ZarIconChip(when (item.kind) {
+            UnresolvedKind.UNEXPLAINED_ADJUSTMENT -> R.drawable.ic_catchup_coins
+            UnresolvedKind.UNCATEGORISED -> R.drawable.ic_catchup_question
+            UnresolvedKind.MISSING_RATE -> EntryDisplay.icon(tx)
+        })
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            ZarMonoLabel(stringResource(item.kind.labelRes()), color = colors.textAttention)
+            if (!compact) ZarMonoLabel(stringResource(item.kind.labelRes()), color = colors.textAttention)
             Text(entryTitle(tx, item.account?.type), style = ZarType.bodyM, color = colors.textPrimary)
             Text(
-                "${EntryDisplay.signed(tx)} · ${entrySubtitle(tx, item.account?.name)}",
+                "${EntryDisplay.signed(tx)} · ${entrySubtitle(tx, item.account?.name)}" +
+                    if (compact) " · ${stringResource(item.kind.labelRes()).lowercase(Locale.ENGLISH)}" else "",
                 style = ZarType.bodyS,
                 color = colors.textSecondary,
             )
-            if (onOpen != null) {
+            if (onOpen != null && !compact) {
                 Text(
                     stringResource(R.string.review_open_entry),
                     style = ZarType.labelAction,
@@ -158,6 +167,7 @@ internal fun UnresolvedRow(item: UnresolvedItem, modifier: Modifier = Modifier, 
                 )
             }
         }
+        if (compact && onOpen != null) ZarIcon(R.drawable.ic_ph_caret_right, size = 14.dp, tint = colors.iconMuted)
     }
 }
 
@@ -166,4 +176,16 @@ internal fun UnresolvedKind.labelRes(): Int = when (this) {
     UnresolvedKind.UNCATEGORISED -> R.string.review_kind_uncategorised
     UnresolvedKind.MISSING_RATE -> R.string.review_kind_missing_rate
     UnresolvedKind.UNEXPLAINED_ADJUSTMENT -> R.string.review_kind_adjustment
+}
+
+/** Figma's 12dp soft note, with the shared 13dp heading and 14dp body. */
+@Composable
+internal fun CatchUpNote(title: String, body: String, modifier: Modifier = Modifier) {
+    Column(
+        modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(ZarTheme.colors.subtle).padding(12.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        Text(title, style = ZarType.labelAction, color = ZarTheme.colors.textPrimary)
+        Text(body, style = ZarType.bodyS, color = ZarTheme.colors.textSecondary)
+    }
 }

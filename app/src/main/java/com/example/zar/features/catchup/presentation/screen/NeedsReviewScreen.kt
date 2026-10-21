@@ -91,7 +91,7 @@ private fun AllClearCard() {
     val colors = ZarTheme.colors
     ZarCard(Modifier.fillMaxWidth().testTag("review-clear"), contentPadding = PaddingValues(20.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
-            ZarIconChip(R.drawable.ic_ph_info)
+            ZarIconChip(R.drawable.ic_catchup_check_circle)
             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(stringResource(R.string.review_all_clear_title), style = ZarType.bodyM, color = colors.textPrimary)
                 Text(stringResource(R.string.review_all_clear_body), style = ZarType.bodyS, color = colors.textSecondary)

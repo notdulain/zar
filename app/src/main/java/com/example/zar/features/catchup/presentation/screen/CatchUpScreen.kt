@@ -32,7 +32,7 @@ import com.example.zar.core.presentation.components.ZarButtonStyle
 import com.example.zar.core.presentation.components.ZarCard
 import com.example.zar.core.presentation.components.ZarChip
 import com.example.zar.core.presentation.components.ZarDivider
-import com.example.zar.core.presentation.components.ZarFormRow
+import com.example.zar.core.presentation.components.ZarMonoLabel
 import com.example.zar.core.presentation.components.ZarIcon
 import com.example.zar.core.presentation.components.ZarIconChip
 import com.example.zar.core.presentation.theme.ZarTheme
@@ -45,7 +45,6 @@ import com.example.zar.features.catchup.presentation.viewmodel.CatchUpMessage
 import com.example.zar.features.catchup.presentation.viewmodel.CatchUpStep
 import com.example.zar.features.catchup.presentation.viewmodel.CatchUpUiState
 import com.example.zar.features.catchup.presentation.viewmodel.CatchUpViewModel
-import com.example.zar.features.transactions.presentation.activity.screen.InfoBanner
 import com.example.zar.features.transactions.presentation.income.IncomeFormat
 import com.example.zar.features.transactions.presentation.manual.screen.FieldError
 import com.example.zar.features.transactions.presentation.manual.screen.TextInput
@@ -65,7 +64,7 @@ fun CatchUpScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     LaunchedEffect(state.isLeaving) { if (state.isLeaving) onClose() }
-    BackHandler(enabled = state.step == CatchUpStep.COUNT || state.step == CatchUpStep.SAVE) { viewModel.back() }
+    BackHandler(enabled = state.step == CatchUpStep.COUNT || state.step == CatchUpStep.SAVE) { if (!viewModel.back()) onClose() }
     CatchUpBody(
         state = state,
         actions = CatchUpActions(
@@ -149,6 +148,7 @@ private fun StepActions(state: CatchUpUiState, firstTime: Boolean, actions: Catc
                 stringResource(if (firstTime) R.string.catch_up_count_cash else R.string.catch_up_continue),
                 actions.onStartCounting,
                 Modifier.fillMaxWidth().testTag("catchup-continue"),
+                enabled = !state.isSaving,
             )
             ZarButton(
                 stringResource(if (firstTime) R.string.catch_up_not_now else R.string.catch_up_skip_week),
@@ -156,6 +156,7 @@ private fun StepActions(state: CatchUpUiState, firstTime: Boolean, actions: Catc
                 if (firstTime) actions.onClose else actions.onSkipWeek,
                 Modifier.fillMaxWidth().testTag("catchup-skip-week"),
                 style = ZarButtonStyle.Soft,
+                enabled = !state.isSaving,
             )
         }
         CatchUpStep.COUNT -> when {
@@ -179,25 +180,34 @@ private fun StepActions(state: CatchUpUiState, firstTime: Boolean, actions: Catc
                 enabled = !state.isSaving && state.check != null,
             )
             ZarButton(
-                stringResource(R.string.catch_up_back),
+                stringResource(if (state.hasSaveAttempt) R.string.action_close else R.string.catch_up_back),
                 actions.onBack,
                 Modifier.fillMaxWidth().testTag("catchup-back"),
                 style = ZarButtonStyle.Soft,
                 enabled = !state.isSaving,
             )
         }
-        CatchUpStep.DONE ->
+        CatchUpStep.DONE -> {
             ZarButton(stringResource(R.string.catch_up_back_home), actions.onGoHome, Modifier.fillMaxWidth().testTag("catchup-home"))
+            state.adjustmentId?.let { id ->
+                ZarButton(stringResource(R.string.catch_up_open_adjustment), { actions.onOpenEntry(id.value) },
+                    Modifier.fillMaxWidth().testTag("catchup-open-adjustment"), style = ZarButtonStyle.Soft)
+            }
+        }
     }
 }
 
 @Composable
 private fun ReviewStep(state: CatchUpUiState, firstTime: Boolean, actions: CatchUpActions) {
     StepLabel(stringResource(R.string.catch_up_step_review), Modifier.testTag("catchup-step"))
+    if (state.message == CatchUpMessage.SKIP_FAILED) {
+        Text(stringResource(R.string.catch_up_skip_failed), style = ZarType.bodyS, color = ZarTheme.colors.danger,
+            modifier = Modifier.padding(horizontal = 12.dp).testTag("catchup-skip-error"))
+    }
     if (state.items.isEmpty()) {
         CatchUpCard(Modifier.testTag("catchup-none")) {
             Row(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
-                ZarIconChip(R.drawable.ic_ph_info)
+                ZarIconChip(R.drawable.ic_catchup_list_checks)
                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(stringResource(R.string.catch_up_none_title), style = ZarType.bodyM, color = ZarTheme.colors.textPrimary)
                     Text(stringResource(R.string.catch_up_none_body), style = ZarType.bodyS, color = ZarTheme.colors.textSecondary)
@@ -207,12 +217,12 @@ private fun ReviewStep(state: CatchUpUiState, firstTime: Boolean, actions: Catch
     } else {
         ZarCard(Modifier.fillMaxWidth().testTag("catchup-items"), contentPadding = PaddingValues(horizontal = 20.dp, vertical = 6.dp)) {
             state.items.forEachIndexed { index, item ->
-                UnresolvedRow(item, onOpen = { actions.onOpenEntry(item.entryId.value) })
+                UnresolvedRow(item, onOpen = { actions.onOpenEntry(item.entryId.value) }, compact = true)
                 if (index < state.items.lastIndex) ZarDivider()
             }
         }
     }
-    InfoBanner(
+    CatchUpNote(
         title = stringResource(if (firstTime) R.string.catch_up_note_first_title else R.string.catch_up_note_title),
         body = stringResource(if (firstTime) R.string.catch_up_note_first_body else R.string.catch_up_note_body),
         modifier = Modifier.testTag("catchup-honest-note"),
@@ -226,7 +236,7 @@ private fun CountStep(state: CatchUpUiState, actions: CatchUpActions) {
     StepLabel(stringResource(R.string.catch_up_step_count), Modifier.testTag("catchup-step"))
     val balance = state.balance
     if (balance == null) {
-        InfoBanner(
+        CatchUpNote(
             title = stringResource(R.string.catch_up_no_cash_title),
             body = stringResource(R.string.catch_up_no_cash_body),
             modifier = Modifier.testTag("catchup-no-cash"),
@@ -246,7 +256,7 @@ private fun CountStep(state: CatchUpUiState, actions: CatchUpActions) {
         }
     }
     if (state.availability != CheckAvailability.AVAILABLE) {
-        InfoBanner(
+        CatchUpNote(
             title = balance.account.name,
             body = stringResource(
                 if (state.availability == CheckAvailability.ENTRIES_NEED_FIXING) R.string.catch_up_unavailable_fix else R.string.catch_up_unavailable_unknown,
@@ -258,20 +268,21 @@ private fun CountStep(state: CatchUpUiState, actions: CatchUpActions) {
     val check = state.check
     CatchUpCard(Modifier.testTag("catchup-count-card")) {
         Row(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
-            ZarIconChip(R.drawable.ic_ph_wallet)
+            ZarIconChip(R.drawable.ic_catchup_coins)
             Text(balance.account.name, style = ZarType.bodyM, color = colors.textPrimary)
         }
-        ZarFormRow(stringResource(R.string.catch_up_counted)) {
-            Row(Modifier.weight(1f), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            ZarMonoLabel(stringResource(R.string.catch_up_counted))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 TextInput(
                     value = state.counted,
                     onValueChange = actions.onCounted,
                     placeholder = "0",
-                    textStyle = ZarType.amountM,
+                    textStyle = ZarType.amountL,
                     keyboardType = KeyboardType.Decimal,
                     modifier = Modifier.weight(1f).testTag("catchup-amount"),
                 )
-                Text(balance.account.currency.code, style = ZarType.labelChip, color = colors.textSecondary, modifier = Modifier.padding(start = 8.dp))
+                Text(balance.account.currency.code, style = ZarType.monoLabel, color = colors.textTertiary, modifier = Modifier.padding(start = 8.dp))
             }
         }
         FieldError(
@@ -294,7 +305,7 @@ private fun CountStep(state: CatchUpUiState, actions: CatchUpActions) {
             )
         }
     }
-    InfoBanner(
+    CatchUpNote(
         title = stringResource(R.string.catch_up_not_saved_title),
         body = stringResource(R.string.catch_up_not_saved_body),
         modifier = Modifier.testTag("catchup-not-saved"),
@@ -314,7 +325,7 @@ private fun SaveStep(state: CatchUpUiState) {
     val check = state.check
     StepLabel(stringResource(R.string.catch_up_step_save), Modifier.testTag("catchup-step"))
     if (!state.isOnline) {
-        InfoBanner(
+        CatchUpNote(
             title = stringResource(R.string.manual_offline_title),
             body = stringResource(if (check?.outcome == CheckOutcome.MATCHES) R.string.catch_up_offline_body_matches else R.string.catch_up_offline_body),
             modifier = Modifier.testTag("catchup-offline"),
@@ -324,7 +335,7 @@ private fun SaveStep(state: CatchUpUiState) {
     CatchUpCard(Modifier.testTag("catchup-summary")) {
         if (check.outcome != CheckOutcome.MATCHES) {
             Row(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
-                ZarIconChip(R.drawable.ic_ph_receipt)
+                ZarIconChip(R.drawable.ic_catchup_coins)
                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(stringResource(R.string.catch_up_adjustment_title), style = ZarType.bodyM, color = colors.textPrimary)
                     Text(stringResource(R.string.catch_up_adjustment_meta), style = ZarType.bodyS, color = colors.textSecondary)
@@ -340,12 +351,12 @@ private fun SaveStep(state: CatchUpUiState) {
         }
     }
     when (check.outcome) {
-        CheckOutcome.SHORTFALL -> InfoBanner(
+        CheckOutcome.SHORTFALL -> CatchUpNote(
             title = stringResource(R.string.catch_up_incomplete_title),
             body = stringResource(R.string.catch_up_incomplete_body, IncomeFormat.withCode(check.gap)),
             modifier = Modifier.testTag("catchup-incomplete-note"),
         )
-        CheckOutcome.SURPLUS -> InfoBanner(
+        CheckOutcome.SURPLUS -> CatchUpNote(
             title = stringResource(R.string.catch_up_extra_title),
             body = stringResource(R.string.catch_up_extra_body, IncomeFormat.withCode(check.gap)),
             modifier = Modifier.testTag("catchup-extra-note"),
@@ -369,7 +380,7 @@ private fun DoneStep(state: CatchUpUiState) {
     val savedGap = result.outcome != CheckOutcome.MATCHES
     CatchUpCard(Modifier.testTag("catchup-result")) {
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-            ZarIcon(R.drawable.ic_ph_info, size = 20.dp, tint = colors.iconStrong)
+            ZarIcon(R.drawable.ic_catchup_check_circle, size = 20.dp, tint = colors.iconStrong)
             Text(stringResource(R.string.catch_up_saved_cash_is, IncomeFormat.withCode(result.counted)), style = ZarType.bodyM, color = colors.textPrimary)
         }
         ZarDivider()
@@ -387,7 +398,7 @@ private fun DoneStep(state: CatchUpUiState) {
     }
     // Only a shortfall leaves the totals incomplete. Either way the note says what catch-up did not cover.
     val incomplete = result.outcome == CheckOutcome.SHORTFALL
-    InfoBanner(
+    CatchUpNote(
         title = stringResource(if (incomplete) R.string.catch_up_saved_incomplete_title else R.string.catch_up_saved_complete_title),
         body = stringResource(if (incomplete) R.string.catch_up_saved_incomplete_body else R.string.catch_up_saved_complete_body),
         modifier = Modifier.testTag("catchup-result-note"),

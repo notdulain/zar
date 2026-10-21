@@ -230,6 +230,37 @@ class CatchUpViewModelTest {
     }
 
     @Test
+    fun aLostAcknowledgementKeepsTheConfirmedPreviewAndBackClosesInsteadOfReusingItsIdForAnotherCount() = runFlow { vm ->
+        vm.toSaveStep("1000")
+        ledger.saveError = IOException("lost")
+        ledger.storedBeforeError = true
+        vm.save()
+
+        assertEquals(CheckOutcome.SHORTFALL, vm.uiState.value.check!!.outcome)
+        assertEquals(lkr(500), vm.uiState.value.check!!.gap)
+        assertTrue(vm.uiState.value.hasSaveAttempt)
+        assertFalse(vm.back())
+        vm.onCountedChange("700")
+        assertEquals("1000", vm.uiState.value.counted)
+        ledger.saveError = null
+        vm.save()
+        assertEquals(1, adjustments().size)
+        assertEquals(adjustments().single().id, vm.uiState.value.adjustmentId)
+    }
+
+    @Test
+    fun aFailedSkipKeepsTheCatchUpOpenAndShowsAnError() = runFlow { vm ->
+        prefs.saveError = IOException("disk full")
+        vm.skipThisWeek()
+        assertFalse(vm.uiState.value.isLeaving)
+        assertFalse(vm.uiState.value.isSaving)
+        assertEquals(CatchUpMessage.SKIP_FAILED, vm.uiState.value.message)
+        prefs.saveError = null
+        vm.skipThisWeek()
+        assertTrue(vm.uiState.value.isLeaving)
+    }
+
+    @Test
     fun savingWhileSignedOutSaysToSignIn() = runFlow { vm ->
         vm.toSaveStep("1000")
         ledger.saveError = LedgerError.NotSignedIn()

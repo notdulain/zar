@@ -95,6 +95,21 @@ class CatchUpUseCasesTest {
         assertNull(overview.lastCatchUp)
     }
 
+    @Test
+    fun theCashPreviewExcludesFutureEntriesAndAccountsThatHaveNotOpened() = runBlocking {
+        val now = com.example.zar.core.domain.calculation.ZarTime.today()
+        ledger.saveTransaction(tx("future", TransactionType.EXPENSE, lkr(500), cash, date = now.plusDays(1)))
+        val futureAccount = cash.copy(id = com.example.zar.core.domain.model.AccountId("future"), openingDate = now.plusDays(1))
+
+        val overview = observe(cash, futureAccount).invoke().first()
+
+        assertEquals(listOf(cash.id), overview.cashAccounts.map { it.account.id })
+        assertEquals(lkr(2_000), overview.cashAccounts.single().current)
+        val check = record(TransactionId("count"), cash, lkr(2_000), now, T0).getOrThrow()
+        assertEquals(CheckOutcome.MATCHES, check.outcome)
+        assertTrue(adjustments().isEmpty())
+    }
+
     // --- Saving the catch-up ---
 
     @Test

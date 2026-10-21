@@ -22,12 +22,17 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        if (savedInstanceState == null) openCatchUp = intent.isCatchUpLaunch()
+        openCatchUp = savedInstanceState?.getBoolean(LaunchTargets.EXTRA) ?: intent.isCatchUpLaunch()
         setContent {
             ZarTheme {
                 ZarRoot(openCatchUp = openCatchUp, onCatchUpOpened = { openCatchUp = false })
             }
         }
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        outState.putBoolean(LaunchTargets.EXTRA, openCatchUp)
+        super.onSaveInstanceState(outState)
     }
 
     override fun onNewIntent(intent: Intent) {

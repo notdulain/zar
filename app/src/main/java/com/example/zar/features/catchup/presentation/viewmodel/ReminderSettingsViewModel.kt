@@ -15,12 +15,17 @@ import javax.inject.Inject
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 data class ReminderUiState(
     val isLoading: Boolean = true,
+    val saveFailed: Boolean = false,
     val settings: ReminderSettings = ReminderSettings(),
     /** When the reminder fires next, skipping a skipped week. Null when the reminder is off. */
     val nextReminder: ZonedDateTime? = null,
@@ -30,15 +35,17 @@ data class ReminderUiState(
 
 @HiltViewModel
 class ReminderSettingsViewModel @Inject constructor(
-    observePreferences: ObserveCatchUpPreferencesUseCase,
+    private val observePreferences: ObserveCatchUpPreferencesUseCase,
     private val updateReminder: UpdateReminderSettingsUseCase,
 ) : ViewModel() {
 
-    val uiState: StateFlow<ReminderUiState> = observePreferences()
-        .map { prefs ->
+    private val saveFailed = MutableStateFlow(false)
+    private val saveMutex = Mutex()
+    val uiState: StateFlow<ReminderUiState> = combine(observePreferences(), saveFailed) { prefs, failed ->
             val now = Instant.now()
             ReminderUiState(
                 isLoading = false,
+                saveFailed = failed,
                 settings = prefs.reminder,
                 nextReminder = ReminderSchedule.next(prefs.reminder, now),
                 isNextSkipped = ReminderSchedule.isNextSkipped(prefs.reminder, now),
@@ -57,8 +64,13 @@ class ReminderSettingsViewModel @Inject constructor(
     fun undoSkip() = save { it.copy(skippedOccurrence = null) }
 
     private fun save(change: (ReminderSettings) -> ReminderSettings) {
-        val updated = change(uiState.value.settings)
-        // A failed save leaves the screen as it was; the settings are re-read from storage either way.
-        viewModelScope.launch { runCatching { updateReminder(updated) } }
+        viewModelScope.launch {
+            // Apply rapid changes in order to the latest persisted settings, even before UI collection catches up.
+            saveMutex.withLock {
+                saveFailed.value = false
+                runCatching { updateReminder(change(observePreferences().first().reminder)) }
+                    .onFailure { saveFailed.value = true }
+            }
+        }
     }
 }

@@ -67,6 +67,13 @@ class UnresolvedRulesTest {
     }
 
     @Test
+    fun aRefundWithoutARateIsListedBecauseItLeavesNetSpendingUnresolved() {
+        val items = find(entry(tx("r1", TransactionType.REFUND, usd(10), payoneer,
+            refundOf = "e1", conversion = ReportingConversion.Missing(Currencies.LKR))))
+        assertEquals(UnresolvedKind.MISSING_RATE, items.single().kind)
+    }
+
+    @Test
     fun anEntryIsListedOnceUnderTheFirstReasonThatApplies() {
         val missing = ReportingConversion.Missing(Currencies.LKR)
         // Missing rate and uncategorised at once: the rate comes first because it keeps the entry out of totals.

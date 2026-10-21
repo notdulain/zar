@@ -39,9 +39,9 @@ class ObserveCatchUpUseCase @Inject constructor(
             CatchUpOverview(
                 items = UnresolvedRules.find(entries, list),
                 cashAccounts = list
-                    .filter { it.type == AccountType.CASH && !it.isArchived }
+                    .filter { it.type == AccountType.CASH && !it.isArchived && it.openingDate <= ZarTime.today() }
                     .sortedBy { it.name.lowercase() }
-                    .map { AccountBalanceCalculator.calculate(it, entries) },
+                    .map { AccountBalanceCalculator.calculate(it, entries, asOf = ZarTime.today()) },
                 lastCatchUp = prefs.lastCatchUp,
                 recordedThisWeek = UnresolvedRules.recordedInLastWeek(entries, ZarTime.today()),
             )

@@ -29,6 +29,8 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TimePicker
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.rememberTimePickerState
+import androidx.compose.material3.TimePickerDefaults
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -55,6 +57,7 @@ import com.example.zar.core.presentation.components.ZarCard
 import com.example.zar.core.presentation.components.ZarChip
 import com.example.zar.core.presentation.components.ZarDivider
 import com.example.zar.core.presentation.components.ZarIcon
+import com.example.zar.core.presentation.components.ZarIconChip
 import com.example.zar.core.presentation.components.ZarMonoLabel
 import com.example.zar.core.presentation.components.ZarSwitch
 import com.example.zar.core.presentation.theme.ZarDimens
@@ -63,7 +66,6 @@ import com.example.zar.core.presentation.theme.ZarTheme
 import com.example.zar.core.presentation.theme.ZarType
 import com.example.zar.features.catchup.presentation.viewmodel.ReminderSettingsViewModel
 import com.example.zar.features.catchup.presentation.viewmodel.ReminderUiState
-import com.example.zar.features.transactions.presentation.activity.screen.InfoBanner
 import com.example.zar.features.transactions.presentation.activity.screen.SheetGrabber
 import com.example.zar.features.transactions.presentation.activity.screen.SheetHeader
 import com.example.zar.features.transactions.presentation.activity.screen.SheetScrim
@@ -143,10 +145,14 @@ internal fun ReminderBody(state: ReminderUiState, notificationsAllowed: Boolean,
             Box(Modifier.fillMaxWidth().padding(top = 72.dp), Alignment.Center) { CircularProgressIndicator(color = colors.accentSelected) }
             return@CatchUpScaffold
         }
+        if (state.saveFailed) {
+            Text(stringResource(R.string.reminder_save_failed), style = ZarType.bodyS, color = colors.danger,
+                modifier = Modifier.padding(horizontal = 12.dp).testTag("reminder-save-error"))
+        }
         if (blocked) {
             CatchUpCard(Modifier.testTag("reminder-blocked-card")) {
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                    ZarIcon(R.drawable.ic_ph_info, size = 20.dp)
+                    ZarIconChip(R.drawable.ic_catchup_bell_slash)
                     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                         Text(stringResource(R.string.reminder_notifications_off_title), style = ZarType.bodyM, color = colors.textPrimary)
                         Text(stringResource(R.string.reminder_notifications_off_body), style = ZarType.bodyS, color = colors.textSecondary)
@@ -182,22 +188,22 @@ internal fun ReminderBody(state: ReminderUiState, notificationsAllowed: Boolean,
         }
         val next = state.nextReminder
         when {
-            !settings.enabled -> InfoBanner(
+            !settings.enabled -> CatchUpNote(
                 title = stringResource(R.string.reminder_off_title),
                 body = stringResource(R.string.reminder_off_body),
                 modifier = Modifier.testTag("reminder-note-off"),
             )
-            blocked -> InfoBanner(
+            blocked -> CatchUpNote(
                 title = stringResource(R.string.reminder_blocked_title),
                 body = stringResource(R.string.reminder_blocked_body),
                 modifier = Modifier.testTag("reminder-note-blocked"),
             )
-            state.isNextSkipped && next != null -> InfoBanner(
+            state.isNextSkipped && next != null -> CatchUpNote(
                 title = stringResource(R.string.reminder_skipped_title),
                 body = stringResource(R.string.reminder_skipped_body, CatchUpFormat.next(next)),
                 modifier = Modifier.testTag("reminder-note-skipped"),
             )
-            next != null -> InfoBanner(
+            next != null -> CatchUpNote(
                 title = stringResource(R.string.reminder_next_title, CatchUpFormat.next(next)),
                 body = stringResource(R.string.reminder_next_body),
                 modifier = Modifier.testTag("reminder-note-next"),
@@ -237,9 +243,9 @@ private fun ValueRow(label: String, value: String, enabled: Boolean, tag: String
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(label, style = ZarType.bodyS, color = colors.textSecondary)
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text(value, style = ZarType.bodyM, color = if (enabled || onClick == null) colors.textPrimary else colors.textTertiary)
+        Text(label, Modifier.weight(1f), style = ZarType.bodyS, color = colors.textSecondary)
+        Row(Modifier.weight(1.6f), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End), verticalAlignment = Alignment.CenterVertically) {
+            Text(value, Modifier.weight(1f), textAlign = TextAlign.End, style = ZarType.bodyM, color = if (enabled || onClick == null) colors.textPrimary else colors.textTertiary)
             if (onClick != null) ZarIcon(R.drawable.ic_ph_caret_right, size = 14.dp, tint = colors.iconMuted)
         }
     }
@@ -328,10 +334,25 @@ private fun TimeDialog(initial: LocalTime, onDismiss: () -> Unit, onConfirm: (Lo
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.reminder_time_dialog_title)) },
-        text = { TimePicker(state) },
+        containerColor = ZarTheme.colors.surface,
+        titleContentColor = ZarTheme.colors.textPrimary,
+        text = { TimePicker(state, colors = TimePickerDefaults.colors(
+            clockDialColor = ZarTheme.colors.subtle,
+            selectorColor = ZarTheme.colors.accentSelected,
+            clockDialSelectedContentColor = ZarTheme.colors.textOnInverse,
+            clockDialUnselectedContentColor = ZarTheme.colors.textPrimary,
+            periodSelectorSelectedContainerColor = ZarTheme.colors.selectedTint,
+            periodSelectorUnselectedContainerColor = ZarTheme.colors.surface,
+            periodSelectorSelectedContentColor = ZarTheme.colors.textSelected,
+            periodSelectorUnselectedContentColor = ZarTheme.colors.textPrimary,
+            timeSelectorSelectedContainerColor = ZarTheme.colors.selectedTint,
+            timeSelectorUnselectedContainerColor = ZarTheme.colors.subtle,
+            timeSelectorSelectedContentColor = ZarTheme.colors.textSelected,
+            timeSelectorUnselectedContentColor = ZarTheme.colors.textPrimary,
+        )) },
         confirmButton = {
-            TextButton(onClick = { onConfirm(LocalTime.of(state.hour, state.minute)) }) { Text(stringResource(R.string.reminder_time_dialog_ok)) }
+            TextButton(onClick = { onConfirm(LocalTime.of(state.hour, state.minute)) }) { Text(stringResource(R.string.reminder_time_dialog_ok), color = ZarTheme.colors.textSelected) }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel), color = ZarTheme.colors.textSelected) } },
     )
 }

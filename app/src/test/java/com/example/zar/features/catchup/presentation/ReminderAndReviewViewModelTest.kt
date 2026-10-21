@@ -121,6 +121,32 @@ class ReminderSettingsViewModelTest {
     }
 
     @Test
+    fun aFailedReminderUpdateIsVisibleAndCanBeRetried() = runTest(UnconfinedTestDispatcher()) {
+        val store = FakeCatchUpPreferences().apply { saveError = java.io.IOException("disk full") }
+        val vm = ReminderSettingsViewModel(ObserveCatchUpPreferencesUseCase(store), UpdateReminderSettingsUseCase(store, scheduler))
+        backgroundScope.launch { vm.uiState.collect { } }
+        vm.onEnabledChange(false)
+        assertTrue(vm.uiState.value.saveFailed)
+        assertTrue(vm.uiState.value.settings.enabled)
+        store.saveError = null
+        vm.onEnabledChange(false)
+        assertFalse(vm.uiState.value.saveFailed)
+        assertFalse(vm.uiState.value.settings.enabled)
+    }
+
+    @Test
+    fun rapidChangesUseTheLatestStoredSettingsBeforeTheUiHasCollectedThem() = runTest(UnconfinedTestDispatcher()) {
+        val store = FakeCatchUpPreferences()
+        val vm = ReminderSettingsViewModel(ObserveCatchUpPreferencesUseCase(store), UpdateReminderSettingsUseCase(store, scheduler))
+        // No UI subscriber: updating the day must not turn a just-disabled reminder on again.
+        vm.onEnabledChange(false)
+        vm.onMove(DayOfWeek.FRIDAY, LocalTime.of(20, 0))
+        assertFalse(store.current.reminder.enabled)
+        assertEquals(DayOfWeek.FRIDAY, store.current.reminder.day)
+        assertNull(scheduler.last)
+    }
+
+    @Test
     fun savedSettingsAreShownAsTheyWere() = run(CatchUpPreferences(reminder = ReminderSettings(day = DayOfWeek.MONDAY, time = LocalTime.of(7, 15)))) { vm ->
         assertEquals(DayOfWeek.MONDAY, vm.uiState.value.settings.day)
         assertEquals(LocalTime.of(7, 15), vm.uiState.value.settings.time)

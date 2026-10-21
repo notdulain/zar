@@ -721,7 +721,7 @@
     <string name="catch_up_note_title">Catch-up uses what you\'ve recorded</string>
     <string name="catch_up_note_body">A quiet week doesn\'t mean nothing was spent. You don\'t have to fix every item to continue.</string>
     <string name="catch_up_note_first_title">Quiet doesn\'t mean complete</string>
-    <string name="catch_up_note_first_body">Catch-up only knows what you\'ve entered. A week with no entries may still have had spending, so totals stay marked incomplete.</string>
+    <string name="catch_up_note_first_body">Catch-up only knows what you\'ve entered. A week with no entries may still have had spending. Checking cash does not confirm that all spending was recorded.</string>
     <string name="catch_up_continue">Continue to counting</string>
     <string name="catch_up_count_cash">Count my cash</string>
     <string name="catch_up_skip_week">Skip catch-up this week</string>
@@ -816,6 +816,9 @@
     <string name="reminder_notification_title">Weekly catch-up</string>
     <string name="reminder_notification_body">Check your cash and sort what\'s left. It takes about a minute, and gaps can stay unexplained.</string>
 
+    <string name="catch_up_open_adjustment">Open the adjustment</string>
+    <string name="catch_up_skip_failed">Could not skip the reminder. Please try again.</string>
+    <string name="reminder_save_failed">Could not update the reminder. Please try again.</string>
     <string name="more_reminder">Catch-up reminder</string>
     <string name="more_reminder_detail">A weekly nudge to check your cash</string>
     <string name="activity_edit_refunded_amount">The amount cannot be less than its active refunds. Undo the refunds first.</string>
