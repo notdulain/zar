@@ -218,3 +218,17 @@ test('crypto opening costs: LKR only, owner only, can be cleared', async () => {
   await assertFails(deleteDoc(doc(bob(), path('alice', 'cryptoOpeningCosts', 'binance-btc'))));
   await assertSucceeds(deleteDoc(r));
 });
+
+test('captured drafts: structured fields only, confirmed once', async () => {
+  const d = { id: 'capture-0011aabb', source: 'SHARED_TEXT', status: 'PENDING_REVIEW', createdAt: 1790000000000,
+    proposals: [{ kind: 'ACTUAL_TRANSACTION', type: 'EXPENSE', amount: lkr(80000), date: '2026-10-11', spendingClass: 'UNKNOWN',
+      merchant: 'CAFE SEVENTY THREE MALABE LK', uncertainFields: ['TYPE'] }] };
+  const r = doc(alice(), path('alice', 'drafts', d.id));
+  await assertSucceeds(setDoc(r, d));
+  await assertSucceeds(setDoc(r, d));
+  await assertFails(setDoc(doc(alice(), path('alice', 'drafts', 'capture-raw')), { ...d, id: 'capture-raw',
+    proposals: [{ ...d.proposals[0], rawText: 'Dear Cardholder, Purchase at ...' }] }));
+  await assertSucceeds(updateDoc(r, { status: 'CONFIRMED' }));
+  await assertFails(setDoc(r, d));
+  await assertFails(getDoc(doc(bob(), path('alice', 'drafts', d.id))));
+});
