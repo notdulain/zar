@@ -899,7 +899,7 @@
     <string name="capture_health_label">CAPTURE STATUS</string>
     <string name="capture_health_never">Nothing captured yet</string>
     <string name="capture_health_last">Last captured %1$s</string>
-    <string name="capture_health_caption">Zar only knows about messages you share or paste. A quiet week doesn\'t mean nothing was spent.</string>
+    <string name="capture_health_caption">Zar only knows about messages you share or paste, or that arrive while automatic capture is on. A quiet week doesn\'t mean nothing was spent.</string>
     <plurals name="capture_waiting">
         <item quantity="one">%d message waiting for review</item>
         <item quantity="other">%d messages waiting for review</item>
@@ -923,7 +923,26 @@
     <string name="capture_status_supported">Supported</string>
     <string name="capture_status_review">Needs review</string>
     <string name="capture_status_unknown">Not tested</string>
-    <string name="capture_sms_auto">Automatic SMS capture isn\'t switched on. Sharing and pasting work without any permission.</string>
+    <string name="auto_capture_label">AUTOMATIC</string>
+    <string name="auto_capture_title">Capture new bank SMS</string>
+    <string name="auto_capture_state_off">Off</string>
+    <string name="auto_capture_state_on">On · new messages only</string>
+    <string name="auto_capture_state_no_access">On, but SMS access is off</string>
+    <string name="auto_capture_state_unavailable">This phone can\'t receive SMS</string>
+    <string name="auto_capture_explain_off">When it\'s on, Zar reads bank messages as they arrive and makes drafts for you to review. Past messages are never read. It needs SMS access; sharing and pasting work without it.</string>
+    <string name="auto_capture_explain_on">Only tested bank formats are kept, encrypted on this phone, until they become drafts. Then the message text is deleted. Credits and unclear payments always wait for your choice. Turning this off deletes messages still waiting.</string>
+    <string name="auto_capture_allow">Allow SMS access</string>
+    <string name="auto_capture_refused">SMS access was refused, so automatic capture stays off. Sharing and pasting still work.</string>
+    <plurals name="auto_capture_waiting">
+        <item quantity="one">%d message waiting on this phone. It will be saved as a draft when you\'re online and signed in.</item>
+        <item quantity="other">%d messages waiting on this phone. They will be saved as drafts when you\'re online and signed in.</item>
+    </plurals>
+    <plurals name="auto_capture_expired">
+        <item quantity="one">%1$d message from %2$s couldn\'t be saved within 7 days, so it was deleted from this phone. If it was a payment, add it manually.</item>
+        <item quantity="other">%1$d messages from %2$s on couldn\'t be saved within 7 days, so they were deleted from this phone. If they were payments, add them manually.</item>
+    </plurals>
+    <string name="auto_capture_expired_dismiss">Got it</string>
+    <string name="auto_capture_failed">Couldn\'t change automatic capture. Try again.</string>
 
     <string name="capture_review_title">Review message</string>
     <string name="capture_review_intro">Check the amount and date, confirm the money moved, then choose the account and type. Nothing enters your ledger until you confirm.</string>
