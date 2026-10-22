@@ -7,6 +7,8 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- Optional automatic capture of new bank SMS. Asked only when the person turns it on in Capture sources. -->
     <uses-permission android:name="android.permission.RECEIVE_SMS" />
+    <!-- Devices without SMS still install Zar; Capture sources says automatic capture isn't available. -->
+    <uses-feature android:name="android.hardware.telephony" android:required="false" />
 
     <application
         android:name=".ZarApplication"

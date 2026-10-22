@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -46,6 +47,11 @@ import com.example.zar.features.capture.presentation.viewmodel.AutoCaptureViewMo
 import com.example.zar.features.transactions.presentation.income.IncomeFormat
 import com.example.zar.core.domain.calculation.ZarTime
 
+/** The SMS-only feature flag exists from Android 13; before that, telephony implies SMS. */
+private fun Context.canReceiveSms() = packageManager.hasSystemFeature(
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) PackageManager.FEATURE_TELEPHONY_MESSAGING else PackageManager.FEATURE_TELEPHONY,
+)
+
 private fun Context.canReadSms() =
     ContextCompat.checkSelfPermission(this, Manifest.permission.RECEIVE_SMS) == PackageManager.PERMISSION_GRANTED
 
@@ -57,7 +63,7 @@ private fun Context.canReadSms() =
 fun AutoCaptureSection(viewModel: AutoCaptureViewModel = hiltViewModel()) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    val canReceive = remember { context.packageManager.hasSystemFeature(PackageManager.FEATURE_TELEPHONY_MESSAGING) }
+    val canReceive = remember { context.canReceiveSms() }
     var granted by remember { mutableStateOf(context.canReadSms()) }
     var refused by remember { mutableStateOf(false) }
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { ok ->
