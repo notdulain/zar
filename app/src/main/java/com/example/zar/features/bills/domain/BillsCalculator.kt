@@ -87,8 +87,7 @@ object BillsCalculator {
             bills = summaries,
             next = next,
             dueSoon = summaries.filter { it.bill.isActive }
-                .flatMap { s -> s.occurrences.filter { it.dueDate in today..soonEnd && it.progress.state != MatchState.CANCELLED } }
-                .map { it.progress.remaining }
+                .flatMap { stillDue(it, today, soonEnd) }
                 .totalsByCurrency(),
             annual = summaries.filter { it.bill.isActive }.map { it.annualCost }.totalsByCurrency(),
         )
@@ -139,6 +138,19 @@ object BillsCalculator {
                 compareBy<PaymentCandidate> { abs(it.entry.current.date.toEpochDay() - occurrence.dueDate.toEpochDay()) }
                     .thenBy { if (it.entry.current.accountId == occurrence.accountId) 0 else 1 },
             )
+    }
+
+    /**
+     * What a bill still expects in [today, end]. Only the next due date is listed, so a weekly
+     * bill's later dates in the window are worked out from the schedule at the full amount.
+     */
+    private fun stillDue(summary: BillSummary, today: LocalDate, end: LocalDate): List<Money> {
+        val listed = summary.occurrences.filter { it.dueDate in today..end }.associateBy { it.progress.expected.id }
+        val scheduled = BillSchedule.dueDates(summary.bill, today, end).map { BillSchedule.occurrenceId(summary.bill, it) }
+        return (listed.keys + scheduled).mapNotNull { id ->
+            val progress = listed[id]?.progress ?: return@mapNotNull summary.bill.amount
+            progress.remaining.takeUnless { progress.state == MatchState.CANCELLED }
+        }
     }
 
     private fun List<Money>.totalsByCurrency(): List<Money> = groupBy { it.currency }
