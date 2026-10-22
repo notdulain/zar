@@ -60,6 +60,12 @@ data class Bill(
     /** Still producing due dates: not stopped and not confirmed cancelled. */
     val isActive: Boolean get() = status == BillStatus.ACTIVE && cancellation !is BillCancellation.Confirmed
 
+    /**
+     * Still has due dates on or after [day]: not stopped, and not cancelled from [day] or earlier.
+     * A cancellation confirmed from a later date keeps the due dates before it.
+     */
+    fun runsOn(day: LocalDate): Boolean = status == BillStatus.ACTIVE && lastDueDay.let { it == null || it >= day }
+
     /** The last day a cancelled bill can be due, or null when it isn't cancelled. */
     val lastDueDay: LocalDate? get() = (cancellation as? BillCancellation.Confirmed)?.effectiveFrom?.minusDays(1)
 }

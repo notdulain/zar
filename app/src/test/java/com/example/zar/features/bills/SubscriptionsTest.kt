@@ -86,6 +86,16 @@ class SubscriptionsTest {
         assertTrue(suggest(charges, bills = listOf(existing)).isEmpty())
     }
 
+    @Test
+    fun aTrackedSuggestionStaysHiddenAfterItsBillIsRenamed() {
+        val charges = listOf(charge("a", sep9), charge("b", sep9.plusDays(30)))
+        val suggestion = suggest(charges).single()
+        // Tracking it made this bill; the user then renamed it, so the name no longer matches.
+        val renamed = Bill(ConfirmSuggestionUseCase(FakeBills(), FakeExpected()).billIdFor(suggestion), "TV", bank.id, lkr(2_643),
+            BillFrequency.MONTHLY, sep9.plusDays(30), BillStatus.ACTIVE, T0)
+        assertTrue("Track as bill would overwrite the renamed bill", suggest(charges, bills = listOf(renamed)).isEmpty())
+    }
+
     // --- Cancellation ----------------------------------------------------------------------
 
     private fun bill(cancellation: BillCancellation? = null) =
@@ -108,6 +118,19 @@ class SubscriptionsTest {
         assertEquals(listOf(LocalDate.of(2026, 9, 9)), summary.occurrences.map { it.dueDate })
         assertTrue("No longer in yearly totals", overview.annual.isEmpty())
         assertNull(overview.next)
+    }
+
+    @Test
+    fun aCancellationFromALaterDateKeepsDueDatesBeforeIt() {
+        // Cancelled from 1 Dec: the 9 Nov charge is still expected, 9 Dec is not.
+        val b = bill(BillCancellation.Confirmed(LocalDate.of(2026, 12, 1)))
+        val overview = BillsCalculator.overview(listOf(b), listOf(bank), emptyList(), emptyList(), emptyList(), today)
+        val summary = overview.bills.single()
+        assertEquals(LocalDate.of(2026, 11, 9), summary.next?.dueDate)
+        assertEquals(LocalDate.of(2026, 11, 9), overview.next?.dueDate)
+        assertEquals(listOf(lkr(2_643)), overview.dueSoon)
+        assertTrue(summary.occurrences.none { it.dueDate >= LocalDate.of(2026, 12, 1) })
+        assertTrue("A cancelled bill has no yearly cost", overview.annual.isEmpty())
     }
 
     @Test

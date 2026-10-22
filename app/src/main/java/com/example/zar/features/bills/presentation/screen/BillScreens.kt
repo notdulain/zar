@@ -471,9 +471,11 @@ fun BillFormScreen(
                 Text(stringResource(R.string.income_save))
             }
             uiState.bill?.let { bill ->
-                TextButton(onClick = { viewModel.setStopped(bill.isActive) }, enabled = !uiState.isSaving, modifier = Modifier.fillMaxWidth()) {
-                    Text(stringResource(if (bill.isActive) R.string.bill_stop else R.string.bill_resume),
-                        color = if (bill.isActive) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary)
+                // Stop/resume is about the status alone; cancelling is handled on the bill.
+                val running = bill.status == BillStatus.ACTIVE
+                TextButton(onClick = { viewModel.setStopped(running) }, enabled = !uiState.isSaving, modifier = Modifier.fillMaxWidth()) {
+                    Text(stringResource(if (running) R.string.bill_stop else R.string.bill_resume),
+                        color = if (running) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary)
                 }
             }
         }
