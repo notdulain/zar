@@ -94,6 +94,13 @@ class AutoCaptureTest {
         compose.onNodeWithTag("auto-capture-switch").assertIsOn()
         compose.onNodeWithTag("auto-capture-waiting").assertIsDisplayed()
         compose.onNodeWithTag("auto-capture-expired").assertIsDisplayed()
+        compose.waitForIdle()
+        android.os.SystemClock.sleep(500)
+        val inst = InstrumentationRegistry.getInstrumentation()
+        val bitmap = checkNotNull(inst.uiAutomation.takeScreenshot())
+        val dir = java.io.File(inst.targetContext.cacheDir, "l08").apply { mkdirs() }
+        java.io.File(dir, "expiry-notice.png").outputStream().use { bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }
+        bitmap.recycle()
     }
 
     @Test
