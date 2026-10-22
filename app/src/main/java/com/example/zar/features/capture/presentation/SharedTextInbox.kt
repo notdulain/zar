@@ -1,5 +1,6 @@
 package com.example.zar.features.capture.presentation
 
+import com.example.zar.features.auth.domain.repository.SignOutHandler
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -11,24 +12,35 @@ import kotlinx.coroutines.flow.asStateFlow
  * the text is never written to disk, saved state or Firestore, and is cleared once taken.
  */
 @Singleton
-class SharedTextInbox @Inject constructor() {
-    private val pending = MutableStateFlow<String?>(null)
+class SharedTextInbox @Inject constructor() : SignOutHandler {
+    private val pending = java.util.ArrayDeque<String>()
 
     /** True while shared text is waiting to be read. */
     val hasText: StateFlow<Boolean> get() = _hasText.asStateFlow()
     private val _hasText = MutableStateFlow(false)
 
+    private val _revision = MutableStateFlow(0L)
+    val revision: StateFlow<Long> = _revision.asStateFlow()
+
+    @Synchronized
     fun offer(text: String) {
         if (text.isBlank()) return
-        pending.value = text
+        if (text.length > 16_384) return
+        pending.addLast(text)
         _hasText.value = true
+        _revision.value += 1
     }
 
+    override suspend fun onSignOut() = clear()
+
+    @Synchronized
+    private fun clear() { pending.clear(); _hasText.value = false }
+
     /** Returns the waiting text once, then forgets it. */
+    @Synchronized
     fun take(): String? {
-        val text = pending.value
-        pending.value = null
-        _hasText.value = false
+        val text = pending.pollFirst()
+        _hasText.value = pending.isNotEmpty()
         return text
     }
 }

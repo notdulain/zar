@@ -35,11 +35,12 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-enum class CaptureMessage { NOT_SIGNED_IN, CURRENCY, FAILED }
+enum class CaptureMessage { NOT_SIGNED_IN, CURRENCY, INVALID, FAILED }
 
 private fun Throwable.toCaptureMessage(): CaptureMessage = when (this) {
     is LedgerError.NotSignedIn -> CaptureMessage.NOT_SIGNED_IN
     is LedgerError.CurrencyMismatch -> CaptureMessage.CURRENCY
+    is IllegalArgumentException, is LedgerError.AccountArchived -> CaptureMessage.INVALID
     else -> CaptureMessage.FAILED
 }
 
@@ -69,6 +70,7 @@ class CaptureViewModel @Inject constructor(
     observeHealth: ObserveCaptureHealthUseCase,
 ) : ViewModel() {
 
+    private var active = false
     private val _uiState = MutableStateFlow(CaptureUiState())
     val uiState: StateFlow<CaptureUiState> = _uiState.asStateFlow()
 
@@ -78,30 +80,39 @@ class CaptureViewModel @Inject constructor(
                 .catch { _uiState.update { it.copy(message = CaptureMessage.FAILED) } }
                 .collect { (drafts, health) -> _uiState.update { it.copy(pending = drafts, health = health) } }
         }
-        takeShared()
+        viewModelScope.launch { inbox.revision.collect { takeShared() } }
+    }
+
+    fun setActive(value: Boolean) {
+        active = value
+        if (value) takeShared()
     }
 
     /** Reads text shared from another app straight away; it never needs to be typed or kept. */
     fun takeShared() {
+        if (!active || _uiState.value.isReading) return
         val shared = inbox.take() ?: return
         _uiState.update { it.copy(text = shared, cameFromShare = true) }
         read(DraftSource.SHARED_TEXT)
     }
 
-    fun onTextChange(value: String) = _uiState.update { it.copy(text = value, outcome = null, message = null) }
+    fun onTextChange(value: String) {
+        if (!_uiState.value.isReading) _uiState.update { it.copy(text = value.take(16_384), outcome = null, message = null) }
+    }
 
     fun read(source: DraftSource = DraftSource.SHARED_TEXT) {
         val state = _uiState.value
         if (state.isReading) return
+        _uiState.update { it.copy(isReading = true, message = null) }
         viewModelScope.launch {
-            _uiState.update { it.copy(isReading = true, message = null) }
             captureText(state.text, source, Instant.now()).fold(
                 // The text is cleared once read, so it isn't kept on screen or in memory longer than needed.
                 onSuccess = { outcome ->
-                    _uiState.update { it.copy(isReading = false, outcome = outcome, text = if (outcome is CaptureOutcome.Drafted) "" else it.text) }
+                    _uiState.update { it.copy(isReading = false, outcome = outcome, text = "") }
                 },
-                onFailure = { e -> _uiState.update { it.copy(isReading = false, message = e.toCaptureMessage()) } },
+                onFailure = { e -> _uiState.update { it.copy(isReading = false, text = "", message = e.toCaptureMessage()) } },
             )
+            takeShared()
         }
     }
 }
@@ -119,6 +130,7 @@ data class CaptureReviewUiState(
     val message: CaptureMessage? = null,
     val isSaving: Boolean = false,
     val isFinished: Boolean = false,
+    val confirmationStarted: Boolean = false,
 ) {
     val proposal: DraftProposal.ActualTransaction? get() = draft?.proposals?.singleOrNull() as? DraftProposal.ActualTransaction
 
@@ -146,12 +158,12 @@ class CaptureReviewViewModel @Inject constructor(
                 .catch { _uiState.update { it.copy(isLoading = false, message = CaptureMessage.FAILED) } }
                 .collect { (draft, accounts) ->
                     _uiState.update { state ->
-                        var next = state.copy(isLoading = false, draft = draft ?: state.draft.takeIf { state.isFinished }, accounts = accounts)
+                        var next = state.copy(isLoading = false, draft = draft ?: state.draft.takeIf { state.isFinished || state.isSaving }, accounts = accounts)
                         if (!filled && draft != null) {
                             filled = true
                             val proposal = draft.proposals.singleOrNull() as? DraftProposal.ActualTransaction
                             next = next.copy(
-                                type = proposal?.type?.takeIf { it in CapturedDraftRules.CONFIRMABLE_TYPES },
+                                type = proposal?.type?.takeIf { it in CapturedDraftRules.CONFIRMABLE_TYPES && com.example.zar.core.domain.model.DraftField.TYPE !in proposal.uncertainFields },
                                 accountId = next.matchingAccounts.singleOrNull()?.id,
                             )
                         }
@@ -161,9 +173,9 @@ class CaptureReviewViewModel @Inject constructor(
         }
     }
 
-    fun onAccountSelect(id: AccountId) = _uiState.update { it.copy(accountId = id, message = null) }
-    fun onTypeSelect(type: TransactionType) = _uiState.update { it.copy(type = type, message = null) }
-    fun onSpendingClassSelect(value: SpendingClass) = _uiState.update { it.copy(spendingClass = value) }
+    fun onAccountSelect(id: AccountId) { if (!_uiState.value.confirmationStarted && !_uiState.value.isSaving) _uiState.update { it.copy(accountId = id, message = null) } }
+    fun onTypeSelect(type: TransactionType) { if (!_uiState.value.confirmationStarted && !_uiState.value.isSaving) _uiState.update { it.copy(type = type, message = null) } }
+    fun onSpendingClassSelect(value: SpendingClass) { if (!_uiState.value.confirmationStarted && !_uiState.value.isSaving) _uiState.update { it.copy(spendingClass = value) } }
 
     fun confirm() {
         val state = _uiState.value
@@ -174,18 +186,20 @@ class CaptureReviewViewModel @Inject constructor(
             _uiState.update { it.copy(showErrors = true) }
             return
         }
+        _uiState.update { it.copy(confirmationStarted = true) }
         save { confirmDraft(draft, account, type, state.spendingClass.takeIf { type == TransactionType.EXPENSE }, Instant.now()) }
     }
 
     fun discard() {
+        if (_uiState.value.confirmationStarted) return
         val draft = _uiState.value.draft ?: return
         save { discardDraft(draft) }
     }
 
     private fun save(block: suspend () -> Result<Unit>) {
         if (_uiState.value.isSaving) return
+        _uiState.update { it.copy(isSaving = true, message = null) }
         viewModelScope.launch {
-            _uiState.update { it.copy(isSaving = true, message = null) }
             block().fold(
                 onSuccess = { _uiState.update { it.copy(isSaving = false, isFinished = true) } },
                 onFailure = { e -> _uiState.update { it.copy(isSaving = false, message = e.toCaptureMessage()) } },

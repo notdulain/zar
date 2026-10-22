@@ -906,7 +906,7 @@
     </plurals>
     <string name="capture_paste_label">PASTE A BANK MESSAGE</string>
     <string name="capture_paste_field">Bank SMS text</string>
-    <string name="capture_paste_hint">Tip: in Messages, long-press the SMS → Share → Zar. The text is read on this phone and never uploaded.</string>
+    <string name="capture_paste_hint">Tip: in Messages, long-press the SMS → Share → Zar. The text is read on this phone and never uploaded. Connect to save the structured draft.</string>
     <string name="capture_read">Read message</string>
     <string name="capture_from_share">Shared from another app</string>
     <string name="capture_drafted">Read: %1$s on %2$s. Review it below to save it.</string>
@@ -919,18 +919,18 @@
     <string name="capture_waiting_label">WAITING FOR REVIEW</string>
     <string name="capture_type_unknown">Choose a type</string>
     <string name="capture_supported_label">SUPPORTED BANKS</string>
-    <string name="capture_supported_intro">Only formats tested with real messages are marked supported. Anything else goes to review, and you can always add entries manually.</string>
+    <string name="capture_supported_intro">Only formats tested with real messages are marked supported. Other formats may need manual entry. You always review before saving.</string>
     <string name="capture_status_supported">Supported</string>
     <string name="capture_status_review">Needs review</string>
     <string name="capture_status_unknown">Not tested</string>
     <string name="capture_sms_auto">Automatic SMS capture isn\'t switched on. Sharing and pasting work without any permission.</string>
 
     <string name="capture_review_title">Review message</string>
-    <string name="capture_review_intro">Check what Zar read, choose the account and type, then save. Nothing is saved until you confirm.</string>
+    <string name="capture_review_intro">Check the amount and date, confirm the money moved, then choose the account and type. Nothing enters your ledger until you confirm.</string>
     <string name="capture_review_account">Account</string>
     <string name="capture_review_no_account">No %1$s account yet. Add one under More → Accounts, or add this entry manually.</string>
     <string name="capture_review_type">Type</string>
-    <string name="capture_review_type_hint">A credit may be income, a refund or a transfer. Zar never assumes it\'s income.</string>
+    <string name="capture_review_type_hint">A debit may be spending or a transfer. A credit may be income, a refund or a transfer. Choose what actually happened.</string>
     <string name="capture_review_other_type">Refund or transfer? Discard this and add it manually.</string>
     <string name="capture_review_counts_as">Counts as</string>
     <string name="capture_review_confirm">Save entry</string>
@@ -945,5 +945,119 @@
     <string name="capture_class_unknown">Unknown</string>
     <string name="capture_message_not_signed_in">Sign in to save.</string>
     <string name="capture_message_currency">Choose an account in the message\'s currency.</string>
-    <string name="capture_message_failed">Could not save. Please try again.</string>
+    <string name="capture_message_failed">Could not finish. Check your connection and try again. If the text was cleared, paste it again.</string>
+    <string name="capture_review_failed">Could not finish. Check your connection and try again. Your draft is kept until saving or discarding succeeds.</string>
+    <string name="capture_already_reviewed">You already reviewed this message. No new draft was created.</string>
+    <string name="capture_message_invalid">Check the payment date and account. Future payments and archived accounts cannot be recorded here. For other changes, go back and add the payment manually.</string>
+    <string name="capture_reading">Reading…</string>
+    <string name="capture_saving">Saving…</string>
+    <string name="capture_connection_hint">Connect to save or discard. Saving closes this draft and adds its entry together. If saving fails, retry before changing your choices.</string>
+    <!-- Bills (L05) -->
+    <string name="bills_title">Bills</string>
+    <string name="bills_open">Bills</string>
+    <string name="more_bills_detail">Upcoming bills and the payments that settled them</string>
+    <string name="bills_due_soon_label">DUE IN THE NEXT 30 DAYS</string>
+    <string name="bills_nothing_due">Nothing due soon</string>
+    <string name="bills_annual">About %1$s a year</string>
+    <string name="bills_annual_none">Add a bill to see what it costs each year</string>
+    <string name="bills_empty">No bills yet. Tap + to add rent, internet, subscriptions or anything that repeats.</string>
+    <string name="bills_load_failed">Could not load your bills. Check your connection and try again.</string>
+    <string name="bills_next_on">Next %1$s</string>
+    <string name="bills_stopped">Stopped</string>
+    <string name="bill_frequency_weekly">Weekly</string>
+    <string name="bill_frequency_monthly">Monthly</string>
+    <string name="bill_frequency_yearly">Yearly</string>
+    <string name="bill_state_matched">Paid · matched</string>
+    <string name="bill_state_partly">%1$s left to match</string>
+    <string name="bill_state_not_matched">Payment not matched</string>
+    <string name="bill_state_upcoming">Upcoming</string>
+    <string name="bill_state_cancelled">Cancelled</string>
+
+    <string name="bill_add">New bill</string>
+    <string name="bill_edit">Edit bill</string>
+    <string name="bill_name">Bill name</string>
+    <string name="bill_account">Paid from</string>
+    <string name="bill_no_accounts">Add an account first under More → Accounts.</string>
+    <string name="bill_amount">Expected amount</string>
+    <string name="bill_frequency">Repeats</string>
+    <string name="bill_first_due">First due date</string>
+    <string name="bill_month_end_hint">Months without this day use their last day, then return to it.</string>
+    <string name="bill_stop">Stop this bill</string>
+    <string name="bill_resume">Resume this bill</string>
+    <string name="bill_not_found">This bill no longer exists.</string>
+    <string name="bill_next_label">NEXT DUE</string>
+    <string name="bill_caption">%1$s · %2$s · about %3$s a year</string>
+    <string name="bill_due_dates">DUE DATES</string>
+    <string name="bill_no_due_dates">No due dates in the last three months.</string>
+    <string name="bill_never_posts">A bill never adds an expense by itself. Link the real payment to each due date.</string>
+
+    <string name="occurrence_title">Due %1$s</string>
+    <string name="occurrence_label">STILL TO MATCH</string>
+    <string name="occurrence_caption">Matched %1$s of %2$s</string>
+    <string name="occurrence_not_matched_note">No payment is linked yet. That doesn\'t mean it wasn\'t paid: link the expense if you paid it.</string>
+    <string name="occurrence_linked">PAYMENTS LINKED</string>
+    <string name="occurrence_link_title">LINK AN EXPENSE YOU RECORDED</string>
+    <string name="occurrence_no_candidates">No unlinked %1$s expenses within a month of this date. Record the payment as an expense first.</string>
+    <string name="occurrence_available">%1$s available</string>
+    <string name="occurrence_link">Link</string>
+    <string name="occurrence_unlink">Remove</string>
+
+    <string name="bills_error_name_missing">Enter a name</string>
+    <string name="bills_error_account">Choose an account</string>
+    <string name="bills_error_amount_missing">Enter an amount</string>
+    <string name="bills_error_amount_invalid">Enter a valid amount above zero</string>
+    <string name="bills_error_more_than_payment">More than this expense has left</string>
+    <string name="bills_error_more_than_remaining">More than this due date still expects</string>
+    <string name="bills_error_too_long">Too long</string>
+    <string name="bills_message_not_signed_in">Sign in to save.</string>
+    <string name="bills_message_currency">The amount must stay in the bill\'s currency.</string>
+    <string name="bills_message_failed">Could not save. Please try again.</string>
+
+    <!-- Payment reminders (L07) -->
+    <string name="payment_reminder_channel_name">Bills and payments</string>
+    <string name="payment_reminder_channel_description">Bill reminders you chose, and a single alert when a client milestone becomes overdue.</string>
+    <string name="payment_reminder_public_title">A payment reminder from Zar</string>
+    <string name="payment_reminder_bill_today">%1$s is due today</string>
+    <string name="payment_reminder_bill_tomorrow">%1$s is due tomorrow</string>
+    <string name="payment_reminder_bill_days">%1$s is due in %2$d days</string>
+    <string name="payment_reminder_bill_body">%1$s expected on %2$s. Link the payment in Bills once you\'ve paid.</string>
+    <string name="payment_reminder_milestone_title">%1$s · %2$s is overdue</string>
+    <string name="payment_reminder_milestone_body">%1$s still to receive. It was due on %2$s. You won\'t be reminded about it again.</string>
+    <string name="bill_reminder">Reminder</string>
+    <string name="bill_reminder_off">None</string>
+    <string name="bill_reminder_day">On the day</string>
+    <string name="bill_reminder_1">1 day before</string>
+    <string name="bill_reminder_3">3 days before</string>
+    <string name="bill_reminder_7">1 week before</string>
+    <string name="bill_reminder_hint">One reminder per bill, in the morning. No reminder once a payment is matched.</string>
+    <string name="reminders_notifications_off">Notifications are off for Zar, so no reminder will be shown. You can turn them on in your phone\'s settings.</string>
+    <string name="freelance_overdue_alerts">Tell me once when a milestone becomes overdue</string>
+
+    <!-- Subscriptions and cancellation (L06) -->
+    <string name="subs_label">POSSIBLE SUBSCRIPTIONS</string>
+    <string name="subs_intro">Two matching charges about a month apart. Confirm to track it as a monthly bill; nothing is added until you do.</string>
+    <string name="subs_seen">%1$s monthly · %2$s · charged %3$s and %4$s</string>
+    <string name="subs_next">Next charge expected around %1$s</string>
+    <string name="subs_confirm">Track as bill</string>
+    <string name="subs_dismiss">Not a subscription</string>
+    <string name="subs_failed">Could not save. Please try again.</string>
+    <string name="bill_cancel_label">CANCELLING</string>
+    <string name="bill_cancel_intend">I plan to cancel this</string>
+    <string name="bill_cancel_intended_note">Planning to cancel. Due dates keep coming until you confirm it\'s cancelled.</string>
+    <string name="bill_cancel_confirm">Confirm cancelled</string>
+    <string name="bill_cancel_keep">Keep this bill</string>
+    <string name="bill_cancel_confirmed_note">Cancelled from %1$s. No due dates after that; earlier ones and their payments are kept.</string>
+    <string name="bill_cancel_savings">Roughly %1$s a year not spent. This is only an estimate and is never added to a goal.</string>
+    <string name="bill_cancel_undo">Undo cancellation</string>
+    <string name="bill_cancel_dialog_title">Confirm the cancellation</string>
+    <string name="bill_cancel_dialog_body">From which day is it cancelled? Due dates on or after this day stop.</string>
+    <string name="bill_cancel_from">Cancelled from</string>
+    <string name="bill_charged_after">CHARGED AFTER CANCELLING</string>
+    <string name="bill_charged_after_note">These look like this bill but arrived after you cancelled. Check with the provider.</string>
+    <string name="bills_planning_cancel">Planning to cancel</string>
+    <string name="bills_cancelled">Cancelled</string>
+    <plurals name="bills_charged_after">
+        <item quantity="one">%d charge after cancelling</item>
+        <item quantity="other">%d charges after cancelling</item>
+    </plurals>
 </resources>

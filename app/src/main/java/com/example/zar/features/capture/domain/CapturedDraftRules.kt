@@ -1,6 +1,8 @@
 package com.example.zar.features.capture.domain
 
 import com.example.zar.core.domain.calculation.CurrencyConverter
+import com.example.zar.core.domain.calculation.ZarTime
+import com.example.zar.core.domain.model.LedgerError
 import com.example.zar.core.domain.model.Account
 import com.example.zar.core.domain.model.Draft
 import com.example.zar.core.domain.model.DraftField
@@ -29,7 +31,7 @@ object CapturedDraftRules {
 
     /**
      * The same message always gives the same ID, so sharing it twice (or replaying a save)
-     * can't create two drafts. The ID is a one-way hash; the text can't be recovered from it.
+     * can't create two drafts. The ID is a one-way digest and contains no plaintext.
      */
     fun draftIdFor(messageText: String): DraftId {
         val normalized = messageText.replace(Regex("""\s+"""), " ").trim()
@@ -64,7 +66,7 @@ object CapturedDraftRules {
         SmsTransactionKind.CARD_PURCHASE, SmsTransactionKind.ONLINE_PURCHASE, SmsTransactionKind.BANK_FEE ->
             TransactionType.EXPENSE to true
         SmsTransactionKind.ATM_WITHDRAWAL, SmsTransactionKind.ONLINE_TRANSFER, SmsTransactionKind.ACCOUNT_DEBIT ->
-            TransactionType.EXPENSE to false
+            null to false
         SmsTransactionKind.ACCOUNT_CREDIT, SmsTransactionKind.REVERSAL -> null to false
     }
 
@@ -76,9 +78,14 @@ object CapturedDraftRules {
         spendingClass: SpendingClass?,
         createdAt: Instant,
     ): Transaction {
+        require(draft.source in setOf(DraftSource.SHARED_TEXT, DraftSource.SMS))
+        require(draft.status == DraftStatus.PENDING_REVIEW) { "Draft already reviewed" }
+        if (account.isArchived) throw LedgerError.AccountArchived(account.id)
         val proposal = draft.proposals.single() as DraftProposal.ActualTransaction
         val amount = requireNotNull(proposal.amount) { "The draft has no amount" }
         val date = requireNotNull(proposal.date) { "The draft has no date" }
+        if (amount.currency != account.currency) throw LedgerError.CurrencyMismatch(account.currency.code, amount.currency.code)
+        require(!date.isAfter(createdAt.atZone(ZarTime.ZONE).toLocalDate())) { "A recorded payment cannot be in the future" }
         require(type in CONFIRMABLE_TYPES) { "Add ${type.name.lowercase()} records manually" }
         return Transaction(
             id = TransactionId(draft.recordIdFor(0)),

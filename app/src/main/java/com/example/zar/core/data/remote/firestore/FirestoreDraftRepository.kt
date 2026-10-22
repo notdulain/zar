@@ -1,6 +1,7 @@
 package com.example.zar.core.data.remote.firestore
 
 import android.util.Log
+import com.example.zar.features.accounts.data.repository.AccountDocumentMapper
 import com.example.zar.core.domain.model.AccountId
 import com.example.zar.core.domain.model.Direction
 import com.example.zar.core.domain.model.Draft
@@ -12,9 +13,13 @@ import com.example.zar.core.domain.model.DraftStatus
 import com.example.zar.core.domain.model.LedgerError
 import com.example.zar.core.domain.model.SpendingClass
 import com.example.zar.core.domain.model.TransactionType
+import com.example.zar.core.domain.model.Transaction
+import kotlinx.coroutines.tasks.await
 import com.example.zar.core.domain.repository.DraftRepository
 import com.example.zar.core.domain.repository.UserSessionProvider
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.FirebaseFirestoreException
+import com.google.firebase.firestore.Source
 import java.time.Instant
 import java.time.LocalDate
 import javax.inject.Inject
@@ -29,7 +34,8 @@ import kotlinx.coroutines.flow.map
 
 /**
  * Drafts at users/{uid}/drafts. Only structured fields are stored; firestore.rules rejects any
- * raw message text. Writes apply to the local cache at once (offline first).
+ * raw message text. Capture mutations await an atomic server transaction so failures stay visible.
+ * Drafts remain readable from the offline cache; confirming requires a connection.
  */
 @Singleton
 class FirestoreDraftRepository @Inject constructor(
@@ -62,17 +68,76 @@ class FirestoreDraftRepository @Inject constructor(
         }
     }
 
-    override suspend fun saveDraft(draft: Draft) {
-        drafts(requireUid()).document(draft.id.value)
-            .set(DraftDocumentMapper.toMap(draft))
-            // A replay of a draft that was already confirmed or discarded is rejected by the rules; that is expected.
-            .addOnFailureListener { Log.w(TAG, "saveDraft ${draft.id.value} was rejected", it) }
+    override suspend fun saveDraft(draft: Draft): Draft {
+        val uid = requireUid()
+        val ref = drafts(uid).document(draft.id.value)
+        return firestore.runTransaction { tx ->
+            checkSession(uid)
+            val existing = tx.get(ref)
+            checkSession(uid)
+            if (existing.exists()) {
+                requireNotNull(existing.data?.let(DraftDocumentMapper::fromMap))
+            } else {
+                tx.set(ref, DraftDocumentMapper.toMap(draft))
+                draft
+            }
+        }.await().also { checkSession(uid) }
+    }
+
+    override suspend fun confirmCapturedDraft(draft: Draft, transaction: Transaction) {
+        val uid = requireUid()
+        val draftRef = drafts(uid).document(draft.id.value)
+        val recordRef = firestore.collection(FirestoreCollections.USERS).document(uid)
+            .collection(FirestoreCollections.TRANSACTIONS).document(transaction.id.value)
+        val accountRef = firestore.collection(FirestoreCollections.USERS).document(uid)
+            .collection(FirestoreCollections.ACCOUNTS).document(transaction.accountId.value)
+        try {
+            firestore.runTransaction { tx ->
+                checkSession(uid)
+                val current = requireNotNull(tx.get(draftRef).data?.let(DraftDocumentMapper::fromMap))
+                val record = tx.get(recordRef)
+                val account = tx.get(accountRef).data?.let(AccountDocumentMapper::fromMap)
+                checkSession(uid)
+                require(current.source == draft.source && current.proposals == draft.proposals) { "Draft changed; reopen it" }
+                if (current.status == DraftStatus.CONFIRMED && record.exists()) return@runTransaction
+                require(current.status == DraftStatus.PENDING_REVIEW) { "Draft already reviewed" }
+                requireNotNull(account) { "Account no longer exists" }
+                if (account.isArchived) throw LedgerError.AccountArchived(account.id)
+                if (account.currency != transaction.amount.currency) throw LedgerError.CurrencyMismatch(account.currency.code, transaction.amount.currency.code)
+                // A legacy partial confirmation can finish without changing the write-once record.
+                if (!record.exists()) tx.set(recordRef, LedgerDocumentMapper.transactionToMap(transaction))
+                tx.update(draftRef, "status", DraftStatus.CONFIRMED.name)
+            }.await()
+        } catch (e: FirebaseFirestoreException) {
+            // Another device may commit first. Some servers reject the losing write as a
+            // rules violation instead of an optimistic-lock retry; verify server truth.
+            if (e.code != FirebaseFirestoreException.Code.PERMISSION_DENIED && e.code != FirebaseFirestoreException.Code.ABORTED) throw e
+            checkSession(uid)
+            val finished = draftRef.get(Source.SERVER).await().data?.let(DraftDocumentMapper::fromMap)
+            val saved = recordRef.get(Source.SERVER).await()
+            checkSession(uid)
+            if (finished?.status != DraftStatus.CONFIRMED || finished.proposals != draft.proposals || !saved.exists()) throw e
+        }
+        checkSession(uid)
     }
 
     override suspend fun setStatus(id: DraftId, status: DraftStatus) {
-        drafts(requireUid()).document(id.value)
-            .update("status", status.name)
-            .addOnFailureListener { Log.w(TAG, "setStatus ${id.value} was rejected", it) }
+        require(status == DraftStatus.DISCARDED) { "Use atomic confirmation to save a record" }
+        val uid = requireUid()
+        val ref = drafts(uid).document(id.value)
+        firestore.runTransaction { tx ->
+            checkSession(uid)
+            val current = requireNotNull(tx.get(ref).data?.let(DraftDocumentMapper::fromMap))
+            checkSession(uid)
+            if (current.status == DraftStatus.DISCARDED) return@runTransaction
+            require(current.status == DraftStatus.PENDING_REVIEW) { "Draft already confirmed" }
+            tx.update(ref, "status", status.name)
+        }.await()
+        checkSession(uid)
+    }
+
+    private fun checkSession(uid: String) {
+        if (requireUid() != uid) throw LedgerError.NotSignedIn()
     }
 
     private fun requireUid(): String = session.currentUserId()?.value ?: throw LedgerError.NotSignedIn()

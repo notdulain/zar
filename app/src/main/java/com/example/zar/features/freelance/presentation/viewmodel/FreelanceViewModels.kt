@@ -22,6 +22,8 @@ import com.example.zar.features.freelance.domain.model.ProjectSummary
 import com.example.zar.features.freelance.domain.usecase.FreelanceError
 import com.example.zar.features.freelance.domain.usecase.ObserveFreelanceUseCase
 import com.example.zar.features.freelance.domain.usecase.SaveProjectUseCase
+import com.example.zar.features.reminders.domain.ObserveOverdueMilestoneAlertsUseCase
+import com.example.zar.features.reminders.domain.SetOverdueMilestoneAlertsUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.time.Instant
 import javax.inject.Inject
@@ -58,7 +60,18 @@ data class FreelanceUiState(
 @HiltViewModel
 class FreelanceViewModel @Inject constructor(
     observeFreelance: ObserveFreelanceUseCase,
+    observeAlerts: ObserveOverdueMilestoneAlertsUseCase,
+    private val setAlerts: SetOverdueMilestoneAlertsUseCase,
 ) : ViewModel() {
+    /** Whether each overdue milestone triggers one notification. */
+    val overdueAlerts: StateFlow<Boolean> = observeAlerts()
+        .catch { emit(true) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), true)
+
+    fun setOverdueAlerts(enabled: Boolean) {
+        viewModelScope.launch { runCatching { setAlerts(enabled) } }
+    }
+
     val uiState: StateFlow<FreelanceUiState> = observeFreelance(ZarTime.today())
         .map { FreelanceUiState(isLoading = false, outstanding = it.outstanding, projects = it.projects) }
         .catch { emit(FreelanceUiState(isLoading = false, loadFailed = true)) }

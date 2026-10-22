@@ -28,7 +28,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         openCatchUp = savedInstanceState?.getBoolean(LaunchTargets.EXTRA) ?: intent.isCatchUpLaunch()
-        if (savedInstanceState == null) intent.sharedText()?.let(sharedTextInbox::offer)
+        takeSharedText(intent)
         setContent {
             ZarTheme {
                 ZarRoot(openCatchUp = openCatchUp, onCatchUpOpened = { openCatchUp = false })
@@ -45,11 +45,16 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         if (intent.isCatchUpLaunch()) openCatchUp = true
-        intent.sharedText()?.let(sharedTextInbox::offer)
+        takeSharedText(intent)
     }
 
-    private fun Intent.sharedText(): String? =
-        if (action == Intent.ACTION_SEND && type == "text/plain") getStringExtra(Intent.EXTRA_TEXT) else null
+    private fun takeSharedText(launch: Intent) {
+        if (launch.action != Intent.ACTION_SEND || launch.type != "text/plain") return
+        val text = launch.getCharSequenceExtra(Intent.EXTRA_TEXT)?.toString()
+        launch.removeExtra(Intent.EXTRA_TEXT)
+        launch.clipData = null
+        text?.let(sharedTextInbox::offer)
+    }
 
     private fun Intent.isCatchUpLaunch(): Boolean = getStringExtra(LaunchTargets.EXTRA) == LaunchTargets.CATCH_UP
 }

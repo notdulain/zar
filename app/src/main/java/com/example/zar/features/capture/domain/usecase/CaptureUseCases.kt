@@ -9,7 +9,6 @@ import com.example.zar.core.domain.model.SpendingClass
 import com.example.zar.core.domain.model.TransactionType
 import com.example.zar.core.domain.repository.AccountRepository
 import com.example.zar.core.domain.repository.DraftRepository
-import com.example.zar.core.domain.usecase.SaveTransactionUseCase
 import com.example.zar.features.capture.domain.CapturedDraftRules
 import com.example.zar.features.capture.domain.model.ParsedBankSms
 import com.example.zar.features.capture.domain.model.SmsIgnoreReason
@@ -34,6 +33,8 @@ sealed interface CaptureOutcome {
     /** Mentions money but isn't a tested format. Nothing is guessed; add it manually. */
     data object Unrecognised : CaptureOutcome
 
+    data object AlreadyReviewed : CaptureOutcome
+
     data object Empty : CaptureOutcome
 }
 
@@ -52,8 +53,9 @@ class CaptureTextUseCase @Inject constructor(
             SmsParseResult.Unrecognised -> CaptureOutcome.Unrecognised
             is SmsParseResult.Parsed -> {
                 val id = CapturedDraftRules.draftIdFor(text)
-                drafts.saveDraft(CapturedDraftRules.draftFrom(id, result.sms, source, now))
-                CaptureOutcome.Drafted(id, result.sms)
+                val saved = drafts.saveDraft(CapturedDraftRules.draftFrom(id, result.sms, source, now))
+                if (saved.status == DraftStatus.PENDING_REVIEW) CaptureOutcome.Drafted(id, result.sms)
+                else CaptureOutcome.AlreadyReviewed
             }
         }
     }
@@ -92,7 +94,6 @@ class ObserveCaptureAccountsUseCase @Inject constructor(
 
 /** Saves the reviewed record, then marks the draft confirmed. Confirming twice saves once. */
 class ConfirmCapturedDraftUseCase @Inject constructor(
-    private val saveTransaction: SaveTransactionUseCase,
     private val drafts: DraftRepository,
 ) {
     suspend operator fun invoke(
@@ -104,7 +105,7 @@ class ConfirmCapturedDraftUseCase @Inject constructor(
     ): Result<Unit> {
         val transaction = runCatching { CapturedDraftRules.transactionFrom(draft, account, type, spendingClass, now) }
             .getOrElse { return Result.failure(it) }
-        return saveTransaction(transaction, account).mapCatching { drafts.setStatus(draft.id, DraftStatus.CONFIRMED) }
+        return attempt { drafts.confirmCapturedDraft(draft, transaction) }
     }
 }
 

@@ -46,10 +46,12 @@ fun MoreScreen(
     onOpenFreelance: () -> Unit,
     onOpenCrypto: () -> Unit,
     onOpenCapture: () -> Unit,
+    onOpenBills: () -> Unit,
     onOpenReminder: () -> Unit,
 ) {
     ZarScreenScaffold(
         destination = TopLevelDestination.More,
+        heroUnderStatusBar = true,
         onNavigate = onNavigate,
         onAddOption = onAddOption,
     ) { padding ->
@@ -69,6 +71,7 @@ fun MoreScreen(
                 MoreOption(R.string.freelance_open, R.string.more_freelance_detail, R.drawable.ic_ph_briefcase, onOpenFreelance, "open-freelance")
                 MoreOption(R.string.crypto_open, R.string.more_crypto_detail, R.drawable.ic_ph_currency_btc, onOpenCrypto, "open-crypto")
                 MoreOption(R.string.more_capture, R.string.more_capture_detail, R.drawable.ic_ph_chat_text, onOpenCapture, "open-capture")
+                MoreOption(R.string.bills_open, R.string.more_bills_detail, R.drawable.ic_ph_tray, onOpenBills, "open-bills")
                 MoreOption(R.string.more_reminder, R.string.more_reminder_detail, R.drawable.ic_ph_lightning, onOpenReminder, "open-reminder")
                 MoreOption(R.string.settings_title, R.string.more_settings_detail, R.drawable.ic_ph_gearsix_inactive, onOpenSettings, "open-settings")
             }
