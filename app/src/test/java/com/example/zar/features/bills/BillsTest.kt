@@ -136,6 +136,15 @@ class BillsTest {
     }
 
     @Test
+    fun weeklyBillsCountEveryDueDateInTheNextThirtyDays() {
+        val weekly = bill(frequency = BillFrequency.WEEKLY, firstDue = LocalDate.of(2026, 10, 5))
+        val overview = BillsCalculator.overview(listOf(weekly), listOf(bank), emptyList(), emptyList(), emptyList(), today)
+        // 26 Oct, 2 Nov, 9 Nov and 16 Nov all fall within 21 Oct to 20 Nov.
+        assertEquals(listOf(lkr(23_400)), overview.dueSoon)
+        assertEquals(LocalDate.of(2026, 10, 26), overview.next?.dueDate)
+    }
+
+    @Test
     fun totalsStayPerCurrency() {
         val overview = BillsCalculator.overview(
             listOf(bill("lkr"), bill("usd", amount = usd(10))),
