@@ -51,7 +51,7 @@ object ReminderPlanner {
         today: LocalDate,
     ): List<DueReminder> {
         val billReminders = bills.bills
-            .filter { it.bill.isActive }
+            .filter { it.bill.runsOn(today) }
             .mapNotNull { summary ->
                 val reminder = summary.bill.reminder ?: return@mapNotNull null
                 val next = summary.next ?: return@mapNotNull null

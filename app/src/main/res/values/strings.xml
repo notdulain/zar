@@ -974,4 +974,32 @@
     <string name="bill_reminder_hint">One reminder per bill, in the morning. No reminder once a payment is matched.</string>
     <string name="reminders_notifications_off">Notifications are off for Zar, so no reminder will be shown. You can turn them on in your phone\'s settings.</string>
     <string name="freelance_overdue_alerts">Tell me once when a milestone becomes overdue</string>
+
+    <!-- Subscriptions and cancellation (L06) -->
+    <string name="subs_label">POSSIBLE SUBSCRIPTIONS</string>
+    <string name="subs_intro">Two matching charges about a month apart. Confirm to track it as a monthly bill; nothing is added until you do.</string>
+    <string name="subs_seen">%1$s monthly · %2$s · charged %3$s and %4$s</string>
+    <string name="subs_next">Next charge expected around %1$s</string>
+    <string name="subs_confirm">Track as bill</string>
+    <string name="subs_dismiss">Not a subscription</string>
+    <string name="subs_failed">Could not save. Please try again.</string>
+    <string name="bill_cancel_label">CANCELLING</string>
+    <string name="bill_cancel_intend">I plan to cancel this</string>
+    <string name="bill_cancel_intended_note">Planning to cancel. Due dates keep coming until you confirm it\'s cancelled.</string>
+    <string name="bill_cancel_confirm">Confirm cancelled</string>
+    <string name="bill_cancel_keep">Keep this bill</string>
+    <string name="bill_cancel_confirmed_note">Cancelled from %1$s. No due dates after that; earlier ones and their payments are kept.</string>
+    <string name="bill_cancel_savings">Roughly %1$s a year not spent. This is only an estimate and is never added to a goal.</string>
+    <string name="bill_cancel_undo">Undo cancellation</string>
+    <string name="bill_cancel_dialog_title">Confirm the cancellation</string>
+    <string name="bill_cancel_dialog_body">From which day is it cancelled? Due dates on or after this day stop.</string>
+    <string name="bill_cancel_from">Cancelled from</string>
+    <string name="bill_charged_after">CHARGED AFTER CANCELLING</string>
+    <string name="bill_charged_after_note">These look like this bill but arrived after you cancelled. Check with the provider.</string>
+    <string name="bills_planning_cancel">Planning to cancel</string>
+    <string name="bills_cancelled">Cancelled</string>
+    <plurals name="bills_charged_after">
+        <item quantity="one">%d charge after cancelling</item>
+        <item quantity="other">%d charges after cancelling</item>
+    </plurals>
 </resources>

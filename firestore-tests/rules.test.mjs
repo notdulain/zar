@@ -227,6 +227,10 @@ test('bills: stop instead of delete, created date fixed, owner only', async () =
   await assertSucceeds(updateDoc(r, { amount: lkr(600000), status: 'STOPPED' }));
   await assertSucceeds(updateDoc(r, { reminderDaysBefore: 1 }));
   await assertFails(updateDoc(r, { reminderDaysBefore: 2 }));
+  await assertSucceeds(updateDoc(r, { cancellation: 'INTENDED' }));
+  await assertFails(updateDoc(r, { cancellation: 'CONFIRMED' }));
+  await assertSucceeds(updateDoc(r, { cancellation: 'CONFIRMED', cancelledFrom: '2026-11-01' }));
+  await assertFails(updateDoc(r, { cancellation: 'INTENDED', cancelledFrom: '2026-11-01' }));
   await assertFails(updateDoc(r, { createdAt: 1790000000001 }));
   await assertFails(updateDoc(r, { frequency: 'DAILY' }));
   await assertFails(setDoc(doc(alice(), path('alice', 'bills', 'b2')), { ...b, id: 'other' }));

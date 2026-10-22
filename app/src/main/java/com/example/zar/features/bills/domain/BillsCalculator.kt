@@ -12,6 +12,7 @@ import com.example.zar.core.domain.model.TransactionType
 import com.example.zar.core.domain.model.money.Currencies
 import com.example.zar.core.domain.model.money.Money
 import com.example.zar.features.bills.domain.model.Bill
+import com.example.zar.features.bills.domain.model.BillCancellation
 import com.example.zar.features.bills.domain.model.BillOccurrence
 import com.example.zar.features.bills.domain.model.BillSummary
 import com.example.zar.features.bills.domain.model.BillsOverview
@@ -71,10 +72,13 @@ object BillsCalculator {
                 account = accountsById[bill.accountId],
                 annualCost = BillSchedule.annualCost(bill),
                 occurrences = occurrences,
-                next = if (bill.isActive) occurrences.filter { it.dueDate >= today }.minByOrNull { it.dueDate } else null,
+                next = if (bill.runsOn(today)) occurrences.filter { it.dueDate >= today }.minByOrNull { it.dueDate } else null,
+                // A charge already linked as one of this bill's payments isn't a surprise.
+                chargesAfterCancellation = chargesAfterCancellation(bill, entries)
+                    .filterNot { entry -> occurrences.any { o -> o.payments.any { it.entry.id == entry.id } } },
             )
         }.sortedWith(
-            compareBy<BillSummary> { !it.bill.isActive }
+            compareBy<BillSummary> { !it.bill.runsOn(today) }
                 .thenBy { it.next?.dueDate ?: LocalDate.MAX }
                 .thenBy { it.bill.name.lowercase() },
         )
@@ -86,7 +90,7 @@ object BillsCalculator {
         return BillsOverview(
             bills = summaries,
             next = next,
-            dueSoon = summaries.filter { it.bill.isActive }
+            dueSoon = summaries.filter { it.bill.runsOn(today) }
                 .flatMap { stillDue(it, today, soonEnd) }
                 .totalsByCurrency(),
             annual = summaries.filter { it.bill.isActive }.map { it.annualCost }.totalsByCurrency(),
@@ -101,7 +105,13 @@ object BillsCalculator {
         val savedIds = saved.map { it.id }.toSet()
         val virtual = bills.flatMap { bill ->
             val from = maxOf(bill.firstDue, today.minusDays(HISTORY_DAYS))
-            val to = if (bill.isActive) BillSchedule.nextDueDate(bill, today) else today.minusDays(1)
+            val to = when {
+                // A cancellation from a later date still expects the due dates before it.
+                bill.runsOn(today) -> minOf(BillSchedule.nextDueDate(bill, today), bill.lastDueDay ?: LocalDate.MAX)
+                // Confirmed cancelled: due dates stop before the cancellation date; history stays.
+                bill.lastDueDay != null -> minOf(bill.lastDueDay!!, today.minusDays(1))
+                else -> today.minusDays(1)
+            }
             BillSchedule.dueDates(bill, from, to)
                 .map { BillSchedule.expectedPayment(bill, it) }
                 .filterNot { it.id in savedIds }
@@ -141,12 +151,29 @@ object BillsCalculator {
     }
 
     /**
+     * Expenses on the bill's account and currency, on or after its cancellation date, that
+     * match it by name or by exact amount. Only flagged for the user; nothing is changed.
+     */
+    fun chargesAfterCancellation(bill: Bill, entries: List<LedgerEntry>): List<LedgerEntry> {
+        val cancelledFrom = (bill.cancellation as? BillCancellation.Confirmed)?.effectiveFrom ?: return emptyList()
+        val name = RecurrenceDetector.normalize(bill.name)
+        return entries.active()
+            .filter { it.current.type == TransactionType.EXPENSE && it.current.accountId == bill.accountId }
+            .filter { it.current.amount.currency == bill.amount.currency && it.current.date >= cancelledFrom }
+            .filter { entry ->
+                val merchant = RecurrenceDetector.normalize(entry.current.merchant)
+                (name != null && merchant != null && (merchant.contains(name) || name.contains(merchant))) || entry.current.amount == bill.amount
+            }
+            .sortedBy { it.current.date }
+    }
+
+    /**
      * What a bill still expects in [today, end]. Only the next due date is listed, so a weekly
      * bill's later dates in the window are worked out from the schedule at the full amount.
      */
     private fun stillDue(summary: BillSummary, today: LocalDate, end: LocalDate): List<Money> {
         val listed = summary.occurrences.filter { it.dueDate in today..end }.associateBy { it.progress.expected.id }
-        val scheduled = BillSchedule.dueDates(summary.bill, today, end).map { BillSchedule.occurrenceId(summary.bill, it) }
+        val scheduled = BillSchedule.dueDates(summary.bill, today, minOf(end, summary.bill.lastDueDay ?: end)).map { BillSchedule.occurrenceId(summary.bill, it) }
         return (listed.keys + scheduled).mapNotNull { id ->
             val progress = listed[id]?.progress ?: return@mapNotNull summary.bill.amount
             progress.remaining.takeUnless { progress.state == MatchState.CANCELLED }
