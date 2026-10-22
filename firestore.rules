@@ -53,6 +53,11 @@ rules_version = '2';
 //   accountId (== doc id), cost (positive FIAT Money in LKR), approximate (bool), updatedAt (int).
 //   What a crypto wallet's opening coins cost, so profit or loss on them can be worked out.
 //
+// bills/{billId}                  create, update (no delete: stop instead)
+//   id (== doc id), name (1-80), accountId, amount (positive Money), frequency
+//   'WEEKLY'|'MONTHLY'|'YEARLY', firstDue (date), status 'ACTIVE'|'STOPPED', createdAt (immutable).
+//   Due dates are expectedPayments with source BILL_OCCURRENCE; a bill never posts an expense.
+//
 // goals/{goalId}                  create, update (no delete in U04)
 //   id (== doc id), name (1-80), target (positive Money), targetDate? (YYYY-MM-DD), allocations (max 10),
 //   allocation {accountId, amount}; allocations reserve money but do not write ledger entries.
@@ -378,6 +383,20 @@ service cloud.firestore {
         && isMillis(d.updatedAt);
     }
 
+    function isValidBill(billId) {
+      let d = data();
+      return hasOnlyAllowedFields(['id', 'name', 'accountId', 'amount', 'frequency', 'firstDue', 'status', 'createdAt'])
+        && hasRequiredFields(['id', 'name', 'accountId', 'amount', 'frequency', 'firstDue', 'status', 'createdAt'])
+        && d.id == billId
+        && isShortString(d.name, 80)
+        && isId(d.accountId)
+        && isPositiveMoney(d.amount)
+        && d.frequency in ['WEEKLY', 'MONTHLY', 'YEARLY']
+        && isDateString(d.firstDue)
+        && d.status in ['ACTIVE', 'STOPPED']
+        && isMillis(d.createdAt);
+    }
+
     function isValidProposal(p) {
       return p is map
         && p.keys().hasOnly(['kind', 'type', 'direction', 'amount', 'sent', 'received', 'accountId', 'fromAccountId',
@@ -499,6 +518,14 @@ service cloud.firestore {
         allow create, update: if isOwner(userId) && isValidOpeningCost(accountId);
         // Clearing an optional opening cost removes it.
         allow delete: if isOwner(userId);
+      }
+
+      match /bills/{billId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidBill(billId);
+        allow update: if isOwner(userId) && isValidBill(billId) && areImmutableFieldsUnchanged(['id', 'createdAt']);
+        // Stopped bills keep their history.
+        allow delete: if false;
       }
 
       match /drafts/{draftId} {

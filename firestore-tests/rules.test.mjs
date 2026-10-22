@@ -218,3 +218,21 @@ test('crypto opening costs: LKR only, owner only, can be cleared', async () => {
   await assertFails(deleteDoc(doc(bob(), path('alice', 'cryptoOpeningCosts', 'binance-btc'))));
   await assertSucceeds(deleteDoc(r));
 });
+
+test('bills: stop instead of delete, created date fixed, owner only', async () => {
+  const b = { id: 'b1', name: 'Dialog Internet', accountId: 'bank', amount: lkr(585000), frequency: 'MONTHLY',
+    firstDue: '2026-10-31', status: 'ACTIVE', createdAt: 1790000000000 };
+  const r = doc(alice(), path('alice', 'bills', 'b1'));
+  await assertSucceeds(setDoc(r, b));
+  await assertSucceeds(updateDoc(r, { amount: lkr(600000), status: 'STOPPED' }));
+  await assertFails(updateDoc(r, { createdAt: 1790000000001 }));
+  await assertFails(updateDoc(r, { frequency: 'DAILY' }));
+  await assertFails(setDoc(doc(alice(), path('alice', 'bills', 'b2')), { ...b, id: 'other' }));
+  await assertFails(setDoc(doc(alice(), path('alice', 'bills', 'b3')), { ...b, id: 'b3', amount: lkr(0) }));
+  await assertFails(setDoc(doc(alice(), path('alice', 'bills', 'b4')), { ...b, id: 'b4', firstDue: '31/10/2026' }));
+  await assertFails(deleteDoc(r));
+  await assertFails(getDoc(doc(bob(), path('alice', 'bills', 'b1'))));
+  const occ = { id: 'bill-b1-2026-10-31', direction: 'OUT', amount: lkr(585000), dueDate: '2026-10-31', title: 'Dialog Internet',
+    source: { type: 'BILL_OCCURRENCE', billId: 'b1', occurrenceDate: '2026-10-31' }, accountId: 'bank', status: 'OPEN', createdAt: 1790000000000 };
+  await assertSucceeds(setDoc(doc(alice(), path('alice', 'expectedPayments', occ.id)), occ));
+});

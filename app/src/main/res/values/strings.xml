@@ -893,4 +893,65 @@
     <string name="crypto_error_too_long">Too long</string>
     <string name="crypto_message_not_signed_in">Sign in to save.</string>
     <string name="crypto_message_failed">Could not save. Please try again.</string>
+
+    <!-- Bills (L05) -->
+    <string name="bills_title">Bills</string>
+    <string name="bills_open">Bills</string>
+    <string name="more_bills_detail">Upcoming bills and the payments that settled them</string>
+    <string name="bills_due_soon_label">DUE IN THE NEXT 30 DAYS</string>
+    <string name="bills_nothing_due">Nothing due soon</string>
+    <string name="bills_annual">About %1$s a year</string>
+    <string name="bills_annual_none">Add a bill to see what it costs each year</string>
+    <string name="bills_empty">No bills yet. Tap + to add rent, internet, subscriptions or anything that repeats.</string>
+    <string name="bills_load_failed">Could not load your bills. Check your connection and try again.</string>
+    <string name="bills_next_on">Next %1$s</string>
+    <string name="bills_stopped">Stopped</string>
+    <string name="bill_frequency_weekly">Weekly</string>
+    <string name="bill_frequency_monthly">Monthly</string>
+    <string name="bill_frequency_yearly">Yearly</string>
+    <string name="bill_state_matched">Paid · matched</string>
+    <string name="bill_state_partly">%1$s left to match</string>
+    <string name="bill_state_not_matched">Payment not matched</string>
+    <string name="bill_state_upcoming">Upcoming</string>
+    <string name="bill_state_cancelled">Cancelled</string>
+
+    <string name="bill_add">New bill</string>
+    <string name="bill_edit">Edit bill</string>
+    <string name="bill_name">Bill name</string>
+    <string name="bill_account">Paid from</string>
+    <string name="bill_no_accounts">Add an account first under More → Accounts.</string>
+    <string name="bill_amount">Expected amount</string>
+    <string name="bill_frequency">Repeats</string>
+    <string name="bill_first_due">First due date</string>
+    <string name="bill_month_end_hint">Months without this day use their last day, then return to it.</string>
+    <string name="bill_stop">Stop this bill</string>
+    <string name="bill_resume">Resume this bill</string>
+    <string name="bill_not_found">This bill no longer exists.</string>
+    <string name="bill_next_label">NEXT DUE</string>
+    <string name="bill_caption">%1$s · %2$s · about %3$s a year</string>
+    <string name="bill_due_dates">DUE DATES</string>
+    <string name="bill_no_due_dates">No due dates in the last three months.</string>
+    <string name="bill_never_posts">A bill never adds an expense by itself. Link the real payment to each due date.</string>
+
+    <string name="occurrence_title">Due %1$s</string>
+    <string name="occurrence_label">STILL TO MATCH</string>
+    <string name="occurrence_caption">Matched %1$s of %2$s</string>
+    <string name="occurrence_not_matched_note">No payment is linked yet. That doesn\'t mean it wasn\'t paid: link the expense if you paid it.</string>
+    <string name="occurrence_linked">PAYMENTS LINKED</string>
+    <string name="occurrence_link_title">LINK AN EXPENSE YOU RECORDED</string>
+    <string name="occurrence_no_candidates">No unlinked %1$s expenses within a month of this date. Record the payment as an expense first.</string>
+    <string name="occurrence_available">%1$s available</string>
+    <string name="occurrence_link">Link</string>
+    <string name="occurrence_unlink">Remove</string>
+
+    <string name="bills_error_name_missing">Enter a name</string>
+    <string name="bills_error_account">Choose an account</string>
+    <string name="bills_error_amount_missing">Enter an amount</string>
+    <string name="bills_error_amount_invalid">Enter a valid amount above zero</string>
+    <string name="bills_error_more_than_payment">More than this expense has left</string>
+    <string name="bills_error_more_than_remaining">More than this due date still expects</string>
+    <string name="bills_error_too_long">Too long</string>
+    <string name="bills_message_not_signed_in">Sign in to save.</string>
+    <string name="bills_message_currency">The amount must stay in the bill\'s currency.</string>
+    <string name="bills_message_failed">Could not save. Please try again.</string>
 </resources>
