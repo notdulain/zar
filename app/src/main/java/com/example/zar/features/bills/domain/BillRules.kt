@@ -3,6 +3,7 @@ package com.example.zar.features.bills.domain
 import com.example.zar.core.domain.model.Account
 import com.example.zar.core.domain.model.money.Money
 import com.example.zar.features.bills.domain.model.BillFrequency
+import com.example.zar.features.bills.domain.model.BillReminder
 import java.time.LocalDate
 
 enum class BillProblem {
@@ -23,6 +24,7 @@ data class BillInput(
     val amount: Money,
     val frequency: BillFrequency,
     val firstDue: LocalDate,
+    val reminder: BillReminder? = null,
 )
 
 sealed interface BillCheck<out T> {
@@ -35,7 +37,14 @@ sealed interface BillCheck<out T> {
 object BillRules {
     const val MAX_NAME = 80
 
-    fun checkBill(name: String, account: Account?, amount: String, frequency: BillFrequency, firstDue: LocalDate): BillCheck<BillInput> {
+    fun checkBill(
+        name: String,
+        account: Account?,
+        amount: String,
+        frequency: BillFrequency,
+        firstDue: LocalDate,
+        reminder: BillReminder? = null,
+    ): BillCheck<BillInput> {
         val problems = mutableSetOf<BillProblem>()
         val trimmed = name.trim()
         if (trimmed.isEmpty()) problems += BillProblem.NAME_MISSING
@@ -44,7 +53,7 @@ object BillRules {
         val money = account?.let { parsePositive(amount, it, problems) }
         if (account == null && amount.isBlank()) problems += BillProblem.AMOUNT_MISSING
         return if (problems.isEmpty() && account != null && money != null) {
-            BillCheck.Valid(BillInput(trimmed, account, money, frequency, firstDue))
+            BillCheck.Valid(BillInput(trimmed, account, money, frequency, firstDue, reminder))
         } else {
             BillCheck.Invalid(problems)
         }

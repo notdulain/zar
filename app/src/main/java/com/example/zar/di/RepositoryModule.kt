@@ -27,6 +27,11 @@ import com.example.zar.features.freelance.domain.repository.ProjectRepository
 import com.example.zar.features.plans.data.repository.FirestoreGoalRepository
 import com.example.zar.features.plans.domain.repository.GoalRepository
 import com.example.zar.features.quicknote.data.remote.FirebaseQuickNoteDraftTransport
+import com.example.zar.features.reminders.data.DataStoreReminderPreferencesRepository
+import com.example.zar.features.reminders.data.ResetRemindersOnSignOut
+import com.example.zar.features.reminders.data.WorkManagerPaymentReminderScheduler
+import com.example.zar.features.reminders.domain.PaymentReminderScheduler
+import com.example.zar.features.reminders.domain.ReminderPreferencesRepository
 import com.example.zar.features.quicknote.data.remote.QuickNoteDraftTransport
 import com.example.zar.features.quicknote.data.repository.CallableQuickNoteDraftRepository
 import com.example.zar.features.quicknote.domain.repository.QuickNoteDraftRepository
@@ -116,4 +121,16 @@ abstract class RepositoryModule {
     @Binds
     @IntoSet
     abstract fun bindResetCatchUpOnSignOut(impl: ResetCatchUpOnSignOut): SignOutHandler
+
+    @Binds
+    @Singleton
+    abstract fun bindReminderPreferencesRepository(impl: DataStoreReminderPreferencesRepository): ReminderPreferencesRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindPaymentReminderScheduler(impl: WorkManagerPaymentReminderScheduler): PaymentReminderScheduler
+
+    @Binds
+    @IntoSet
+    abstract fun bindResetRemindersOnSignOut(impl: ResetRemindersOnSignOut): SignOutHandler
 }

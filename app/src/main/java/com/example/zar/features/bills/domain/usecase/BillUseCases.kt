@@ -91,13 +91,18 @@ class SaveBillUseCase @Inject constructor(
 ) {
     /** Creates a bill. Reuse the same [id] when retrying. */
     suspend fun create(id: BillId, input: BillInput, now: Instant): Result<Unit> = attempt {
-        bills.saveBill(Bill(id, input.name, input.account.id, input.amount, input.frequency, input.firstDue, BillStatus.ACTIVE, now))
+        bills.saveBill(Bill(id, input.name, input.account.id, input.amount, input.frequency, input.firstDue, BillStatus.ACTIVE, now, input.reminder))
     }
 
     /** Edits future due dates. Due dates that already have a payment keep what was saved. */
     suspend fun update(bill: Bill, input: BillInput): Result<Unit> = attempt {
         if (input.amount.currency != bill.amount.currency) throw BillError.CurrencyMismatch()
-        bills.saveBill(bill.copy(name = input.name, accountId = input.account.id, amount = input.amount, frequency = input.frequency, firstDue = input.firstDue))
+        bills.saveBill(
+            bill.copy(
+                name = input.name, accountId = input.account.id, amount = input.amount,
+                frequency = input.frequency, firstDue = input.firstDue, reminder = input.reminder,
+            ),
+        )
     }
 
     suspend fun setStopped(bill: Bill, stopped: Boolean): Result<Unit> =
