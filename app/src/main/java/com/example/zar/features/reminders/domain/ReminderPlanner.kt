@@ -78,6 +78,8 @@ object ReminderPlanner {
                 .flatMap { project ->
                     project.milestones
                         .filter { it.progress.state != MatchState.CANCELLED && it.progress.overdue.isPositive }
+                        // Keys this old are pruned, so alerting on them would repeat every day.
+                        .filterNot { it.milestone.dueDate.isBefore(today.minusDays(KEEP_DAYS)) }
                         .map { milestone ->
                             val due = milestone.milestone.dueDate
                             DueReminder(

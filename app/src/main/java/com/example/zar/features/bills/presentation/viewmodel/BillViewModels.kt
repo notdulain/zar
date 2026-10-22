@@ -151,8 +151,10 @@ class BillFormViewModel @Inject constructor(
             _uiState.update { state ->
                 when {
                     editingId != null && bill == null -> state.copy(isLoading = false, notFound = true)
+                    // The currency can't change on edit, so only same-currency accounts are offered.
                     bill != null -> state.copy(
-                        isLoading = false, bill = bill, accounts = accountList, name = bill.name, accountId = bill.accountId,
+                        isLoading = false, bill = bill, accounts = accountList.filter { it.currency == bill.amount.currency },
+                        name = bill.name, accountId = bill.accountId,
                         amount = bill.amount.toDecimal().toPlainString(), frequency = bill.frequency, firstDue = bill.firstDue,
                         reminder = bill.reminder,
                     )

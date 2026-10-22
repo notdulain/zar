@@ -100,6 +100,14 @@ class ReminderPlannerTest {
     }
 
     @Test
+    fun aLongOverdueMilestoneIsNotRepeatedOnceItsKeyIsPruned() {
+        val overview = freelance(milestone("m1", "p1", usd(400), due = today.minusDays(ReminderPlanner.KEEP_DAYS + 30)))
+        // Any key for this date is pruned straight after it's stored, so the planner must not offer it again.
+        val remembered = ReminderPlanner.prune(setOf(ReminderPlanner.milestoneKey("m1", today.minusDays(ReminderPlanner.KEEP_DAYS + 30))), today)
+        assertTrue(plan(freelance = overview, prefs = ReminderPreferences(notifiedKeys = remembered)).isEmpty())
+    }
+
+    @Test
     fun movingTheDueDateAllowsOneMoreAlertForTheNewDate() {
         val old = plan(freelance = freelance(milestone("m1", "p1", usd(400), due = today.minusDays(10)))).single()
         val moved = plan(
