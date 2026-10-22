@@ -8,6 +8,8 @@ import com.example.zar.core.domain.model.TransactionId
 import com.example.zar.core.domain.model.TransactionType
 import com.example.zar.core.domain.model.money.Money
 import com.example.zar.features.bills.domain.model.Bill
+import com.example.zar.features.bills.domain.model.BillId
+import java.security.MessageDigest
 import java.time.LocalDate
 import java.time.temporal.ChronoUnit
 
@@ -42,6 +44,12 @@ object RecurrenceDetector {
     fun keyFor(accountId: AccountId, merchant: String, amount: Money): String =
         "${accountId.value}|${amount.currency.code}|$merchant|${amount.toDecimal().stripTrailingZeros().toPlainString()}"
 
+    /** The bill a confirmed suggestion becomes. Stable for the key, so confirming twice makes one bill. */
+    fun billIdFor(key: String): BillId {
+        val digest = MessageDigest.getInstance("SHA-256").digest(key.toByteArray(Charsets.UTF_8))
+        return BillId("sub-" + digest.take(12).joinToString("") { "%02x".format(it) })
+    }
+
     fun suggest(
         entries: List<LedgerEntry>,
         bills: List<Bill>,
@@ -51,6 +59,8 @@ object RecurrenceDetector {
         val accountsById = accounts.associateBy { it.id }
         // A merchant already tracked as a bill on that account isn't suggested again.
         val tracked = bills.mapNotNull { bill -> normalize(bill.name)?.let { "${bill.accountId.value}|${bill.amount.currency.code}|$it" } }.toSet()
+        // A suggestion already tracked keeps its bill ID even if that bill is renamed later.
+        val billIds = bills.map { it.id }.toSet()
 
         return entries.active()
             .map { it.current }
@@ -58,7 +68,7 @@ object RecurrenceDetector {
             .mapNotNull { tx -> normalize(tx.merchant)?.let { merchant -> keyFor(tx.accountId, merchant, tx.amount) to tx } }
             .groupBy({ it.first }, { it.second })
             .mapNotNull { (key, txs) ->
-                if (key in dismissed) return@mapNotNull null
+                if (key in dismissed || billIdFor(key) in billIds) return@mapNotNull null
                 val first = txs.first()
                 val merchant = normalize(first.merchant)!!
                 if ("${first.accountId.value}|${first.amount.currency.code}|$merchant" in tracked) return@mapNotNull null

@@ -13,7 +13,6 @@ import com.example.zar.features.bills.domain.model.BillFrequency
 import com.example.zar.features.bills.domain.model.BillId
 import com.example.zar.features.bills.domain.model.BillStatus
 import com.example.zar.features.bills.domain.repository.BillRepository
-import java.security.MessageDigest
 import java.time.Instant
 import java.time.LocalDate
 import javax.inject.Inject
@@ -70,10 +69,7 @@ class ConfirmSuggestionUseCase @Inject constructor(
         bill.id
     }
 
-    fun billIdFor(suggestion: RecurringSuggestion): BillId {
-        val digest = MessageDigest.getInstance("SHA-256").digest(suggestion.key.toByteArray(Charsets.UTF_8))
-        return BillId("sub-" + digest.take(12).joinToString("") { "%02x".format(it) })
-    }
+    fun billIdFor(suggestion: RecurringSuggestion): BillId = RecurrenceDetector.billIdFor(suggestion.key)
 }
 
 class DismissSuggestionUseCase @Inject constructor(
