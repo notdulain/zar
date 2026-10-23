@@ -80,7 +80,7 @@ fun CaptureScreen(
         viewModel.setActive(true)
         onDispose { viewModel.setActive(false) }
     }
-    CaptureContent(state, onBack, onReview, onAddManually, viewModel::onTextChange, { viewModel.read() })
+    CaptureContent(state, onBack, onReview, onAddManually, viewModel::onTextChange, { viewModel.read() }) { AutoCaptureSection() }
 }
 
 /** The production screen, also rendered with fixed data by the native UI regressions. */
@@ -92,6 +92,7 @@ internal fun CaptureContent(
     onAddManually: () -> Unit,
     onTextChange: (String) -> Unit,
     onRead: () -> Unit,
+    autoCapture: @Composable () -> Unit = {},
 ) {
     CatchUpScaffold(stringResource(R.string.capture_title), null, onBack, stringResource(R.string.action_back), Modifier.imePadding()) {
         ZarCard(Modifier.fillMaxWidth()) {
@@ -103,7 +104,7 @@ internal fun CaptureContent(
                 Detail(stringResource(R.string.capture_health_caption))
             }
         }
-        Detail(stringResource(R.string.capture_sms_auto))
+        autoCapture()
         ZarCard(Modifier.fillMaxWidth()) {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 ZarMonoLabel(stringResource(R.string.capture_paste_label))

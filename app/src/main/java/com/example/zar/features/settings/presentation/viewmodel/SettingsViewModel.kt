@@ -59,6 +59,7 @@ class SettingsViewModel @Inject constructor(
     }
 
     fun confirmSignOut() {
+        if (signOutState.value.isSigningOut) return
         signOutState.update { SignOutState(isSigningOut = true) }
         viewModelScope.launch { signOut() }
     }

@@ -25,8 +25,8 @@ import com.example.zar.features.capture.presentation.screen.CaptureReviewScreen
 import com.example.zar.features.capture.presentation.screen.CaptureScreen
 import com.example.zar.features.capture.presentation.viewmodel.ShareLaunchViewModel
 import com.example.zar.features.bills.presentation.screen.BillFormScreen
-import com.example.zar.features.bills.presentation.screen.BillOccurrenceScreen
-import com.example.zar.features.bills.presentation.screen.BillScreen
+import com.example.zar.features.bills.presentation.screen.BillDetailScreen
+import com.example.zar.features.bills.presentation.screen.BillPaymentScreen
 import com.example.zar.features.bills.presentation.screen.BillsScreen
 import com.example.zar.features.crypto.presentation.screen.CryptoMovementScreen
 import com.example.zar.features.crypto.presentation.screen.CryptoScreen
@@ -192,6 +192,7 @@ fun ZarNavHost(
                 onBack = { navController.popBackStack() },
                 onAddBill = { navController.navigate(BillFormRoute()) },
                 onOpenBill = { id -> navController.navigate(BillRoute(id)) },
+                onOpenDueDate = { id, date -> navController.navigate(BillOccurrenceRoute(id, date)) },
             )
         }
         composable<BillFormRoute> {
@@ -204,14 +205,14 @@ fun ZarNavHost(
             )
         }
         composable<BillRoute> {
-            BillScreen(
+            BillDetailScreen(
                 onBack = { navController.popBackStack() },
                 onEditBill = { id -> navController.navigate(BillFormRoute(billId = id)) },
-                onOpenOccurrence = { id, date -> navController.navigate(BillOccurrenceRoute(id, date)) },
+                onOpenDueDate = { id, date -> navController.navigate(BillOccurrenceRoute(id, date)) },
             )
         }
         composable<BillOccurrenceRoute> {
-            BillOccurrenceScreen(onBack = { navController.popBackStack() })
+            BillPaymentScreen(onBack = { navController.popBackStack() })
         }
         composable<CryptoRoute> {
             CryptoScreen(
