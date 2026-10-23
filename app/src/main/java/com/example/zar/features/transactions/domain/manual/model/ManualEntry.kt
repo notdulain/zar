@@ -60,6 +60,9 @@ data class ExpenseDetails(
     val title: String?,
     val description: String?,
     val time: LocalTime? = null,
+    /** The category rule that filled in [category], when the person kept its choice. */
+    val appliedRuleId: String? = null,
+    val appliedRuleVersion: Int? = null,
 )
 
 sealed interface ExpenseFormResult {

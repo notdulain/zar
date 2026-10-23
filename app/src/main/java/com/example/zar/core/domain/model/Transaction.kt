@@ -54,9 +54,14 @@ data class Transaction(
     val createdAt: Instant,
     /** User-selected local time of the movement, if known. Kept separate from save time. */
     val time: LocalTime? = null,
+    /** The category rule that filled in [categoryId], and its version at that moment. Expenses only. */
+    val appliedRuleId: String? = null,
+    val appliedRuleVersion: Int? = null,
 ) {
     init {
         require(amount.isPositive) { "Amount must be positive" }
+        require((appliedRuleId == null) == (appliedRuleVersion == null)) { "A rule needs its ID and version together" }
+        require(appliedRuleId == null || type == TransactionType.EXPENSE) { "Only expenses are filed by a rule" }
         require((type == TransactionType.EXPENSE) == (spendingClass != null)) {
             "Spending class is required for expenses and only for expenses"
         }

@@ -40,6 +40,10 @@ import com.example.zar.features.reminders.domain.ReminderPreferencesRepository
 import com.example.zar.features.quicknote.data.remote.QuickNoteDraftTransport
 import com.example.zar.features.quicknote.data.repository.CallableQuickNoteDraftRepository
 import com.example.zar.features.quicknote.domain.repository.QuickNoteDraftRepository
+import com.example.zar.features.rules.data.FirestoreCategoryRuleRepository
+import com.example.zar.features.rules.data.InMemoryRuleOfferInbox
+import com.example.zar.features.rules.domain.repository.CategoryRuleRepository
+import com.example.zar.features.rules.domain.repository.RuleOfferInbox
 import com.example.zar.features.settings.data.repository.InMemoryAppPreferencesRepository
 import com.example.zar.features.settings.domain.repository.AppPreferencesRepository
 import dagger.Binds
@@ -146,6 +150,18 @@ abstract class RepositoryModule {
     @Binds
     @IntoSet
     abstract fun bindResetRemindersOnSignOut(impl: ResetRemindersOnSignOut): SignOutHandler
+
+    @Binds
+    @Singleton
+    abstract fun bindCategoryRuleRepository(impl: FirestoreCategoryRuleRepository): CategoryRuleRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindRuleOfferInbox(impl: InMemoryRuleOfferInbox): RuleOfferInbox
+
+    @Binds
+    @IntoSet
+    abstract fun bindClearRuleOfferOnSignOut(impl: InMemoryRuleOfferInbox): SignOutHandler
 
     @Binds
     @Singleton
