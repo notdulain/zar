@@ -1,5 +1,11 @@
 package com.example.zar.features.capture
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
@@ -8,6 +14,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.room.Room
+import androidx.compose.ui.unit.dp
 import androidx.test.platform.app.InstrumentationRegistry
 import com.example.zar.core.domain.model.UserId
 import com.example.zar.core.presentation.theme.ZarTheme
@@ -76,7 +83,14 @@ class AutoCaptureTest {
     }
 
     private fun card(state: AutoCaptureUiState, granted: Boolean = true, refused: Boolean = false, onToggle: (Boolean) -> Unit = {}, onAllow: () -> Unit = {}) {
-        compose.setContent { ZarTheme(darkTheme = false) { AutoCaptureCard(state, true, granted, refused, onToggle, onAllow, {}) } }
+        compose.setContent {
+            ZarTheme(darkTheme = false) {
+                // Kept clear of the status bar, whose icons would otherwise be drawn over the card.
+                Box(Modifier.windowInsetsPadding(WindowInsets.safeDrawing).padding(16.dp)) {
+                    AutoCaptureCard(state, true, granted, refused, onToggle, onAllow, {})
+                }
+            }
+        }
     }
 
     @Test
@@ -108,6 +122,16 @@ class AutoCaptureTest {
         var allowed = false
         card(AutoCaptureUiState(isLoading = false, status = AutoCaptureStatus(true)), granted = false, onAllow = { allowed = true })
         compose.onNodeWithText("On, but SMS access is off").assertIsDisplayed()
+        compose.onNodeWithText("Allow SMS access").performClick()
+        assertTrue(allowed)
+    }
+
+    @Test
+    fun refusedWhileOffStillOffersAWayToAllow() {
+        var allowed = false
+        card(AutoCaptureUiState(isLoading = false), granted = false, refused = true, onAllow = { allowed = true })
+        compose.onNodeWithTag("auto-capture-switch").assertIsOff()
+        compose.onNodeWithText("SMS access was refused", substring = true).assertIsDisplayed()
         compose.onNodeWithText("Allow SMS access").performClick()
         assertTrue(allowed)
     }

@@ -31,6 +31,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.zar.R
+import com.example.zar.core.domain.calculation.ZarTime
 import com.example.zar.core.presentation.components.ZarButton
 import com.example.zar.core.presentation.components.ZarButtonSize
 import com.example.zar.core.presentation.components.ZarButtonStyle
@@ -45,7 +46,6 @@ import com.example.zar.core.presentation.theme.ZarType
 import com.example.zar.features.capture.presentation.viewmodel.AutoCaptureUiState
 import com.example.zar.features.capture.presentation.viewmodel.AutoCaptureViewModel
 import com.example.zar.features.transactions.presentation.income.IncomeFormat
-import com.example.zar.core.domain.calculation.ZarTime
 
 /** The SMS-only feature flag exists from Android 13; before that, telephony implies SMS. */
 private fun Context.canReceiveSms() = packageManager.hasSystemFeature(
@@ -73,6 +73,8 @@ fun AutoCaptureSection(viewModel: AutoCaptureViewModel = hiltViewModel()) {
     }
     LifecycleResumeEffect(Unit) {
         granted = context.canReadSms()
+        // Allowed from Zar's settings page after a refusal: the refusal no longer applies.
+        if (granted) refused = false
         onPauseOrDispose { }
     }
     AutoCaptureCard(
@@ -145,7 +147,9 @@ internal fun AutoCaptureCard(
                 style = ZarType.bodyS,
                 color = colors.textSecondary,
             )
-            if (on && !granted) {
+            if (!on && refused) Text(stringResource(R.string.auto_capture_refused), style = ZarType.bodyS, color = colors.textAttention)
+            // Also after a refusal while off: Android may not ask again, so this is the way to settings.
+            if (!granted && (on || refused)) {
                 ZarButton(
                     stringResource(R.string.auto_capture_allow),
                     onAllow,
@@ -154,7 +158,6 @@ internal fun AutoCaptureCard(
                     size = ZarButtonSize.Medium,
                 )
             }
-            if (!on && refused) Text(stringResource(R.string.auto_capture_refused), style = ZarType.bodyS, color = colors.textAttention)
             if (status.queue.waiting > 0) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                     ZarIcon(R.drawable.ic_ph_lock, size = 16.dp, tint = colors.iconDefault)
