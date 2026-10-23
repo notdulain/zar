@@ -125,7 +125,7 @@ object QuickNoteReviewRules {
             date = proposal.date,
             categoryId = proposal.categoryId,
             spendingClass = proposal.spendingClass,
-            title = proposal.merchant.orEmpty(),
+            title = proposal.title ?: proposal.merchant.orEmpty(),
             note = proposal.note.orEmpty(),
             refundOf = null,
             uncertain = proposal.uncertainFields,

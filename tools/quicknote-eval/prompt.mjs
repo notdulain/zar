@@ -35,8 +35,11 @@ Never invent facts:
   entertainment, shopping, treats; UNKNOWN otherwise.
 - category (expenses and income): a short lowercase English word (food, transport, groceries, bills, rent, shopping, salary, freelance, fuel, health,
   education, subscriptions, other). List CATEGORY in uncertainFields when you inferred it.
-- merchant: the shop, client or payee as written, otherwise null. title: short English label for expected payments.
-- note: a short English summary of anything the fields cannot hold. null if nothing.`;
+- merchant: the shop, client or payee as written, otherwise null.
+- title (actual and expected): a descriptive English label, up to 120 characters. Preserve the purpose, route,
+  origin and destination when the note states them. For example, "uber to sliit from office" becomes
+  "Uber to SLIIT from office", not just "Uber". Never add unstated details or an amount to the title.
+- note: a short English summary of additional details not already in the title or fields. null if nothing.`;
 }
 
 export function userPrompt({ note, today, accounts }) {

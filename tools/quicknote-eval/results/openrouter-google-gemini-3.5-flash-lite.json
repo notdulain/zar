@@ -1,110 +1,115 @@
 {
   "summary": {
     "model": "google/gemini-3.5-flash-lite",
-    "date": "2026-10-23T21:00:05.701Z",
-    "cases": 20,
-    "passed": 20,
+    "date": "2026-10-23T21:28:13.144Z",
+    "cases": 21,
+    "passed": 21,
     "errors": 0
   },
   "results": [
     {
       "id": "en-simple",
-      "latencyMs": 3735,
+      "latencyMs": 2035,
       "problems": []
     },
     {
       "id": "en-multi",
-      "latencyMs": 2133,
+      "latencyMs": 1706,
       "problems": []
     },
     {
       "id": "en-expected",
-      "latencyMs": 1327,
+      "latencyMs": 1349,
       "problems": []
     },
     {
       "id": "en-partial",
-      "latencyMs": 1843,
+      "latencyMs": 2049,
       "problems": []
     },
     {
       "id": "en-transfer",
-      "latencyMs": 1568,
+      "latencyMs": 1390,
       "problems": []
     },
     {
       "id": "en-range",
-      "latencyMs": 1696,
+      "latencyMs": 1518,
       "problems": []
     },
     {
       "id": "en-no-account",
-      "latencyMs": 1630,
+      "latencyMs": 1632,
       "problems": []
     },
     {
       "id": "en-lakh",
-      "latencyMs": 1424,
+      "latencyMs": 1776,
       "problems": []
     },
     {
       "id": "si-script",
-      "latencyMs": 1257,
+      "latencyMs": 1940,
       "problems": []
     },
     {
       "id": "si-singlish",
-      "latencyMs": 1678,
+      "latencyMs": 1395,
       "problems": []
     },
     {
       "id": "si-mixed",
-      "latencyMs": 1385,
+      "latencyMs": 1798,
       "problems": []
     },
     {
       "id": "si-expected",
-      "latencyMs": 1898,
+      "latencyMs": 1560,
       "problems": []
     },
     {
       "id": "ta-script",
-      "latencyMs": 1792,
+      "latencyMs": 1511,
       "problems": []
     },
     {
       "id": "ta-tanglish",
-      "latencyMs": 1754,
+      "latencyMs": 1565,
       "problems": []
     },
     {
       "id": "en-refund",
-      "latencyMs": 1166,
+      "latencyMs": 1877,
       "problems": []
     },
     {
       "id": "en-crypto",
-      "latencyMs": 1309,
+      "latencyMs": 1538,
       "problems": []
     },
     {
       "id": "en-bill-due",
-      "latencyMs": 1651,
+      "latencyMs": 1450,
       "problems": []
     },
     {
       "id": "no-money",
-      "latencyMs": 1400,
+      "latencyMs": 1141,
       "problems": []
     },
     {
       "id": "injection",
-      "latencyMs": 1488,
+      "latencyMs": 1430,
       "problems": []
     },
     {
       "id": "en-ambiguous-tense",
-      "latencyMs": 1466,
+      "latencyMs": 1373,
+      "problems": []
+    },
+    {
+      "id": "en-descriptive-title",
+      "latencyMs": 1420,
       "problems": []
     }
   ]

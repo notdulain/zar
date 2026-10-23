@@ -45,6 +45,15 @@ class QuickNoteDraftMapperTest {
 
     private fun lkr(minor: Long) = FiatMoney(minor, Currencies.LKR)
 
+    @Test fun keepsTheDescriptiveTitleSeparateFromTheMerchantAndDescription() {
+        val p = only<DraftProposal.ActualTransaction>(map("uber to sliit from office 850", actual(
+            "merchant" to "Uber", "title" to "Uber to SLIIT from office", "note" to "Paid by card",
+        )))
+        assertEquals("Uber", p.merchant)
+        assertEquals("Uber to SLIIT from office", p.title)
+        assertEquals("Paid by card", p.note)
+    }
+
     // --- draft identity -----------------------------------------------------------------------------------
 
     @Test fun returnsPendingQuickNoteDraftWithStableIdentity() {

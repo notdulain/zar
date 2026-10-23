@@ -10,7 +10,7 @@ const apiKey = process.env.OPENROUTER_API_KEY;
 if (!apiKey) throw new Error('Set OPENROUTER_API_KEY in worker/.dev.vars (git-ignored) before evaluating.');
 const model = process.env.OPENROUTER_MODEL || config.vars.OPENROUTER_MODEL;
 const provider = createOpenRouterProvider({ apiKey, model });
-const fields = ['kind', 'transactionType', 'direction', 'amount', 'currency', 'accountId', 'toAccountId', 'date', 'dueDate', 'spendingClass', 'receivedAmount', 'receivedCurrency'];
+const fields = ['kind', 'transactionType', 'direction', 'amount', 'currency', 'accountId', 'toAccountId', 'date', 'dueDate', 'spendingClass', 'receivedAmount', 'receivedCurrency', 'title'];
 type Proposal = Record<string, unknown>;
 type Expected = Proposal & { lenient?: string[]; uncertain?: string[] };
 const same = (field: string, want: unknown, got: unknown) => ['amount', 'receivedAmount'].includes(field)

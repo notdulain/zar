@@ -278,7 +278,7 @@ class QuickNoteViewModel internal constructor(
                 if (old.accountId != new.accountId) add(DraftField.ACCOUNT)
                 if (old.date != new.date) add(DraftField.DATE)
                 if (old.categoryId != new.categoryId) add(DraftField.CATEGORY)
-                if (old.title != new.title) add(DraftField.MERCHANT)
+                if (old.title != new.title) { add(DraftField.MERCHANT); add(DraftField.TITLE) }
             }
             old is ProposalInput.Expected && new is ProposalInput.Expected -> {
                 if (old.direction != new.direction) add(DraftField.TYPE)

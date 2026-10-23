@@ -318,6 +318,20 @@
         }
       ],
       "comment": "Ambiguous: either reading is acceptable if flagged; review decides."
+    },
+    {
+      "id": "en-descriptive-title",
+      "note": "uber to sliit from office 850 cash",
+      "expect": [
+        {
+          "kind": "ACTUAL_TRANSACTION",
+          "transactionType": "EXPENSE",
+          "amount": "850",
+          "currency": "LKR",
+          "accountId": "cash",
+          "title": "Uber to SLIIT from office"
+        }
+      ]
     }
   ]
 }

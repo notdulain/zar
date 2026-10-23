@@ -28,6 +28,8 @@ sealed interface DraftProposal {
         val merchant: String? = null,
         val note: String? = null,
         override val uncertainFields: Set<DraftField> = emptySet(),
+        /** Descriptive label for the movement, distinct from the merchant's name. */
+        val title: String? = null,
     ) : DraftProposal {
         override val missingFields: Set<DraftField>
             get() = buildSet {

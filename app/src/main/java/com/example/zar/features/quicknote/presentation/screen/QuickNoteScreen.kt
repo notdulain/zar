@@ -476,7 +476,8 @@ private fun rowsFor(item: ProposalState, accounts: List<Account>): List<RowSpec>
                         purchase?.let { "${it.merchant ?: stringResource(R.string.quicknote_type_expense)} · ${IncomeFormat.withCode(it.amount)}" } ?: stringResource(R.string.quicknote_pick_purchase),
                         blockers.hit(ProposalBlocker.PURCHASE_MISSING), false))
                 }
-                add(RowSpec("title", stringResource(R.string.quicknote_field_title), input.title.ifBlank { none }, false, DraftField.MERCHANT in input.uncertain && input.title.isNotBlank()))
+                add(RowSpec("title", stringResource(R.string.quicknote_field_title), input.title.ifBlank { none }, false,
+                    input.title.isNotBlank() && (DraftField.TITLE in input.uncertain || DraftField.MERCHANT in input.uncertain)))
             }
         }
         is ProposalInput.Expected -> {

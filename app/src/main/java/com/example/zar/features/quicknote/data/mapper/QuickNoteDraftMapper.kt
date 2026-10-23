@@ -83,6 +83,7 @@ internal object QuickNoteDraftMapper {
                 spendingClass = spendingClass,
                 categoryId = category(map["category"]),
                 merchant = text(map["merchant"], 80),
+                title = text(map["title"], 120),
                 note = text(map["note"], 300),
                 uncertainFields = uncertain,
             )

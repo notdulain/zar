@@ -10,7 +10,7 @@ const bad = () => new DraftError(Reason.BAD_RESPONSE);
 const isPlainObject = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
 
 // Free text is shortened; identifiers, money and dates that are too long are treated as missing.
-const FREE_TEXT = { category: 40, merchant: 80, title: 80, note: 300 };
+const FREE_TEXT = { category: 40, merchant: 80, title: 120, note: 300 };
 const BOUNDED = { amount: 40, receivedAmount: 40, currency: 10, receivedCurrency: 10, accountId: 128, toAccountId: 128, date: 10, dueDate: 10 };
 
 function nullableText(value, limit, truncate) {
