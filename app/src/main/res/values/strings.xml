@@ -299,7 +299,14 @@
     <string name="home_choose_amount">Choose amount →</string>
     <string name="home_recent_empty">Nothing recorded yet. Tap + to add your first entry.</string>
     <string name="home_bills">Bills</string>
-    <string name="home_bills_empty">None yet</string>
+    <string name="home_bills_empty">No bills yet</string>
+    <string name="home_next_bill_label">Next bill due</string>
+    <string name="home_next_bill_due">Due %1$s · expected %2$s</string>
+    <string name="home_view_bill">View bill →</string>
+    <string name="home_add_bill">Add a bill →</string>
+    <string name="home_view_freelance">View clients →</string>
+    <string name="home_loading_short">Loading…</string>
+    <string name="home_commitments_error">Couldn\'t load this. Tap to try again.</string>
     <string name="home_weekly_limit">Weekly limit</string>
     <string name="home_weekly_limit_empty">Not set</string>
     <string name="activity_based_on_records">Based on recorded transactions</string>

@@ -3,12 +3,15 @@ package com.example.zar.features.home.presentation.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.zar.core.domain.calculation.ZarTime
+import com.example.zar.features.home.domain.model.HomeCommitments
 import com.example.zar.features.home.domain.model.HomeOverview
+import com.example.zar.features.home.domain.usecase.ObserveHomeCommitmentsUseCase
 import com.example.zar.features.home.domain.usecase.ObserveHomeOverviewUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.time.YearMonth
 import javax.inject.Inject
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -26,23 +29,32 @@ sealed interface HomeContent {
     data class Ready(val overview: HomeOverview) : HomeContent
 }
 
+/** Clients owed and the next bill. Loaded on its own so a failure here never hides the totals. */
+sealed interface HomeCommitmentsContent {
+    data object Loading : HomeCommitmentsContent
+    data object Error : HomeCommitmentsContent
+    data class Ready(val commitments: HomeCommitments) : HomeCommitmentsContent
+}
+
 data class HomeUiState(
     val month: YearMonth,
     /** False on the current month: Home never shows a future month. */
     val canGoForward: Boolean,
     val content: HomeContent,
+    val commitments: HomeCommitmentsContent = HomeCommitmentsContent.Loading,
 )
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     observeOverview: ObserveHomeOverviewUseCase,
+    observeCommitments: ObserveHomeCommitmentsUseCase,
 ) : ViewModel() {
 
     private val month = MutableStateFlow(currentMonth())
     private val attempt = MutableStateFlow(0)
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    val uiState: StateFlow<HomeUiState> = combine(month, attempt) { selected, _ -> selected }
+    private val overviewState: Flow<HomeUiState> = combine(month, attempt) { selected, _ -> selected }
         .flatMapLatest { selected ->
             observeOverview(selected)
                 .map<HomeOverview, HomeContent> { HomeContent.Ready(it) }
@@ -50,6 +62,19 @@ class HomeViewModel @Inject constructor(
                 .catch { emit(HomeContent.Error) }
                 .map { HomeUiState(selected, selected < currentMonth(), it) }
         }
+
+    // Owed money and the next bill depend on today, not on the month being viewed.
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private val commitmentsState: Flow<HomeCommitmentsContent> = attempt.flatMapLatest {
+        observeCommitments(ZarTime.today())
+            .map<HomeCommitments, HomeCommitmentsContent> { HomeCommitmentsContent.Ready(it) }
+            .onStart { emit(HomeCommitmentsContent.Loading) }
+            .catch { emit(HomeCommitmentsContent.Error) }
+    }
+
+    val uiState: StateFlow<HomeUiState> = combine(overviewState, commitmentsState) { overview, commitments ->
+        overview.copy(commitments = commitments)
+    }
         .stateIn(
             viewModelScope,
             SharingStarted.WhileSubscribed(5_000),

@@ -86,6 +86,9 @@ fun ZarNavHost(
                 onNavigate = onNavigate,
                 onAddOption = onAddOption,
                 onOpenReview = { navController.navigate(NeedsReviewRoute) },
+                onOpenFreelance = { navController.navigate(FreelanceRoute) },
+                onOpenBills = { navController.navigate(BillsRoute) },
+                onOpenBill = { id -> navController.navigate(BillRoute(id)) },
             )
         }
         composable<ActivityRoute> {
