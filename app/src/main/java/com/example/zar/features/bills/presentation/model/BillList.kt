@@ -35,6 +35,8 @@ data class BillList(
     val thisWeek: List<DueRow>,
     val later: List<DueRow>,
     val paidThisMonth: List<PaidRow>,
+    /** Running bills with no row in another section. Keep early-paid and future-ending bills editable. */
+    val otherRunning: List<BillSummary>,
     /** Stopped bills and bills cancelled before today. */
     val ended: List<BillSummary>,
     /** The Sunday that ends this week (today when today is Sunday). */
@@ -44,6 +46,7 @@ data class BillList(
     /** Estimated yearly cost of running bills, one total per currency. */
     val annual: List<Money>,
     val hasBills: Boolean,
+    val hasRunningBills: Boolean,
 ) {
     companion object {
         fun from(overview: BillsOverview, today: LocalDate): BillList {
@@ -73,16 +76,21 @@ data class BillList(
                     .filter { YearMonth.from(it.paidOn) == month }
             }.sortedByDescending { it.paidOn }
 
+            val visibleIds = (needsLook.map { it.summary.bill.id } + upcoming.map { it.summary.bill.id } + paid.map { it.summary.bill.id }).toSet()
+            val otherRunning = summaries.filter { it.bill.runsOn(today) && it.bill.id !in visibleIds }
+
             return BillList(
                 needsLook = needsLook,
                 thisWeek = thisWeek,
                 later = later,
                 paidThisMonth = paid,
+                otherRunning = otherRunning,
                 ended = summaries.filterNot { it.bill.runsOn(today) },
                 weekEnd = weekEnd,
                 thisWeekTotal = thisWeek.map { it.occurrence.progress.remaining }.totals(),
                 annual = overview.annual,
                 hasBills = summaries.isNotEmpty(),
+                hasRunningBills = summaries.any { it.bill.runsOn(today) },
             )
         }
 

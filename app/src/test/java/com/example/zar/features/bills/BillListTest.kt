@@ -88,9 +88,39 @@ class BillListTest {
     }
 
     @Test
+    fun runningBillWithMatchedNextDateIsStillRunning() {
+        val b = bill("internet", today)
+        val due = BillSchedule.expectedPayment(b, today)
+        val paid = tx("paid", TransactionType.EXPENSE, lkr(1_000), date = today)
+        val list = list(b, expected = listOf(due), matches = listOf(PaymentMatch(due.id, paid.id, lkr(1_000), T0)), entries = listOf(entry(paid)))
+        assertTrue(list.hasRunningBills)
+        assertTrue(list.thisWeek.isEmpty())
+        assertEquals(1, list.paidThisMonth.size)
+    }
+
+    @Test
+    fun billPaidBeforeThisMonthStillHasAnEditableRow() {
+        val b = bill("internet", today)
+        val due = BillSchedule.expectedPayment(b, today)
+        val paid = tx("paid", TransactionType.EXPENSE, lkr(1_000), date = today.withDayOfMonth(1).minusDays(1))
+        val list = list(b, expected = listOf(due), matches = listOf(PaymentMatch(due.id, paid.id, lkr(1_000), T0)), entries = listOf(entry(paid)))
+        assertTrue(list.paidThisMonth.isEmpty())
+        assertEquals(b.id, list.otherRunning.single().bill.id)
+    }
+
+    @Test
+    fun futureEndingBillWithoutDueDatesStillHasAnEditableRow() {
+        val b = bill("ending", today.plusDays(20), cancellation = BillCancellation.Confirmed(today.plusDays(10)))
+        val list = list(b)
+        assertTrue(list.thisWeek.isEmpty() && list.later.isEmpty() && list.ended.isEmpty())
+        assertEquals(b.id, list.otherRunning.single().bill.id)
+    }
+
+    @Test
     fun noBills() {
         val list = list()
         assertFalse(list.hasBills)
+        assertFalse(list.hasRunningBills)
         assertTrue(list.thisWeek.isEmpty() && list.later.isEmpty() && list.needsLook.isEmpty())
     }
 }

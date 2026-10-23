@@ -8,7 +8,7 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Text
@@ -40,7 +40,7 @@ internal fun BillSectionHeader(
 ) {
     val colors = ZarTheme.colors
     Row(
-        modifier.fillMaxWidth().padding(horizontal = 22.dp).height(17.dp),
+        modifier.fillMaxWidth().padding(horizontal = 22.dp).heightIn(min = 17.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -86,6 +86,7 @@ internal fun BillRow(
     onClick: (() -> Unit)?,
     modifier: Modifier = Modifier,
     dot: Color? = null,
+    onEndClick: (() -> Unit)? = null,
 ) {
     val colors = ZarTheme.colors
     Row(
@@ -97,15 +98,18 @@ internal fun BillRow(
     ) {
         ZarIconChip(icon, size = 36.dp, iconSize = 18.dp)
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(title, style = ZarType.labelButton.copy(lineHeight = 19.sp), color = colors.textPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(title, style = ZarType.labelButton.copy(lineHeight = 19.sp), color = colors.textPrimary, maxLines = 2, overflow = TextOverflow.Ellipsis)
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
                 if (dot != null) StatusDot(dot)
-                Text(meta, style = ZarType.bodyCaption.copy(lineHeight = 15.sp), color = colors.textSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(meta, style = ZarType.bodyCaption.copy(lineHeight = 15.sp), color = colors.textSecondary, maxLines = 2, overflow = TextOverflow.Ellipsis)
             }
         }
         when (end) {
             is RowEnd.Amount -> Text(end.text, style = ZarType.bodyM, color = colors.textPrimary, maxLines = 1)
-            is RowEnd.Action -> Text(end.text, style = ZarType.labelAction, color = colors.textSelected, maxLines = 1)
+            is RowEnd.Action -> Text(
+                end.text, style = ZarType.labelAction, color = colors.textSelected, maxLines = 1,
+                modifier = if (onEndClick != null) Modifier.clickable(role = Role.Button, onClick = onEndClick) else Modifier,
+            )
             null -> Unit
         }
     }

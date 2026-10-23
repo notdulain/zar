@@ -971,6 +971,7 @@
     <string name="bills_hero_to_pay">%1$s to pay by %2$s.</string>
     <string name="bills_hero_to_pay_today">%1$s to pay today.</string>
     <string name="bills_hero_none_week">No *bills* due this week.</string>
+    <string name="bills_hero_all_upcoming_matched">No upcoming payments left to match.</string>
     <string name="bills_hero_next">Next is %1$s on %2$s.</string>
     <string name="bills_hero_nothing_running">No *bills* running right now.</string>
     <string name="bills_hero_nothing_running_detail">Resume one or add a new bill.</string>
@@ -985,6 +986,9 @@
     <string name="bills_section_this_week">This week</string>
     <string name="bills_section_later">Later</string>
     <string name="bills_section_paid">Paid this month</string>
+    <string name="bills_section_running">Running</string>
+    <string name="bills_no_upcoming_dates">No upcoming due dates</string>
+    <string name="bills_matched_due_meta">Due %1$s · matched</string>
     <string name="bills_section_ended">Ended</string>
     <string name="bills_jump_paid">Paid ↓</string>
     <string name="bills_missed_one">Was due %1$s · no payment matched</string>
@@ -1053,6 +1057,8 @@
     <string name="bill_end_title">End %1$s</string>
     <string name="bill_end_intend">I plan to cancel</string>
     <string name="bill_end_cancelled">It\'s cancelled</string>
+    <string name="bill_end_keep">Keep this bill</string>
+    <string name="bill_end_keep_note">Clear the plan to cancel. This bill keeps running.</string>
     <string name="bill_end_stop">Stop tracking</string>
     <string name="bill_end_intend_note">Nothing changes yet: due dates keep coming until you confirm the cancellation.</string>
     <string name="bill_end_cancelled_note">Due dates on or after this day stop. Earlier ones and their payments are kept.</string>

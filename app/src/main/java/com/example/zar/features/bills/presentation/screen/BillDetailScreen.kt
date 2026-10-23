@@ -70,6 +70,7 @@ import com.example.zar.features.bills.domain.model.BillFrequency
 import com.example.zar.features.bills.domain.model.BillOccurrence
 import com.example.zar.features.bills.domain.model.BillStatus
 import com.example.zar.features.bills.domain.model.BillSummary
+import com.example.zar.features.bills.presentation.viewmodel.BillUiState
 import com.example.zar.features.bills.presentation.viewmodel.BillMessage
 import com.example.zar.features.bills.presentation.viewmodel.BillViewModel
 import com.example.zar.features.transactions.presentation.activity.screen.InfoBanner
@@ -92,6 +93,25 @@ fun BillDetailScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val message by viewModel.message.collectAsStateWithLifecycle()
     val isSaving by viewModel.isSaving.collectAsStateWithLifecycle()
+    BillDetailContent(uiState, message, isSaving, onBack, onEditBill, onOpenDueDate,
+        viewModel::resume, viewModel::intendToCancel, viewModel::confirmCancelled,
+        { viewModel.setStopped(true) }, viewModel::keep)
+}
+
+@Composable
+internal fun BillDetailContent(
+    uiState: BillUiState,
+    message: BillMessage?,
+    isSaving: Boolean,
+    onBack: () -> Unit,
+    onEditBill: (String) -> Unit,
+    onOpenDueDate: (String, String) -> Unit,
+    onResume: () -> Unit,
+    onIntend: () -> Unit,
+    onCancelled: (LocalDate) -> Unit,
+    onStop: () -> Unit,
+    onKeep: () -> Unit,
+) {
     val colors = ZarTheme.colors
     val summary = uiState.summary
     var showEnd by rememberSaveable { mutableStateOf(false) }
@@ -103,7 +123,7 @@ fun BillDetailScreen(
             Row(Modifier.fillMaxWidth().padding(start = 10.dp, end = 22.dp, top = backTop), verticalAlignment = Alignment.CenterVertically) {
                 ZarBackButton(onBack, stringResource(R.string.bills_back))
                 Spacer(Modifier.weight(1f))
-                if (summary != null) EndOrResume(summary.bill, enabled = !isSaving, onEnd = { showEnd = true }, onResume = viewModel::resume)
+                if (summary != null) EndOrResume(summary.bill, enabled = !isSaving, onEnd = { showEnd = true }, onResume = onResume)
             }
             when {
                 uiState.isLoading -> Box(Modifier.fillMaxWidth().padding(top = 96.dp), Alignment.Center) {
@@ -143,9 +163,10 @@ fun BillDetailScreen(
         EndBillSheet(
             bill = summary.bill,
             onDismiss = { showEnd = false },
-            onIntend = { viewModel.intendToCancel(); showEnd = false },
-            onCancelled = { from -> viewModel.confirmCancelled(from); showEnd = false },
-            onStop = { viewModel.setStopped(true); showEnd = false },
+            onIntend = { onIntend(); showEnd = false },
+            onCancelled = { from -> onCancelled(from); showEnd = false },
+            onStop = { onStop(); showEnd = false },
+            onKeep = { onKeep(); showEnd = false },
         )
     }
 }
@@ -343,7 +364,7 @@ internal fun BillMessage.textRes(): Int = when (this) {
     BillMessage.FAILED -> R.string.bill_message_failed
 }
 
-private enum class EndChoice { INTEND, CANCELLED, STOP }
+private enum class EndChoice { INTEND, CANCELLED, STOP, KEEP }
 
 /** "End bill": plan to cancel, confirm the cancellation from a date, or stop tracking it. Laid out like Z28's sheet. */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
@@ -354,6 +375,7 @@ private fun EndBillSheet(
     onIntend: () -> Unit,
     onCancelled: (LocalDate) -> Unit,
     onStop: () -> Unit,
+    onKeep: () -> Unit,
 ) {
     val colors = ZarTheme.colors
     val initial = if (bill.cancellation == BillCancellation.Intended) EndChoice.CANCELLED else EndChoice.INTEND
@@ -379,12 +401,16 @@ private fun EndBillSheet(
                 if (bill.cancellation == null) {
                     ZarChip(stringResource(R.string.bill_end_intend), choice == EndChoice.INTEND, onClick = { choice = EndChoice.INTEND })
                 }
+                if (bill.cancellation == BillCancellation.Intended) {
+                    ZarChip(stringResource(R.string.bill_end_keep), choice == EndChoice.KEEP, onClick = { choice = EndChoice.KEEP })
+                }
                 ZarChip(stringResource(R.string.bill_end_cancelled), choice == EndChoice.CANCELLED, onClick = { choice = EndChoice.CANCELLED })
                 ZarChip(stringResource(R.string.bill_end_stop), choice == EndChoice.STOP, onClick = { choice = EndChoice.STOP })
             }
             Text(
                 stringResource(
                     when (choice) {
+                        EndChoice.KEEP -> R.string.bill_end_keep_note
                         EndChoice.INTEND -> R.string.bill_end_intend_note
                         EndChoice.CANCELLED -> R.string.bill_end_cancelled_note
                         EndChoice.STOP -> R.string.bill_end_stop_note
@@ -394,7 +420,7 @@ private fun EndBillSheet(
                 color = colors.textSecondary,
             )
             if (choice == EndChoice.CANCELLED) {
-                Row(Modifier.fillMaxWidth().clickable(role = Role.Button) { showPicker = true }, verticalAlignment = Alignment.CenterVertically) {
+                Row(Modifier.fillMaxWidth().clickable(role = Role.Button) { showPicker = true }.testTag("bill-end-from"), verticalAlignment = Alignment.CenterVertically) {
                     ZarFormRow(stringResource(R.string.bill_end_from), Modifier.weight(1f)) {
                         Row(Modifier.weight(1f).padding(vertical = 8.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                             Text(IncomeFormat.fullDate(from), style = ZarType.bodyM, color = colors.textPrimary)
@@ -409,6 +435,7 @@ private fun EndBillSheet(
                     stringResource(R.string.bill_end_confirm),
                     onClick = {
                         when (choice) {
+                            EndChoice.KEEP -> onKeep()
                             EndChoice.INTEND -> onIntend()
                             EndChoice.CANCELLED -> onCancelled(from)
                             EndChoice.STOP -> onStop()

@@ -13,6 +13,8 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBars
@@ -35,6 +37,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.platform.LocalDensity
@@ -65,6 +68,7 @@ import com.example.zar.features.bills.domain.model.BillSummary
 import com.example.zar.features.bills.presentation.model.BillList
 import com.example.zar.features.bills.presentation.model.DueRow
 import com.example.zar.features.bills.presentation.model.NeedsLook
+import com.example.zar.features.bills.presentation.viewmodel.BillsUiState
 import com.example.zar.features.bills.presentation.viewmodel.BillsViewModel
 import com.example.zar.features.transactions.presentation.income.IncomeFormat
 import kotlinx.coroutines.launch
@@ -81,11 +85,26 @@ fun BillsScreen(
     viewModel: BillsViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    BillsContent(uiState, onBack, onAddBill, onOpenBill, onOpenDueDate)
+}
+
+@Composable
+internal fun BillsContent(
+    uiState: BillsUiState,
+    onBack: () -> Unit,
+    onAddBill: () -> Unit,
+    onOpenBill: (String) -> Unit,
+    onOpenDueDate: (String, String) -> Unit,
+    suggestions: @Composable () -> Unit = { SubscriptionSuggestionsSection(trailingGap = 22.dp) },
+) {
     val colors = ZarTheme.colors
     val scroll = rememberScrollState()
     val scope = rememberCoroutineScope()
     var needsLookY by remember { mutableIntStateOf(0) }
     var paidY by remember { mutableIntStateOf(0) }
+    var sectionsY by remember { mutableIntStateOf(0) }
+    var heroHeightPx by remember { mutableIntStateOf(0) }
+    val topInset = with(LocalDensity.current) { WindowInsets.statusBars.asPaddingValues().calculateTopPadding().roundToPx() }
 
     Box(Modifier.fillMaxSize().background(colors.canvas)) {
         Column(Modifier.fillMaxSize().verticalScroll(scroll)) {
@@ -95,6 +114,7 @@ fun BillsScreen(
                 loadFailed = uiState.loadFailed,
                 onBack = onBack,
                 onNeedsLook = { scope.launch { scroll.animateScrollTo(needsLookY) } },
+                modifier = Modifier.onSizeChanged { heroHeightPx = it.height },
             )
             when {
                 uiState.isLoading -> Box(Modifier.fillMaxWidth().padding(top = 72.dp), Alignment.Center) {
@@ -107,14 +127,16 @@ fun BillsScreen(
                     onOpenBill = onOpenBill,
                     onOpenDueDate = onOpenDueDate,
                     onJumpToPaid = { scope.launch { scroll.animateScrollTo(paidY) } },
-                    onNeedsLookPlaced = { needsLookY = it },
-                    onPaidPlaced = { paidY = it },
+                    onNeedsLookPlaced = { needsLookY = sectionsY + it - topInset },
+                    onPaidPlaced = { paidY = sectionsY + it - topInset },
+                    modifier = Modifier.onGloballyPositioned { sectionsY = it.positionInParent().y.toInt() },
+                    suggestions = suggestions,
                 )
             }
             // Room so the last card clears the floating Add bill pill.
             Spacer(Modifier.height(124.dp))
         }
-        StatusBarFade(scroll)
+        StatusBarFade(scroll, heroHeightPx)
         ZarAddPill(
             text = stringResource(R.string.bills_add),
             onClick = onAddBill,
@@ -128,12 +150,12 @@ fun BillsScreen(
  * canvas colour, so the clock never sits on top of a list row.
  */
 @Composable
-private fun StatusBarFade(scroll: ScrollState) {
+private fun StatusBarFade(scroll: ScrollState, heroHeightPx: Int) {
     val density = LocalDensity.current
     val colors = ZarTheme.colors
     val statusBar = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     // The hero's lower edge reaches the status bar here.
-    val start = with(density) { (HeroHeight - statusBar - 24.dp).toPx() }
+    val start = with(density) { (heroHeightPx.takeIf { it > 0 }?.toFloat() ?: HeroHeight.toPx()) - (statusBar + 24.dp).toPx() }
     val fade = with(density) { 24.dp.toPx() }
     val pastHero by remember(start) { derivedStateOf { scroll.value > start + fade / 2 } }
     StatusBarGlyphs(onDarkHero = !pastHero)
@@ -146,10 +168,10 @@ private fun StatusBarFade(scroll: ScrollState) {
 }
 
 @Composable
-private fun Hero(list: BillList?, loadFailed: Boolean, onBack: () -> Unit, onNeedsLook: () -> Unit) {
+private fun Hero(list: BillList?, loadFailed: Boolean, onBack: () -> Unit, onNeedsLook: () -> Unit, modifier: Modifier = Modifier) {
     val statusBar = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     Box(
-        Modifier.fillMaxWidth().height(HeroHeight)
+        modifier.fillMaxWidth().heightIn(min = HeroHeight)
             .clip(ZarShapes.hero)
             .background(ZarGradients.spent)
             .testTag("bills-hero"),
@@ -164,17 +186,21 @@ private fun Hero(list: BillList?, loadFailed: Boolean, onBack: () -> Unit, onNee
         }
         if (list != null && !loadFailed) {
             val (lead, follow) = heroSentence(list)
-            // One centred paragraph: the lead sentence in white with its key word semi-bold, then the rest in 80% white.
-            Text(
-                text = buildAnnotatedString {
-                    append(BillFormat.emphasise(lead))
-                    withStyle(SpanStyle(color = Color.White.copy(alpha = 0.8f))) { append(" "); append(follow) }
-                },
-                style = ZarType.amountM.copy(lineHeight = 33.sp, textAlign = TextAlign.Center),
-                color = Color.White,
-                modifier = Modifier.align(Alignment.TopCenter).padding(top = 152.dp).width(348.dp).testTag("bills-hero-text"),
-            )
-            StatusLink(list, onNeedsLook, Modifier.align(Alignment.TopCenter).padding(top = 272.dp))
+            // Keep the Figma spacing at normal text size; let the hero grow when text wraps.
+            Column(Modifier.fillMaxWidth().padding(top = 152.dp, bottom = 27.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                Box(Modifier.fillMaxWidth().padding(horizontal = 32.dp).heightIn(min = 120.dp), contentAlignment = Alignment.TopCenter) {
+                    Text(
+                        text = buildAnnotatedString {
+                            append(BillFormat.emphasise(lead))
+                            withStyle(SpanStyle(color = Color.White.copy(alpha = 0.8f))) { append(" "); append(follow) }
+                        },
+                        style = ZarType.amountM.copy(lineHeight = 33.sp, textAlign = TextAlign.Center),
+                        color = Color.White,
+                        modifier = Modifier.widthIn(max = 348.dp).testTag("bills-hero-text"),
+                    )
+                }
+                StatusLink(list, onNeedsLook, Modifier.testTag("bills-status-link"))
+            }
         }
     }
 }
@@ -196,6 +222,7 @@ private fun heroSentence(list: BillList): Pair<String, String> {
         }
         next != null -> stringResource(R.string.bills_hero_none_week) to
             stringResource(R.string.bills_hero_next, next.summary.bill.name, BillFormat.dayMonth(next.occurrence.dueDate))
+        list.hasRunningBills -> stringResource(R.string.bills_hero_none_week) to stringResource(R.string.bills_hero_all_upcoming_matched)
         list.hasBills -> stringResource(R.string.bills_hero_nothing_running) to stringResource(R.string.bills_hero_nothing_running_detail)
         else -> stringResource(R.string.bills_hero_empty) to stringResource(R.string.bills_hero_empty_detail)
     }
@@ -232,9 +259,11 @@ private fun Sections(
     onJumpToPaid: () -> Unit,
     onNeedsLookPlaced: (Int) -> Unit,
     onPaidPlaced: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+    suggestions: @Composable () -> Unit,
 ) {
     val colors = ZarTheme.colors
-    Column(Modifier.padding(top = 18.dp)) {
+    Column(modifier.padding(top = 18.dp)) {
         if (list.needsLook.isNotEmpty()) {
             BillSectionHeader(
                 stringResource(R.string.bills_section_needs_look),
@@ -245,7 +274,7 @@ private fun Sections(
             BillRows(list.needsLook, Modifier.padding(top = 9.dp).testTag("bills-needs-look")) { item -> NeedsLookRow(item, onOpenBill, onOpenDueDate) }
             Gap()
         }
-        SubscriptionSuggestionsSection(trailingGap = 22.dp)
+        suggestions()
         if (list.thisWeek.isNotEmpty()) {
             BillSectionHeader(stringResource(R.string.bills_section_this_week), value = BillFormat.totals(list.thisWeekTotal))
             BillRows(list.thisWeek, Modifier.padding(top = 9.dp).testTag("bills-this-week")) { DueBillRow(it, accountNames, onOpenBill) }
@@ -270,6 +299,26 @@ private fun Sections(
                     dot = colors.fresh,
                     end = RowEnd.Amount(IncomeFormat.withCode(row.occurrence.progress.matched)),
                     onClick = { onOpenBill(bill.id.value) },
+                )
+            }
+            Gap()
+        }
+        if (list.otherRunning.isNotEmpty()) {
+            BillSectionHeader(stringResource(R.string.bills_section_running))
+            BillRows(list.otherRunning, Modifier.padding(top = 9.dp).testTag("bills-other-running")) { summary ->
+                val next = summary.next
+                val cancellation = summary.bill.cancellation
+                BillRow(
+                    icon = BillFormat.icon(summary.bill.name),
+                    title = summary.bill.name,
+                    meta = when {
+                        next?.progress?.state == MatchState.MATCHED -> stringResource(R.string.bills_matched_due_meta, BillFormat.dayMonth(next.dueDate))
+                        cancellation is BillCancellation.Confirmed -> stringResource(R.string.bills_ended_cancelled, BillFormat.dayMonth(cancellation.effectiveFrom))
+                        else -> stringResource(R.string.bills_no_upcoming_dates)
+                    },
+                    dot = if (next?.progress?.state == MatchState.MATCHED) colors.fresh else null,
+                    end = RowEnd.Amount(IncomeFormat.withCode(summary.bill.amount)),
+                    onClick = { onOpenBill(summary.bill.id.value) },
                 )
             }
             Gap()
@@ -305,7 +354,8 @@ private fun NeedsLookRow(item: NeedsLook, onOpenBill: (String) -> Unit, onOpenDu
                 },
                 dot = colors.attention,
                 end = RowEnd.Action(stringResource(R.string.bills_action_paid_it)),
-                onClick = { onOpenDueDate(bill.id.value, latest.dueDate.toString()) },
+                onClick = { onOpenBill(bill.id.value) },
+                onEndClick = { onOpenDueDate(bill.id.value, latest.dueDate.toString()) },
             )
         }
         is NeedsLook.ChargedAfterCancelling -> BillRow(

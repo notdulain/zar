@@ -14,6 +14,8 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -63,6 +65,18 @@ fun BillPaymentScreen(
     viewModel: BillOccurrenceViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    BillPaymentContent(state, onBack, viewModel::link, viewModel::unlink, viewModel::onSelect, viewModel::onAmountChange)
+}
+
+@Composable
+internal fun BillPaymentContent(
+    state: BillOccurrenceUiState,
+    onBack: () -> Unit,
+    onLink: () -> Unit,
+    onUnlink: (com.example.zar.features.bills.domain.model.LinkedPayment) -> Unit,
+    onSelect: (PaymentCandidate) -> Unit,
+    onAmountChange: (String) -> Unit,
+) {
     LaunchedEffect(state.isLinked) { if (state.isLinked) onBack() }
     val colors = ZarTheme.colors
     val occurrence = state.occurrence
@@ -89,7 +103,7 @@ fun BillPaymentScreen(
             occurrence == null || state.bill == null -> Box(Modifier.weight(1f).fillMaxWidth().padding(24.dp), Alignment.Center) {
                 Text(stringResource(R.string.bill_not_found), style = ZarType.bodyS, color = colors.textSecondary)
             }
-            else -> Body(state, viewModel, Modifier.weight(1f))
+            else -> Body(state, onUnlink, onSelect, onAmountChange, Modifier.weight(1f))
         }
         val canLink = occurrence != null && occurrence.progress.remaining.isPositive &&
             occurrence.progress.state != MatchState.CANCELLED && state.selected != null
@@ -101,7 +115,7 @@ fun BillPaymentScreen(
             if (canLink) {
                 ZarButton(
                     stringResource(R.string.bill_payment_link),
-                    onClick = viewModel::link,
+                    onClick = onLink,
                     modifier = Modifier.weight(1f).testTag("bill-payment-link"),
                     enabled = !state.isSaving,
                 )
@@ -111,7 +125,7 @@ fun BillPaymentScreen(
 }
 
 @Composable
-private fun Body(state: BillOccurrenceUiState, vm: BillOccurrenceViewModel, modifier: Modifier = Modifier) {
+private fun Body(state: BillOccurrenceUiState, onUnlink: (com.example.zar.features.bills.domain.model.LinkedPayment) -> Unit, onSelect: (PaymentCandidate) -> Unit, onAmountChange: (String) -> Unit, modifier: Modifier = Modifier) {
     val colors = ZarTheme.colors
     val occurrence = state.occurrence ?: return
     val progress = occurrence.progress
@@ -149,7 +163,7 @@ private fun Body(state: BillOccurrenceUiState, vm: BillOccurrenceViewModel, modi
                             style = ZarType.labelAction,
                             color = colors.textAttention,
                             modifier = Modifier.clip(RoundedCornerShape(8.dp))
-                                .clickable(enabled = !state.isSaving, role = Role.Button) { vm.unlink(payment) }
+                                .clickable(enabled = !state.isSaving, role = Role.Button) { onUnlink(payment) }
                                 .padding(horizontal = 8.dp, vertical = 12.dp),
                         )
                     }
@@ -162,17 +176,17 @@ private fun Body(state: BillOccurrenceUiState, vm: BillOccurrenceViewModel, modi
             !progress.remaining.isPositive -> Note(stringResource(R.string.bill_payment_fully_matched))
             state.candidates.isEmpty() -> Note(stringResource(R.string.bill_payment_none_found, progress.expected.amount.currency.code))
             else -> {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(Modifier.selectableGroup(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     ZarMonoLabel(stringResource(R.string.bill_payment_candidates))
                     state.candidates.forEach { candidate ->
-                        CandidateCard(state, candidate, selected = candidate.entry.id.value == state.selectedId, onClick = { vm.onSelect(candidate) })
+                        CandidateCard(state, candidate, selected = candidate.entry.id.value == state.selectedId, onClick = { onSelect(candidate) })
                     }
                 }
                 ZarFormRow(stringResource(R.string.bill_payment_amount)) {
                     Row(Modifier.weight(1f), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                         TextInput(
                             value = state.amount,
-                            onValueChange = vm::onAmountChange,
+                            onValueChange = onAmountChange,
                             placeholder = "0",
                             textStyle = ZarType.amountS,
                             keyboardType = KeyboardType.Decimal,
@@ -220,7 +234,7 @@ private fun CandidateCard(state: BillOccurrenceUiState, candidate: PaymentCandid
     Row(
         Modifier.fillMaxWidth().clip(shape).background(colors.surface)
             .border(if (selected) 1.5.dp else 1.dp, if (selected) colors.borderSelected else colors.borderDefault, shape)
-            .clickable(role = Role.RadioButton, onClick = onClick)
+            .selectable(selected = selected, enabled = !state.isSaving, role = Role.RadioButton, onClick = onClick)
             .padding(horizontal = 14.dp, vertical = 12.dp)
             .testTag("bill-candidate"),
         horizontalArrangement = Arrangement.spacedBy(12.dp),

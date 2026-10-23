@@ -74,6 +74,24 @@ fun BillFormScreen(
     viewModel: BillFormViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    BillFormContent(uiState, onBack, onSaved, viewModel::save, viewModel::onNameChange,
+        viewModel::onAccountSelect, viewModel::onAmountChange, viewModel::onFrequencySelect,
+        viewModel::onFirstDueSelect, viewModel::onReminderSelect)
+}
+
+@Composable
+internal fun BillFormContent(
+    uiState: BillFormUiState,
+    onBack: () -> Unit,
+    onSaved: (String, Boolean) -> Unit,
+    onSave: () -> Unit,
+    onNameChange: (String) -> Unit,
+    onAccountSelect: (com.example.zar.core.domain.model.AccountId) -> Unit,
+    onAmountChange: (String) -> Unit,
+    onFrequencySelect: (BillFrequency) -> Unit,
+    onFirstDueSelect: (LocalDate) -> Unit,
+    onReminderSelect: (BillReminder?) -> Unit,
+) {
     LaunchedEffect(uiState.savedBillId) { uiState.savedBillId?.let { onSaved(it, !uiState.isEditing) } }
     val colors = ZarTheme.colors
     StatusBarGlyphs(onDarkHero = false)
@@ -99,7 +117,7 @@ fun BillFormScreen(
             uiState.notFound -> Box(Modifier.weight(1f).fillMaxWidth().padding(24.dp), Alignment.Center) {
                 Text(stringResource(R.string.bill_not_found), style = ZarType.bodyS, color = colors.textSecondary)
             }
-            else -> FormBody(uiState, viewModel, Modifier.weight(1f))
+            else -> FormBody(uiState, onNameChange, onAccountSelect, onAmountChange, onFrequencySelect, onFirstDueSelect, onReminderSelect, Modifier.weight(1f))
         }
         Row(
             Modifier.fillMaxWidth().navigationBarsPadding().padding(start = 24.dp, end = 24.dp, top = 12.dp, bottom = 22.dp),
@@ -108,7 +126,7 @@ fun BillFormScreen(
             ZarButton(stringResource(R.string.bill_cancel), onBack, Modifier.weight(1f), ZarButtonStyle.Soft)
             ZarButton(
                 text = stringResource(R.string.bill_save),
-                onClick = viewModel::save,
+                onClick = onSave,
                 modifier = Modifier.weight(1f).testTag("bill-save"),
                 enabled = !uiState.isSaving && !uiState.isLoading && !uiState.notFound,
             )
@@ -118,7 +136,16 @@ fun BillFormScreen(
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun FormBody(state: BillFormUiState, vm: BillFormViewModel, modifier: Modifier = Modifier) {
+private fun FormBody(
+    state: BillFormUiState,
+    onNameChange: (String) -> Unit,
+    onAccountSelect: (com.example.zar.core.domain.model.AccountId) -> Unit,
+    onAmountChange: (String) -> Unit,
+    onFrequencySelect: (BillFrequency) -> Unit,
+    onFirstDueSelect: (LocalDate) -> Unit,
+    onReminderSelect: (BillReminder?) -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val colors = ZarTheme.colors
     val problems = state.problems
     val notifications = rememberNotificationAccess()
@@ -127,7 +154,7 @@ private fun FormBody(state: BillFormUiState, vm: BillFormViewModel, modifier: Mo
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         ZarFormRow(stringResource(R.string.bill_form_name)) {
-            TextInput(state.name, vm::onNameChange, stringResource(R.string.bill_form_name_hint), Modifier.weight(1f).testTag("bill-name"))
+            TextInput(state.name, onNameChange, stringResource(R.string.bill_form_name_hint), Modifier.weight(1f).testTag("bill-name"))
         }
         FieldError(
             when {
@@ -143,7 +170,7 @@ private fun FormBody(state: BillFormUiState, vm: BillFormViewModel, modifier: Mo
             } else {
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     state.accounts.forEach { account ->
-                        ZarChip(account.name, selected = account.id == state.accountId, onClick = { vm.onAccountSelect(account.id) }, icon = account.type.iconRes())
+                        ZarChip(account.name, selected = account.id == state.accountId, onClick = { onAccountSelect(account.id) }, icon = account.type.iconRes())
                     }
                 }
             }
@@ -155,7 +182,7 @@ private fun FormBody(state: BillFormUiState, vm: BillFormViewModel, modifier: Mo
             Row(Modifier.weight(1f), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 TextInput(
                     value = state.amount,
-                    onValueChange = vm::onAmountChange,
+                    onValueChange = onAmountChange,
                     placeholder = "0",
                     textStyle = ZarType.amountM,
                     keyboardType = KeyboardType.Decimal,
@@ -175,12 +202,12 @@ private fun FormBody(state: BillFormUiState, vm: BillFormViewModel, modifier: Mo
         Section(stringResource(R.string.bill_form_repeats)) {
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 BillFrequency.entries.forEach { frequency ->
-                    ZarChip(stringResource(BillFormat.frequencyRes(frequency)), frequency == state.frequency, onClick = { vm.onFrequencySelect(frequency) })
+                    ZarChip(stringResource(BillFormat.frequencyRes(frequency)), frequency == state.frequency, onClick = { onFrequencySelect(frequency) })
                 }
             }
         }
         ZarDivider()
-        DateRow(state.firstDue, onSelect = vm::onFirstDueSelect)
+        DateRow(state.firstDue, onSelect = onFirstDueSelect)
         if (state.frequency != BillFrequency.WEEKLY && state.firstDue.dayOfMonth > 28) Note(stringResource(R.string.bill_form_month_end))
         ZarDivider()
         Section(stringResource(R.string.bill_form_remind)) {
@@ -190,7 +217,7 @@ private fun FormBody(state: BillFormUiState, vm: BillFormViewModel, modifier: Mo
                         stringResource(BillFormat.reminderRes(choice)),
                         selected = choice == state.reminder,
                         onClick = {
-                            vm.onReminderSelect(choice)
+                            onReminderSelect(choice)
                             // Permission is asked only when a reminder is switched on.
                             if (choice != null) notifications.request()
                         },
