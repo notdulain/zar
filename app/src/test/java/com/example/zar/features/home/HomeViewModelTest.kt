@@ -6,11 +6,13 @@ import com.example.zar.core.domain.calculation.LedgerProjector
 import com.example.zar.core.domain.calculation.ZarTime
 import com.example.zar.core.domain.model.TransactionType
 import com.example.zar.core.domain.model.money.Currencies
+import com.example.zar.features.allowance.domain.model.AllowanceSettings
 import com.example.zar.features.bills.domain.model.Bill
 import com.example.zar.features.bills.domain.model.BillFrequency
 import com.example.zar.features.bills.domain.model.BillId
 import com.example.zar.features.bills.domain.model.BillStatus
 import com.example.zar.features.freelance.FreelanceFixtures
+import com.example.zar.features.home.presentation.viewmodel.HomeAllowanceContent
 import com.example.zar.features.home.presentation.viewmodel.HomeCommitmentsContent
 import com.example.zar.features.home.presentation.viewmodel.HomeContent
 import com.example.zar.features.home.presentation.viewmodel.HomeViewModel
@@ -42,7 +44,7 @@ class HomeViewModelTest {
     @Before fun setUp() = Dispatchers.setMain(UnconfinedTestDispatcher())
     @After fun tearDown() = Dispatchers.resetMain()
 
-    private fun viewModel() = HomeViewModel(rig.overview, rig.commitments)
+    private fun viewModel() = HomeViewModel(rig.overview, rig.commitments, rig.allowance)
 
     @Test
     fun startsOnTheCurrentMonthWithTotalsFromSavedRecords() = runTest {
@@ -133,5 +135,44 @@ class HomeViewModelTest {
         rig.projects.failing = false
         vm.retry()
         assertTrue(vm.uiState.value.commitments is HomeCommitmentsContent.Ready)
+    }
+
+    @Test
+    fun theWeeklyLimitIsOffUntilTheUserSetsAnAllowance() = runTest {
+        val vm = viewModel()
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.uiState.collect {} }
+
+        val ready = vm.uiState.value.allowance as HomeAllowanceContent.Ready
+        assertEquals(null, ready.overview.status)
+    }
+
+    @Test
+    fun theWeeklyLimitShowsWhatIsLeftThisWeekFromSavedSpending() = runTest {
+        rig.allowanceSettings.settings.value = AllowanceSettings(isEnabled = true, amount = lkr(5_000))
+        ledger.entries.value = LedgerProjector.project(
+            listOf(tx("lunch", TransactionType.EXPENSE, lkr(1_200), date = ZarTime.today())),
+            emptyList(),
+            emptyList(),
+        )
+        val vm = viewModel()
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.uiState.collect {} }
+
+        val status = (vm.uiState.value.allowance as HomeAllowanceContent.Ready).overview.status!!
+        assertEquals(lkr(3_800), status.remaining)
+    }
+
+    @Test
+    fun aFailingAllowanceNeverHidesTheTotalsAndRetryRecovers() = runTest {
+        rig.allowanceSettings.failReads = true
+        val vm = viewModel()
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.uiState.collect {} }
+
+        assertEquals(HomeAllowanceContent.Error, vm.uiState.value.allowance)
+        assertTrue(vm.uiState.value.content is HomeContent.Ready)
+        assertTrue(vm.uiState.value.commitments is HomeCommitmentsContent.Ready)
+
+        rig.allowanceSettings.failReads = false
+        vm.retry()
+        assertTrue(vm.uiState.value.allowance is HomeAllowanceContent.Ready)
     }
 }

@@ -42,6 +42,17 @@ These are the shared models, repository interfaces and saving rules that every f
 - Expected payments (`ExpectedPaymentProgressCalculator`): matched, remaining and overdue amounts. A receipt is never counted twice across milestones. "Not matched" means no evidence was linked, not "unpaid".
 - Dates are calendar days in `Asia/Colombo` (`ZarTime`). Weeks start Monday by default (`weekContaining`).
 
+## Weekly allowance (`AllowanceCalculator`)
+
+An optional early warning for discretionary spending. It starts off, and reads the ledger without ever writing to it.
+
+- **Setting:** one document, `users/{uid}/allowance/weekly`: on/off, an LKR amount, optional category ids and a week start (Monday by default). Switching it off keeps the amount for next time.
+- **Counts:** expenses classed `DISCRETIONARY` dated in the current week, in the chosen categories (none chosen means all), net of linked refunds.
+- **Never counts:** committed spending (including transfer fees), expenses linked to a bill due date, transfers, goal allocations, income and adjustments.
+- **Refunds** reduce the original purchase, capped at it, in the purchase's own week.
+- **Left out and reported, never guessed:** expenses with no spending class, expenses with no LKR rate, and cash catch-up outflows. Each is shown as a "Check:" line beside the remaining amount.
+- **Remaining** is the allowance minus eligible spending. Negative remaining is shown as "Overspent by". There is no rollover and no carried-over debt.
+
 ## Storage
 
 - **Firestore is the primary financial store.** Everything is under `users/{uid}/` with these subcollections: `accounts`, `transactions`, `corrections`, `voids`, `evidenceLinks`, `expectedPayments`, `paymentMatches`, `drafts` (`FirestoreCollections`).

@@ -204,6 +204,34 @@ test('goals: allocation boundary and update schema stay enforced', async () => {
   await assertFails(getDoc(doc(anon(), path('alice', 'goals', goal.id))));
 });
 
+test('allowance: one owner-only setting, LKR amount, no delete', async () => {
+  const setting = { id: 'weekly', enabled: true, amount: lkr(800000), categoryIds: ['coffee-dining'],
+    weekStart: 'MONDAY', updatedAt: 1790000000000 };
+  const r = doc(alice(), path('alice', 'allowance', 'weekly'));
+
+  await assertSucceeds(setDoc(r, setting));
+  await assertSucceeds(updateDoc(r, { enabled: false, updatedAt: 1790000000001 }));
+  await assertSucceeds(updateDoc(r, { categoryIds: [], weekStart: 'SUNDAY', updatedAt: 1790000000002 }));
+  await assertSucceeds(getDoc(r));
+  // Off with no amount saved yet is fine; on without an amount is not.
+  await assertSucceeds(setDoc(doc(alice(), path('alice', 'allowance', 'weekly')), {
+    id: 'weekly', enabled: false, categoryIds: [], weekStart: 'MONDAY', updatedAt: 1790000000003 }));
+  await assertFails(setDoc(r, { id: 'weekly', enabled: true, categoryIds: [], weekStart: 'MONDAY', updatedAt: 1790000000004 }));
+
+  await assertFails(setDoc(r, { ...setting, amount: lkr(0) }));
+  await assertFails(setDoc(r, { ...setting, amount: { ...lkr(800000), currency: 'USD' } }));
+  await assertFails(setDoc(r, { ...setting, weekStart: 'FUNDAY' }));
+  await assertFails(setDoc(r, { ...setting, categoryIds: Array.from({ length: 9 }, (_, i) => `c${i}`) }));
+  await assertFails(setDoc(r, { ...setting, categoryIds: [''] }));
+  await assertFails(setDoc(r, { ...setting, unexpectedField: true }));
+  await assertFails(setDoc(r, { ...setting, id: 'other' }));
+  await assertFails(setDoc(doc(alice(), path('alice', 'allowance', 'second')), { ...setting, id: 'second' }));
+  await assertFails(deleteDoc(r));
+  await assertFails(getDoc(doc(bob(), path('alice', 'allowance', 'weekly'))));
+  await assertFails(setDoc(doc(bob(), path('alice', 'allowance', 'weekly')), setting));
+  await assertFails(getDoc(doc(anon(), path('alice', 'allowance', 'weekly'))));
+});
+
 test('crypto opening costs: LKR only, owner only, can be cleared', async () => {
   const c = { accountId: 'binance-btc', cost: lkr(30000000), approximate: true, updatedAt: 1790000000000 };
   const r = doc(alice(), path('alice', 'cryptoOpeningCosts', 'binance-btc'));
