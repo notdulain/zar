@@ -1,5 +1,18 @@
 package com.example.zar.di
 
+import android.content.Context
+import androidx.room.Room
+import com.example.zar.features.capture.data.auto.CaptureStagingDatabase
+import com.example.zar.features.capture.data.auto.DataStoreAutoCapturePreferences
+import com.example.zar.features.capture.data.auto.RoomSmsStagingRepository
+import com.example.zar.features.capture.data.auto.StagedSmsDao
+import com.example.zar.features.capture.data.auto.WorkManagerAutoCaptureScheduler
+import com.example.zar.features.capture.domain.auto.AutoCapturePreferences
+import com.example.zar.features.capture.domain.auto.AutoCaptureScheduler
+import com.example.zar.features.capture.domain.auto.PauseAutoCaptureOnSignOut
+import com.example.zar.features.capture.domain.auto.SmsStagingRepository
+import dagger.Provides
+import dagger.hilt.android.qualifiers.ApplicationContext
 import com.example.zar.core.data.local.AndroidConnectivityMonitor
 import com.example.zar.core.data.remote.FirebaseUserSessionProvider
 import com.example.zar.core.data.remote.firestore.FirestoreDraftRepository
@@ -154,4 +167,30 @@ abstract class RepositoryModule {
     @Binds
     @IntoSet
     abstract fun bindResetSuggestionsOnSignOut(impl: ResetSuggestionsOnSignOut): SignOutHandler
+
+    @Binds
+    @Singleton
+    abstract fun bindSmsStagingRepository(impl: RoomSmsStagingRepository): SmsStagingRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindAutoCapturePreferences(impl: DataStoreAutoCapturePreferences): AutoCapturePreferences
+
+    @Binds
+    @Singleton
+    abstract fun bindAutoCaptureScheduler(impl: WorkManagerAutoCaptureScheduler): AutoCaptureScheduler
+
+    @Binds
+    @IntoSet
+    abstract fun bindPauseAutoCaptureOnSignOut(impl: PauseAutoCaptureOnSignOut): SignOutHandler
+
+    companion object {
+        @Provides
+        @Singleton
+        fun provideCaptureStagingDatabase(@ApplicationContext context: Context): CaptureStagingDatabase =
+            Room.databaseBuilder(context, CaptureStagingDatabase::class.java, CaptureStagingDatabase.NAME).build()
+
+        @Provides
+        fun provideStagedSmsDao(database: CaptureStagingDatabase): StagedSmsDao = database.stagedSms()
+    }
 }
