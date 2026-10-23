@@ -203,3 +203,111 @@ test('goals: allocation boundary and update schema stay enforced', async () => {
   await assertFails(updateDoc(doc(bob(), path('alice', 'goals', goal.id)), { name: 'Changed' }));
   await assertFails(getDoc(doc(anon(), path('alice', 'goals', goal.id))));
 });
+
+test('crypto opening costs: LKR only, owner only, can be cleared', async () => {
+  const c = { accountId: 'binance-btc', cost: lkr(30000000), approximate: true, updatedAt: 1790000000000 };
+  const r = doc(alice(), path('alice', 'cryptoOpeningCosts', 'binance-btc'));
+  await assertSucceeds(setDoc(r, c));
+  await assertSucceeds(updateDoc(r, { cost: lkr(32000000), approximate: false, updatedAt: 1790000000001 }));
+  await assertFails(setDoc(doc(alice(), path('alice', 'cryptoOpeningCosts', 'other')), c));
+  await assertFails(setDoc(doc(alice(), path('alice', 'cryptoOpeningCosts', 'usd')), { ...c, accountId: 'usd',
+    cost: { currency: 'USD', kind: 'FIAT', digits: 2, minor: 100 } }));
+  await assertFails(setDoc(doc(alice(), path('alice', 'cryptoOpeningCosts', 'zero')), { ...c, accountId: 'zero', cost: lkr(0) }));
+  await assertFails(setDoc(doc(alice(), path('alice', 'cryptoOpeningCosts', 'extra')), { ...c, accountId: 'extra', rate: '300' }));
+  await assertFails(getDoc(doc(bob(), path('alice', 'cryptoOpeningCosts', 'binance-btc'))));
+  await assertFails(deleteDoc(doc(bob(), path('alice', 'cryptoOpeningCosts', 'binance-btc'))));
+  await assertSucceeds(deleteDoc(r));
+});
+
+test('captured drafts: structured fields only, confirmed once', async () => {
+  const d = { id: 'capture-0011aabb', source: 'SHARED_TEXT', status: 'PENDING_REVIEW', createdAt: 1790000000000,
+    proposals: [{ kind: 'ACTUAL_TRANSACTION', type: 'EXPENSE', amount: lkr(80000), date: '2026-10-11', spendingClass: 'UNKNOWN',
+      merchant: 'CAFE SEVENTY THREE MALABE LK', uncertainFields: ['TYPE'] }] };
+  const r = doc(alice(), path('alice', 'drafts', d.id));
+  await assertSucceeds(setDoc(r, d));
+  await assertSucceeds(setDoc(r, d));
+  await assertFails(setDoc(doc(alice(), path('alice', 'drafts', 'capture-raw')), { ...d, id: 'capture-raw',
+    proposals: [{ ...d.proposals[0], rawText: 'Dear Cardholder, Purchase at ...' }] }));
+  await assertFails(updateDoc(r, { status: 'BROKEN' }));
+  await assertFails(updateDoc(r, { createdAt: d.createdAt + 1 }));
+  await assertFails(updateDoc(r, { rawText: 'private message', status: 'CONFIRMED' }));
+  const batch = writeBatch(r.firestore);
+  batch.set(doc(r.firestore, path('alice', 'transactions', 'capture-record')), tx('capture-record', { source: 'SHARED_TEXT' }));
+  batch.update(r, { status: 'CONFIRMED' });
+  await assertSucceeds(batch.commit());
+  await assertFails(setDoc(r, d));
+  await assertFails(getDoc(doc(bob(), path('alice', 'drafts', d.id))));
+});
+
+test('bills: stop instead of delete, created date fixed, owner only', async () => {
+  const b = { id: 'b1', name: 'Dialog Internet', accountId: 'bank', amount: lkr(585000), frequency: 'MONTHLY',
+    firstDue: '2026-10-31', status: 'ACTIVE', createdAt: 1790000000000 };
+  const r = doc(alice(), path('alice', 'bills', 'b1'));
+  await assertSucceeds(setDoc(r, b));
+  await assertSucceeds(updateDoc(r, { amount: lkr(600000), status: 'STOPPED' }));
+  await assertSucceeds(updateDoc(r, { reminderDaysBefore: 1 }));
+  await assertFails(updateDoc(r, { reminderDaysBefore: 2 }));
+  await assertSucceeds(updateDoc(r, { cancellation: 'INTENDED' }));
+  await assertFails(updateDoc(r, { cancellation: 'CONFIRMED' }));
+  await assertSucceeds(updateDoc(r, { cancellation: 'CONFIRMED', cancelledFrom: '2026-11-01' }));
+  await assertFails(updateDoc(r, { cancellation: 'INTENDED', cancelledFrom: '2026-11-01' }));
+  await assertFails(updateDoc(r, { createdAt: 1790000000001 }));
+  await assertFails(updateDoc(r, { frequency: 'DAILY' }));
+  await assertFails(setDoc(doc(alice(), path('alice', 'bills', 'b2')), { ...b, id: 'other' }));
+  await assertFails(setDoc(doc(alice(), path('alice', 'bills', 'b3')), { ...b, id: 'b3', amount: lkr(0) }));
+  await assertFails(setDoc(doc(alice(), path('alice', 'bills', 'b4')), { ...b, id: 'b4', firstDue: '31/10/2026' }));
+  await assertFails(deleteDoc(r));
+  await assertFails(getDoc(doc(bob(), path('alice', 'bills', 'b1'))));
+  const occ = { id: 'bill-b1-2026-10-31', direction: 'OUT', amount: lkr(585000), dueDate: '2026-10-31', title: 'Dialog Internet',
+    source: { type: 'BILL_OCCURRENCE', billId: 'b1', occurrenceDate: '2026-10-31' }, accountId: 'bank', status: 'OPEN', createdAt: 1790000000000 };
+  await assertSucceeds(setDoc(doc(alice(), path('alice', 'expectedPayments', occ.id)), occ));
+});
+
+test('transactions: the category rule that filled the category is both-or-neither, on expenses only', async () => {
+  const p = (id) => doc(alice(), path('alice', 'transactions', id));
+  await assertSucceeds(setDoc(p('r1'), tx('r1', { categoryId: 'groceries', appliedRuleId: 'rule-1', appliedRuleVersion: 2 })));
+  await assertFails(setDoc(p('r2'), tx('r2', { appliedRuleId: 'rule-1' })));                       // version missing
+  await assertFails(setDoc(p('r3'), tx('r3', { appliedRuleVersion: 2 })));                         // rule ID missing
+  await assertFails(setDoc(p('r4'), tx('r4', { appliedRuleId: 'rule-1', appliedRuleVersion: 0 }))); // versions start at 1
+  await assertFails(setDoc(p('r5'), tx('r5', { appliedRuleId: 'rule-1', appliedRuleVersion: '2' })));
+  const income = tx('r6', { type: 'INCOME', appliedRuleId: 'rule-1', appliedRuleVersion: 1 });
+  delete income.spendingClass;
+  await assertFails(setDoc(p('r6'), income));                                                      // never on income
+});
+
+const rule = (id, over = {}) => ({
+  id, merchantKey: 'keells super', displayName: 'Keells Super', categoryId: 'groceries', enabled: true, version: 1,
+  createdAt: 1790000000000, updatedAt: 1790000000000, ...over,
+});
+
+test('category rules: owner only, start at version 1, every edit raises the version, never deleted', async () => {
+  const r = doc(alice(), path('alice', 'categoryRules', 'r1'));
+  await assertSucceeds(setDoc(r, rule('r1')));
+  await assertSucceeds(setDoc(doc(alice(), path('alice', 'categoryRules', 'r2')), rule('r2', { accountId: 'cash' })));
+  await assertSucceeds(getDoc(r));
+  await assertFails(getDoc(doc(bob(), path('alice', 'categoryRules', 'r1'))));
+  await assertFails(setDoc(doc(bob(), path('alice', 'categoryRules', 'rb')), rule('rb')));
+  await assertFails(setDoc(doc(anon(), path('alice', 'categoryRules', 'ra')), rule('ra')));
+  // edits: category, account, enabled, with a higher version
+  await assertSucceeds(updateDoc(r, { categoryId: 'coffee-dining', enabled: false, version: 2, updatedAt: 1790000000500 }));
+  await assertFails(updateDoc(r, { enabled: true, updatedAt: 1790000000600 }));                    // same version
+  await assertFails(updateDoc(r, { enabled: true, version: 2, updatedAt: 1790000000600 }));        // version not raised
+  await assertFails(updateDoc(r, { version: 1, enabled: true }));                                 // lowered
+  await assertFails(updateDoc(r, { merchantKey: 'keells', version: 3 }));                         // the name is fixed
+  await assertFails(updateDoc(r, { displayName: 'Keells', version: 3 }));
+  await assertFails(updateDoc(r, { createdAt: 1, version: 3 }));
+  await assertFails(deleteDoc(r));
+});
+
+test('category rules: invalid documents are rejected', async () => {
+  const p = (id) => doc(alice(), path('alice', 'categoryRules', id));
+  await assertFails(setDoc(p('a'), rule('a', { version: 2 })));                  // a new rule starts at 1
+  await assertFails(setDoc(p('b'), rule('wrong-id')));                           // id mismatch
+  await assertFails(setDoc(p('c'), rule('c', { extra: 'x' })));                  // schema pollution
+  await assertFails(setDoc(p('d'), rule('d', { enabled: 'yes' })));
+  await assertFails(setDoc(p('e'), rule('e', { merchantKey: '' })));
+  const noCategory = rule('f');
+  delete noCategory.categoryId;
+  await assertFails(setDoc(p('f'), noCategory));                          // a category is required
+  await assertFails(setDoc(p('g'), rule('g', { createdAt: 0 })));
+});

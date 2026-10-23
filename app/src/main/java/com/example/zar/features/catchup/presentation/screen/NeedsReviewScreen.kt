@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.zar.R
+import com.example.zar.features.bills.presentation.screen.SubscriptionSuggestionsSection
 import com.example.zar.core.presentation.components.ZarButton
 import com.example.zar.core.presentation.components.ZarButtonStyle
 import com.example.zar.core.presentation.components.ZarCard
@@ -44,7 +45,8 @@ fun NeedsReviewScreen(
     viewModel: NeedsReviewViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    NeedsReviewBody(state, onBack, onOpenEntry, onStartCatchUp)
+    // Possible subscriptions wait here too, so they're decided during the weekly review (L06).
+    NeedsReviewBody(state, onBack, onOpenEntry, onStartCatchUp, extraContent = { SubscriptionSuggestionsSection(edge = 0.dp) })
 }
 
 @Composable
@@ -53,6 +55,7 @@ internal fun NeedsReviewBody(
     onBack: () -> Unit,
     onOpenEntry: (String) -> Unit,
     onStartCatchUp: () -> Unit,
+    extraContent: @Composable () -> Unit = {},
 ) {
     val colors = ZarTheme.colors
     val count = state.items.size
@@ -80,6 +83,7 @@ internal fun NeedsReviewBody(
             )
             else -> {
                 if (count == 0) AllClearCard() else ItemsCard(state, onOpenEntry)
+                extraContent()
                 WeeklyCatchUpCard(state, onStartCatchUp)
             }
         }

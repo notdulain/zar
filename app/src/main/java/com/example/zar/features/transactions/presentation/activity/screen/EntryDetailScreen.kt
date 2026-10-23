@@ -37,6 +37,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -71,6 +72,8 @@ import com.example.zar.core.presentation.theme.ZarDimens
 import com.example.zar.core.presentation.theme.ZarShapes
 import com.example.zar.core.presentation.theme.ZarTheme
 import com.example.zar.core.presentation.theme.ZarType
+import com.example.zar.features.rules.domain.RuleCard
+import com.example.zar.features.rules.domain.model.RuleOffer
 import com.example.zar.features.transactions.domain.activity.model.CorrectedField
 import com.example.zar.features.transactions.domain.activity.model.EditKind
 import com.example.zar.features.transactions.domain.activity.model.EntryDetail
@@ -99,6 +102,7 @@ fun EntryDetailScreen(
     onAddAgain: () -> Unit,
     onRefund: (String) -> Unit,
     onOpenEntry: (String) -> Unit,
+    onOpenRules: () -> Unit = {},
     viewModel: EntryDetailViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -114,6 +118,8 @@ fun EntryDetailScreen(
             onVoid = viewModel::showVoidSheet,
             onDismissVoid = viewModel::dismissVoidSheet,
             onConfirmVoid = viewModel::confirmVoid,
+            onRemember = viewModel::rememberChoice,
+            onOpenRules = onOpenRules,
         ),
     )
 }
@@ -130,6 +136,9 @@ internal class DetailActions(
     val onVoid: () -> Unit,
     val onDismissVoid: () -> Unit,
     val onConfirmVoid: () -> Unit,
+    /** Opens the "Remember this choice" sheet for an offered rule. */
+    val onRemember: (RuleOffer) -> Unit = {},
+    val onOpenRules: () -> Unit = {},
 )
 
 @Composable
@@ -252,6 +261,7 @@ private fun DetailContent(state: EntryDetailUiState, detail: EntryDetail, action
     }
 
     DetailsCard(state, detail, Modifier.padding(horizontal = ZarDimens.ScreenGutter).padding(top = 19.dp))
+    RuleCardView(state.ruleCard, actions, Modifier.padding(horizontal = ZarDimens.ScreenGutter).padding(top = 8.dp))
 
     if (detail.isTransfer && detail.counterpart != null) {
         LinkedEntriesCard(detail, Modifier.padding(horizontal = ZarDimens.ScreenGutter).padding(top = 8.dp))
@@ -504,6 +514,57 @@ private fun adjustmentReason(detail: EntryDetail): String {
     )
 }
 
+/** Z14 (offer), Z119 (filed by a rule) and Z122 (name too general): what category rules say about this expense. */
+@Composable
+private fun RuleCardView(card: RuleCard, actions: DetailActions, modifier: Modifier = Modifier) {
+    val colors = ZarTheme.colors
+    val title: String
+    val body: String
+    val action: String?
+    val onClick: (() -> Unit)?
+    val tag: String
+    when (card) {
+        RuleCard.Hidden -> return
+        is RuleCard.Offer -> {
+            val category = EntryDisplay.categoryLabel(card.offer.categoryId)?.let { stringResource(it) } ?: card.offer.categoryId
+            title = stringResource(R.string.rules_detail_offer_title, card.offer.displayName, category)
+            body = stringResource(R.string.rules_detail_offer_body, card.offer.displayName)
+            action = stringResource(R.string.rules_detail_offer_action)
+            onClick = { actions.onRemember(card.offer) }
+            tag = "detail-rule-offer"
+        }
+        is RuleCard.TooGeneral -> {
+            title = stringResource(R.string.rules_detail_general_title, card.name)
+            body = stringResource(R.string.rules_detail_general_body)
+            action = null
+            onClick = null
+            tag = "detail-rule-general"
+        }
+        is RuleCard.Applied -> {
+            val category = EntryDisplay.categoryLabel(card.categoryId)?.let { stringResource(it) } ?: card.categoryId
+            title = stringResource(R.string.rules_detail_applied_title)
+            body = stringResource(R.string.rules_detail_applied_body, card.name, category, card.version)
+            action = stringResource(R.string.rules_detail_applied_action)
+            onClick = actions.onOpenRules
+            tag = "detail-rule-applied"
+        }
+    }
+    ZarCard(
+        modifier.fillMaxWidth().testTag(tag),
+        onClick = onClick,
+        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 17.dp),
+        soft = true,
+    ) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(title, style = ZarType.bodyS, color = colors.textPrimary)
+                Text(body, style = ZarType.bodyCaption, color = colors.textSecondary)
+            }
+            if (action != null) Text(action, style = ZarType.labelChip, color = colors.textSelected)
+        }
+    }
+}
+
 /** Z63 (nothing refunded yet: one row that starts a refund) and Z64 (the refunds so far and what is still refundable). */
 @Composable
 private fun RefundsCard(detail: EntryDetail, actions: DetailActions, modifier: Modifier = Modifier) {
@@ -637,12 +698,13 @@ private fun AdjustmentCard(detail: EntryDetail, modifier: Modifier = Modifier) {
 private fun DetailActionsBar(detail: EntryDetail, actions: DetailActions, modifier: Modifier = Modifier) {
     val colors = ZarTheme.colors
     val canvas = colors.canvas
+    val fadeEnd = with(LocalDensity.current) { 28.dp.toPx() }
     // Figma: the caption sits at y779 and the 58dp buttons at y811, 46dp above the screen edge.
     Column(
         modifier
             .fillMaxWidth()
-            // Fades the content out under the buttons so text never runs through them.
-            .background(Brush.verticalGradient(listOf(Color.Transparent, canvas, canvas)))
+            // Fades the content out above the caption, then a solid canvas so text never runs through the caption or buttons.
+            .background(Brush.verticalGradient(listOf(Color.Transparent, canvas), endY = fadeEnd))
             .navigationBarsPadding()
             .padding(top = 28.dp, bottom = 22.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),

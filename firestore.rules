@@ -49,6 +49,17 @@ rules_version = '2';
 //   status 'ACTIVE'|'ARCHIVED', createdAt (immutable). Milestones are expectedPayments
 //   with source FREELANCE_MILESTONE pointing at the project.
 //
+// cryptoOpeningCosts/{accountId}  create, update, delete (optional; delete clears it)
+//   accountId (== doc id), cost (positive FIAT Money in LKR), approximate (bool), updatedAt (int).
+//   What a crypto wallet's opening coins cost, so profit or loss on them can be worked out.
+//
+// bills/{billId}                  create, update (no delete: stop instead)
+//   id (== doc id), name (1-80), accountId, amount (positive Money), frequency
+//   'WEEKLY'|'MONTHLY'|'YEARLY', firstDue (date), status 'ACTIVE'|'STOPPED', createdAt (immutable),
+//   reminderDaysBefore? (0, 1, 3 or 7: the bill's one reminder),
+//   cancellation? 'INTENDED'|'CONFIRMED', cancelledFrom (date, required with CONFIRMED only).
+//   Due dates are expectedPayments with source BILL_OCCURRENCE; a bill never posts an expense.
+//
 // goals/{goalId}                  create, update (no delete in U04)
 //   id (== doc id), name (1-80), target (positive Money), targetDate? (YYYY-MM-DD), allocations (max 10),
 //   allocation {accountId, amount}; allocations reserve money but do not write ledger entries.
@@ -205,7 +216,8 @@ service cloud.firestore {
     function isValidTransaction(transactionId) {
       let d = data();
       return hasOnlyAllowedFields(['id', 'accountId', 'type', 'amount', 'date', 'time', 'conversion', 'spendingClass',
-          'categoryId', 'merchant', 'note', 'source', 'transferId', 'refundOf', 'createdAt'])
+          'categoryId', 'merchant', 'note', 'source', 'transferId', 'refundOf', 'appliedRuleId', 'appliedRuleVersion',
+          'createdAt'])
         && hasRequiredFields(['id', 'accountId', 'type', 'amount', 'date', 'conversion', 'source', 'createdAt'])
         && d.id == transactionId
         && isId(d.accountId)
@@ -227,7 +239,11 @@ service cloud.firestore {
         && (!('transferId' in d) || isId(d.transferId))
         && isOptionalString(d, 'categoryId', 64)
         && isOptionalString(d, 'merchant', 120)
-        && isOptionalString(d, 'note', 500);
+        && isOptionalString(d, 'note', 500)
+        // The category rule that filled in the category: both fields together, on expenses only.
+        && (('appliedRuleId' in d) == ('appliedRuleVersion' in d))
+        && (!('appliedRuleId' in d) || (d.type == 'EXPENSE' && isId(d.appliedRuleId)
+          && d.appliedRuleVersion is int && d.appliedRuleVersion >= 1));
     }
 
     function isValidCorrection(correctionId) {
@@ -362,6 +378,53 @@ service cloud.firestore {
         && (count < 10 || isGoalAllocation(a[9], target));
     }
 
+    function isValidOpeningCost(accountId) {
+      let d = data();
+      return hasOnlyAllowedFields(['accountId', 'cost', 'approximate', 'updatedAt'])
+        && hasRequiredFields(['accountId', 'cost', 'approximate', 'updatedAt'])
+        && d.accountId == accountId
+        && isPositiveMoney(d.cost)
+        && d.cost.kind == 'FIAT'
+        && d.cost.currency == 'LKR'
+        && d.approximate is bool
+        && isMillis(d.updatedAt);
+    }
+
+    function isValidBill(billId) {
+      let d = data();
+      return hasOnlyAllowedFields(['id', 'name', 'accountId', 'amount', 'frequency', 'firstDue', 'status', 'createdAt',
+            'reminderDaysBefore', 'cancellation', 'cancelledFrom'])
+        && hasRequiredFields(['id', 'name', 'accountId', 'amount', 'frequency', 'firstDue', 'status', 'createdAt'])
+        && d.id == billId
+        && isShortString(d.name, 80)
+        && isId(d.accountId)
+        && isPositiveMoney(d.amount)
+        && d.frequency in ['WEEKLY', 'MONTHLY', 'YEARLY']
+        && isDateString(d.firstDue)
+        && d.status in ['ACTIVE', 'STOPPED']
+        && isMillis(d.createdAt)
+        && (!('reminderDaysBefore' in d) || d.reminderDaysBefore in [0, 1, 3, 7])
+        && (!('cancellation' in d) || d.cancellation in ['INTENDED', 'CONFIRMED'])
+        && (('cancellation' in d && d.cancellation == 'CONFIRMED') == ('cancelledFrom' in d))
+        && (!('cancelledFrom' in d) || isDateString(d.cancelledFrom));
+    }
+
+    function isValidCategoryRule(ruleId) {
+      let d = data();
+      return hasOnlyAllowedFields(['id', 'merchantKey', 'displayName', 'categoryId', 'accountId', 'enabled', 'version',
+          'createdAt', 'updatedAt'])
+        && hasRequiredFields(['id', 'merchantKey', 'displayName', 'categoryId', 'enabled', 'version', 'createdAt', 'updatedAt'])
+        && d.id == ruleId
+        && isShortString(d.merchantKey, 120)
+        && isShortString(d.displayName, 120)
+        && isShortString(d.categoryId, 64)
+        && isOptionalString(d, 'accountId', 128)
+        && d.enabled is bool
+        && d.version is int && d.version >= 1
+        && isMillis(d.createdAt)
+        && isMillis(d.updatedAt);
+    }
+
     function isValidProposal(p) {
       return p is map
         && p.keys().hasOnly(['kind', 'type', 'direction', 'amount', 'sent', 'received', 'accountId', 'fromAccountId',
@@ -478,13 +541,43 @@ service cloud.firestore {
         allow delete: if false;
       }
 
+      match /cryptoOpeningCosts/{accountId} {
+        allow read: if isOwner(userId);
+        allow create, update: if isOwner(userId) && isValidOpeningCost(accountId);
+        // Clearing an optional opening cost removes it.
+        allow delete: if isOwner(userId);
+      }
+
+      match /bills/{billId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidBill(billId);
+        allow update: if isOwner(userId) && isValidBill(billId) && areImmutableFieldsUnchanged(['id', 'createdAt']);
+        // Stopped bills keep their history.
+        allow delete: if false;
+      }
+
+      // A rule keeps its name and start date; every edit raises the version. Rules are switched off, never deleted.
+      match /categoryRules/{ruleId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidCategoryRule(ruleId) && data().version == 1;
+        allow update: if isOwner(userId) && isValidCategoryRule(ruleId)
+          && areImmutableFieldsUnchanged(['id', 'merchantKey', 'displayName', 'createdAt'])
+          && data().version > resource.data.version;
+        allow delete: if false;
+      }
+
       match /drafts/{draftId} {
         allow read: if isOwner(userId);
         allow create: if isOwner(userId) && isValidDraft(draftId) && data().status == 'PENDING_REVIEW';
         // Only pending drafts change; confirmed or discarded drafts are final.
-        allow update: if isOwner(userId) && isValidDraft(draftId)
-          && areImmutableFieldsUnchanged(['id', 'source', 'createdAt'])
-          && resource.data.status == 'PENDING_REVIEW';
+        allow update: if isOwner(userId) && resource.data.status == 'PENDING_REVIEW'
+          && (
+            // A status-only close reuses the already validated proposals. Revalidating them
+            // alongside the new ledger record can exceed an atomic request's expression budget.
+            (data().diff(resource.data).affectedKeys().hasOnly(['status'])
+              && data().status in ['PENDING_REVIEW', 'CONFIRMED', 'DISCARDED'])
+            || (isValidDraft(draftId) && areImmutableFieldsUnchanged(['id', 'source', 'createdAt']))
+          );
         allow delete: if isOwner(userId);
       }
     }

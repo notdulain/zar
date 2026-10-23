@@ -6,7 +6,7 @@ Personal finance tracking for Sri Lankan users.
 
 The app foundation is in place: Jetpack Compose with Material 3, MVVM, Hilt, Firebase (Auth, Firestore) and type-safe Navigation Compose. Minimum SDK is 26. Feature implementations are added through the team backlog.
 
-`features/settings` is a small reference slice showing the full path: `SettingsScreen` → `SettingsViewModel` → `ObserveAppPreferencesUseCase` → `AppPreferencesRepository` (domain interface) → `InMemoryAppPreferencesRepository` (data), bound in `di/RepositoryModule`. Copy this shape for new features.
+`features/settings` is a small reference slice showing the full path: `SettingsScreen` → `SettingsViewModel` → `ObserveAppPreferencesUseCase` → `AppPreferencesRepository` (domain interface) → `ReportingCurrencyPreferencesRepository` (data), bound in `di/RepositoryModule`. Copy this shape for new features.
 
 ## Architecture
 

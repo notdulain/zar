@@ -44,7 +44,13 @@ data class ManualEntryRoute(
     val focusNote: Boolean = false,
     val prefillAmount: String? = null,
     val prefillAccountId: String? = null,
+    /** Fills "What was it for?" with a note the person typed into Quick note, when they chose to fill the form instead. */
+    val prefillTitle: String? = null,
 )
+
+/** Write a rough note, have it read, and review the records it suggests before anything is saved. */
+@Serializable
+data object QuickNoteRoute
 
 /** One saved entry in full: its details, corrections and void state. [entryId] is the transaction ID. */
 @Serializable
@@ -70,6 +76,10 @@ data object CatchUpRoute
 @Serializable
 data object ReminderSettingsRoute
 
+/** The names Zar was asked to remember a category for, with an editor for each. */
+@Serializable
+data object CategoryRulesRoute
+
 @Serializable
 data object FreelanceRoute
 
@@ -93,3 +103,30 @@ data class AccountRoute(val accountId: String)
 /** Add an account when [accountId] is null; otherwise edit that account. */
 @Serializable
 data class AccountFormRoute(val accountId: String? = null)
+
+@Serializable
+data object CryptoRoute
+
+@Serializable
+data object CryptoMovementRoute
+
+/** Paste or share a bank message; also shows supported banks and capture health. */
+@Serializable
+data object CaptureRoute
+
+@Serializable
+data class CaptureReviewRoute(val draftId: String)
+
+@Serializable
+data object BillsRoute
+
+/** New bill when [billId] is null; otherwise edit it. */
+@Serializable
+data class BillFormRoute(val billId: String? = null)
+
+@Serializable
+data class BillRoute(val billId: String)
+
+/** One due date of a bill, where actual payments are linked. [dueDate] is yyyy-MM-dd. */
+@Serializable
+data class BillOccurrenceRoute(val billId: String, val dueDate: String)

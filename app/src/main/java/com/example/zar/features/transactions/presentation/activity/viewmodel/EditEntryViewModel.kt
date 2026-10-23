@@ -10,8 +10,13 @@ import com.example.zar.core.domain.model.LedgerEntry
 import com.example.zar.core.domain.model.LedgerError
 import com.example.zar.core.domain.model.RecordIds
 import com.example.zar.core.domain.model.SpendingClass
+import com.example.zar.core.domain.model.TransactionChanges
 import com.example.zar.core.domain.model.TransactionId
 import com.example.zar.core.navigation.EditEntryRoute
+import com.example.zar.features.rules.domain.RuleOfferRules
+import com.example.zar.features.rules.domain.model.OfferDecision
+import com.example.zar.features.rules.domain.repository.RuleOfferInbox
+import com.example.zar.features.rules.domain.usecase.ObserveCategoryRulesUseCase
 import com.example.zar.features.transactions.domain.activity.EditProblem
 import com.example.zar.features.transactions.domain.activity.EditResult
 import com.example.zar.features.transactions.domain.activity.EntryEditRules
@@ -57,6 +62,8 @@ class EditEntryViewModel @Inject constructor(
     private val observeDetail: ObserveEntryDetailUseCase,
     observeOnline: ObserveOnlineStatusUseCase,
     private val correctExpense: CorrectExpenseUseCase,
+    private val observeRules: ObserveCategoryRulesUseCase,
+    private val ruleInbox: RuleOfferInbox,
 ) : ViewModel() {
 
     // Read by name instead of toRoute so the ViewModel can be created in plain unit tests.
@@ -109,6 +116,14 @@ class EditEntryViewModel @Inject constructor(
 
     fun onDescriptionChange(value: String) = edit(setOf(EditProblem.DESCRIPTION_TOO_LONG)) { it.copy(description = value) }
 
+    /** After a correction that changed the category or the title, offers to remember the choice. */
+    private suspend fun offerToRemember(entry: LedgerEntry, input: ExpenseEditInput, changes: TransactionChanges) {
+        if (changes.categoryId == null && changes.merchant == null) return
+        val rules = runCatching { observeRules().first() }.getOrDefault(emptyList())
+        val decision = RuleOfferRules.decide(input.title, input.categoryId, entry.current.accountId, rules)
+        if (decision is OfferDecision.Offer) ruleInbox.post(decision.offer)
+    }
+
     fun save() {
         val state = _uiState.value
         val entry = state.entry ?: return
@@ -128,7 +143,10 @@ class EditEntryViewModel @Inject constructor(
                     // The entry as first loaded is used on purpose: a retry of an already-stored correction
                     // then repeats the same write instead of failing with "nothing to change".
                     correctExpense(entry, result.changes, correctionId, Instant.now()).fold(
-                        onSuccess = { _uiState.update { it.copy(isSaving = false, isFinished = true) } },
+                        onSuccess = {
+                            offerToRemember(entry, input, result.changes)
+                            _uiState.update { it.copy(isSaving = false, isFinished = true) }
+                        },
                         onFailure = { error ->
                             _uiState.update {
                                 when (error) {

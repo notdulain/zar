@@ -1,5 +1,9 @@
 package com.example.zar.features.transactions
 
+import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.onAllNodesWithTag
+import com.example.zar.features.rules.domain.model.RuleOffer
+import com.example.zar.features.rules.domain.RuleCard
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
@@ -312,6 +316,8 @@ class ActivityScreensUiTest {
         var addAgain = 0
         var refund: String? = null
         var opened: String? = null
+        var remembered: RuleOffer? = null
+        var rulesOpened = 0
     }
 
     private fun detailOf(
@@ -339,6 +345,7 @@ class ActivityScreensUiTest {
         sheet: Boolean = false,
         voiding: Boolean = false,
         problem: VoidProblem? = null,
+        ruleCard: RuleCard = RuleCard.Hidden,
     ) {
         compose.setContent {
             ZarTheme {
@@ -349,6 +356,7 @@ class ActivityScreensUiTest {
                         showVoidSheet = sheet,
                         isVoiding = voiding,
                         voidProblem = problem,
+                        ruleCard = ruleCard,
                     ),
                     DetailActions(
                         onBack = {},
@@ -360,6 +368,8 @@ class ActivityScreensUiTest {
                         onVoid = { rec.voidTapped++ },
                         onDismissVoid = { rec.dismissed++ },
                         onConfirmVoid = { rec.confirmed++ },
+                        onRemember = { rec.remembered = it },
+                        onOpenRules = { rec.rulesOpened++ },
                     ),
                 )
             }
@@ -601,5 +611,55 @@ class ActivityScreensUiTest {
             bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it)
         }
         bitmap.recycle()
+    }
+    // --- Category rules (SCRUM-39) ---
+
+    private val keellsOffer = RuleOffer("Keells Super", "keells super", "groceries", AccountId("cash"), existing = null)
+
+    @Test
+    fun theRuleOfferNamesTheMerchantAndTheCategoryAndOpensTheSheetOnTap() {
+        val rec = DetailRecorder()
+        showDetail(detailOf(keells), rec, ruleCard = RuleCard.Offer(keellsOffer))
+
+        compose.onNodeWithTag("detail-rule-offer").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Always file Keells Super as Groceries?").assertIsDisplayed()
+        compose.onNodeWithText("Category only, for future Keells Super entries").assertIsDisplayed()
+        compose.onNodeWithTag("detail-rule-offer").performClick()
+
+        assertEquals(keellsOffer, rec.remembered)
+    }
+
+    @Test
+    fun aGeneralNameSaysItCannotBeRememberedAndOffersNothingToTap() {
+        val rec = DetailRecorder()
+        showDetail(detailOf(keells), rec, ruleCard = RuleCard.TooGeneral("PickMe"))
+
+        compose.onNodeWithTag("detail-rule-general").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("PickMe is too general to remember").assertIsDisplayed()
+        compose.onAllNodesWithTag("detail-rule-offer").assertCountEquals(0)
+        compose.onNodeWithTag("detail-rule-general").performClick()
+
+        assertNull(rec.remembered)
+    }
+
+    @Test
+    fun anExpenseFiledByARuleShowsTheRuleAndVersionAndOpensTheRulesList() {
+        val rec = DetailRecorder()
+        showDetail(detailOf(keells), rec, ruleCard = RuleCard.Applied("Keells Super", "groceries", 2))
+
+        compose.onNodeWithText("Filed by your rule").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Keells Super → Groceries · version 2").assertIsDisplayed()
+        compose.onNodeWithTag("detail-rule-applied").performClick()
+
+        assertEquals(1, rec.rulesOpened)
+    }
+
+    @Test
+    fun withoutARuleCardNothingAboutRulesIsShown() {
+        showDetail(detailOf(keells))
+
+        compose.onAllNodesWithTag("detail-rule-offer").assertCountEquals(0)
+        compose.onAllNodesWithTag("detail-rule-general").assertCountEquals(0)
+        compose.onAllNodesWithTag("detail-rule-applied").assertCountEquals(0)
     }
 }
