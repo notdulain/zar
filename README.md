@@ -90,7 +90,7 @@ Machine paths, IDE files, build output, Firebase configuration and credentials a
 
 Models, repository interfaces, saving rules and total calculations shared by every feature are described in [docs/domain-contracts.md](docs/domain-contracts.md). Read it before saving or totalling money.
 
-AI quick-note hosting, cost, privacy and the draft format are documented in [docs/ai-quick-notes-feasibility.md](docs/ai-quick-notes-feasibility.md). The draft-generation service, its setup and how the app uses it are in [docs/ai-quick-notes-service.md](docs/ai-quick-notes-service.md); backend tests run with `npm ci && npm test` in `functions/`.
+AI quick notes use OpenRouter through a Cloudflare Worker. Deployment, Firebase authentication/App Check, secrets, Android configuration and evaluation are in [docs/openrouter-quick-notes.md](docs/openrouter-quick-notes.md). Worker checks run with `npm ci && npm run check && npm test` in `worker/`. The original [Gemini feasibility results](docs/ai-quick-notes-feasibility.md) and [Firebase callable](docs/ai-quick-notes-service.md) remain as historical references.
 
 ## Layer rules
 

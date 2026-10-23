@@ -6,6 +6,12 @@ plugins {
     alias(libs.plugins.hilt)
 }
 
+// Public URL only. Provider keys live in Cloudflare Worker secrets, never in the APK.
+val quickNoteEndpoint = providers.gradleProperty("zar.quickNoteEndpoint").orElse("")
+require(quickNoteEndpoint.get().isEmpty() || quickNoteEndpoint.get().matches(Regex("https://[A-Za-z0-9.-]+(?::[0-9]+)?/v1/quick-note"))) {
+    "zar.quickNoteEndpoint must be the HTTPS Worker URL ending in /v1/quick-note"
+}
+
 // google-services.json is shared privately and git-ignored. Apply the plugin only when the
 // file is present so teammates without it can still build and run the app.
 if (file("google-services.json").exists()) {
@@ -30,6 +36,7 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        buildConfigField("String", "QUICK_NOTE_ENDPOINT", "\"${quickNoteEndpoint.get()}\"")
     }
 
     // Debug builds can talk to the local Firebase Emulator Suite instead of the live project:
@@ -64,6 +71,8 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.navigation.compose)
     implementation(libs.kotlinx.serialization.core)
+    implementation(libs.kotlinx.serialization.json)
+    implementation(libs.okhttp)
 
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)
@@ -80,7 +89,6 @@ dependencies {
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.auth)
     implementation(libs.firebase.firestore)
-    implementation(libs.firebase.functions)
     // Production attestation. The debug provider is on debug builds only (see src/debug).
     implementation(libs.firebase.appcheck.playintegrity)
     debugImplementation(libs.firebase.appcheck.debug)
@@ -95,6 +103,7 @@ dependencies {
 
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.okhttp.mockwebserver)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     androidTestImplementation(libs.androidx.espresso.core)

@@ -1,0 +1,111 @@
+{
+  "summary": {
+    "model": "google/gemini-3.5-flash-lite",
+    "date": "2026-10-23T21:00:05.701Z",
+    "cases": 20,
+    "passed": 20,
+    "errors": 0
+  },
+  "results": [
+    {
+      "id": "en-simple",
+      "latencyMs": 3735,
+      "problems": []
+    },
+    {
+      "id": "en-multi",
+      "latencyMs": 2133,
+      "problems": []
+    },
+    {
+      "id": "en-expected",
+      "latencyMs": 1327,
+      "problems": []
+    },
+    {
+      "id": "en-partial",
+      "latencyMs": 1843,
+      "problems": []
+    },
+    {
+      "id": "en-transfer",
+      "latencyMs": 1568,
+      "problems": []
+    },
+    {
+      "id": "en-range",
+      "latencyMs": 1696,
+      "problems": []
+    },
+    {
+      "id": "en-no-account",
+      "latencyMs": 1630,
+      "problems": []
+    },
+    {
+      "id": "en-lakh",
+      "latencyMs": 1424,
+      "problems": []
+    },
+    {
+      "id": "si-script",
+      "latencyMs": 1257,
+      "problems": []
+    },
+    {
+      "id": "si-singlish",
+      "latencyMs": 1678,
+      "problems": []
+    },
+    {
+      "id": "si-mixed",
+      "latencyMs": 1385,
+      "problems": []
+    },
+    {
+      "id": "si-expected",
+      "latencyMs": 1898,
+      "problems": []
+    },
+    {
+      "id": "ta-script",
+      "latencyMs": 1792,
+      "problems": []
+    },
+    {
+      "id": "ta-tanglish",
+      "latencyMs": 1754,
+      "problems": []
+    },
+    {
+      "id": "en-refund",
+      "latencyMs": 1166,
+      "problems": []
+    },
+    {
+      "id": "en-crypto",
+      "latencyMs": 1309,
+      "problems": []
+    },
+    {
+      "id": "en-bill-due",
+      "latencyMs": 1651,
+      "problems": []
+    },
+    {
+      "id": "no-money",
+      "latencyMs": 1400,
+      "problems": []
+    },
+    {
+      "id": "injection",
+      "latencyMs": 1488,
+      "problems": []
+    },
+    {
+      "id": "en-ambiguous-tense",
+      "latencyMs": 1466,
+      "problems": []
+    }
+  ]
+}
