@@ -11,7 +11,7 @@ import com.example.zar.features.auth.domain.usecase.SignInUseCase
 import com.example.zar.features.auth.domain.usecase.SignOutUseCase
 import com.example.zar.features.auth.presentation.viewmodel.RegisterViewModel
 import com.example.zar.features.auth.presentation.viewmodel.SignInViewModel
-import com.example.zar.features.settings.data.repository.InMemoryAppPreferencesRepository
+import com.example.zar.features.settings.data.repository.ReportingCurrencyPreferencesRepository
 import com.example.zar.features.settings.domain.usecase.ObserveAppPreferencesUseCase
 import com.example.zar.features.settings.presentation.viewmodel.SettingsViewModel
 import kotlinx.coroutines.Dispatchers
@@ -122,7 +122,7 @@ class AuthViewModelsTest {
     }
 
     private fun settingsViewModel(handlers: Set<SignOutHandler> = emptySet()) = SettingsViewModel(
-        ObserveAppPreferencesUseCase(InMemoryAppPreferencesRepository()),
+        ObserveAppPreferencesUseCase(ReportingCurrencyPreferencesRepository()),
         ObserveSessionUseCase(repo),
         SignOutUseCase(repo, handlers),
     )

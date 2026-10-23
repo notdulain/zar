@@ -40,7 +40,7 @@ import com.example.zar.features.reminders.domain.ReminderPreferencesRepository
 import com.example.zar.features.quicknote.data.remote.QuickNoteDraftTransport
 import com.example.zar.features.quicknote.data.repository.CallableQuickNoteDraftRepository
 import com.example.zar.features.quicknote.domain.repository.QuickNoteDraftRepository
-import com.example.zar.features.settings.data.repository.InMemoryAppPreferencesRepository
+import com.example.zar.features.settings.data.repository.ReportingCurrencyPreferencesRepository
 import com.example.zar.features.settings.domain.repository.AppPreferencesRepository
 import dagger.Binds
 import dagger.Module
@@ -118,7 +118,7 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun bindAppPreferencesRepository(
-        impl: InMemoryAppPreferencesRepository,
+        impl: ReportingCurrencyPreferencesRepository,
     ): AppPreferencesRepository
 
     @Binds
