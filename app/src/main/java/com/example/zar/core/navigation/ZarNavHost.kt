@@ -25,8 +25,8 @@ import com.example.zar.features.capture.presentation.screen.CaptureReviewScreen
 import com.example.zar.features.capture.presentation.screen.CaptureScreen
 import com.example.zar.features.capture.presentation.viewmodel.ShareLaunchViewModel
 import com.example.zar.features.bills.presentation.screen.BillFormScreen
-import com.example.zar.features.bills.presentation.screen.BillOccurrenceScreen
-import com.example.zar.features.bills.presentation.screen.BillScreen
+import com.example.zar.features.bills.presentation.screen.BillDetailScreen
+import com.example.zar.features.bills.presentation.screen.BillPaymentScreen
 import com.example.zar.features.bills.presentation.screen.BillsScreen
 import com.example.zar.features.crypto.presentation.screen.CryptoMovementScreen
 import com.example.zar.features.crypto.presentation.screen.CryptoScreen
@@ -37,6 +37,7 @@ import com.example.zar.features.freelance.presentation.screen.ProjectScreen
 import com.example.zar.features.home.presentation.screen.HomeScreen
 import com.example.zar.features.plans.presentation.screen.PlansScreen
 import com.example.zar.features.quicknote.presentation.screen.QuickNoteScreen
+import com.example.zar.features.rules.presentation.screen.CategoryRulesScreen
 import com.example.zar.features.settings.presentation.screen.MoreScreen
 import com.example.zar.features.settings.presentation.screen.SettingsScreen
 import com.example.zar.features.transactions.presentation.activity.screen.EditEntryScreen
@@ -86,6 +87,9 @@ fun ZarNavHost(
                 onNavigate = onNavigate,
                 onAddOption = onAddOption,
                 onOpenReview = { navController.navigate(NeedsReviewRoute) },
+                onOpenFreelance = { navController.navigate(FreelanceRoute) },
+                onOpenBills = { navController.navigate(BillsRoute) },
+                onOpenBill = { id -> navController.navigate(BillRoute(id)) },
             )
         }
         composable<ActivityRoute> {
@@ -110,6 +114,7 @@ fun ZarNavHost(
                 onOpenCapture = { navController.navigate(CaptureRoute) },
                 onOpenBills = { navController.navigate(BillsRoute) },
                 onOpenReminder = { navController.navigate(ReminderSettingsRoute) },
+                onOpenRules = { navController.navigate(CategoryRulesRoute) },
             )
         }
         composable<NeedsReviewRoute> {
@@ -126,6 +131,9 @@ fun ZarNavHost(
                 onOpenEntry = { id -> navController.navigate(EntryDetailRoute(id)) },
                 onAddCashAccount = { navController.navigate(AccountFormRoute()) },
             )
+        }
+        composable<CategoryRulesRoute> {
+            CategoryRulesScreen(onBack = { navController.popBackStack() })
         }
         composable<ReminderSettingsRoute> {
             ReminderSettingsScreen(onBack = { navController.popBackStack() })
@@ -177,6 +185,7 @@ fun ZarNavHost(
                 onAddAgain = { navController.navigate(ManualEntryRoute()) },
                 onRefund = { id -> navController.navigate(RefundRoute(id)) },
                 onOpenEntry = { id -> navController.navigate(EntryDetailRoute(id)) },
+                onOpenRules = { navController.navigate(CategoryRulesRoute) },
             )
         }
         composable<EditEntryRoute> {
@@ -200,6 +209,7 @@ fun ZarNavHost(
                 onBack = { navController.popBackStack() },
                 onAddBill = { navController.navigate(BillFormRoute()) },
                 onOpenBill = { id -> navController.navigate(BillRoute(id)) },
+                onOpenDueDate = { id, date -> navController.navigate(BillOccurrenceRoute(id, date)) },
             )
         }
         composable<BillFormRoute> {
@@ -212,14 +222,14 @@ fun ZarNavHost(
             )
         }
         composable<BillRoute> {
-            BillScreen(
+            BillDetailScreen(
                 onBack = { navController.popBackStack() },
                 onEditBill = { id -> navController.navigate(BillFormRoute(billId = id)) },
-                onOpenOccurrence = { id, date -> navController.navigate(BillOccurrenceRoute(id, date)) },
+                onOpenDueDate = { id, date -> navController.navigate(BillOccurrenceRoute(id, date)) },
             )
         }
         composable<BillOccurrenceRoute> {
-            BillOccurrenceScreen(onBack = { navController.popBackStack() })
+            BillPaymentScreen(onBack = { navController.popBackStack() })
         }
         composable<CryptoRoute> {
             CryptoScreen(

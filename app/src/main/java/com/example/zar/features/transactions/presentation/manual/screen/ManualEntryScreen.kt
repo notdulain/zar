@@ -349,6 +349,14 @@ private fun ExpenseFields(state: ManualEntryUiState, actions: ManualEntryActions
                 }
             }
         }
+        state.appliedRule?.let { rule ->
+            Text(
+                stringResource(R.string.rules_filled_by_rule, rule.displayName),
+                style = ZarType.bodyCaption,
+                color = ZarTheme.colors.textSecondary,
+                modifier = Modifier.testTag("manual-rule-hint"),
+            )
+        }
         FieldError(if (ExpenseProblem.CATEGORY_MISSING in problems) R.string.manual_error_category else null)
     }
 

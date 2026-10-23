@@ -9,6 +9,7 @@ import com.example.zar.core.domain.model.Account
 import com.example.zar.core.domain.model.AccountId
 import com.example.zar.core.domain.model.LedgerError
 import com.example.zar.core.domain.model.RecordIds
+import com.example.zar.core.domain.model.money.Money
 import com.example.zar.core.navigation.BillFormRoute
 import com.example.zar.core.navigation.BillOccurrenceRoute
 import com.example.zar.core.navigation.BillRoute
@@ -19,9 +20,9 @@ import com.example.zar.features.bills.domain.model.Bill
 import com.example.zar.features.bills.domain.model.BillFrequency
 import com.example.zar.features.bills.domain.model.BillId
 import com.example.zar.features.bills.domain.model.BillReminder
+import com.example.zar.features.bills.domain.model.BillStatus
 import com.example.zar.features.bills.domain.model.BillOccurrence
 import com.example.zar.features.bills.domain.model.BillSummary
-import com.example.zar.features.bills.domain.model.BillsOverview
 import com.example.zar.features.bills.domain.model.LinkedPayment
 import com.example.zar.features.bills.domain.model.PaymentCandidate
 import com.example.zar.features.bills.domain.usecase.BillError
@@ -32,6 +33,7 @@ import com.example.zar.features.bills.domain.usecase.ObservePaymentCandidatesUse
 import com.example.zar.features.bills.domain.usecase.SaveBillUseCase
 import com.example.zar.features.bills.domain.usecase.SetBillCancellationUseCase
 import com.example.zar.features.bills.domain.usecase.UnlinkBillPaymentUseCase
+import com.example.zar.features.bills.presentation.model.BillList
 import com.example.zar.features.reminders.domain.RefreshRemindersUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.time.Instant
@@ -44,7 +46,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -59,34 +60,60 @@ private fun Throwable.toBillMessage(): BillMessage = when (this) {
 
 // --- List and detail -----------------------------------------------------------------------
 
-data class BillsUiState(val isLoading: Boolean = true, val overview: BillsOverview? = null, val loadFailed: Boolean = false)
+data class BillsUiState(
+    val isLoading: Boolean = true,
+    val list: BillList? = null,
+    val accountNames: Map<AccountId, String> = emptyMap(),
+    val loadFailed: Boolean = false,
+)
 
 @HiltViewModel
-class BillsViewModel @Inject constructor(observeBills: ObserveBillsUseCase) : ViewModel() {
-    val uiState: StateFlow<BillsUiState> = observeBills(ZarTime.today())
-        .map { BillsUiState(isLoading = false, overview = it) }
+class BillsViewModel @Inject constructor(
+    observeBills: ObserveBillsUseCase,
+    observeAccounts: ObserveBillAccountsUseCase,
+) : ViewModel() {
+    private val today = ZarTime.today()
+
+    val uiState: StateFlow<BillsUiState> = combine(observeBills(today), observeAccounts()) { overview, accounts ->
+        BillsUiState(isLoading = false, list = BillList.from(overview, today), accountNames = accounts.associate { it.id to it.name })
+    }
         .catch { emit(BillsUiState(isLoading = false, loadFailed = true)) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), BillsUiState())
 }
 
-data class BillUiState(val isLoading: Boolean = true, val summary: BillSummary? = null, val loadFailed: Boolean = false)
+data class BillUiState(
+    val isLoading: Boolean = true,
+    val summary: BillSummary? = null,
+    val accountNames: Map<AccountId, String> = emptyMap(),
+    val loadFailed: Boolean = false,
+)
 
 @HiltViewModel
 class BillViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     observeBills: ObserveBillsUseCase,
+    observeAccounts: ObserveBillAccountsUseCase,
     private val setCancellation: SetBillCancellationUseCase,
+    private val saveBill: SaveBillUseCase,
     private val refreshReminders: RefreshRemindersUseCase,
 ) : ViewModel() {
     private val billId = BillId(savedStateHandle.toRoute<BillRoute>().billId)
 
-    val uiState: StateFlow<BillUiState> = observeBills(ZarTime.today())
-        .map { overview -> BillUiState(isLoading = false, summary = overview.bills.firstOrNull { it.bill.id == billId }) }
+    val uiState: StateFlow<BillUiState> = combine(observeBills(ZarTime.today()), observeAccounts()) { overview, accounts ->
+        BillUiState(
+            isLoading = false,
+            summary = overview.bills.firstOrNull { it.bill.id == billId },
+            accountNames = accounts.associate { it.id to it.name },
+        )
+    }
         .catch { emit(BillUiState(isLoading = false, loadFailed = true)) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), BillUiState())
 
     private val _message = MutableStateFlow<BillMessage?>(null)
     val message: StateFlow<BillMessage?> = _message.asStateFlow()
+
+    private val _isSaving = MutableStateFlow(false)
+    val isSaving: StateFlow<Boolean> = _isSaving.asStateFlow()
 
     /** Planning to cancel changes nothing yet: due dates keep coming. */
     fun intendToCancel() = change { setCancellation.intend(it) }
@@ -96,10 +123,22 @@ class BillViewModel @Inject constructor(
 
     fun keep() = change { setCancellation.keep(it) }
 
+    /** Stopping is for something that isn't a subscription: no new due dates, history kept. */
+    fun setStopped(stopped: Boolean) = change { saveBill.setStopped(it, stopped) }
+
+    /** Undoes whichever ending applies: a cancellation, a stop, or both. */
+    fun resume() = change { bill ->
+        val keep = if (bill.cancellation != null) setCancellation.keep(bill) else Result.success(Unit)
+        if (keep.isSuccess && bill.status != BillStatus.ACTIVE) saveBill.setStopped(bill.copy(cancellation = null), false) else keep
+    }
+
     private fun change(block: suspend (Bill) -> Result<Unit>) {
         val bill = uiState.value.summary?.bill ?: return
+        if (_isSaving.value) return
         viewModelScope.launch {
+            _isSaving.value = true
             val result = block(bill)
+            _isSaving.value = false
             _message.value = result.exceptionOrNull()?.toBillMessage()
             if (result.isSuccess) runCatching { refreshReminders() }
         }
@@ -123,6 +162,8 @@ data class BillFormUiState(
     val notFound: Boolean = false,
     val isSaving: Boolean = false,
     val savedBillId: String? = null,
+    /** Editing hides accounts in other currencies; true when any were hidden. */
+    val otherCurrencyHidden: Boolean = false,
 ) {
     val isEditing: Boolean get() = bill != null
     val account: Account? get() = accounts.firstOrNull { it.id == accountId }
@@ -154,8 +195,9 @@ class BillFormViewModel @Inject constructor(
                     // The currency can't change on edit, so only same-currency accounts are offered.
                     bill != null -> state.copy(
                         isLoading = false, bill = bill, accounts = accountList.filter { it.currency == bill.amount.currency },
+                        otherCurrencyHidden = accountList.any { it.currency != bill.amount.currency },
                         name = bill.name, accountId = bill.accountId,
-                        amount = bill.amount.toDecimal().toPlainString(), frequency = bill.frequency, firstDue = bill.firstDue,
+                        amount = bill.amount.toDecimal().stripTrailingZeros().toPlainString(), frequency = bill.frequency, firstDue = bill.firstDue,
                         reminder = bill.reminder,
                     )
                     else -> state.copy(isLoading = false, accounts = accountList, accountId = accountList.firstOrNull()?.id)
@@ -180,11 +222,6 @@ class BillFormViewModel @Inject constructor(
                 state.bill?.let { saveBill.update(it, checked.value) } ?: saveBill.create(newBillId, checked.value, Instant.now())
             }
         }
-    }
-
-    fun setStopped(stopped: Boolean) {
-        val bill = _uiState.value.bill ?: return
-        run(bill.id) { saveBill.setStopped(bill, stopped) }
     }
 
     private fun run(id: BillId, block: suspend () -> Result<Unit>) {
@@ -213,15 +250,25 @@ data class BillOccurrenceUiState(
     val bill: Bill? = null,
     val occurrence: BillOccurrence? = null,
     val candidates: List<PaymentCandidate> = emptyList(),
-    val linkAmounts: Map<String, String> = emptyMap(),
-    val linkProblems: Map<String, Set<BillProblem>> = emptyMap(),
+    val accountNames: Map<AccountId, String> = emptyMap(),
+    /** The expense chosen to link, by transaction ID; the closest one is chosen first. */
+    val selectedId: String? = null,
+    /** What the user typed; null while they haven't, so the suggested amount is used. */
+    val amountText: String? = null,
+    val problems: Set<BillProblem> = emptySet(),
     val message: BillMessage? = null,
     val isSaving: Boolean = false,
+    val isLinked: Boolean = false,
 ) {
     val payments: List<LinkedPayment> get() = occurrence?.payments.orEmpty()
 
-    fun suggestedAmount(candidate: PaymentCandidate) = occurrence?.progress?.remaining
+    val selected: PaymentCandidate? get() = candidates.firstOrNull { it.entry.id.value == selectedId }
+
+    /** Whatever is smaller: what the expense has left or what the due date still expects. */
+    fun suggestedAmount(candidate: PaymentCandidate): Money = occurrence?.progress?.remaining
         ?.let { if (candidate.available > it) it else candidate.available } ?: candidate.available
+
+    val amount: String get() = amountText ?: selected?.let { suggestedAmount(it).toDecimal().stripTrailingZeros().toPlainString() }.orEmpty()
 }
 
 @HiltViewModel
@@ -229,6 +276,7 @@ class BillOccurrenceViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     observeBills: ObserveBillsUseCase,
     observeCandidates: ObservePaymentCandidatesUseCase,
+    observeAccounts: ObserveBillAccountsUseCase,
     private val linkPayment: LinkBillPaymentUseCase,
     private val unlinkPayment: UnlinkBillPaymentUseCase,
 ) : ViewModel() {
@@ -241,45 +289,60 @@ class BillOccurrenceViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            combine(observeBills(ZarTime.today()), observeCandidates(billId, dueDate)) { overview, candidates -> overview to candidates }
+            combine(observeBills(ZarTime.today()), observeCandidates(billId, dueDate), observeAccounts()) { overview, candidates, accounts ->
+                Triple(overview, candidates, accounts)
+            }
                 .catch { _uiState.update { it.copy(isLoading = false, message = BillMessage.FAILED) } }
-                .collect { (overview, candidates) ->
+                .collect { (overview, candidates, accounts) ->
                     val summary = overview.bills.firstOrNull { it.bill.id == billId }
-                    _uiState.update {
-                        it.copy(
+                    _uiState.update { state ->
+                        state.copy(
                             isLoading = false,
                             bill = summary?.bill,
                             occurrence = summary?.occurrences?.firstOrNull { o -> o.dueDate == dueDate },
                             candidates = candidates,
+                            accountNames = accounts.associate { it.id to it.name },
+                            // Keep the user's choice while it can still be linked; otherwise offer the closest.
+                            selectedId = state.selectedId?.takeIf { id -> candidates.any { it.entry.id.value == id } }
+                                ?: candidates.firstOrNull()?.entry?.id?.value,
                         )
                     }
                 }
         }
     }
 
-    fun onLinkAmountChange(key: String, value: String) =
-        _uiState.update { it.copy(linkAmounts = it.linkAmounts + (key to value), linkProblems = it.linkProblems - key) }
+    fun onSelect(candidate: PaymentCandidate) = _uiState.update {
+        it.copy(selectedId = candidate.entry.id.value, amountText = null, problems = emptySet())
+    }
 
-    fun link(candidate: PaymentCandidate) {
+    fun onAmountChange(value: String) = _uiState.update { it.copy(amountText = value, problems = emptySet()) }
+
+    fun link() {
         val state = _uiState.value
         val bill = state.bill ?: return
         val occurrence = state.occurrence ?: return
-        val key = candidate.entry.id.value
-        val typed = state.linkAmounts[key] ?: state.suggestedAmount(candidate).toDecimal().toPlainString()
-        when (val checked = BillRules.checkLink(typed, candidate.available, occurrence.progress.remaining)) {
-            is BillCheck.Invalid -> _uiState.update { it.copy(linkProblems = it.linkProblems + (key to checked.problems)) }
-            is BillCheck.Valid -> save { linkPayment(bill, occurrence, candidate, checked.value, Instant.now()) }
+        val candidate = state.selected ?: return
+        when (val checked = BillRules.checkLink(state.amount, candidate.available, occurrence.progress.remaining)) {
+            is BillCheck.Invalid -> _uiState.update { it.copy(problems = checked.problems) }
+            is BillCheck.Valid -> save(closeAfter = true) { linkPayment(bill, occurrence, candidate, checked.value, Instant.now()) }
         }
     }
 
-    fun unlink(payment: LinkedPayment) = save { unlinkPayment(payment.match) }
+    fun unlink(payment: LinkedPayment) = save(closeAfter = false) { unlinkPayment(payment.match) }
 
-    private fun save(block: suspend () -> Result<Unit>) {
+    private fun save(closeAfter: Boolean, block: suspend () -> Result<Unit>) {
         if (_uiState.value.isSaving) return
         viewModelScope.launch {
             _uiState.update { it.copy(isSaving = true, message = null) }
             val result = block()
-            _uiState.update { it.copy(isSaving = false, message = result.exceptionOrNull()?.toBillMessage()) }
+            _uiState.update {
+                it.copy(
+                    isSaving = false,
+                    message = result.exceptionOrNull()?.toBillMessage(),
+                    isLinked = closeAfter && result.isSuccess,
+                    amountText = if (result.isSuccess) null else it.amountText,
+                )
+            }
         }
     }
 }

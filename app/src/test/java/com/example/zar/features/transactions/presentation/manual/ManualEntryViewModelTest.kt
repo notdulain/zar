@@ -1,5 +1,8 @@
 package com.example.zar.features.transactions.presentation.manual
 
+import com.example.zar.features.rules.FakeCategoryRules
+import com.example.zar.features.rules.rule
+import com.example.zar.features.rules.newInbox
 import androidx.lifecycle.SavedStateHandle
 import com.example.zar.core.domain.TestLedger
 import com.example.zar.core.domain.TestLedger.bank
@@ -109,6 +112,9 @@ class ManualEntryViewModelTest {
     @Before fun setUp() = Dispatchers.setMain(UnconfinedTestDispatcher())
     @After fun tearDown() = Dispatchers.resetMain()
 
+    private val rules = FakeCategoryRules()
+    private val inbox = newInbox()
+
     private fun viewModel(handle: SavedStateHandle = SavedStateHandle()): ManualEntryViewModel {
         val saveTransaction = SaveTransactionUseCase(ledger)
         return ManualEntryViewModel(
@@ -118,6 +124,8 @@ class ManualEntryViewModelTest {
             observeOnline = ObserveOnlineStatusUseCase(connectivity),
             recordExpense = RecordExpenseUseCase(saveTransaction),
             recordTransfer = RecordTransferUseCase(SaveTransferUseCase(ledger)),
+            observeRules = rules.observeUseCase(),
+            ruleInbox = inbox,
         )
     }
 
@@ -181,6 +189,8 @@ class ManualEntryViewModelTest {
             ObserveOnlineStatusUseCase(connectivity),
             RecordExpenseUseCase(SaveTransactionUseCase(ledger)),
             RecordTransferUseCase(SaveTransferUseCase(ledger)),
+            rules.observeUseCase(),
+            inbox,
         )
 
         assertFalse(vm.uiState.value.isLoading)
@@ -608,5 +618,171 @@ class ManualEntryViewModelTest {
         assertNull(state.gapAmount)
         assertFalse(state.accountLocked)
         assertEquals("", state.amount)
+    }
+
+    // --- Category rules (SCRUM-39) ---
+
+    @Test
+    fun typingARememberedNameFillsTheCategoryAndSaysWhichRuleDidIt() {
+        rules.rules.value = listOf(rule("Keells Super", category = "groceries", version = 2))
+        val vm = viewModel()
+        vm.onTitleChange("keells  super")
+
+        val state = vm.uiState.value
+        assertEquals(ExpenseCategory.GROCERIES, state.category)
+        assertEquals(2, state.appliedRule?.version)
+    }
+
+    @Test
+    fun aCategoryThePersonPickedIsNeverReplacedByARule() {
+        rules.rules.value = listOf(rule("Keells Super", category = "groceries"))
+        val vm = viewModel()
+        vm.onCategorySelect(ExpenseCategory.COFFEE_DINING)
+        vm.onTitleChange("Keells Super")
+
+        assertEquals(ExpenseCategory.COFFEE_DINING, vm.uiState.value.category)
+        assertNull(vm.uiState.value.appliedRule)
+    }
+
+    @Test
+    fun choosingAnotherCategoryAfterTheRuleFilledItDropsTheRule() {
+        rules.rules.value = listOf(rule("Keells Super", category = "groceries"))
+        val vm = viewModel()
+        vm.onTitleChange("Keells Super")
+        vm.onCategorySelect(ExpenseCategory.OTHER)
+
+        assertNull(vm.uiState.value.appliedRule)
+        vm.onAmountChange("850")
+        vm.save()
+        assertNull(ledger.saved.values.single().appliedRuleId)
+    }
+
+    @Test
+    fun theSavedExpenseRemembersTheRuleAndVersionThatFiledIt() {
+        rules.rules.value = listOf(rule("Keells Super", category = "groceries", version = 3))
+        val vm = viewModel()
+        vm.onAmountChange("850")
+        vm.onTitleChange("Keells Super")
+        vm.save()
+
+        val saved = ledger.saved.values.single()
+        assertEquals("groceries", saved.categoryId)
+        assertEquals("r-keells-super", saved.appliedRuleId)
+        assertEquals(3, saved.appliedRuleVersion)
+        assertEquals(lkr(850), saved.amount)
+    }
+
+    @Test
+    fun aRuleNeverChangesTheCountsAsChoice() {
+        rules.rules.value = listOf(rule("Keells Super", category = "groceries"))
+        val vm = viewModel()
+        vm.onSpendingClassSelect(SpendingClass.COMMITTED)
+        vm.onTitleChange("Keells Super")
+
+        assertEquals(SpendingClass.COMMITTED, vm.uiState.value.spendingClass)
+    }
+
+    @Test
+    fun aGeneralNameIsNotFilledEvenIfARuleForItExists() {
+        rules.rules.value = listOf(rule("PickMe", category = "transport"))
+        val vm = viewModel()
+        vm.onTitleChange("PickMe")
+
+        assertNull(vm.uiState.value.category)
+        assertNull(vm.uiState.value.appliedRule)
+    }
+
+    @Test
+    fun disagreeingRulesFillNothing() {
+        rules.rules.value = listOf(
+            rule("Keells Super", category = "groceries", id = "a"),
+            rule("Keells Super", category = "coffee-dining", id = "b"),
+        )
+        val vm = viewModel()
+        vm.onTitleChange("Keells Super")
+
+        assertNull(vm.uiState.value.category)
+    }
+
+    @Test
+    fun aRuleForOneAccountOnlyFillsWhenThatAccountIsPicked() {
+        rules.rules.value = listOf(rule("Keells Super", category = "groceries", account = cash.id))
+        val vm = viewModel()
+        vm.onAccountSelect(bank.id)
+        vm.onTitleChange("Keells Super")
+        assertNull(vm.uiState.value.category)
+
+        vm.onAccountSelect(cash.id)
+        assertEquals(ExpenseCategory.GROCERIES, vm.uiState.value.category)
+    }
+
+    @Test
+    fun aCategoryTheRuleFilledIsTakenBackWhenTheNameNoLongerMatches() {
+        rules.rules.value = listOf(rule("Keells Super", category = "groceries"))
+        val vm = viewModel()
+        vm.onTitleChange("Keells Super")
+        assertEquals(ExpenseCategory.GROCERIES, vm.uiState.value.category)
+
+        vm.onTitleChange("Keells Super Kandy")
+
+        assertNull(vm.uiState.value.category)
+        assertNull(vm.uiState.value.appliedRule)
+    }
+
+    @Test
+    fun savingAPreciseNamePostsAnOfferToRemember() {
+        val vm = viewModel()
+        vm.onAmountChange("850")
+        vm.onCategorySelect(ExpenseCategory.GROCERIES)
+        vm.onTitleChange("Keells Super")
+        vm.save()
+
+        val offer = inbox.state.value.offer
+        assertEquals("keells super", offer?.merchantKey)
+        assertEquals("groceries", offer?.categoryId)
+        assertFalse(inbox.state.value.sheetOpen)
+        assertTrue(rules.rules.value.isEmpty())
+    }
+
+    @Test
+    fun noOfferForAGeneralNameABlankNameOrAChoiceARuleAlreadyCovers() {
+        val general = viewModel()
+        general.fillValidExpense()
+        general.onTitleChange("PickMe")
+        general.save()
+        assertNull(inbox.state.value.offer)
+
+        val blank = viewModel()
+        blank.fillValidExpense()
+        blank.save()
+        assertNull(inbox.state.value.offer)
+
+        rules.rules.value = listOf(rule("Keells Super", category = "groceries"))
+        val covered = viewModel()
+        covered.onAmountChange("850")
+        covered.onTitleChange("Keells Super")
+        covered.save()
+        assertNull(inbox.state.value.offer)
+    }
+
+    @Test
+    fun aFailedSaveOffersNothing() {
+        ledger.failure = IOException("offline")
+        val vm = viewModel()
+        vm.fillValidExpense()
+        vm.onTitleChange("Keells Super")
+        vm.save()
+
+        assertNull(inbox.state.value.offer)
+    }
+
+    @Test
+    fun aTransferNeverOffersARule() {
+        val vm = viewModel()
+        vm.onKindSelect(ManualEntryKind.TRANSFER)
+        vm.onAmountChange("500")
+        vm.save()
+
+        assertNull(inbox.state.value.offer)
     }
 }

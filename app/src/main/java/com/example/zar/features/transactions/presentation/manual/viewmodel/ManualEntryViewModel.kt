@@ -16,6 +16,13 @@ import com.example.zar.core.domain.model.money.Currency
 import com.example.zar.core.domain.model.money.Money
 import com.example.zar.core.navigation.ManualEntryRoute
 import com.example.zar.features.accounts.domain.usecase.ObserveActiveAccountsUseCase
+import com.example.zar.features.rules.domain.CategoryRuleMatcher
+import com.example.zar.features.rules.domain.RuleOfferRules
+import com.example.zar.features.rules.domain.model.CategoryRule
+import com.example.zar.features.rules.domain.model.OfferDecision
+import com.example.zar.features.rules.domain.model.RuleMatch
+import com.example.zar.features.rules.domain.repository.RuleOfferInbox
+import com.example.zar.features.rules.domain.usecase.ObserveCategoryRulesUseCase
 import com.example.zar.features.transactions.domain.manual.EntrySuggestions
 import com.example.zar.features.transactions.domain.manual.ManualEntryRules
 import com.example.zar.features.transactions.domain.manual.model.EntrySuggestion
@@ -60,6 +67,10 @@ data class ManualEntryUiState(
     // Expense
     val accountId: AccountId? = null,
     val category: ExpenseCategory? = null,
+    /** True once the user picked the category themselves, so a remembered rule no longer fills it in. */
+    val categoryChosen: Boolean = false,
+    /** The rule that filled in [category] for the typed title. Cleared as soon as the user picks another category. */
+    val appliedRule: CategoryRule? = null,
     val spendingClass: SpendingClass = SpendingClass.DISCRETIONARY,
     /** True once the user picked "Counts as" themselves, so a category no longer overrides it. */
     val spendingClassChosen: Boolean = false,
@@ -121,6 +132,8 @@ class ManualEntryViewModel @Inject constructor(
     private val observeOnline: ObserveOnlineStatusUseCase,
     private val recordExpense: RecordExpenseUseCase,
     private val recordTransfer: RecordTransferUseCase,
+    observeRules: ObserveCategoryRulesUseCase,
+    private val ruleInbox: RuleOfferInbox,
 ) : ViewModel() {
 
     // Read by name instead of toRoute so the ViewModel can be created in plain unit tests.
@@ -132,6 +145,7 @@ class ManualEntryViewModel @Inject constructor(
     private val expenseId = TransactionId(RecordIds.newId())
     private val transferId = TransferId(RecordIds.newId())
     private var allSuggestions: List<EntrySuggestion> = emptyList()
+    private var rules: List<CategoryRule> = emptyList()
 
     private val _uiState = MutableStateFlow(
         ManualEntryUiState(
@@ -155,6 +169,12 @@ class ManualEntryViewModel @Inject constructor(
         }
         viewModelScope.launch {
             observeOnline().catch { }.collect { online -> _uiState.update { it.copy(isOnline = online) } }
+        }
+        viewModelScope.launch {
+            observeRules().catch { }.collect { list ->
+                rules = list
+                _uiState.update { it.withRule() }
+            }
         }
     }
 
@@ -185,13 +205,15 @@ class ManualEntryViewModel @Inject constructor(
 
     fun onAccountSelect(id: AccountId) = _uiState.update {
         if (it.accountLocked) return@update it
-        it.copy(accountId = id, expenseProblems = it.expenseProblems - ExpenseProblem.ACCOUNT_MISSING)
+        it.copy(accountId = id, expenseProblems = it.expenseProblems - ExpenseProblem.ACCOUNT_MISSING).withRule()
     }
 
     fun onCategorySelect(value: ExpenseCategory) = _uiState.update {
         val usual = value.usualClass
         it.copy(
             category = value,
+            categoryChosen = true,
+            appliedRule = null,
             spendingClass = if (!it.spendingClassChosen && usual != null) usual else it.spendingClass,
             expenseProblems = it.expenseProblems - ExpenseProblem.CATEGORY_MISSING,
         )
@@ -206,7 +228,7 @@ class ManualEntryViewModel @Inject constructor(
             title = value,
             suggestions = suggestionsFor(value),
             expenseProblems = it.expenseProblems - ExpenseProblem.TITLE_TOO_LONG,
-        )
+        ).withRule()
     }
 
     fun onDescriptionChange(value: String) = _uiState.update {
@@ -221,12 +243,13 @@ class ManualEntryViewModel @Inject constructor(
             title = suggestion.title,
             suggestions = emptyList(),
             category = suggestion.category ?: it.category,
+            appliedRule = if (suggestion.category != null) null else it.appliedRule,
             accountId = account.id,
             amount = it.amount.ifBlank { suggestion.amount.toDecimal().stripTrailingZeros().toPlainString() },
             spendingClass = suggestion.spendingClass,
             spendingClassChosen = true,
             expenseProblems = emptySet(),
-        )
+        ).withRule()
     }
 
     fun onFeeChange(value: String) = _uiState.update {
@@ -293,7 +316,15 @@ class ManualEntryViewModel @Inject constructor(
             is ExpenseFormResult.Invalid -> _uiState.update { it.copy(expenseProblems = result.problems, message = null) }
             is ExpenseFormResult.Valid -> {
                 _uiState.update { it.copy(isSaving = true, expenseProblems = emptySet(), message = null) }
-                viewModelScope.launch { finish(recordExpense(expenseId, result.details, Instant.now())) }
+                // Only a category the person kept from the rule counts as filed by it.
+                val applied = state.appliedRule?.takeIf { it.categoryId == result.details.category.id }
+                val details = result.details.copy(appliedRuleId = applied?.id?.value, appliedRuleVersion = applied?.version)
+                viewModelScope.launch {
+                    finish(recordExpense(expenseId, details, Instant.now())) {
+                        val decision = RuleOfferRules.decide(details.title, details.category.id, details.account.id, rules)
+                        if (decision is OfferDecision.Offer) ruleInbox.post(decision.offer)
+                    }
+                }
             }
         }
     }
@@ -317,10 +348,31 @@ class ManualEntryViewModel @Inject constructor(
         }
     }
 
-    private fun finish(outcome: Result<Unit>) {
+    private fun finish(outcome: Result<Unit>, onSaved: () -> Unit = {}) {
         outcome.fold(
-            onSuccess = { _uiState.update { it.copy(isSaving = false, isFinished = true) } },
+            onSuccess = {
+                onSaved()
+                _uiState.update { it.copy(isSaving = false, isFinished = true) }
+            },
             onFailure = { error -> _uiState.update { it.copy(isSaving = false, message = error.toMessage()) } },
+        )
+    }
+
+    /**
+     * Fills in the category a remembered rule gives for the typed title, unless the person already chose one.
+     * A category a rule filled in is taken back when the title or account no longer matches that rule.
+     */
+    private fun ManualEntryUiState.withRule(): ManualEntryUiState {
+        if (kind != ManualEntryKind.EXPENSE || categoryChosen) return this
+        val rule = (CategoryRuleMatcher.match(rules, title, accountId) as? RuleMatch.Applied)?.rule
+        val filed = rule?.let { ExpenseCategory.fromId(it.categoryId) }
+            ?: return if (appliedRule != null) copy(category = null, appliedRule = null) else this
+        val usual = filed.usualClass
+        return copy(
+            category = filed,
+            appliedRule = rule,
+            spendingClass = if (!spendingClassChosen && usual != null) usual else spendingClass,
+            expenseProblems = expenseProblems - ExpenseProblem.CATEGORY_MISSING,
         )
     }
 

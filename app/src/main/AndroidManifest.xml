@@ -5,6 +5,10 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <!-- Lets the weekly catch-up reminder show on Android 13 and later. The person is asked when they turn it on. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Optional automatic capture of new bank SMS. Asked only when the person turns it on in Capture sources. -->
+    <uses-permission android:name="android.permission.RECEIVE_SMS" />
+    <!-- Devices without SMS still install Zar; Capture sources says automatic capture isn't available. -->
+    <uses-feature android:name="android.hardware.telephony" android:required="false" />
 
     <application
         android:name=".ZarApplication"
@@ -35,6 +39,16 @@
                 <data android:mimeType="text/plain" />
             </intent-filter>
         </activity>
+        <!-- Off until automatic capture is turned on. Only the system may send SMS_RECEIVED; the inbox is never read. -->
+        <receiver
+            android:name=".features.capture.data.auto.SmsCaptureReceiver"
+            android:enabled="false"
+            android:exported="true"
+            android:permission="android.permission.BROADCAST_SMS">
+            <intent-filter>
+                <action android:name="android.provider.Telephony.SMS_RECEIVED" />
+            </intent-filter>
+        </receiver>
     </application>
 
 </manifest>

@@ -69,6 +69,7 @@ import com.example.zar.core.presentation.theme.ZarHighlight
 import com.example.zar.core.presentation.theme.ZarTheme
 import com.example.zar.core.presentation.theme.ZarType
 import com.example.zar.features.home.domain.model.HomeOverview
+import com.example.zar.features.home.presentation.viewmodel.HomeCommitmentsContent
 import com.example.zar.features.home.presentation.viewmodel.HomeContent
 import com.example.zar.features.home.presentation.viewmodel.HomeUiState
 import com.example.zar.features.home.presentation.viewmodel.HomeViewModel
@@ -85,6 +86,9 @@ fun HomeScreen(
     onNavigate: (TopLevelDestination) -> Unit,
     onAddOption: (AddEntryOption) -> Unit,
     onOpenReview: () -> Unit,
+    onOpenFreelance: () -> Unit,
+    onOpenBills: () -> Unit,
+    onOpenBill: (String) -> Unit,
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -96,6 +100,9 @@ fun HomeScreen(
         onNavigate = onNavigate,
         onAddOption = onAddOption,
         onOpenReview = onOpenReview,
+        onOpenFreelance = onOpenFreelance,
+        onOpenBills = onOpenBills,
+        onOpenBill = onOpenBill,
     )
 }
 
@@ -108,6 +115,9 @@ internal fun HomeScreenContent(
     onNavigate: (TopLevelDestination) -> Unit,
     onAddOption: (AddEntryOption) -> Unit,
     onOpenReview: () -> Unit = {},
+    onOpenFreelance: () -> Unit = {},
+    onOpenBills: () -> Unit = {},
+    onOpenBill: (String) -> Unit = {},
 ) {
     ZarScreenScaffold(
         destination = TopLevelDestination.Home,
@@ -138,6 +148,11 @@ internal fun HomeScreenContent(
                     onNextMonth = onNextMonth,
                     onNavigate = onNavigate,
                     onOpenReview = onOpenReview,
+                    commitments = state.commitments,
+                    onRetry = onRetry,
+                    onOpenFreelance = onOpenFreelance,
+                    onOpenBills = onOpenBills,
+                    onOpenBill = onOpenBill,
                 )
             }
         }
@@ -169,6 +184,11 @@ private fun OverviewBlock(
     onNextMonth: () -> Unit,
     onNavigate: (TopLevelDestination) -> Unit,
     onOpenReview: () -> Unit,
+    commitments: HomeCommitmentsContent,
+    onRetry: () -> Unit,
+    onOpenFreelance: () -> Unit,
+    onOpenBills: () -> Unit,
+    onOpenBill: (String) -> Unit,
 ) {
     ReceivedHero(overview, canGoForward, onPreviousMonth, onNextMonth)
 
@@ -183,12 +203,13 @@ private fun OverviewBlock(
         SpendingCard(overview, onClick = { onNavigate(TopLevelDestination.Activity) })
         GoalLinkCard(onClick = { onNavigate(TopLevelDestination.Plans) })
         RecentActivity(overview.recent)
+        ClientsOweRow(commitments, onClick = onOpenFreelance, onRetry = onRetry)
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            StatCard(
-                title = stringResource(R.string.home_bills),
-                value = stringResource(R.string.home_bills_empty),
-                action = stringResource(R.string.home_review_dates),
-                onClick = { onNavigate(TopLevelDestination.Plans) },
+            NextBillCard(
+                commitments = commitments,
+                onOpenBill = onOpenBill,
+                onOpenBills = onOpenBills,
+                onRetry = onRetry,
                 modifier = Modifier.weight(1f),
             )
             StatCard(
