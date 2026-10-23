@@ -31,10 +31,16 @@ import com.example.zar.core.domain.model.money.Currencies
 import com.example.zar.core.domain.model.money.FiatMoney
 import com.example.zar.core.presentation.components.TopLevelDestination
 import com.example.zar.core.presentation.theme.ZarTheme
+import com.example.zar.features.bills.domain.model.BillId
+import com.example.zar.features.bills.domain.model.NextBill
+import com.example.zar.features.freelance.domain.model.Outstanding
+import com.example.zar.features.home.domain.model.HomeCommitments
 import com.example.zar.features.home.domain.model.HomeOverview
+import com.example.zar.features.home.presentation.viewmodel.HomeCommitmentsContent
 import com.example.zar.features.home.presentation.screen.HomeScreenContent
 import com.example.zar.features.home.presentation.viewmodel.HomeContent
 import com.example.zar.features.home.presentation.viewmodel.HomeUiState
+import java.time.LocalDate
 import java.time.YearMonth
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -129,6 +135,71 @@ class HomeScreenUiTest {
         compose.onNodeWithTag("received-amount").assertTextContains("LKR 1,250.50")
         saveScreenshot("u02-home-reviewed.png")
     }
+    @Test
+    fun clientsOweAndNextBillRowsShowTheirDataAndOpenDetails() {
+        var freelanceOpened = 0
+        var openedBill: String? = null
+        val overview = HomeOverview(
+            month = month,
+            summary = PeriodSummary(zero, SpendingBreakdown(zero, zero, zero), 0),
+            recent = emptyList(),
+            hasRecordsInMonth = true,
+            receivedByDay = List(month.lengthOfMonth()) { zero },
+        )
+        val commitments = HomeCommitments(
+            outstanding = Outstanding(
+                owed = listOf(FiatMoney(4_500_000, Currencies.LKR), FiatMoney(30_000, Currencies.USD)),
+                overdue = listOf(FiatMoney(1_000_000, Currencies.LKR)),
+                projectsWithBalance = 2,
+            ),
+            nextBill = NextBill(BillId("b1"), "Dialog", LocalDate.of(2026, 9, 28), FiatMoney(245_000, Currencies.LKR)),
+        )
+        compose.setContent {
+            ZarTheme {
+                HomeScreenContent(
+                    state = HomeUiState(month, canGoForward = true, HomeContent.Ready(overview), HomeCommitmentsContent.Ready(commitments)),
+                    onPreviousMonth = {}, onNextMonth = {}, onRetry = {}, onNavigate = {}, onAddOption = {},
+                    onOpenFreelance = { freelanceOpened++ },
+                    onOpenBill = { openedBill = it },
+                )
+            }
+        }
+        compose.onNodeWithTag("clients-owe-amount").performScrollTo().assertTextContains("LKR 45,000 + USD 300")
+        compose.onNodeWithTag("clients-owe-caption").assertTextContains("LKR 10,000 overdue", substring = true)
+        compose.onNodeWithTag("next-bill-name").performScrollTo().assertTextContains("Dialog")
+        compose.onNodeWithTag("next-bill-detail").assertTextContains("expected LKR 2,450", substring = true)
+        saveScreenshot("u03-home-commitments.png")
+
+        compose.onNodeWithTag("clients-owe-row").performScrollTo().performClick()
+        assertEquals(1, freelanceOpened)
+        compose.onNodeWithTag("next-bill-card").performScrollTo().performClick()
+        assertEquals("b1", openedBill)
+    }
+
+    @Test
+    fun commitmentsFailureShowsRetryWhileTotalsStayVisible() {
+        var retried = 0
+        val overview = HomeOverview(
+            month = month,
+            summary = PeriodSummary(ReportingTotal(FiatMoney(125_050, Currencies.LKR)), SpendingBreakdown(zero, zero, zero), 0),
+            recent = emptyList(),
+            hasRecordsInMonth = true,
+            receivedByDay = List(month.lengthOfMonth()) { zero },
+        )
+        compose.setContent {
+            ZarTheme {
+                HomeScreenContent(
+                    state = HomeUiState(month, canGoForward = true, HomeContent.Ready(overview), HomeCommitmentsContent.Error),
+                    onPreviousMonth = {}, onNextMonth = {}, onRetry = { retried++ }, onNavigate = {}, onAddOption = {},
+                )
+            }
+        }
+        compose.onNodeWithTag("received-amount").assertTextContains("LKR 1,250.50")
+        compose.onNodeWithTag("commitments-retry").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("clients-owe-row").performScrollTo().performClick()
+        assertEquals(1, retried)
+    }
+
     /** Keep deterministic emulator images available for visual review. */
     private fun saveScreenshot(name: String) {
         val bitmap = compose.onRoot().captureToImage().asAndroidBitmap()
