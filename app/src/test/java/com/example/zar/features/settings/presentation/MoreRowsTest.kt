@@ -14,24 +14,33 @@ class MoreRowsTest {
         onOpenAccounts = { opened += "accounts" },
         onOpenIncome = { opened += "income" },
         onOpenFreelance = { opened += "freelance" },
+        onOpenCrypto = { opened += "crypto" },
+        onOpenCapture = { opened += "capture" },
+        onOpenBills = { opened += "bills" },
         onOpenReminder = { opened += "reminder" },
         onOpenSettings = { opened += "settings" },
     )
 
     @Test
-    fun rowsFollowFigmaOrder() {
+    fun rowsKeepFigmaOrderWithLaterFeaturesBeforeReminder() {
         assertEquals(
             listOf(
                 R.string.more_accounts,
                 R.string.income_open,
                 R.string.freelance_open,
+                R.string.crypto_open,
+                R.string.more_capture,
+                R.string.bills_open,
                 R.string.more_reminder,
                 R.string.settings_title,
             ),
             rows.map { it.title },
         )
         assertEquals(
-            listOf("open-accounts", "open-income", "open-freelance", "open-reminder", "open-settings"),
+            listOf(
+                "open-accounts", "open-income", "open-freelance", "open-crypto",
+                "open-capture", "open-bills", "open-reminder", "open-settings",
+            ),
             rows.map { it.tag },
         )
     }
@@ -41,13 +50,15 @@ class MoreRowsTest {
         val titles = rows.map { it.title }
         assertFalse(R.string.more_privacy in titles)
         assertFalse(R.string.more_export in titles)
-        assertFalse(R.string.more_capture in titles)
     }
 
     @Test
     fun eachRowOpensItsDestination() {
         rows.forEach { it.onClick() }
 
-        assertEquals(listOf("accounts", "income", "freelance", "reminder", "settings"), opened)
+        assertEquals(
+            listOf("accounts", "income", "freelance", "crypto", "capture", "bills", "reminder", "settings"),
+            opened,
+        )
     }
 }

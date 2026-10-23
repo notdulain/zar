@@ -27,6 +27,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -51,6 +52,8 @@ import com.example.zar.features.freelance.presentation.viewmodel.FreelanceMessag
 import com.example.zar.features.freelance.presentation.viewmodel.FreelanceViewModel
 import com.example.zar.features.freelance.presentation.viewmodel.ProjectFormViewModel
 import com.example.zar.features.freelance.presentation.viewmodel.ProjectViewModel
+import com.example.zar.features.reminders.presentation.NotificationsOffNote
+import com.example.zar.features.reminders.presentation.rememberNotificationAccess
 import com.example.zar.features.transactions.presentation.income.IncomeFormat
 import com.example.zar.features.transactions.presentation.income.screen.SummaryHeaderCard
 import com.example.zar.features.transactions.presentation.income.screen.ZarMono
@@ -66,6 +69,7 @@ fun FreelanceScreen(
     viewModel: FreelanceViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val overdueAlerts by viewModel.overdueAlerts.collectAsStateWithLifecycle()
     Scaffold(
         topBar = {
             TopAppBar(
@@ -84,12 +88,33 @@ fun FreelanceScreen(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 item { OwedHeader(uiState.outstanding) }
+                item { OverdueAlertsRow(enabled = overdueAlerts, onChange = viewModel::setOverdueAlerts) }
                 if (uiState.projects.isEmpty()) item { CenteredText(stringResource(R.string.freelance_empty), Modifier.padding(top = 48.dp)) }
                 items(uiState.projects, key = { it.project.id.value }) { summary ->
                     ProjectCard(summary, onClick = { onOpenProject(summary.project.id.value) })
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun OverdueAlertsRow(enabled: Boolean, onChange: (Boolean) -> Unit) {
+    val notifications = rememberNotificationAccess()
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                stringResource(R.string.freelance_overdue_alerts),
+                style = MaterialTheme.typography.bodyMedium,
+                fontFamily = ZarMono,
+                modifier = Modifier.weight(1f),
+            )
+            Switch(checked = enabled, onCheckedChange = { checked ->
+                onChange(checked)
+                if (checked) notifications.request()
+            })
+        }
+        if (enabled && !notifications.enabled) NotificationsOffNote()
     }
 }
 

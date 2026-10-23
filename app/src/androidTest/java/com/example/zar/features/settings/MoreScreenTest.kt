@@ -13,12 +13,16 @@ import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 
-/** The More tab (Figma Z86): five rows that open their destinations, and no rows for features not built yet. */
+/** The More tab (Figma Z86): connected rows open their destinations, and no rows for features not built yet. */
 class MoreScreenTest {
     @get:Rule
     val compose = createComposeRule()
 
     private val opened = mutableListOf<String>()
+    private val rowTags = listOf(
+        "open-accounts", "open-income", "open-freelance", "open-crypto",
+        "open-capture", "open-bills", "open-reminder", "open-settings",
+    )
 
     private fun show() = compose.setContent {
         ZarTheme {
@@ -29,19 +33,22 @@ class MoreScreenTest {
                 onOpenAccounts = { opened += "accounts" },
                 onOpenIncome = { opened += "income" },
                 onOpenFreelance = { opened += "freelance" },
+                onOpenCrypto = { opened += "crypto" },
+                onOpenCapture = { opened += "capture" },
+                onOpenBills = { opened += "bills" },
                 onOpenReminder = { opened += "reminder" },
             )
         }
     }
 
     @Test
-    fun showsTheFiveConnectedRowsOnly() {
+    fun showsConnectedRowsOnly() {
         show()
 
-        listOf("open-accounts", "open-income", "open-freelance", "open-reminder", "open-settings").forEach {
+        rowTags.forEach {
             compose.onNodeWithTag(it).performScrollTo().assertIsDisplayed()
         }
-        listOf("Privacy", "Export data", "Ways to add transactions", "Capture sources").forEach {
+        listOf("Privacy", "Export data").forEach {
             compose.onAllNodesWithText(it).assertCountEquals(0)
         }
     }
@@ -50,10 +57,13 @@ class MoreScreenTest {
     fun tappingRowsOpensDestinations() {
         show()
 
-        listOf("open-accounts", "open-income", "open-freelance", "open-reminder", "open-settings").forEach {
+        rowTags.forEach {
             compose.onNodeWithTag(it).performScrollTo().performClick()
         }
 
-        assertEquals(listOf("accounts", "income", "freelance", "reminder", "settings"), opened)
+        assertEquals(
+            listOf("accounts", "income", "freelance", "crypto", "capture", "bills", "reminder", "settings"),
+            opened,
+        )
     }
 }

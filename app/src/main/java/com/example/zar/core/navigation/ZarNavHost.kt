@@ -1,6 +1,9 @@
 package com.example.zar.core.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.window.DialogProperties
@@ -18,6 +21,15 @@ import com.example.zar.features.accounts.presentation.screen.AccountsScreen
 import com.example.zar.features.catchup.presentation.screen.CatchUpScreen
 import com.example.zar.features.catchup.presentation.screen.NeedsReviewScreen
 import com.example.zar.features.catchup.presentation.screen.ReminderSettingsScreen
+import com.example.zar.features.capture.presentation.screen.CaptureReviewScreen
+import com.example.zar.features.capture.presentation.screen.CaptureScreen
+import com.example.zar.features.capture.presentation.viewmodel.ShareLaunchViewModel
+import com.example.zar.features.bills.presentation.screen.BillFormScreen
+import com.example.zar.features.bills.presentation.screen.BillOccurrenceScreen
+import com.example.zar.features.bills.presentation.screen.BillScreen
+import com.example.zar.features.bills.presentation.screen.BillsScreen
+import com.example.zar.features.crypto.presentation.screen.CryptoMovementScreen
+import com.example.zar.features.crypto.presentation.screen.CryptoScreen
 import com.example.zar.features.freelance.presentation.screen.FreelanceScreen
 import com.example.zar.features.freelance.presentation.screen.MilestoneScreen
 import com.example.zar.features.freelance.presentation.screen.ProjectFormScreen
@@ -47,6 +59,12 @@ fun ZarNavHost(
             navController.navigate(CatchUpRoute) { launchSingleTop = true }
             onCatchUpOpened()
         }
+    }
+    // Text shared to Zar from another app opens the capture screen, which reads it.
+    val shareLaunch: ShareLaunchViewModel = hiltViewModel()
+    val hasSharedText by shareLaunch.hasSharedText.collectAsStateWithLifecycle()
+    LaunchedEffect(hasSharedText) {
+        if (hasSharedText) navController.navigate(CaptureRoute) { launchSingleTop = true }
     }
     val onNavigate: (TopLevelDestination) -> Unit = { navController.navigateToTopLevel(it) }
     val onAddOption: (AddEntryOption) -> Unit = { option ->
@@ -87,6 +105,9 @@ fun ZarNavHost(
                 onOpenAccounts = { navController.navigate(AccountsRoute) },
                 onOpenIncome = { navController.navigate(IncomeRoute) },
                 onOpenFreelance = { navController.navigate(FreelanceRoute) },
+                onOpenCrypto = { navController.navigate(CryptoRoute) },
+                onOpenCapture = { navController.navigate(CaptureRoute) },
+                onOpenBills = { navController.navigate(BillsRoute) },
                 onOpenReminder = { navController.navigate(ReminderSettingsRoute) },
             )
         }
@@ -149,6 +170,51 @@ fun ZarNavHost(
         }
         composable<RefundRoute> {
             RefundFormScreen(onDone = { navController.popBackStack() })
+        }
+        composable<CaptureRoute> {
+            CaptureScreen(
+                onBack = { navController.popBackStack() },
+                onReview = { id -> navController.navigate(CaptureReviewRoute(id)) },
+                onAddManually = { navController.navigate(ManualEntryRoute()) },
+            )
+        }
+        composable<CaptureReviewRoute> {
+            CaptureReviewScreen(onDone = { navController.popBackStack() })
+        }
+        composable<BillsRoute> {
+            BillsScreen(
+                onBack = { navController.popBackStack() },
+                onAddBill = { navController.navigate(BillFormRoute()) },
+                onOpenBill = { id -> navController.navigate(BillRoute(id)) },
+            )
+        }
+        composable<BillFormRoute> {
+            BillFormScreen(
+                onBack = { navController.popBackStack() },
+                onSaved = { id, isNew ->
+                    navController.popBackStack()
+                    if (isNew) navController.navigate(BillRoute(id))
+                },
+            )
+        }
+        composable<BillRoute> {
+            BillScreen(
+                onBack = { navController.popBackStack() },
+                onEditBill = { id -> navController.navigate(BillFormRoute(billId = id)) },
+                onOpenOccurrence = { id, date -> navController.navigate(BillOccurrenceRoute(id, date)) },
+            )
+        }
+        composable<BillOccurrenceRoute> {
+            BillOccurrenceScreen(onBack = { navController.popBackStack() })
+        }
+        composable<CryptoRoute> {
+            CryptoScreen(
+                onBack = { navController.popBackStack() },
+                onAddMovement = { navController.navigate(CryptoMovementRoute) },
+            )
+        }
+        composable<CryptoMovementRoute> {
+            CryptoMovementScreen(onDone = { navController.popBackStack() })
         }
         composable<FreelanceRoute> {
             FreelanceScreen(

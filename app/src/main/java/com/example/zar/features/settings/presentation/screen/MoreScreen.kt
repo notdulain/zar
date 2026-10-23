@@ -35,7 +35,7 @@ import com.example.zar.core.presentation.theme.ZarTheme
 import com.example.zar.core.presentation.theme.ZarGradients
 import com.example.zar.core.presentation.theme.ZarType
 
-/** Z86 — More. One card per feature that exists today, in the order Figma shows them. */
+/** Z86 — More. One card per feature that exists today; later features slot in before the reminder and Settings. */
 @Composable
 fun MoreScreen(
     onNavigate: (TopLevelDestination) -> Unit,
@@ -44,6 +44,9 @@ fun MoreScreen(
     onOpenAccounts: () -> Unit,
     onOpenIncome: () -> Unit,
     onOpenFreelance: () -> Unit,
+    onOpenCrypto: () -> Unit,
+    onOpenCapture: () -> Unit,
+    onOpenBills: () -> Unit,
     onOpenReminder: () -> Unit,
 ) {
     ZarScreenScaffold(
@@ -64,9 +67,10 @@ fun MoreScreen(
                 Modifier.fillMaxWidth().padding(start = 10.dp, end = 10.dp, top = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                moreRows(onOpenAccounts, onOpenIncome, onOpenFreelance, onOpenReminder, onOpenSettings).forEach { row ->
-                    MoreOption(row)
-                }
+                moreRows(
+                    onOpenAccounts, onOpenIncome, onOpenFreelance, onOpenCrypto,
+                    onOpenCapture, onOpenBills, onOpenReminder, onOpenSettings,
+                ).forEach { row -> MoreOption(row) }
             }
         }
     }
@@ -106,12 +110,18 @@ internal fun moreRows(
     onOpenAccounts: () -> Unit,
     onOpenIncome: () -> Unit,
     onOpenFreelance: () -> Unit,
+    onOpenCrypto: () -> Unit,
+    onOpenCapture: () -> Unit,
+    onOpenBills: () -> Unit,
     onOpenReminder: () -> Unit,
     onOpenSettings: () -> Unit,
 ): List<MoreRow> = listOf(
     MoreRow(R.string.more_accounts, R.string.more_accounts_detail, R.drawable.ic_ph_wallet, "open-accounts", onOpenAccounts),
     MoreRow(R.string.income_open, R.string.more_income_detail, R.drawable.ic_ph_receipt, "open-income", onOpenIncome),
     MoreRow(R.string.freelance_open, R.string.more_freelance_detail, R.drawable.ic_ph_briefcase, "open-freelance", onOpenFreelance),
+    MoreRow(R.string.crypto_open, R.string.more_crypto_detail, R.drawable.ic_ph_currency_btc, "open-crypto", onOpenCrypto),
+    MoreRow(R.string.more_capture, R.string.more_capture_detail, R.drawable.ic_ph_chat_text, "open-capture", onOpenCapture),
+    MoreRow(R.string.bills_open, R.string.more_bills_detail, R.drawable.ic_ph_tray, "open-bills", onOpenBills),
     MoreRow(R.string.more_reminder, R.string.more_reminder_detail, R.drawable.ic_ph_lightning, "open-reminder", onOpenReminder),
     MoreRow(R.string.settings_title, R.string.more_settings_detail, R.drawable.ic_ph_gearsix_inactive, "open-settings", onOpenSettings),
 )
