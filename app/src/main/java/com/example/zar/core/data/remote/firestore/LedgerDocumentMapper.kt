@@ -125,6 +125,8 @@ object LedgerDocumentMapper {
         "source" to tx.source.name,
         "transferId" to tx.transferId?.value,
         "refundOf" to tx.refundOf?.value,
+        "appliedRuleId" to tx.appliedRuleId,
+        "appliedRuleVersion" to tx.appliedRuleVersion,
         "createdAt" to tx.createdAt.toEpochMilli(),
     ).filterValues { it != null }
 
@@ -145,6 +147,8 @@ object LedgerDocumentMapper {
             transferId = (map["transferId"] as String?)?.let(::TransferId),
             refundOf = (map["refundOf"] as String?)?.let(::TransactionId),
             createdAt = Instant.ofEpochMilli((map["createdAt"] as Number).toLong()),
+            appliedRuleId = map["appliedRuleId"] as String?,
+            appliedRuleVersion = (map["appliedRuleVersion"] as Number?)?.toInt(),
         )
     }.getOrNull()
 

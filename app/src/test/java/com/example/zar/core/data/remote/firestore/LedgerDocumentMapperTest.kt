@@ -77,4 +77,20 @@ class LedgerDocumentMapperTest {
     fun malformedDocumentIsSkipped() {
         assertNull(LedgerDocumentMapper.transactionFromMap(mapOf("id" to "x", "createdAt" to T0.toEpochMilli())))
     }
+    @Test
+    fun roundTripsTheCategoryRuleThatFiledAnExpense() {
+        val original = tx("filed", TransactionType.EXPENSE, lkr(850)).copy(categoryId = "groceries", appliedRuleId = "r1", appliedRuleVersion = 3)
+        val map = LedgerDocumentMapper.transactionToMap(original)
+        assertEquals("r1", map["appliedRuleId"])
+        assertEquals(3, map["appliedRuleVersion"])
+        assertEquals(original, LedgerDocumentMapper.transactionFromMap(map))
+    }
+
+    @Test
+    fun anExpenseNoRuleFiledHasNoRuleFields() {
+        val map = LedgerDocumentMapper.transactionToMap(tx("plain", TransactionType.EXPENSE, lkr(850)))
+        assertFalse(map.containsKey("appliedRuleId"))
+        assertFalse(map.containsKey("appliedRuleVersion"))
+        assertNull(LedgerDocumentMapper.transactionFromMap(map)!!.appliedRuleId)
+    }
 }

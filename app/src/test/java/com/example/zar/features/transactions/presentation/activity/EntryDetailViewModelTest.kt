@@ -1,5 +1,9 @@
 package com.example.zar.features.transactions.presentation.activity
 
+import com.example.zar.features.rules.rule
+import com.example.zar.features.rules.domain.RuleCard
+import com.example.zar.features.rules.FakeCategoryRules
+import com.example.zar.features.rules.newInbox
 import androidx.lifecycle.SavedStateHandle
 import com.example.zar.core.domain.TestLedger.OCT_10
 import com.example.zar.core.domain.TestLedger.T0
@@ -45,11 +49,16 @@ class EntryDetailViewModelTest {
     @Before fun setUp() = Dispatchers.setMain(UnconfinedTestDispatcher())
     @After fun tearDown() = Dispatchers.resetMain()
 
+    private val rules = FakeCategoryRules()
+    private val inbox = newInbox()
+
     private fun viewModel(id: String) = EntryDetailViewModel(
         savedStateHandle = SavedStateHandle(mapOf("entryId" to id)),
         observeDetail = ObserveEntryDetailUseCase(ledger, accounts),
         observeOnline = ObserveOnlineStatusUseCase(connectivity),
         voidTransaction = VoidTransactionUseCase(ledger),
+        observeRules = rules.observeUseCase(),
+        ruleInbox = inbox,
     )
 
     private fun runScreen(id: String, block: suspend (EntryDetailViewModel) -> Unit) = runTest(UnconfinedTestDispatcher()) {
@@ -203,5 +212,49 @@ class EntryDetailViewModelTest {
         vm.confirmVoid()
 
         assertEquals(1, ledger.inner.voids.size)
+    }
+
+    // --- Category rules (SCRUM-39) ---
+
+    @Test
+    fun anExpenseWithAPreciseNameShowsTheOfferAndRememberOpensTheSheet() {
+        runScreen("e1") { vm ->
+            saveExpense()
+            val card = vm.uiState.value.ruleCard as RuleCard.Offer
+            assertEquals("keells super", card.offer.merchantKey)
+
+            vm.rememberChoice(card.offer)
+
+            assertTrue(inbox.state.value.sheetOpen)
+            assertEquals(card.offer, inbox.state.value.offer)
+        }
+    }
+
+    @Test
+    fun aGeneralNameShowsTheTooGeneralCardAndNoOffer() {
+        runScreen("e1") { vm ->
+            ledger.save(tx("e1", TransactionType.EXPENSE, lkr(1_250), cash).copy(merchant = "PickMe", categoryId = "transport"))
+            assertEquals(RuleCard.TooGeneral("PickMe"), vm.uiState.value.ruleCard)
+        }
+    }
+
+    @Test
+    fun anExpenseFiledByARuleShowsTheRuleAndTheVersionThatFiledIt() {
+        runScreen("e1") { vm ->
+            rules.rules.value = listOf(rule("Keells Super", category = "groceries", version = 4))
+            ledger.save(
+                tx("e1", TransactionType.EXPENSE, lkr(8_400), cash)
+                    .copy(merchant = "Keells Super", categoryId = "groceries", appliedRuleId = "r-keells-super", appliedRuleVersion = 2),
+            )
+            assertEquals(RuleCard.Applied("Keells Super", "groceries", 2), vm.uiState.value.ruleCard)
+        }
+    }
+
+    @Test
+    fun incomeHasNoRuleCard() {
+        runScreen("i1") { vm ->
+            ledger.save(tx("i1", TransactionType.INCOME, lkr(5_000), cash))
+            assertEquals(RuleCard.Hidden, vm.uiState.value.ruleCard)
+        }
     }
 }

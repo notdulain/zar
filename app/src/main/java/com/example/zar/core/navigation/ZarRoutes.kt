@@ -44,7 +44,13 @@ data class ManualEntryRoute(
     val focusNote: Boolean = false,
     val prefillAmount: String? = null,
     val prefillAccountId: String? = null,
+    /** Fills "What was it for?" with a note the person typed into Quick note, when they chose to fill the form instead. */
+    val prefillTitle: String? = null,
 )
+
+/** Write a rough note, have it read, and review the records it suggests before anything is saved. */
+@Serializable
+data object QuickNoteRoute
 
 /** One saved entry in full: its details, corrections and void state. [entryId] is the transaction ID. */
 @Serializable
@@ -69,6 +75,10 @@ data object CatchUpRoute
 /** Day, time and skip for the weekly catch-up reminder. */
 @Serializable
 data object ReminderSettingsRoute
+
+/** The names Zar was asked to remember a category for, with an editor for each. */
+@Serializable
+data object CategoryRulesRoute
 
 @Serializable
 data object FreelanceRoute

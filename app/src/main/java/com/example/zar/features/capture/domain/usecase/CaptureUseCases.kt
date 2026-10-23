@@ -3,6 +3,7 @@ package com.example.zar.features.capture.domain.usecase
 import com.example.zar.core.domain.model.Account
 import com.example.zar.core.domain.model.Draft
 import com.example.zar.core.domain.model.DraftId
+import com.example.zar.core.domain.model.DraftProposal
 import com.example.zar.core.domain.model.DraftSource
 import com.example.zar.core.domain.model.DraftStatus
 import com.example.zar.core.domain.model.SpendingClass
@@ -14,11 +15,16 @@ import com.example.zar.features.capture.domain.model.ParsedBankSms
 import com.example.zar.features.capture.domain.model.SmsIgnoreReason
 import com.example.zar.features.capture.domain.model.SmsParseResult
 import com.example.zar.features.capture.domain.parser.BankSmsParser
+import com.example.zar.features.rules.domain.CategoryRuleMatcher
+import com.example.zar.features.rules.domain.model.RuleMatch
+import com.example.zar.features.rules.domain.usecase.ObserveCategoryRulesUseCase
 import java.time.Instant
 import javax.inject.Inject
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.withTimeoutOrNull
 
 /** Drafts that came from bank messages (shared, pasted or, later, SMS). */
 private val CAPTURE_SOURCES = setOf(DraftSource.SHARED_TEXT, DraftSource.SMS)
@@ -95,6 +101,7 @@ class ObserveCaptureAccountsUseCase @Inject constructor(
 /** Saves the reviewed record, then marks the draft confirmed. Confirming twice saves once. */
 class ConfirmCapturedDraftUseCase @Inject constructor(
     private val drafts: DraftRepository,
+    private val rules: ObserveCategoryRulesUseCase,
 ) {
     suspend operator fun invoke(
         draft: Draft,
@@ -103,7 +110,18 @@ class ConfirmCapturedDraftUseCase @Inject constructor(
         spendingClass: SpendingClass?,
         now: Instant,
     ): Result<Unit> {
-        val transaction = runCatching { CapturedDraftRules.transactionFrom(draft, account, type, spendingClass, now) }
+        val transaction = runCatching {
+            // A remembered name files the expense; a general name or disagreeing rules leave it for the person.
+            val merchant = (draft.proposals.singleOrNull() as? DraftProposal.ActualTransaction)?.merchant
+            val rule = if (type == TransactionType.EXPENSE) {
+                // Rules that cannot be read in a moment are skipped: confirming never waits on them.
+                val saved = runCatching { withTimeoutOrNull(RULES_WAIT_MS) { rules().first() } }.getOrNull().orEmpty()
+                (CategoryRuleMatcher.match(saved, merchant, account.id) as? RuleMatch.Applied)?.rule
+            } else {
+                null
+            }
+            CapturedDraftRules.transactionFrom(draft, account, type, spendingClass, now, rule)
+        }
             .getOrElse { return Result.failure(it) }
         return attempt { drafts.confirmCapturedDraft(draft, transaction) }
     }
@@ -114,6 +132,8 @@ class DiscardCapturedDraftUseCase @Inject constructor(
 ) {
     suspend operator fun invoke(draft: Draft): Result<Unit> = attempt { drafts.setStatus(draft.id, DraftStatus.DISCARDED) }
 }
+
+private const val RULES_WAIT_MS = 2_000L
 
 private inline fun <T> attempt(block: () -> T): Result<T> = try {
     Result.success(block())

@@ -17,6 +17,7 @@ import com.example.zar.core.domain.model.TransactionId
 import com.example.zar.core.domain.model.TransactionType
 import com.example.zar.features.capture.domain.model.ParsedBankSms
 import com.example.zar.features.capture.domain.model.SmsTransactionKind
+import com.example.zar.features.rules.domain.model.CategoryRule
 import java.security.MessageDigest
 import java.time.Instant
 
@@ -77,6 +78,8 @@ object CapturedDraftRules {
         type: TransactionType,
         spendingClass: SpendingClass?,
         createdAt: Instant,
+        /** A category rule that matched this expense. Only an expense takes its category. */
+        rule: CategoryRule? = null,
     ): Transaction {
         require(draft.source in setOf(DraftSource.SHARED_TEXT, DraftSource.SMS))
         require(draft.status == DraftStatus.PENDING_REVIEW) { "Draft already reviewed" }
@@ -87,6 +90,7 @@ object CapturedDraftRules {
         if (amount.currency != account.currency) throw LedgerError.CurrencyMismatch(account.currency.code, amount.currency.code)
         require(!date.isAfter(createdAt.atZone(ZarTime.ZONE).toLocalDate())) { "A recorded payment cannot be in the future" }
         require(type in CONFIRMABLE_TYPES) { "Add ${type.name.lowercase()} records manually" }
+        val filedBy = rule?.takeIf { type == TransactionType.EXPENSE }
         return Transaction(
             id = TransactionId(draft.recordIdFor(0)),
             accountId = account.id,
@@ -96,8 +100,11 @@ object CapturedDraftRules {
             reportingConversion = CurrencyConverter.toReporting(amount, null),
             spendingClass = if (type == TransactionType.EXPENSE) spendingClass ?: SpendingClass.UNKNOWN else null,
             merchant = proposal.merchant,
+            categoryId = filedBy?.categoryId,
             source = if (draft.source == DraftSource.SMS) RecordSource.SMS else RecordSource.SHARED_TEXT,
             createdAt = createdAt,
+            appliedRuleId = filedBy?.id?.value,
+            appliedRuleVersion = filedBy?.version,
         )
     }
 }

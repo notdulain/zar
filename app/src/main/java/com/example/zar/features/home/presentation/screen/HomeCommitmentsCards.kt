@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
@@ -137,7 +138,7 @@ internal fun NextBillCard(
         else -> onOpenBills
     }
     ZarCard(
-        modifier.height(116.dp).testTag("next-bill-card"),
+        modifier.heightIn(min = 116.dp).testTag("next-bill-card"),
         onClick = onClick,
         contentPadding = PaddingValues(16.dp),
     ) {
@@ -149,8 +150,6 @@ internal fun NextBillCard(
                     stringResource(R.string.home_commitments_error),
                     style = ZarType.bodyS,
                     color = colors.textPrimary,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
                 )
             commitments !is HomeCommitmentsContent.Ready ->
                 Text(stringResource(R.string.home_loading_short), style = ZarType.bodyM, color = colors.textSecondary)
@@ -179,13 +178,11 @@ internal fun NextBillCard(
                     ),
                     style = ZarType.bodyCaption,
                     color = colors.textSecondary,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.testTag("next-bill-detail"),
                 )
             }
         }
-        Spacer(Modifier.weight(1f))
+        Spacer(Modifier.height(8.dp))
         Text(
             stringResource(
                 when {
@@ -196,8 +193,6 @@ internal fun NextBillCard(
             ),
             style = ZarType.labelAction,
             color = colors.textSelected,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
         )
     }
 }
