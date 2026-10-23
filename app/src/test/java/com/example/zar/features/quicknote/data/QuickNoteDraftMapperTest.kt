@@ -54,6 +54,14 @@ class QuickNoteDraftMapperTest {
         assertEquals("Paid by card", p.note)
     }
 
+    @Test fun parsesStatedTimeAndDropsMalformedTimes() {
+        assertEquals(java.time.LocalTime.of(18, 30), only<DraftProposal.ActualTransaction>(map("850 cash at 6:30 pm", actual("time" to "18:30"))).time)
+        for (invalid in listOf("24:00", "18:60", "7:30", "18:30:59")) {
+            assertNull(only<DraftProposal.ActualTransaction>(map("850", actual("time" to invalid))).time)
+        }
+        assertNull(only<DraftProposal.ActualTransaction>(map("850", actual())).time)
+    }
+
     // --- draft identity -----------------------------------------------------------------------------------
 
     @Test fun returnsPendingQuickNoteDraftWithStableIdentity() {

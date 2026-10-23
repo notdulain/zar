@@ -21,6 +21,7 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FirebaseFirestoreException
 import com.google.firebase.firestore.Source
 import java.time.Instant
+import java.time.LocalTime
 import java.time.LocalDate
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -179,9 +180,11 @@ object DraftDocumentMapper {
                 proposal.amount?.let { put("amount", LedgerDocumentMapper.moneyToMap(it)) }
                 proposal.accountId?.let { put("accountId", it.value) }
                 proposal.date?.let { put("date", it.toString()) }
+                proposal.time?.let { put("time", it.toString()) }
                 proposal.spendingClass?.let { put("spendingClass", it.name) }
                 proposal.categoryId?.let { put("categoryId", it) }
                 proposal.merchant?.let { put("merchant", it) }
+                proposal.title?.let { put("title", it) }
                 proposal.note?.let { put("note", it) }
             }
             is DraftProposal.Expected -> {
@@ -199,6 +202,7 @@ object DraftDocumentMapper {
                 proposal.sent?.let { put("sent", LedgerDocumentMapper.moneyToMap(it)) }
                 proposal.received?.let { put("received", LedgerDocumentMapper.moneyToMap(it)) }
                 proposal.date?.let { put("date", it.toString()) }
+                proposal.time?.let { put("time", it.toString()) }
             }
         }
         if (proposal.uncertainFields.isNotEmpty()) put("uncertainFields", proposal.uncertainFields.map { it.name }.sorted())
@@ -215,9 +219,11 @@ object DraftDocumentMapper {
                 amount = money("amount"),
                 accountId = string("accountId")?.let(::AccountId),
                 date = date("date"),
+                time = string("time")?.let(LocalTime::parse),
                 spendingClass = string("spendingClass")?.let(SpendingClass::valueOf),
                 categoryId = string("categoryId"),
                 merchant = string("merchant"),
+                title = string("title"),
                 note = string("note"),
                 uncertainFields = uncertain,
             )
@@ -235,6 +241,7 @@ object DraftDocumentMapper {
                 sent = money("sent"),
                 received = money("received"),
                 date = date("date"),
+                time = string("time")?.let(LocalTime::parse),
                 uncertainFields = uncertain,
             )
             else -> null

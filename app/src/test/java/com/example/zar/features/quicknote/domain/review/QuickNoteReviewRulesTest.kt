@@ -67,6 +67,12 @@ class QuickNoteReviewRulesTest {
         assertNull(input.currency)
     }
 
+    @Test fun selectedTimeIsSavedAndCanBeRemovedWithoutInventingOne() {
+        val time = java.time.LocalTime.of(18, 30)
+        assertEquals(time, (check(expense().copy(time = time)).record as ConfirmableRecord.Ledger).transaction.time)
+        assertNull((check(expense()).record as ConfirmableRecord.Ledger).transaction.time)
+    }
+
     // --- Actual records ------------------------------------------------------------------------
 
     @Test fun descriptiveTitleSurvivesReviewAndSave() {

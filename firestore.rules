@@ -428,7 +428,7 @@ service cloud.firestore {
     function isValidProposal(p) {
       return p is map
         && p.keys().hasOnly(['kind', 'type', 'direction', 'amount', 'sent', 'received', 'accountId', 'fromAccountId',
-            'toAccountId', 'date', 'dueDate', 'title', 'spendingClass', 'categoryId', 'merchant', 'note', 'uncertainFields'])
+            'toAccountId', 'date', 'time', 'dueDate', 'title', 'spendingClass', 'categoryId', 'merchant', 'note', 'uncertainFields'])
         && p.kind in ['ACTUAL_TRANSACTION', 'EXPECTED', 'TRANSFER']
         && (!('amount' in p) || isMoney(p.amount))
         && (!('sent' in p) || isMoney(p.sent))
@@ -439,6 +439,7 @@ service cloud.firestore {
         && isOptionalString(p, 'fromAccountId', 128)
         && isOptionalString(p, 'toAccountId', 128)
         && (!('date' in p) || isDateString(p.date))
+        && (!('time' in p) || isTimeString(p.time))
         && (!('dueDate' in p) || isDateString(p.dueDate))
         && isOptionalString(p, 'title', 120)
         && isOptionalString(p, 'spendingClass', 32)

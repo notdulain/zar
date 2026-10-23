@@ -1,115 +1,120 @@
 {
   "summary": {
     "model": "google/gemini-3.5-flash-lite",
-    "date": "2026-10-23T21:28:13.144Z",
-    "cases": 21,
-    "passed": 21,
+    "date": "2026-10-23T21:33:20.356Z",
+    "cases": 22,
+    "passed": 22,
     "errors": 0
   },
   "results": [
     {
       "id": "en-simple",
-      "latencyMs": 2035,
+      "latencyMs": 2042,
       "problems": []
     },
     {
       "id": "en-multi",
-      "latencyMs": 1706,
+      "latencyMs": 2201,
       "problems": []
     },
     {
       "id": "en-expected",
-      "latencyMs": 1349,
-      "problems": []
-    },
-    {
-      "id": "en-partial",
-      "latencyMs": 2049,
-      "problems": []
-    },
-    {
-      "id": "en-transfer",
-      "latencyMs": 1390,
-      "problems": []
-    },
-    {
-      "id": "en-range",
-      "latencyMs": 1518,
-      "problems": []
-    },
-    {
-      "id": "en-no-account",
-      "latencyMs": 1632,
-      "problems": []
-    },
-    {
-      "id": "en-lakh",
-      "latencyMs": 1776,
-      "problems": []
-    },
-    {
-      "id": "si-script",
-      "latencyMs": 1940,
-      "problems": []
-    },
-    {
-      "id": "si-singlish",
-      "latencyMs": 1395,
-      "problems": []
-    },
-    {
-      "id": "si-mixed",
-      "latencyMs": 1798,
-      "problems": []
-    },
-    {
-      "id": "si-expected",
       "latencyMs": 1560,
       "problems": []
     },
     {
+      "id": "en-partial",
+      "latencyMs": 1914,
+      "problems": []
+    },
+    {
+      "id": "en-transfer",
+      "latencyMs": 1550,
+      "problems": []
+    },
+    {
+      "id": "en-range",
+      "latencyMs": 1686,
+      "problems": []
+    },
+    {
+      "id": "en-no-account",
+      "latencyMs": 1297,
+      "problems": []
+    },
+    {
+      "id": "en-lakh",
+      "latencyMs": 1613,
+      "problems": []
+    },
+    {
+      "id": "si-script",
+      "latencyMs": 1506,
+      "problems": []
+    },
+    {
+      "id": "si-singlish",
+      "latencyMs": 1518,
+      "problems": []
+    },
+    {
+      "id": "si-mixed",
+      "latencyMs": 1658,
+      "problems": []
+    },
+    {
+      "id": "si-expected",
+      "latencyMs": 1664,
+      "problems": []
+    },
+    {
       "id": "ta-script",
-      "latencyMs": 1511,
+      "latencyMs": 1163,
       "problems": []
     },
     {
       "id": "ta-tanglish",
-      "latencyMs": 1565,
+      "latencyMs": 1528,
       "problems": []
     },
     {
       "id": "en-refund",
-      "latencyMs": 1877,
+      "latencyMs": 1718,
       "problems": []
     },
     {
       "id": "en-crypto",
-      "latencyMs": 1538,
+      "latencyMs": 1848,
       "problems": []
     },
     {
       "id": "en-bill-due",
-      "latencyMs": 1450,
+      "latencyMs": 1372,
       "problems": []
     },
     {
       "id": "no-money",
-      "latencyMs": 1141,
+      "latencyMs": 1054,
       "problems": []
     },
     {
       "id": "injection",
-      "latencyMs": 1430,
+      "latencyMs": 1534,
       "problems": []
     },
     {
       "id": "en-ambiguous-tense",
-      "latencyMs": 1373,
+      "latencyMs": 1790,
       "problems": []
     },
     {
       "id": "en-descriptive-title",
-      "latencyMs": 1420,
+      "latencyMs": 1594,
+      "problems": []
+    },
+    {
+      "id": "en-explicit-time",
+      "latencyMs": 1606,
       "problems": []
     }
   ]

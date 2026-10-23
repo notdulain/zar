@@ -28,6 +28,7 @@ import com.example.zar.features.transactions.domain.refund.RefundFormResult
 import com.example.zar.features.transactions.domain.refund.RefundProblem
 import com.example.zar.features.transactions.domain.refund.RefundRules
 import java.time.Instant
+import java.time.LocalTime
 import java.time.LocalDate
 
 /** Why a proposal cannot be saved yet. Each one is something the person has to fill in or fix. */
@@ -72,6 +73,7 @@ sealed interface ProposalInput {
         /** The purchase a refund returns money for. The generated draft cannot know it. */
         val refundOf: TransactionId?,
         override val uncertain: Set<DraftField>,
+        val time: LocalTime? = null,
     ) : ProposalInput
 
     data class Expected(
@@ -94,6 +96,7 @@ sealed interface ProposalInput {
         val date: LocalDate?,
         override val uncertain: Set<DraftField>,
         val receivedCurrency: Currency? = null,
+        val time: LocalTime? = null,
     ) : ProposalInput
 }
 
@@ -123,6 +126,7 @@ object QuickNoteReviewRules {
             currency = proposal.amount?.currency,
             accountId = proposal.accountId,
             date = proposal.date,
+            time = proposal.time,
             categoryId = proposal.categoryId,
             spendingClass = proposal.spendingClass,
             title = proposal.title ?: proposal.merchant.orEmpty(),
@@ -146,6 +150,7 @@ object QuickNoteReviewRules {
             currency = proposal.sent?.currency,
             received = proposal.received.asText(),
             date = proposal.date,
+            time = proposal.time,
             uncertain = proposal.uncertainFields,
             receivedCurrency = proposal.received?.currency,
         )
@@ -231,6 +236,7 @@ object QuickNoteReviewRules {
                 note = note,
                 source = RecordSource.QUICK_NOTE,
                 createdAt = now,
+                time = input.time,
             )
             TransactionType.INCOME -> Transaction(
                 id = id,
@@ -243,6 +249,7 @@ object QuickNoteReviewRules {
                 note = note,
                 source = RecordSource.QUICK_NOTE,
                 createdAt = now,
+                time = input.time,
             )
             TransactionType.REFUND -> {
                 val result = RefundRules.validate(
@@ -258,7 +265,7 @@ object QuickNoteReviewRules {
                         if (blockers.isEmpty()) blockers += ProposalBlocker.AMOUNT_INVALID
                         return ProposalCheck(blockers, null)
                     }
-                    is RefundFormResult.Valid -> RefundRules.newRefund(id, result.details, now).copy(source = RecordSource.QUICK_NOTE)
+                    is RefundFormResult.Valid -> RefundRules.newRefund(id, result.details, now).copy(source = RecordSource.QUICK_NOTE, time = input.time)
                 }
             }
             // The shared draft contract only produces these three; anything else is added by hand.
@@ -332,6 +339,7 @@ object QuickNoteReviewRules {
             receivedConversion = CurrencyConverter.toReporting(received, null),
             source = RecordSource.QUICK_NOTE,
             createdAt = now,
+            time = input.time,
         )
         return ProposalCheck(emptySet(), ConfirmableRecord.Moved(transfer, from, to))
     }

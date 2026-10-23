@@ -11,7 +11,7 @@ const isPlainObject = (v) => v !== null && typeof v === 'object' && !Array.isArr
 
 // Free text is shortened; identifiers, money and dates that are too long are treated as missing.
 const FREE_TEXT = { category: 40, merchant: 80, title: 120, note: 300 };
-const BOUNDED = { amount: 40, receivedAmount: 40, currency: 10, receivedCurrency: 10, accountId: 128, toAccountId: 128, date: 10, dueDate: 10 };
+const BOUNDED = { amount: 40, receivedAmount: 40, currency: 10, receivedCurrency: 10, accountId: 128, toAccountId: 128, date: 10, dueDate: 10, time: 5 };
 
 function nullableText(value, limit, truncate) {
   if (value === undefined || value === null) return null;
@@ -54,6 +54,7 @@ function sanitize(proposal, accountIds) {
   for (const field of ['amount', 'receivedAmount']) if (clean[field] !== null && !DECIMAL.test(clean[field])) clean[field] = null;
   for (const field of ['date', 'dueDate']) if (clean[field] !== null && !isCalendarDate(clean[field])) clean[field] = null;
   for (const field of ['accountId', 'toAccountId']) if (clean[field] !== null && !accountIds.has(clean[field])) clean[field] = null;
+  if (clean.time !== null && !/^([01]\d|2[0-3]):[0-5]\d$/.test(clean.time)) clean.time = null;
   return clean;
 }
 

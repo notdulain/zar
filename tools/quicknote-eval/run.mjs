@@ -66,7 +66,7 @@ async function draft(note, attempt = 0) {
 
 const num = (v) => (v == null ? null : Number(String(v).replace(/,/g, '')));
 const FIELDS = ['kind', 'transactionType', 'direction', 'amount', 'currency', 'accountId', 'toAccountId', 'date', 'dueDate',
-  'spendingClass', 'receivedAmount', 'receivedCurrency', 'title'];
+  'spendingClass', 'receivedAmount', 'receivedCurrency', 'title', 'time'];
 
 function score(expected, actual) {
   const problems = [];

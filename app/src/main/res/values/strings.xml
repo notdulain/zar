@@ -1310,4 +1310,6 @@
     <string name="quicknote_edit">Edit</string>
     <string name="quicknote_done">Done</string>
     <string name="quicknote_pick_purchase_empty">No purchase with something left to refund.</string>
+    <string name="entry_field_time">Time</string>
+    <string name="entry_time_not_set">Not set</string>
 </resources>

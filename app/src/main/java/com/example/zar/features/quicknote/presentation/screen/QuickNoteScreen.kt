@@ -97,6 +97,9 @@ import com.example.zar.features.transactions.presentation.manual.screen.Segmente
 import com.example.zar.features.transactions.presentation.manual.screen.TextInput
 import com.example.zar.features.transactions.presentation.manual.screen.labelRes
 import java.time.Instant
+import com.example.zar.core.presentation.components.TransactionTimeField
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 import java.time.LocalDate
 import java.time.ZoneOffset
 
@@ -418,14 +421,11 @@ private fun ProposalRows(item: ProposalState, accounts: List<Account>, actions: 
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 ZarMonoLabel(row.label, Modifier.width(86.dp))
-                Text(
-                    row.value,
-                    style = ZarType.bodyM,
-                    color = if (row.missing) colors.textAttention else colors.textPrimary,
-                    modifier = Modifier.weight(1f),
-                )
-                if (row.missing) FieldTag(stringResource(if (row.key == "purchase") R.string.quicknote_tag_needed else R.string.quicknote_tag_missing), "quicknote-missing-${row.key}")
-                else if (row.guessed) FieldTag(stringResource(R.string.quicknote_tag_guessed), "quicknote-guessed-${row.key}")
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(row.value, style = ZarType.bodyM, color = if (row.missing) colors.textAttention else colors.textPrimary)
+                    if (row.missing) FieldTag(stringResource(if (row.key == "purchase") R.string.quicknote_tag_needed else R.string.quicknote_tag_missing), "quicknote-missing-${row.key}")
+                    else if (row.guessed) FieldTag(stringResource(R.string.quicknote_tag_guessed), "quicknote-guessed-${row.key}")
+                }
                 ZarIcon(R.drawable.ic_ph_caret_right, size = 14.dp, tint = colors.iconMuted)
             }
         }
@@ -470,6 +470,7 @@ private fun rowsFor(item: ProposalState, accounts: List<Account>): List<RowSpec>
                 }
                 add(RowSpec("date", stringResource(R.string.quicknote_field_date), input.date?.let { IncomeFormat.fullDate(it) } ?: stringResource(R.string.quicknote_pick_date),
                     blockers.hit(ProposalBlocker.DATE_MISSING, ProposalBlocker.DATE_IN_FUTURE), DraftField.DATE in input.uncertain))
+                add(RowSpec("time", stringResource(R.string.entry_field_time), input.time?.format(DateTimeFormatter.ofPattern("h:mm a", Locale.ENGLISH)) ?: none, false, DraftField.TIME in input.uncertain))
                 if (input.type == TransactionType.REFUND) {
                     val purchase = item.purchase?.current
                     add(RowSpec("purchase", stringResource(R.string.quicknote_field_purchase),
@@ -510,6 +511,7 @@ private fun rowsFor(item: ProposalState, accounts: List<Account>): List<RowSpec>
                 }
                 add(RowSpec("date", stringResource(R.string.quicknote_field_date), input.date?.let { IncomeFormat.fullDate(it) } ?: stringResource(R.string.quicknote_pick_date),
                     blockers.hit(ProposalBlocker.DATE_MISSING, ProposalBlocker.DATE_IN_FUTURE), DraftField.DATE in input.uncertain))
+                add(RowSpec("time", stringResource(R.string.entry_field_time), input.time?.format(DateTimeFormatter.ofPattern("h:mm a", Locale.ENGLISH)) ?: none, false, DraftField.TIME in input.uncertain))
             }
         }
     }
@@ -737,6 +739,9 @@ private fun ActualFields(index: Int, input: ProposalInput.Actual, item: Proposal
     DateField(input.date, stringResource(R.string.quicknote_field_date), allowFuture = false, input.uncertain.contains(DraftField.DATE), "quicknote-date") { date ->
         actions.onUpdate(index) { (it as ProposalInput.Actual).copy(date = date) }
     }
+    TransactionTimeField(input.time, tag = "quicknote-time") { time ->
+        actions.onUpdate(index) { (it as ProposalInput.Actual).copy(time = time) }
+    }
     ZarFormRow(stringResource(R.string.quicknote_field_title)) {
         TextInput(input.title, { text -> actions.onUpdate(index) { (it as ProposalInput.Actual).copy(title = text.take(120)) } }, stringResource(R.string.quicknote_add_title), Modifier.weight(1f).testTag("quicknote-title-input"))
     }
@@ -809,6 +814,9 @@ private fun TransferFields(index: Int, input: ProposalInput.Transfer, accounts: 
     DateField(input.date, stringResource(R.string.quicknote_field_date), allowFuture = false, input.uncertain.contains(DraftField.DATE), "quicknote-date") { date ->
         actions.onUpdate(index) { (it as ProposalInput.Transfer).copy(date = date) }
     }
+    TransactionTimeField(input.time, tag = "quicknote-time") { time ->
+        actions.onUpdate(index) { (it as ProposalInput.Transfer).copy(time = time) }
+    }
 }
 
 @Composable
@@ -867,12 +875,11 @@ private fun DateField(date: LocalDate?, label: String, allowFuture: Boolean, gue
     Row(Modifier.fillMaxWidth().clickable(role = Role.Button) { showPicker = true }.testTag(tag), verticalAlignment = Alignment.CenterVertically) {
         ZarFormRow(label, Modifier.weight(1f)) {
             Row(Modifier.weight(1f), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    date?.let { IncomeFormat.fullDate(it) } ?: stringResource(R.string.quicknote_pick_date),
-                    style = ZarType.bodyM,
-                    color = if (date == null) colors.textAttention else colors.textPrimary,
-                )
-                if (guessed) FieldTag(stringResource(R.string.quicknote_tag_guessed), "$tag-guessed")
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(date?.let { IncomeFormat.fullDate(it) } ?: stringResource(R.string.quicknote_pick_date),
+                        style = ZarType.bodyM, color = if (date == null) colors.textAttention else colors.textPrimary)
+                    if (guessed) FieldTag(stringResource(R.string.quicknote_tag_guessed), "$tag-guessed")
+                }
                 ZarIcon(R.drawable.ic_ph_caret_down, size = 14.dp, tint = colors.iconMuted)
             }
         }

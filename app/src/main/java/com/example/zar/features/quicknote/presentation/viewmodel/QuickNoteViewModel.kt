@@ -277,6 +277,7 @@ class QuickNoteViewModel internal constructor(
                 if (old.amount != new.amount) add(DraftField.AMOUNT)
                 if (old.accountId != new.accountId) add(DraftField.ACCOUNT)
                 if (old.date != new.date) add(DraftField.DATE)
+                if (old.time != new.time) add(DraftField.TIME)
                 if (old.categoryId != new.categoryId) add(DraftField.CATEGORY)
                 if (old.title != new.title) { add(DraftField.MERCHANT); add(DraftField.TITLE) }
             }
@@ -292,6 +293,7 @@ class QuickNoteViewModel internal constructor(
                 if (old.fromId != new.fromId) add(DraftField.ACCOUNT)
                 if (old.toId != new.toId) add(DraftField.COUNTERPART_ACCOUNT)
                 if (old.date != new.date) add(DraftField.DATE)
+                if (old.time != new.time) add(DraftField.TIME)
             }
         }
     }

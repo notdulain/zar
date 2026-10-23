@@ -1,7 +1,7 @@
 // Quick-note prompt and output schema for the evaluation harness. The deployed copy is functions/src/prompt.js (D06);
 // keep the two in sync and re-run the evaluation after any prompt change.
 
-export const DRAFT_FIELDS = ['TYPE', 'AMOUNT', 'ACCOUNT', 'COUNTERPART_ACCOUNT', 'DATE', 'CATEGORY', 'MERCHANT', 'TITLE'];
+export const DRAFT_FIELDS = ['TYPE', 'AMOUNT', 'ACCOUNT', 'COUNTERPART_ACCOUNT', 'DATE', 'TIME', 'CATEGORY', 'MERCHANT', 'TITLE'];
 
 export function systemInstruction() {
   return `You turn a Sri Lankan user's rough money note into draft proposals for the Zar finance app.
@@ -31,6 +31,8 @@ Never invent facts:
 - spendingClass is for expenses only; leave it null for income, refunds and transfers.
 - date / dueDate: yyyy-MM-dd, resolved against today. If an actual transaction has no date, use today and list DATE in uncertainFields.
   If an expected payment has no due date, use null. Ambiguous weekdays ("next friday") must list DATE.
+- time (actual transactions and transfers): HH:mm in 24-hour local time, only when explicitly stated.
+  Otherwise null; never infer a clock time from today or the request. Ambiguous times must list TIME in uncertainFields.
 - spendingClass: COMMITTED for rent, bills, loans, subscriptions, school fees; DISCRETIONARY for eating out,
   entertainment, shopping, treats; UNKNOWN otherwise.
 - category (expenses and income): a short lowercase English word (food, transport, groceries, bills, rent, shopping, salary, freelance, fuel, health,
@@ -66,6 +68,7 @@ export const responseSchema = {
           accountId: nullableString(),
           toAccountId: nullableString(),
           date: nullableString('yyyy-MM-dd'),
+          time: nullableString('HH:mm'),
           dueDate: nullableString('yyyy-MM-dd'),
           spendingClass: { type: 'STRING', enum: ['COMMITTED', 'DISCRETIONARY', 'UNKNOWN'], nullable: true },
           category: nullableString(),
