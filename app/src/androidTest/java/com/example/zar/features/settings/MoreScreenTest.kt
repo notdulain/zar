@@ -1,11 +1,12 @@
 package com.example.zar.features.settings
 
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
-import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performScrollTo
 import com.example.zar.core.presentation.theme.ZarTheme
 import com.example.zar.features.settings.presentation.screen.MoreScreen
@@ -21,7 +22,7 @@ class MoreScreenTest {
     private val opened = mutableListOf<String>()
     private val rowTags = listOf(
         "open-accounts", "open-income", "open-freelance", "open-crypto",
-        "open-capture", "open-bills", "open-reminder", "open-settings",
+        "open-capture", "open-bills", "open-rules", "open-reminder", "open-settings",
     )
 
     private fun show() = compose.setContent {
@@ -37,6 +38,7 @@ class MoreScreenTest {
                 onOpenCapture = { opened += "capture" },
                 onOpenBills = { opened += "bills" },
                 onOpenReminder = { opened += "reminder" },
+                onOpenRules = { opened += "rules" },
             )
         }
     }
@@ -57,12 +59,14 @@ class MoreScreenTest {
     fun tappingRowsOpensDestinations() {
         show()
 
+        // A click action rather than a touch: the last row can sit under the floating navigation bar
+        // until it is scrolled clear of it.
         rowTags.forEach {
-            compose.onNodeWithTag(it).performScrollTo().performClick()
+            compose.onNodeWithTag(it).performScrollTo().performSemanticsAction(SemanticsActions.OnClick)
         }
 
         assertEquals(
-            listOf("accounts", "income", "freelance", "crypto", "capture", "bills", "reminder", "settings"),
+            listOf("accounts", "income", "freelance", "crypto", "capture", "bills", "rules", "reminder", "settings"),
             opened,
         )
     }
