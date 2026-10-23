@@ -46,7 +46,7 @@ fun NeedsReviewScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     // Possible subscriptions wait here too, so they're decided during the weekly review (L06).
-    NeedsReviewBody(state, onBack, onOpenEntry, onStartCatchUp, extraContent = { SubscriptionSuggestionsSection() })
+    NeedsReviewBody(state, onBack, onOpenEntry, onStartCatchUp, extraContent = { SubscriptionSuggestionsSection(edge = 0.dp) })
 }
 
 @Composable
