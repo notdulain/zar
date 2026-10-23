@@ -11,6 +11,11 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.runtime.mutableStateOf
+import androidx.test.platform.app.InstrumentationRegistry
+import android.graphics.Bitmap
+import android.os.SystemClock
+import java.io.File
 import com.example.zar.core.domain.model.Account
 import com.example.zar.core.domain.model.AccountId
 import com.example.zar.core.domain.model.AccountType
@@ -202,5 +207,82 @@ class QuickNoteUiTest {
         compose.onNodeWithTag("quicknote-amount").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("quicknote-account-bank").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("quicknote-done").assertIsDisplayed()
+    }
+
+    @Test fun savingPreventsClosingOrReinterpretingTheNote() {
+        val rec = Recorder()
+        show(QuickNoteUiState(stage = QuickNoteStage.REVIEWING, accounts = listOf(cash), proposals = listOf(
+            ProposalState(0, actual(), status = com.example.zar.features.quicknote.presentation.viewmodel.ProposalStatus.SAVING),
+            ProposalState(1, bill),
+        )), rec)
+        compose.onNodeWithTag("quicknote-close").assertIsNotEnabled()
+        compose.onAllNodesWithTag("quicknote-edit-note").assertCountEquals(0)
+        compose.onNodeWithTag("quicknote-save-0").assertIsNotEnabled()
+    }
+
+    /** Native rendering of production composables with fixed data; no backend or Gemini call. */
+    @Test fun captureReviewEvidence() {
+        val review = QuickNoteUiState(stage = QuickNoteStage.REVIEWING, note = note, accounts = listOf(cash, bank),
+            proposals = listOf(ProposalState(0, actual(account = null, uncertain = setOf(DraftField.CATEGORY)), setOf(ProposalBlocker.ACCOUNT_MISSING))))
+        val current = mutableStateOf(QuickNoteUiState(note = note, accounts = review.accounts))
+        compose.setContent {
+            ZarTheme(darkTheme = false) {
+                QuickNoteContent(current.value, QuickNoteActions(
+                    onClose = {}, onNote = {}, onInterpret = {}, onCancelReading = {}, onFillForm = {}, onEditNote = {},
+                    onOpenEditor = { current.value = current.value.copy(editing = it) },
+                    onCloseEditor = { current.value = current.value.copy(editing = null) },
+                    onUpdate = { index, transform -> current.value = current.value.copy(proposals = current.value.proposals.map {
+                        if (it.index == index) it.copy(input = transform(it.input)) else it
+                    }) },
+                    onConfirm = {}, onDiscard = {}, onDiscardAll = {},
+                ))
+            }
+        }
+        fun showState(state: QuickNoteUiState, name: String) {
+            compose.runOnIdle { current.value = state }
+            capture(name)
+        }
+        compose.onNodeWithTag("quicknote-note").performClick()
+        capture("01-write-keyboard")
+        androidx.test.espresso.Espresso.closeSoftKeyboard()
+        showState(current.value.copy(stage = QuickNoteStage.READING), "02-reading")
+        showState(review, "03-missing-account")
+        compose.onNodeWithTag("quicknote-row-0-account").performClick()
+        capture("04-editor-account-picker")
+        compose.onNodeWithTag("quicknote-date").performScrollTo().performClick()
+        capture("05-date-picker")
+        compose.onNodeWithText("Cancel").performClick()
+        showState(review.copy(proposals = listOf(ProposalState(0, actual()))), "06-ready")
+        val multiple = review.copy(proposals = listOf(ProposalState(0, actual()), ProposalState(1, bill)))
+        showState(multiple, "07-actual-and-expected")
+        showState(multiple.copy(proposals = listOf(multiple.proposals[0].copy(status = com.example.zar.features.quicknote.presentation.viewmodel.ProposalStatus.SAVING), multiple.proposals[1])), "08-saving")
+        showState(multiple.copy(proposals = listOf(multiple.proposals[0].copy(status = com.example.zar.features.quicknote.presentation.viewmodel.ProposalStatus.SAVED), multiple.proposals[1])), "09-saved")
+        showState(QuickNoteUiState(note = note, failure = QuickNoteFailure.TIMED_OUT), "10-read-error")
+        showState(QuickNoteUiState(note = note, isOnline = false), "11-offline")
+        val purchase = com.example.zar.core.domain.model.Transaction(
+            id = com.example.zar.core.domain.model.TransactionId("purchase"), accountId = bank.id, type = TransactionType.EXPENSE,
+            amount = FiatMoney(230000, Currencies.LKR), date = LocalDate.of(2026, 10, 20),
+            reportingConversion = com.example.zar.core.domain.calculation.CurrencyConverter.toReporting(FiatMoney(230000, Currencies.LKR), null),
+            spendingClass = SpendingClass.DISCRETIONARY, merchant = "Keells Super", createdAt = java.time.Instant.parse("2026-10-20T10:00:00Z"),
+        )
+        val entry = com.example.zar.core.domain.model.LedgerEntry(purchase, purchase, emptyList(), null, emptyList())
+        val refund = review.copy(proposals = listOf(ProposalState(0, actual(account = bank.id).copy(type = TransactionType.REFUND, amount = "500"), setOf(ProposalBlocker.PURCHASE_MISSING))), purchases = listOf(entry))
+        showState(refund, "12-refund-needs-purchase")
+        compose.onNodeWithTag("quicknote-row-0-purchase").performClick()
+        compose.onNodeWithTag("quicknote-purchase-purchase").performScrollTo()
+        capture("13-purchase-picker")
+        val transfer = ProposalInput.Transfer(bank.id, cash.id, "3000", Currencies.LKR, "2900", LocalDate.of(2026, 10, 22), emptySet())
+        showState(review.copy(proposals = listOf(ProposalState(0, transfer, setOf(ProposalBlocker.RECEIVED_MISMATCH)))), "14-transfer-mismatch")
+        showState(review.copy(proposals = listOf(ProposalState(0, actual(), saveFailed = true))), "15-save-error")
+    }
+
+    private fun capture(name: String) {
+        compose.waitForIdle()
+        SystemClock.sleep(650)
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val folder = File(instrumentation.targetContext.cacheDir, "pr29-evidence").apply { mkdirs() }
+        val screenshot = checkNotNull(instrumentation.uiAutomation.takeScreenshot())
+        File(folder, "$name.png").outputStream().use { screenshot.compress(Bitmap.CompressFormat.PNG, 100, it) }
+        screenshot.recycle()
     }
 }

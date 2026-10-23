@@ -1299,6 +1299,7 @@
     <string name="quicknote_hint_to_missing">Choose the account the money goes to.</string>
     <string name="quicknote_hint_same_account">A transfer needs two different accounts.</string>
     <string name="quicknote_hint_received_missing">These accounts use different currencies, so say how much arrived.</string>
+    <string name="quicknote_hint_received_mismatch">Transfers in one currency must move the same amount. Correct the amounts, or discard this proposal and use the transfer form to record a fee.</string>
     <string name="quicknote_save_failed">Could not save that. Try again.</string>
     <string name="quicknote_save">Save</string>
     <string name="quicknote_saving">Saving…</string>

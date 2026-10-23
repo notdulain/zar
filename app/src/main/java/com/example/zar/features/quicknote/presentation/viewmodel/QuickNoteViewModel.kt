@@ -73,6 +73,8 @@ data class QuickNoteUiState(
 ) {
     val canInterpret: Boolean get() = stage == QuickNoteStage.WRITING && note.isNotBlank() && isOnline
     val anySaved: Boolean get() = proposals.any { it.status == ProposalStatus.SAVED }
+    val isSaving: Boolean get() = proposals.any { it.status == ProposalStatus.SAVING }
+    val canEditNote: Boolean get() = !anySaved && !isSaving
 }
 
 /**
@@ -178,7 +180,7 @@ class QuickNoteViewModel internal constructor(
 
     /** Back to the note to reword it. Only before anything was saved, so a second read can't repeat a record. */
     fun editNote() = _uiState.update {
-        if (it.stage != QuickNoteStage.REVIEWING || it.anySaved) it else {
+        if (it.stage != QuickNoteStage.REVIEWING || !it.canEditNote) it else {
             draft = null
             it.copy(stage = QuickNoteStage.WRITING, proposals = emptyList(), editing = null)
         }

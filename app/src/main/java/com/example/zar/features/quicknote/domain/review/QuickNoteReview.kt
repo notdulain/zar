@@ -47,6 +47,7 @@ enum class ProposalBlocker {
     TO_MISSING,
     SAME_ACCOUNT,
     RECEIVED_MISSING,
+    RECEIVED_MISMATCH,
 }
 
 /**
@@ -88,10 +89,11 @@ sealed interface ProposalInput {
         val toId: AccountId?,
         val amount: String,
         val currency: Currency?,
-        /** Only used when the two accounts hold different currencies. */
+        /** The stated received amount. Blank may use the sent amount for accounts in one currency. */
         val received: String,
         val date: LocalDate?,
         override val uncertain: Set<DraftField>,
+        val receivedCurrency: Currency? = null,
     ) : ProposalInput
 }
 
@@ -145,6 +147,7 @@ object QuickNoteReviewRules {
             received = proposal.received.asText(),
             date = proposal.date,
             uncertain = proposal.uncertainFields,
+            receivedCurrency = proposal.received?.currency,
         )
     }
 
@@ -302,11 +305,18 @@ object QuickNoteReviewRules {
             date.isAfter(today) -> blockers += ProposalBlocker.DATE_IN_FUTURE
         }
         // Between accounts of one currency nothing is lost; otherwise the received amount must be stated.
+        if (to != null && input.receivedCurrency != null && to.currency != input.receivedCurrency) {
+            blockers += ProposalBlocker.CURRENCY_MISMATCH
+        }
         val received = when {
             sent == null || from == null || to == null -> null
-            from.currency == to.currency -> sent
+            from.currency == to.currency && input.received.isBlank() -> sent
             else -> Money.parse(input.received, to.currency)?.takeIf { it.isPositive }
                 .also { if (it == null) blockers += ProposalBlocker.RECEIVED_MISSING }
+        }
+        if (from != null && to != null && from.currency == to.currency && received != null && sent != received) {
+            // A difference needs a separately recorded fee; never invent that expense or drop the difference.
+            blockers += ProposalBlocker.RECEIVED_MISMATCH
         }
         if (blockers.isNotEmpty() || from == null || to == null || sent == null || received == null || date == null) {
             return ProposalCheck(blockers, null)

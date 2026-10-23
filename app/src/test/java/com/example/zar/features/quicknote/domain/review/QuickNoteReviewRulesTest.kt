@@ -253,4 +253,24 @@ class QuickNoteReviewRulesTest {
         assertEquals(usd(10), record.transfer.received)
         assertFalse("The rate is left missing, never guessed", record.transfer.receivedConversion == record.transfer.sentConversion)
     }
+
+    @Test
+    fun aStatedReceivedCurrencyIsKeptAndMustMatchTheDestination() {
+        val input = QuickNoteReviewRules.inputFrom(
+            DraftProposal.TransferBetweenAccounts(bank.id, cash.id, lkr(3000), usd(10), yesterday),
+        ) as ProposalInput.Transfer
+        assertEquals(usd(1).currency, input.receivedCurrency)
+        assertTrue(ProposalBlocker.CURRENCY_MISMATCH in check(input).blockers)
+        assertNull(check(input).record)
+        assertTrue(check(input.copy(toId = payoneer.id)).blockers.isEmpty())
+    }
+
+    @Test
+    fun aSameCurrencyTransferNeverSilentlyReplacesAStatedReceivedAmount() {
+        val input = transfer(received = "2900")
+        assertEquals(setOf(ProposalBlocker.RECEIVED_MISMATCH), check(input).blockers)
+        assertNull(check(input).record)
+        assertTrue(check(input.copy(received = "3000")).blockers.isEmpty())
+        assertTrue(ProposalBlocker.RECEIVED_MISSING in check(input.copy(received = "invalid")).blockers)
+    }
 }

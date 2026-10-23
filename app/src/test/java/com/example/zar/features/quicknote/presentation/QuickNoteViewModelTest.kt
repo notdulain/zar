@@ -288,6 +288,31 @@ class QuickNoteViewModelTest {
         assertTrue(vm.uiState.value.proposals.isEmpty())
     }
 
+    @Test
+    fun aPendingSaveCannotBeAbandonedByRewordingTheNote() {
+        val gate = CompletableDeferred<Unit>()
+        val delayed = object : LedgerRepository by ledger {
+            override suspend fun saveTransaction(transaction: Transaction) {
+                gate.await()
+                ledger.saveTransaction(transaction)
+            }
+        }
+        run(CountingDrafts { draftOf(groceries, bill) }, delayed) { vm, drafts ->
+            vm.onNoteChange("note")
+            vm.interpret()
+            vm.confirm(0)
+            assertTrue(vm.uiState.value.isSaving)
+            assertFalse(vm.uiState.value.canEditNote)
+            vm.editNote()
+            vm.interpret()
+            assertEquals(QuickNoteStage.REVIEWING, vm.uiState.value.stage)
+            assertEquals(1, drafts.calls)
+            gate.complete(Unit)
+            assertEquals(ProposalStatus.SAVED, vm.uiState.value.proposals[0].status)
+            assertFalse(vm.uiState.value.canEditNote)
+        }
+    }
+
     // --- Refunds -------------------------------------------------------------------------------
 
     @Test

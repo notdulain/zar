@@ -151,10 +151,10 @@ internal fun QuickNoteContent(state: QuickNoteUiState, actions: QuickNoteActions
     val colors = ZarTheme.colors
     val closeLabel = stringResource(R.string.manual_close)
     val editing = state.editing?.let { index -> state.proposals.firstOrNull { it.index == index } }
-    BackHandler(enabled = editing != null) { actions.onCloseEditor() }
+    BackHandler(enabled = editing != null || state.isSaving) { if (!state.isSaving) actions.onCloseEditor() }
 
     BoxWithConstraints(Modifier.fillMaxSize().imePadding()) {
-        Box(Modifier.fillMaxSize().background(colors.scrim.copy(alpha = 0.64f)).clickable(onClick = actions.onClose))
+        Box(Modifier.fillMaxSize().background(colors.scrim.copy(alpha = 0.64f)).clickable(enabled = !state.isSaving, onClick = actions.onClose))
         Column(
             Modifier.align(Alignment.BottomCenter).fillMaxWidth().heightIn(max = maxHeight - 48.dp)
                 .clip(ZarShapes.sheet).background(colors.surface).pointerInput(Unit) { detectTapGestures {} }.padding(top = 10.dp),
@@ -181,7 +181,7 @@ internal fun QuickNoteContent(state: QuickNoteUiState, actions: QuickNoteActions
                 )
                 Box(
                     Modifier.size(24.dp).clip(CircleShape)
-                        .clickable(role = Role.Button, onClickLabel = closeLabel, onClick = actions.onClose)
+                        .clickable(enabled = !state.isSaving, role = Role.Button, onClickLabel = closeLabel, onClick = actions.onClose)
                         .semantics { contentDescription = closeLabel }.testTag("quicknote-close"),
                     Alignment.Center,
                 ) { ZarIcon(R.drawable.ic_ph_x, size = 20.dp) }
@@ -353,7 +353,7 @@ private fun ColumnScope.ReviewStage(state: QuickNoteUiState, actions: QuickNoteA
                 color = colors.textSecondary,
                 modifier = Modifier.weight(1f).testTag("quicknote-review-intro"),
             )
-            if (!state.anySaved) {
+            if (state.canEditNote) {
                 Text(
                     stringResource(R.string.quicknote_edit_note),
                     style = ZarType.labelAction,
@@ -371,7 +371,7 @@ private fun ColumnScope.ReviewStage(state: QuickNoteUiState, actions: QuickNoteA
     }
     SheetButtons {
         if (single != null) {
-            ZarButton(stringResource(R.string.quicknote_discard), { actions.onDiscard(single.index) }, Modifier.weight(1f).testTag("quicknote-discard-${single.index}"), style = ZarButtonStyle.Soft)
+            ZarButton(stringResource(R.string.quicknote_discard), { actions.onDiscard(single.index) }, Modifier.weight(1f).testTag("quicknote-discard-${single.index}"), style = ZarButtonStyle.Soft, enabled = single.status == ProposalStatus.OPEN)
             ZarButton(
                 stringResource(if (single.status == ProposalStatus.SAVING) R.string.quicknote_saving else R.string.quicknote_save),
                 { actions.onConfirm(single.index) },
@@ -450,7 +450,7 @@ private fun rowsFor(item: ProposalState, accounts: List<Account>): List<RowSpec>
     val none = stringResource(R.string.quicknote_not_set)
     fun accountName(id: AccountId?) = accounts.firstOrNull { it.id == id }?.name
     fun money(text: String, currency: Currency?, account: Account?): String? {
-        val code = account?.currency ?: currency ?: Currencies.REPORTING
+        val code = currency ?: account?.currency ?: Currencies.REPORTING
         if (text.isBlank()) return null
         return Money.parse(text, code)?.let { IncomeFormat.withCode(it) } ?: text
     }
@@ -503,9 +503,9 @@ private fun rowsFor(item: ProposalState, accounts: List<Account>): List<RowSpec>
                     blockers.hit(ProposalBlocker.TO_MISSING), DraftField.COUNTERPART_ACCOUNT in input.uncertain && to != null))
                 add(RowSpec("amount", stringResource(R.string.quicknote_field_amount), money(input.amount, input.currency, from) ?: stringResource(R.string.quicknote_add_amount),
                     blockers.hit(ProposalBlocker.AMOUNT_MISSING, ProposalBlocker.AMOUNT_INVALID), DraftField.AMOUNT in input.uncertain))
-                if (from != null && to != null && from.currency != to.currency) {
-                    add(RowSpec("received", stringResource(R.string.quicknote_field_received), money(input.received, to.currency, to) ?: stringResource(R.string.quicknote_add_amount),
-                        blockers.hit(ProposalBlocker.RECEIVED_MISSING), false))
+                if (from != null && to != null && (from.currency != to.currency || input.received.isNotBlank())) {
+                    add(RowSpec("received", stringResource(R.string.quicknote_field_received), money(input.received, input.receivedCurrency, to) ?: stringResource(R.string.quicknote_add_amount),
+                        blockers.hit(ProposalBlocker.RECEIVED_MISSING, ProposalBlocker.RECEIVED_MISMATCH, ProposalBlocker.CURRENCY_MISMATCH), false))
                 }
                 add(RowSpec("date", stringResource(R.string.quicknote_field_date), input.date?.let { IncomeFormat.fullDate(it) } ?: stringResource(R.string.quicknote_pick_date),
                     blockers.hit(ProposalBlocker.DATE_MISSING, ProposalBlocker.DATE_IN_FUTURE), DraftField.DATE in input.uncertain))
@@ -550,11 +550,11 @@ private fun ProposalCard(item: ProposalState, accounts: List<Account>, actions: 
         is ProposalInput.Expected -> input.amount
         is ProposalInput.Transfer -> input.amount
     }
-    val currency = account?.currency ?: when (input) {
+    val currency = when (input) {
         is ProposalInput.Actual -> input.currency
         is ProposalInput.Expected -> input.currency
         is ProposalInput.Transfer -> input.currency
-    } ?: Currencies.REPORTING
+    } ?: account?.currency ?: Currencies.REPORTING
     val amount = if (amountText.isBlank()) stringResource(R.string.quicknote_add_amount) else (Money.parse(amountText, currency)?.let { IncomeFormat.withCode(it) } ?: amountText)
     val sign = if (input is ProposalInput.Actual && input.type == TransactionType.EXPENSE && amountText.isNotBlank()) "− " else ""
     val when_ = when (input) {
@@ -588,7 +588,7 @@ private fun ProposalCard(item: ProposalState, accounts: List<Account>, actions: 
                     stringResource(R.string.quicknote_edit),
                     style = ZarType.labelAction,
                     color = colors.textSelected,
-                    modifier = Modifier.clickable(role = Role.Button) { actions.onOpenEditor(item.index) }.testTag("quicknote-edit-${item.index}"),
+                    modifier = Modifier.clickable(enabled = item.status == ProposalStatus.OPEN, role = Role.Button) { actions.onOpenEditor(item.index) }.testTag("quicknote-edit-${item.index}"),
                 )
             }
         }
@@ -597,6 +597,11 @@ private fun ProposalCard(item: ProposalState, accounts: List<Account>, actions: 
             Text(sign + amount, style = ZarType.bodyM, color = if (item.blockers.hit(ProposalBlocker.AMOUNT_MISSING, ProposalBlocker.AMOUNT_INVALID)) colors.textAttention else colors.textPrimary)
         }
         if (meta.isNotEmpty()) Text(meta, style = ZarType.bodyCaption, color = colors.textSecondary)
+        if (input is ProposalInput.Transfer && input.received.isNotBlank()) {
+            val receivedCurrency = input.receivedCurrency ?: accounts.firstOrNull { it.id == input.toId }?.currency ?: Currencies.REPORTING
+            val received = Money.parse(input.received, receivedCurrency)?.let { IncomeFormat.withCode(it) } ?: input.received
+            Text("${stringResource(R.string.quicknote_field_received)}: $received", style = ZarType.bodyCaption, color = colors.textSecondary)
+        }
         if (input is ProposalInput.Expected) {
             Text(
                 stringResource(if (input.direction == Direction.IN) R.string.quicknote_expected_in_note else R.string.quicknote_expected_out_note),
@@ -639,6 +644,7 @@ private fun ProposalBlocker.hintRes(): Int = when (this) {
     ProposalBlocker.TO_MISSING -> R.string.quicknote_hint_to_missing
     ProposalBlocker.SAME_ACCOUNT -> R.string.quicknote_hint_same_account
     ProposalBlocker.RECEIVED_MISSING -> R.string.quicknote_hint_received_missing
+    ProposalBlocker.RECEIVED_MISMATCH -> R.string.quicknote_hint_received_mismatch
 }
 
 // --- Edit -----------------------------------------------------------------------------------
@@ -684,7 +690,7 @@ private fun ActualFields(index: Int, input: ProposalInput.Actual, item: Proposal
             tags = listOf("expense", "income", "refund"),
         )
     }
-    AmountField(input.amount, state.accounts.firstOrNull { it.id == (item.purchase?.current?.accountId ?: input.accountId) }?.currency ?: input.currency, input.uncertain.contains(DraftField.AMOUNT)) { text ->
+    AmountField(input.amount, input.currency ?: state.accounts.firstOrNull { it.id == (item.purchase?.current?.accountId ?: input.accountId) }?.currency, input.uncertain.contains(DraftField.AMOUNT)) { text ->
         actions.onUpdate(index) { (it as ProposalInput.Actual).copy(amount = text) }
     }
     if (input.type == TransactionType.REFUND) {
@@ -751,7 +757,7 @@ private fun ExpectedFields(index: Int, input: ProposalInput.Expected, accounts: 
             tags = listOf("in", "out"),
         )
     }
-    AmountField(input.amount, accounts.firstOrNull { it.id == input.accountId }?.currency ?: input.currency, input.uncertain.contains(DraftField.AMOUNT)) { text ->
+    AmountField(input.amount, input.currency ?: accounts.firstOrNull { it.id == input.accountId }?.currency, input.uncertain.contains(DraftField.AMOUNT)) { text ->
         actions.onUpdate(index) { (it as ProposalInput.Expected).copy(amount = text) }
     }
     DateField(input.dueDate, stringResource(R.string.quicknote_field_due), allowFuture = true, input.uncertain.contains(DraftField.DATE), "quicknote-date") { date ->
@@ -791,11 +797,11 @@ private fun TransferFields(index: Int, input: ProposalInput.Transfer, accounts: 
     FieldGroup(stringResource(R.string.quicknote_field_to), input.uncertain.contains(DraftField.COUNTERPART_ACCOUNT)) {
         AccountChips(accounts, input.toId, "quicknote-to") { id -> actions.onUpdate(index) { (it as ProposalInput.Transfer).copy(toId = id) } }
     }
-    AmountField(input.amount, from?.currency ?: input.currency, input.uncertain.contains(DraftField.AMOUNT)) { text ->
+    AmountField(input.amount, input.currency ?: from?.currency, input.uncertain.contains(DraftField.AMOUNT)) { text ->
         actions.onUpdate(index) { (it as ProposalInput.Transfer).copy(amount = text) }
     }
-    if (from != null && to != null && from.currency != to.currency) {
-        AmountField(input.received, to.currency, false, label = stringResource(R.string.quicknote_field_received), tag = "quicknote-received") { text ->
+    if (from != null && to != null && (from.currency != to.currency || input.received.isNotBlank())) {
+        AmountField(input.received, input.receivedCurrency ?: to.currency, false, label = stringResource(R.string.quicknote_field_received), tag = "quicknote-received") { text ->
             actions.onUpdate(index) { (it as ProposalInput.Transfer).copy(received = text) }
         }
     }
