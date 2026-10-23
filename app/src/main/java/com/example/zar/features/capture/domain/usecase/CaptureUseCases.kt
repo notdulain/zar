@@ -1,15 +1,22 @@
 package com.example.zar.features.capture.domain.usecase
 
+import com.example.zar.core.domain.calculation.active
 import com.example.zar.core.domain.model.Account
 import com.example.zar.core.domain.model.Draft
 import com.example.zar.core.domain.model.DraftId
 import com.example.zar.core.domain.model.DraftProposal
 import com.example.zar.core.domain.model.DraftSource
 import com.example.zar.core.domain.model.DraftStatus
+import com.example.zar.core.domain.model.EvidenceId
+import com.example.zar.core.domain.model.EvidenceLink
+import com.example.zar.core.domain.model.LedgerEntry
 import com.example.zar.core.domain.model.SpendingClass
+import com.example.zar.core.domain.model.TransactionId
 import com.example.zar.core.domain.model.TransactionType
 import com.example.zar.core.domain.repository.AccountRepository
 import com.example.zar.core.domain.repository.DraftRepository
+import com.example.zar.core.domain.repository.LedgerRepository
+import com.example.zar.core.domain.repository.LinkWrite
 import com.example.zar.features.capture.domain.CapturedDraftRules
 import com.example.zar.features.capture.domain.model.ParsedBankSms
 import com.example.zar.features.capture.domain.model.SmsIgnoreReason
@@ -124,6 +131,28 @@ class ConfirmCapturedDraftUseCase @Inject constructor(
         }
             .getOrElse { return Result.failure(it) }
         return attempt { drafts.confirmCapturedDraft(draft, transaction) }
+    }
+}
+
+/** What a message is compared against in review: the entries still standing. Undone entries are left out. */
+class ObserveCaptureLedgerUseCase @Inject constructor(
+    private val ledger: LedgerRepository,
+) {
+    operator fun invoke(): Flow<List<LedgerEntry>> = ledger.observeLedger().map { it.active() }
+}
+
+/**
+ * Attaches a message to the entry it reports and closes its draft, posting no money. The message is the entry's
+ * evidence, so the same payment seen through two sources still counts once. Repeating it changes nothing.
+ */
+class LinkCapturedDraftUseCase @Inject constructor(
+    private val drafts: DraftRepository,
+    private val ledger: LedgerRepository,
+) {
+    suspend operator fun invoke(draft: Draft, target: TransactionId, now: Instant): Result<LinkWrite> = attempt {
+        require(draft.status == DraftStatus.PENDING_REVIEW) { "Draft already reviewed" }
+        require(ledger.observeLedger().first().active().any { it.id == target }) { "That entry no longer exists" }
+        drafts.closeAsLinked(draft, EvidenceLink(EvidenceId(draft.id.value), target, now))
     }
 }
 

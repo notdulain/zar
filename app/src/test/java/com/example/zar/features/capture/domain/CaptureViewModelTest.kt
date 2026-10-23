@@ -3,6 +3,7 @@ package com.example.zar.features.capture.domain
 import androidx.lifecycle.viewModelScope
 import com.example.zar.core.domain.model.*
 import com.example.zar.core.domain.repository.DraftRepository
+import com.example.zar.core.domain.repository.LinkWrite
 import com.example.zar.features.capture.domain.parser.BankSmsParser
 import com.example.zar.features.capture.domain.usecase.*
 import com.example.zar.features.capture.presentation.SharedTextInbox
@@ -24,6 +25,7 @@ class CaptureViewModelTest {
         override suspend fun saveDraft(draft:Draft):Draft { gate?.await(); values.value=values.value+draft;return draft }
         override suspend fun confirmCapturedDraft(draft:Draft,transaction:Transaction) { }
         override suspend fun setStatus(id:DraftId,status:DraftStatus) { }
+        override suspend fun closeAsLinked(draft:Draft,link:EvidenceLink)=LinkWrite.SAVED
     }
     @Before fun setup()=Dispatchers.setMain(UnconfinedTestDispatcher())
     @After fun teardown()=Dispatchers.resetMain()
