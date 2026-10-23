@@ -49,6 +49,20 @@ These are the shared models, repository interfaces and saving rules that every f
 - **Encrypted Room is only for capture staging** (L08): raw bank messages stay on the device and are never uploaded. Drafts carry structured fields only, and the rules reject a `rawText` field.
 - Implemented now: `LedgerRepository` (Firestore), `UserSessionProvider` (Firebase Auth) and `AccountRepository` (Firestore, D03: `features/accounts`). Interfaces only, to be implemented by their owners: `ExpectedPaymentRepository` (L03/L05), `DraftRepository` (S07). Draft *generation* (D06) is separate and saves nothing: see [ai-quick-notes-service.md](ai-quick-notes-service.md). Use the field names already in `firestore.rules`.
 
+## Where settings live
+
+| Setting | Where it comes from | Changes? |
+|---|---|---|
+| Reporting currency (LKR) | Fixed domain value, `Currencies.REPORTING`, read through `AppPreferencesRepository`. Not stored | No. Not editable |
+| Signed-in email | Firebase Auth session (`ObserveSessionUseCase`) | Follows the session |
+| Catch-up reminder (on/off, day, time, skipped week) | This phone only: DataStore (`features/catchup`) | Edited on the reminder screen. Cleared on sign-out (`ResetCatchUpOnSignOut`) |
+| Overdue-milestone alerts switch and reminders already shown | This phone only: DataStore `payment_reminders` (`features/reminders`) | Cleared on sign-out (`ResetRemindersOnSignOut`) |
+| Dismissed subscription suggestions | This phone only: DataStore `subscription_suggestions` (`features/bills`) | Cleared on sign-out (`ResetSuggestionsOnSignOut`) |
+| Bank text shared into Zar | Memory only (`SharedTextInbox`), never written to disk | Cleared once taken and on sign-out |
+| Accounts, entries, bills and their reminder choice, everything financial | Firestore under `users/{uid}/` | Synced to the user's Zar account |
+
+Nothing on the Settings or reminder screens is held only in memory. Masking and export settings are not built yet; their stories add their own rows here.
+
 ## Decisions to confirm as a team
 
 1. Refunds reduce spending in the **purchase's** month/week, not the refund's.

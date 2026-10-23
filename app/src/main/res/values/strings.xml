@@ -90,7 +90,10 @@
     <string name="auth_error_unknown">Something went wrong. Try again.</string>
 
     <!-- Sign out -->
+    <string name="settings_subtitle">Your sign-in and where Zar keeps your settings.</string>
     <string name="settings_signed_in_as">Signed in as</string>
+    <string name="settings_where_title">Where your settings live</string>
+    <string name="settings_where_body">Your accounts and entries sync to your Zar account. The catch-up reminder stays on this phone and resets when you sign out.</string>
     <string name="settings_sign_out">Sign out</string>
     <string name="sign_out_unsynced_title">Some changes haven’t synced</string>
     <string name="sign_out_unsynced_body">Your latest changes are only on this phone. If you sign out now they will be lost. Connect to the internet and wait a moment, or sign out anyway.</string>
@@ -306,6 +309,7 @@
     <string name="plans_allowance_empty">Not set</string>
     <string name="plans_bills_empty">No bills added</string>
     <string name="more_description">Accounts, privacy and settings</string>
+    <string name="more_hero_subtitle">Your accounts and app settings</string>
     <string name="more_accounts">Accounts</string>
     <string name="more_accounts_detail">Bank, cash, freelance and crypto</string>
     <string name="more_capture">Capture sources</string>
@@ -894,6 +898,66 @@
     <string name="crypto_message_not_signed_in">Sign in to save.</string>
     <string name="crypto_message_failed">Could not save. Please try again.</string>
 
+    <!-- Capture: share or paste bank text (L09) -->
+    <string name="capture_title">Capture sources</string>
+    <string name="capture_health_label">CAPTURE STATUS</string>
+    <string name="capture_health_never">Nothing captured yet</string>
+    <string name="capture_health_last">Last captured %1$s</string>
+    <string name="capture_health_caption">Zar only knows about messages you share or paste. A quiet week doesn\'t mean nothing was spent.</string>
+    <plurals name="capture_waiting">
+        <item quantity="one">%d message waiting for review</item>
+        <item quantity="other">%d messages waiting for review</item>
+    </plurals>
+    <string name="capture_paste_label">PASTE A BANK MESSAGE</string>
+    <string name="capture_paste_field">Bank SMS text</string>
+    <string name="capture_paste_hint">Tip: in Messages, long-press the SMS → Share → Zar. The text is read on this phone and never uploaded. Connect to save the structured draft.</string>
+    <string name="capture_read">Read message</string>
+    <string name="capture_from_share">Shared from another app</string>
+    <string name="capture_drafted">Read: %1$s on %2$s. Review it below to save it.</string>
+    <string name="capture_ignored_otp">This is a one-time password, not a payment. Nothing to record.</string>
+    <string name="capture_ignored_declined">This payment was declined, so no money moved. Nothing to record.</string>
+    <string name="capture_ignored_notice">This message has no payment in it. Nothing to record.</string>
+    <string name="capture_unrecognised">Zar can\'t read this format yet, so nothing was guessed. Add it manually instead.</string>
+    <string name="capture_empty">Paste a message first.</string>
+    <string name="capture_add_manually">Add manually instead</string>
+    <string name="capture_waiting_label">WAITING FOR REVIEW</string>
+    <string name="capture_type_unknown">Choose a type</string>
+    <string name="capture_supported_label">SUPPORTED BANKS</string>
+    <string name="capture_supported_intro">Only formats tested with real messages are marked supported. Other formats may need manual entry. You always review before saving.</string>
+    <string name="capture_status_supported">Supported</string>
+    <string name="capture_status_review">Needs review</string>
+    <string name="capture_status_unknown">Not tested</string>
+    <string name="capture_sms_auto">Automatic SMS capture isn\'t switched on. Sharing and pasting work without any permission.</string>
+
+    <string name="capture_review_title">Review message</string>
+    <string name="capture_review_intro">Check the amount and date, confirm the money moved, then choose the account and type. Nothing enters your ledger until you confirm.</string>
+    <string name="capture_review_account">Account</string>
+    <string name="capture_review_no_account">No %1$s account yet. Add one under More → Accounts, or add this entry manually.</string>
+    <string name="capture_review_type">Type</string>
+    <string name="capture_review_type_hint">A debit may be spending or a transfer. A credit may be income, a refund or a transfer. Choose what actually happened.</string>
+    <string name="capture_review_other_type">Refund or transfer? Discard this and add it manually.</string>
+    <string name="capture_review_counts_as">Counts as</string>
+    <string name="capture_review_confirm">Save entry</string>
+    <string name="capture_review_discard">Discard</string>
+    <string name="capture_review_gone">This message was already reviewed.</string>
+    <string name="capture_review_pick_account">Choose an account</string>
+    <string name="capture_review_pick_type">Choose a type</string>
+    <string name="capture_type_expense">Expense</string>
+    <string name="capture_type_income">Income</string>
+    <string name="capture_class_committed">Committed</string>
+    <string name="capture_class_discretionary">Discretionary</string>
+    <string name="capture_class_unknown">Unknown</string>
+    <string name="capture_message_not_signed_in">Sign in to save.</string>
+    <string name="capture_message_currency">Choose an account in the message\'s currency.</string>
+    <string name="capture_message_failed">Could not finish. Check your connection and try again. If the text was cleared, paste it again.</string>
+    <string name="capture_review_failed">Could not finish. Check your connection and try again. Your draft is kept until saving or discarding succeeds.</string>
+    <string name="capture_already_reviewed">You already reviewed this message. No new draft was created.</string>
+    <string name="capture_message_invalid">Check the payment date and account. Future payments and archived accounts cannot be recorded here. For other changes, go back and add the payment manually.</string>
+    <string name="capture_reading">Reading…</string>
+    <string name="capture_saving">Saving…</string>
+    <string name="capture_connection_hint">Connect to save or discard. Saving closes this draft and adds its entry together. If saving fails, retry before changing your choices.</string>
+    <!-- Bills (L05) -->
+    <string name="bills_title">Bills</string>
     <string name="bills_open">Bills</string>
     <string name="more_bills_detail">Upcoming bills and the payments that settled them</string>
 

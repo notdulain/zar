@@ -2,10 +2,12 @@ package com.example.zar.di
 
 import com.example.zar.core.data.local.AndroidConnectivityMonitor
 import com.example.zar.core.data.remote.FirebaseUserSessionProvider
+import com.example.zar.core.data.remote.firestore.FirestoreDraftRepository
 import com.example.zar.core.data.remote.firestore.FirestoreExpectedPaymentRepository
 import com.example.zar.core.data.remote.firestore.FirestoreLedgerRepository
 import com.example.zar.core.domain.repository.AccountRepository
 import com.example.zar.core.domain.repository.ConnectivityMonitor
+import com.example.zar.core.domain.repository.DraftRepository
 import com.example.zar.core.domain.repository.ExpectedPaymentRepository
 import com.example.zar.core.domain.repository.LedgerRepository
 import com.example.zar.core.domain.repository.UserSessionProvider
@@ -38,7 +40,7 @@ import com.example.zar.features.reminders.domain.ReminderPreferencesRepository
 import com.example.zar.features.quicknote.data.remote.QuickNoteDraftTransport
 import com.example.zar.features.quicknote.data.repository.CallableQuickNoteDraftRepository
 import com.example.zar.features.quicknote.domain.repository.QuickNoteDraftRepository
-import com.example.zar.features.settings.data.repository.InMemoryAppPreferencesRepository
+import com.example.zar.features.settings.data.repository.ReportingCurrencyPreferencesRepository
 import com.example.zar.features.settings.domain.repository.AppPreferencesRepository
 import dagger.Binds
 import dagger.Module
@@ -68,6 +70,14 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun bindLedgerRepository(impl: FirestoreLedgerRepository): LedgerRepository
+
+    @Binds
+    @IntoSet
+    abstract fun bindClearSharedTextOnSignOut(impl: com.example.zar.features.capture.presentation.SharedTextInbox): SignOutHandler
+
+    @Binds
+    @Singleton
+    abstract fun bindDraftRepository(impl: FirestoreDraftRepository): DraftRepository
 
     @Binds
     @Singleton
@@ -108,7 +118,7 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun bindAppPreferencesRepository(
-        impl: InMemoryAppPreferencesRepository,
+        impl: ReportingCurrencyPreferencesRepository,
     ): AppPreferencesRepository
 
     @Binds

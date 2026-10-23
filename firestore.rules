@@ -539,9 +539,14 @@ service cloud.firestore {
         allow read: if isOwner(userId);
         allow create: if isOwner(userId) && isValidDraft(draftId) && data().status == 'PENDING_REVIEW';
         // Only pending drafts change; confirmed or discarded drafts are final.
-        allow update: if isOwner(userId) && isValidDraft(draftId)
-          && areImmutableFieldsUnchanged(['id', 'source', 'createdAt'])
-          && resource.data.status == 'PENDING_REVIEW';
+        allow update: if isOwner(userId) && resource.data.status == 'PENDING_REVIEW'
+          && (
+            // A status-only close reuses the already validated proposals. Revalidating them
+            // alongside the new ledger record can exceed an atomic request's expression budget.
+            (data().diff(resource.data).affectedKeys().hasOnly(['status'])
+              && data().status in ['PENDING_REVIEW', 'CONFIRMED', 'DISCARDED'])
+            || (isValidDraft(draftId) && areImmutableFieldsUnchanged(['id', 'source', 'createdAt']))
+          );
         allow delete: if isOwner(userId);
       }
     }
