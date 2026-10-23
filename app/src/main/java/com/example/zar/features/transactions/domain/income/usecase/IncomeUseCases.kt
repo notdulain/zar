@@ -75,11 +75,12 @@ class EditIncomeUseCase @Inject constructor(
         edited: IncomeDetails,
         correctionId: CorrectionId,
         correctedAt: Instant,
+        accountId: com.example.zar.core.domain.model.AccountId? = null,
     ): Result<Unit> {
         if (entry.current.type != TransactionType.INCOME) {
             return Result.failure(LedgerError.InvalidRecord("Only income can be edited here"))
         }
-        val changes = IncomeRules.changesBetween(entry.current, edited, correctedAt)
+        val changes = IncomeRules.changesBetween(entry.current, edited, correctedAt).copy(accountId = accountId?.takeIf { it != entry.current.accountId })
         return correctTransaction(entry, changes, correctionId, correctedAt)
     }
 }

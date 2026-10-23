@@ -57,7 +57,7 @@ class EditEntryViewModelTest {
         savedStateHandle = SavedStateHandle(mapOf("entryId" to id)),
         observeDetail = ObserveEntryDetailUseCase(ledger, accounts),
         observeOnline = ObserveOnlineStatusUseCase(connectivity),
-        correctExpense = CorrectExpenseUseCase(CorrectTransactionUseCase(ledger)),
+        correctExpense = CorrectExpenseUseCase(CorrectTransactionUseCase(ledger, accounts)),
         observeRules = rules.observeUseCase(),
         ruleInbox = inbox,
     )
@@ -70,6 +70,18 @@ class EditEntryViewModelTest {
     }
 
     private suspend fun entry(id: String = "e1"): LedgerEntry = ledger.observeLedger().first().first { it.id.value == id }
+
+    @Test fun accountAndTimeCorrectionsAreSavedTogether() = runTest(UnconfinedTestDispatcher()) {
+        saveExpense()
+        val vm = viewModel()
+        vm.onAccountSelect(bank.id)
+        vm.onTimeSelect(java.time.LocalTime.of(18, 30))
+        vm.save()
+        assertTrue(vm.uiState.value.isFinished)
+        assertEquals(bank.id, entry().current.accountId)
+        assertEquals(cash.id, entry().original.accountId)
+        assertEquals(java.time.LocalTime.of(18, 30), entry().current.time)
+    }
 
     @Test
     fun theFormStartsFromTheEntrysCurrentValues() = runTest(UnconfinedTestDispatcher()) {

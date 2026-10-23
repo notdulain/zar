@@ -1,5 +1,6 @@
 package com.example.zar.features.transactions.domain.activity
 
+import com.example.zar.core.domain.model.AccountId
 import com.example.zar.core.domain.model.FieldUpdate
 import com.example.zar.core.domain.model.LedgerEntry
 import com.example.zar.core.domain.model.SpendingClass
@@ -20,12 +21,14 @@ data class ExpenseEditInput(
     val title: String,
     val description: String,
     val time: LocalTime? = null,
+    val accountId: AccountId? = null,
 ) {
     companion object {
         fun from(tx: Transaction) = ExpenseEditInput(
             amount = tx.amount.toDecimal().stripTrailingZeros().toPlainString(),
             date = tx.date,
             time = tx.time,
+            accountId = tx.accountId,
             categoryId = tx.categoryId,
             spendingClass = tx.spendingClass ?: SpendingClass.UNKNOWN,
             title = tx.merchant.orEmpty(),
@@ -44,7 +47,7 @@ enum class EditProblem {
 }
 
 sealed interface EditResult {
-    /** Only the fields that changed. The account and currency can never be corrected. */
+    /** Only the fields that changed. The stored currency stays fixed. */
     data class Valid(val changes: TransactionChanges) : EditResult
 
     data class Invalid(val problems: Set<EditProblem>) : EditResult
@@ -79,6 +82,7 @@ object EntryEditRules {
             amount = amount.takeIf { it != current.amount },
             date = input.date.takeIf { it != current.date },
             time = fieldUpdate(current.time, input.time),
+            accountId = input.accountId?.takeIf { it != current.accountId },
             spendingClass = input.spendingClass.takeIf { it != current.spendingClass },
             categoryId = fieldUpdate(current.categoryId, input.categoryId),
             merchant = fieldUpdate(current.merchant, title.ifEmpty { null }),

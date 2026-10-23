@@ -159,6 +159,7 @@ object LedgerDocumentMapper {
         val c = correction.changes
         val changes = buildMap<String, Any?> {
             c.amount?.let { put("amount", moneyToMap(it)) }
+            c.accountId?.let { put("accountId", it.value) }
             c.reportingConversion?.let { put("conversion", conversionToMap(it)) }
             c.date?.let { put("date", it.toString()) }
             c.time?.let { put("time", (it as? FieldUpdate.Set)?.value?.format(transactionTimeFormat)) }
@@ -182,6 +183,7 @@ object LedgerDocumentMapper {
             id = CorrectionId(map["id"] as String),
             transactionId = TransactionId(map["transactionId"] as String),
             changes = TransactionChanges(
+                accountId = (changes["accountId"] as String?)?.let(::AccountId),
                 amount = (changes["amount"] as Map<*, *>?)?.let { moneyFromMap(it)!! },
                 reportingConversion = (changes["conversion"] as Map<*, *>?)?.let { conversionFromMap(it)!! },
                 date = (changes["date"] as String?)?.let(LocalDate::parse),

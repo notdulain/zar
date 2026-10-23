@@ -97,6 +97,22 @@ checks run before any model call. Logs contain only outcome, reason, duration, p
 no note, account identifiers, user IDs, tokens, API keys, prompts or model text. Cloudflare invocation logs are
 disabled, and responses specify `Cache-Control: no-store`. The Worker writes no notes or drafts to storage.
 
+## Review and corrections
+
+Actual transaction proposals carry a descriptive `title` separately from the merchant. The title retains stated
+purpose and route (for example, `Uber to SLIIT from office`) and is saved as the ledger's existing title/merchant
+field. Older responses without a title fall back to the merchant.
+
+The optional `time` is a local `HH:mm` value for actual transactions and transfers. The model supplies it only
+when stated; otherwise the review shows Not set. The date's GUESSED badge sits below the value. Date and time
+remain editable, and time can be cleared. An expected payment continues to have a due date without a time.
+
+Activity details show recorded time separately from when the record was saved. Expense and income editors
+can add, change or clear it, and move a record to another active account in the same currency. Corrections keep
+the original record, update account balances and filters, and show the old/new time and account in history.
+Linked refunds must be undone before moving their purchase's account; transfer legs and fees retain their
+linked accounts. The corresponding Firestore rules must be deployed with these app changes.
+
 ## Verification and evaluation
 
 ```sh

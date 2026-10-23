@@ -5,6 +5,7 @@ import androidx.compose.ui.test.onAllNodesWithTag
 import com.example.zar.features.rules.domain.model.RuleOffer
 import com.example.zar.features.rules.domain.RuleCard
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertTextContains
@@ -506,8 +507,30 @@ class ActivityScreensUiTest {
         captureCorrectionEvidence("activity-edit-time")
     }
 
+    @Test fun accountAndTimeChoicesCanBeCorrectedTogether() {
+        val state = androidx.compose.runtime.mutableStateOf(editState { copy(input = input?.copy(time = java.time.LocalTime.of(18, 30))) })
+        compose.setContent {
+            ZarTheme(darkTheme = false) {
+                EditEntryBody(state.value, EditActions({}, {}, {}, {}, {}, {}, {}, {},
+                    onAccount = { id -> state.value = state.value.copy(input = state.value.input?.copy(accountId = id)) },
+                    onTime = { time -> state.value = state.value.copy(input = state.value.input?.copy(time = time)) }))
+            }
+        }
+        compose.onNodeWithTag("edit-account-bank").performScrollTo().performClick().assertIsSelected()
+        captureCorrectionEvidence("activity-account-correction")
+        compose.onNodeWithTag("edit-time").performScrollTo().performClick()
+        compose.onNodeWithText("AM").performClick()
+        compose.onNodeWithTag("edit-time-confirm").performClick()
+        compose.runOnIdle {
+            assertEquals(bank.id, state.value.input?.accountId)
+            assertEquals(java.time.LocalTime.of(6, 30), state.value.input?.time)
+        }
+        captureCorrectionEvidence("activity-edit-time")
+    }
+
     private fun captureCorrectionEvidence(name: String) {
         compose.waitForIdle()
+        android.os.SystemClock.sleep(650)
         val instrumentation = androidx.test.platform.app.InstrumentationRegistry.getInstrumentation()
         val dir = java.io.File(instrumentation.targetContext.cacheDir, "correction-evidence").apply { mkdirs() }
         val screenshot = checkNotNull(instrumentation.uiAutomation.takeScreenshot())
@@ -546,11 +569,11 @@ class ActivityScreensUiTest {
 
     private fun editState(source: RecordSource = RecordSource.MANUAL, block: EditEntryUiState.() -> EditEntryUiState = { this }): EditEntryUiState {
         val e = entry(tx("e1", TransactionType.EXPENSE, 8_400, cash, "Keells Super", "groceries", "Weekly groceries", source))
-        return EditEntryUiState(isLoading = false, entry = e, account = cash, input = ExpenseEditInput.from(e.current)).block()
+        return EditEntryUiState(isLoading = false, entry = e, account = cash, accounts = listOf(cash, bank), input = ExpenseEditInput.from(e.current)).block()
     }
 
     @Test
-    fun theEditFormShowsLockedAccountAndCurrencyAndTheOriginalAmount() {
+    fun theEditFormShowsAccountChoicesAndFixedCurrencyAndOriginalAmount() {
         showEdit(editState())
 
         compose.onNodeWithTag("edit-banner").assertIsDisplayed()
@@ -558,7 +581,8 @@ class ActivityScreensUiTest {
         compose.onNodeWithTag("edit-currency").assertIsDisplayed()
         compose.onNodeWithTag("edit-original-amount").assertIsDisplayed()
         compose.onNodeWithText("Original: LKR 8,400").assertExists()
-        compose.onNodeWithText("Can't be changed").assertExists()
+        compose.onNodeWithTag("edit-account-cash").assertIsEnabled()
+        compose.onNodeWithTag("edit-account-bank").assertIsEnabled()
         compose.onNodeWithTag("edit-save").assertIsEnabled()
     }
 

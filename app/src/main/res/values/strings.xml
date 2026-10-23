@@ -1312,4 +1312,7 @@
     <string name="quicknote_pick_purchase_empty">No purchase with something left to refund.</string>
     <string name="entry_field_time">Time</string>
     <string name="entry_time_not_set">Not set</string>
+    <string name="entry_account_same_currency">Choose an account in the same currency. Both account balances update when you save.</string>
+    <string name="entry_account_linked">Undo linked refunds or the transfer before changing this account.</string>
+    <string name="entry_account_unavailable">That account is unavailable. Choose an active account in the same currency.</string>
 </resources>

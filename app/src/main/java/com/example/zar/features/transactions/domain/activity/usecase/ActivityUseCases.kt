@@ -45,7 +45,7 @@ class ObserveEntryDetailUseCase @Inject constructor(
             val counterpart = transferId?.let {
                 byId[if (entry.id == it.outLegId()) it.inLegId() else it.outLegId()]
             }
-            val tx = entry.original
+            val tx = entry.current
             val account = list.firstOrNull { it.id == tx.accountId }
             val refunds = if (entry.current.type == TransactionType.EXPENSE) RefundRules.summary(entry, entries) else null
             val purchase = if (entry.current.type == TransactionType.REFUND) entry.current.refundOf?.let { byId[it] } else null
@@ -53,9 +53,11 @@ class ObserveEntryDetailUseCase @Inject constructor(
                 entry = entry,
                 account = account,
                 counterpart = counterpart,
-                counterpartAccount = counterpart?.let { c -> list.firstOrNull { it.id == c.original.accountId } },
+                counterpartAccount = counterpart?.let { c -> list.firstOrNull { it.id == c.current.accountId } },
                 fee = transferId?.let { byId[it.feeId()] },
-                history = EntryHistory.build(entry),
+                history = EntryHistory.build(entry, list),
+                accounts = list,
+                canChangeAccount = tx.type in setOf(TransactionType.EXPENSE, TransactionType.INCOME) && refunds?.hasRefunds != true && tx.transferId == null && entries.none { it.original.transferId?.feeId() == entry.id },
                 editKind = if (entry.isVoided) {
                     EditKind.NONE
                 } else {

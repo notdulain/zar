@@ -33,12 +33,14 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.zar.R
+import com.example.zar.core.domain.model.AccountId
 import com.example.zar.core.domain.model.RecordSource
 import com.example.zar.core.domain.model.SpendingClass
 import com.example.zar.core.presentation.components.ZarButton
@@ -69,7 +71,7 @@ import java.time.LocalDate
 
 /**
  * Correct an expense (Figma Z54, and Z55 for an imported one). Saving appends a correction: the original
- * record and everything corrected before stay on record. The account and currency cannot be changed.
+ * record and everything corrected before stay on record. Accounts can change within the stored currency.
  */
 @Composable
 fun EditEntryScreen(
@@ -85,6 +87,7 @@ fun EditEntryScreen(
             onAmount = viewModel::onAmountChange,
             onDate = viewModel::onDateSelect,
             onTime = viewModel::onTimeSelect,
+            onAccount = viewModel::onAccountSelect,
             onCategory = viewModel::onCategorySelect,
             onSpendingClass = viewModel::onSpendingClassSelect,
             onTitle = viewModel::onTitleChange,
@@ -104,6 +107,7 @@ internal class EditActions(
     val onDescription: (String) -> Unit,
     val onSave: () -> Unit,
     val onTime: (LocalTime?) -> Unit = {},
+    val onAccount: (AccountId) -> Unit = {},
 )
 
 @Composable
@@ -221,12 +225,17 @@ private fun EditFields(state: EditEntryUiState, amount: String, actions: EditAct
     )
     ZarDivider()
 
-    ZarFormRow(stringResource(R.string.manual_field_account)) {
-        Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text(state.account?.name ?: stringResource(R.string.activity_none), style = ZarType.bodyM, color = colors.textPrimary)
-            ZarIcon(R.drawable.ic_ph_lock, size = 14.dp, tint = colors.iconMuted)
-            Text(stringResource(R.string.activity_edit_locked), style = ZarType.bodyCaption, color = colors.textSecondary)
+    Section(stringResource(R.string.manual_field_account)) {
+        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            val choices = (state.accounts + listOfNotNull(state.account)).distinctBy { it.id }
+            choices.forEach { account ->
+                ZarChip(label = account.name, selected = account.id == (input.accountId ?: entry.current.accountId),
+                    onClick = { if (state.canChangeAccount && !account.isArchived) actions.onAccount(account.id) },
+                    enabled = state.canChangeAccount && !account.isArchived,
+                    modifier = Modifier.semantics { selected = account.id == (input.accountId ?: entry.current.accountId) }.testTag("edit-account-${account.id.value}"))
+            }
         }
+        Text(stringResource(if (state.canChangeAccount) R.string.entry_account_same_currency else R.string.entry_account_linked), style = ZarType.bodyCaption, color = colors.textSecondary)
     }
 
     // The chips scroll sideways, so bring the chosen category into view when the form opens.
@@ -293,6 +302,8 @@ private fun EditFields(state: EditEntryUiState, amount: String, actions: EditAct
 }
 
 private fun EditMessage.textRes(): Int = when (this) {
+    EditMessage.LINKED_ACCOUNT -> R.string.entry_account_linked
+    EditMessage.ACCOUNT_UNAVAILABLE -> R.string.entry_account_unavailable
     EditMessage.REFUNDED_AMOUNT -> R.string.activity_edit_refunded_amount
     EditMessage.NOT_SIGNED_IN -> R.string.manual_message_not_signed_in
     EditMessage.ALREADY_VOIDED -> R.string.activity_edit_voided

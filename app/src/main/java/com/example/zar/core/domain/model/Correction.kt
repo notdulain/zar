@@ -23,10 +23,11 @@ data class TransactionChanges(
     val merchant: FieldUpdate<String>? = null,
     val note: FieldUpdate<String>? = null,
     val time: FieldUpdate<LocalTime>? = null,
+    val accountId: AccountId? = null,
 ) {
     val isEmpty: Boolean
         get() = amount == null && reportingConversion == null && date == null && spendingClass == null &&
-            categoryId == null && merchant == null && note == null && time == null
+            categoryId == null && merchant == null && note == null && time == null && accountId == null
 }
 
 /**

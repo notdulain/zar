@@ -57,6 +57,7 @@ object LedgerProjector {
 
     fun applyChanges(transaction: Transaction, changes: TransactionChanges): Transaction = transaction.copy(
         amount = changes.amount ?: transaction.amount,
+        accountId = changes.accountId ?: transaction.accountId,
         reportingConversion = changes.reportingConversion ?: transaction.reportingConversion,
         date = changes.date ?: transaction.date,
         time = changes.time.applyTo(transaction.time),

@@ -4,6 +4,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.zar.core.domain.calculation.ZarTime
+import com.example.zar.core.domain.model.AccountId
 import com.example.zar.core.domain.model.Account
 import com.example.zar.core.domain.model.CorrectionId
 import com.example.zar.core.domain.model.LedgerEntry
@@ -38,7 +39,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-enum class EditMessage { REFUNDED_AMOUNT, NOT_SIGNED_IN, ALREADY_VOIDED, FAILED }
+enum class EditMessage { LINKED_ACCOUNT, ACCOUNT_UNAVAILABLE, REFUNDED_AMOUNT, NOT_SIGNED_IN, ALREADY_VOIDED, FAILED }
 
 data class EditEntryUiState(
     val isLoading: Boolean = true,
@@ -46,6 +47,8 @@ data class EditEntryUiState(
     val notEditable: Boolean = false,
     val entry: LedgerEntry? = null,
     val account: Account? = null,
+    val accounts: List<Account> = emptyList(),
+    val canChangeAccount: Boolean = true,
     val input: ExpenseEditInput? = null,
     val problems: Set<EditProblem> = emptySet(),
     val message: EditMessage? = null,
@@ -88,6 +91,8 @@ class EditEntryViewModel @Inject constructor(
                         isLoading = false,
                         entry = detail.entry,
                         account = detail.account,
+                        accounts = detail.accounts.filter { a -> a.currency == detail.entry.current.amount.currency && (!a.isArchived || a.id == detail.entry.current.accountId) },
+                        canChangeAccount = detail.canChangeAccount,
                         input = ExpenseEditInput.from(detail.entry.current),
                     )
                 }
@@ -109,6 +114,12 @@ class EditEntryViewModel @Inject constructor(
 
     fun onDateSelect(value: LocalDate) = edit(setOf(EditProblem.DATE_IN_FUTURE)) { it.copy(date = value) }
 
+    fun onAccountSelect(id: AccountId) {
+        val state = _uiState.value
+        if (!state.canChangeAccount || state.accounts.none { it.id == id && !it.isArchived }) return
+        edit { it.copy(accountId = id) }
+    }
+
     fun onTimeSelect(value: LocalTime?) = edit { it.copy(time = value) }
 
     fun onCategorySelect(id: String) = edit { it.copy(categoryId = id) }
@@ -123,7 +134,7 @@ class EditEntryViewModel @Inject constructor(
     private suspend fun offerToRemember(entry: LedgerEntry, input: ExpenseEditInput, changes: TransactionChanges) {
         if (changes.categoryId == null && changes.merchant == null) return
         val rules = runCatching { observeRules().first() }.getOrDefault(emptyList())
-        val decision = RuleOfferRules.decide(input.title, input.categoryId, entry.current.accountId, rules)
+        val decision = RuleOfferRules.decide(input.title, input.categoryId, input.accountId ?: entry.current.accountId, rules)
         if (decision is OfferDecision.Offer) ruleInbox.post(decision.offer)
     }
 
@@ -153,6 +164,8 @@ class EditEntryViewModel @Inject constructor(
                         onFailure = { error ->
                             _uiState.update {
                                 when (error) {
+                                    is LedgerError.HasActiveRefunds -> it.copy(isSaving = false, message = EditMessage.LINKED_ACCOUNT)
+                                    is LedgerError.AccountArchived, is LedgerError.CurrencyMismatch -> it.copy(isSaving = false, message = EditMessage.ACCOUNT_UNAVAILABLE)
                                     is LedgerError.RefundTooHigh -> it.copy(isSaving = false, message = EditMessage.REFUNDED_AMOUNT)
                                     is LedgerError.NothingToChange ->
                                         it.copy(isSaving = false, problems = setOf(EditProblem.NOTHING_CHANGED))

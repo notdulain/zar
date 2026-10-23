@@ -319,3 +319,25 @@ test('corrections can set and clear time but reject malformed values', async () 
   await assertFails(write('invalid-time', '25:61'));
   await assertFails(write('seconds', '18:30:59'));
 });
+
+test('account corrections require an owned active account in the stored currency', async () => {
+  const db = alice();
+  const account = (id, code = 'LKR', archived = false) => ({ id, name: id, type: 'BANK', currency: { code, kind: 'FIAT', digits: 2 }, opening: { status: 'UNKNOWN' }, openingDate: '2026-10-01', archived, updatedAt: 1790000000000 });
+  await setDoc(doc(db, path('alice', 'transactions', 'move')), tx('move'));
+  await setDoc(doc(db, path('alice', 'accounts', 'cash')), account('cash'));
+  await setDoc(doc(db, path('alice', 'accounts', 'usd')), account('usd', 'USD'));
+  await setDoc(doc(db, path('alice', 'accounts', 'archived')), account('archived', 'LKR', true));
+  await setDoc(doc(bob(), path('bob', 'accounts', 'bob-only')), account('bob-only'));
+  const write = (id, accountId, extra = {}, transactionId = 'move') => setDoc(doc(db, path('alice', 'corrections', id)), { id, transactionId, changes: { accountId, ...extra }, correctedAt: 1790000000001 });
+  await assertSucceeds(write('move-cash', 'cash', { time: '18:30' }));
+  await assertFails(write('move-foreign', 'usd'));
+  await assertFails(write('move-archived', 'archived'));
+  await assertFails(write('move-missing', 'missing'));
+  await assertFails(write('move-bob', 'bob-only'));
+  await assertFails(write('move-wrong-currency', 'cash', { amount: { ...lkr(100), currency: 'USD' } }));
+  const refund = tx('refund', { type: 'REFUND', refundOf: 'move' });
+  delete refund.spendingClass;
+  await setDoc(doc(db, path('alice', 'transactions', 'refund')), refund);
+  await assertFails(write('move-refund', 'cash', {}, 'refund'));
+  await assertFails(updateDoc(doc(db, path('alice', 'transactions', 'move')), { accountId: 'cash' }));
+});

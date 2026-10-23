@@ -246,7 +246,18 @@ service cloud.firestore {
           && d.appliedRuleVersion is int && d.appliedRuleVersion >= 1));
     }
 
-    function isValidCorrection(correctionId) {
+    // A correction moves an ordinary entry only to an owned, active account in its original currency.
+    function isValidCorrectedAccount(userId, transactionId, c) {
+      let original = get(/databases/$(database)/documents/users/$(userId)/transactions/$(transactionId)).data;
+      let target = get(/databases/$(database)/documents/users/$(userId)/accounts/$(c.accountId)).data;
+      return original.type in ['EXPENSE', 'INCOME']
+        && !('transferId' in original)
+        && target.archived == false
+        && target.currency.code == original.amount.currency
+        && (!('amount' in c) || c.amount.currency == original.amount.currency);
+    }
+
+    function isValidCorrection(userId, correctionId) {
       let d = data();
       let c = d.changes;
       return hasOnlyAllowedFields(['id', 'transactionId', 'changes', 'correctedAt', 'reason'])
@@ -257,8 +268,9 @@ service cloud.firestore {
         && isOptionalString(d, 'reason', 300)
         && c is map
         && c.size() > 0
-        && c.keys().hasOnly(['amount', 'conversion', 'date', 'time', 'spendingClass', 'categoryId', 'merchant', 'note'])
+        && c.keys().hasOnly(['amount', 'accountId', 'conversion', 'date', 'time', 'spendingClass', 'categoryId', 'merchant', 'note'])
         && (!('amount' in c) || isPositiveMoney(c.amount))
+        && (!('accountId' in c) || (isId(c.accountId) && isValidCorrectedAccount(userId, d.transactionId, c)))
         && (!('conversion' in c) || isConversion(c.conversion))
         && (!('date' in c) || isDateString(c.date))
         && (!('time' in c) || c.time == null || isTimeString(c.time))
@@ -492,7 +504,7 @@ service cloud.firestore {
 
       match /corrections/{correctionId} {
         allow read: if isOwner(userId);
-        allow create: if isOwner(userId) && isValidCorrection(correctionId);
+        allow create: if isOwner(userId) && isValidCorrection(userId, correctionId);
         allow update, delete: if false;
       }
 
