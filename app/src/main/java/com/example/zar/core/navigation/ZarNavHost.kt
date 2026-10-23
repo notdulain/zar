@@ -36,6 +36,7 @@ import com.example.zar.features.freelance.presentation.screen.ProjectFormScreen
 import com.example.zar.features.freelance.presentation.screen.ProjectScreen
 import com.example.zar.features.home.presentation.screen.HomeScreen
 import com.example.zar.features.plans.presentation.screen.PlansScreen
+import com.example.zar.features.quicknote.presentation.screen.QuickNoteScreen
 import com.example.zar.features.settings.presentation.screen.MoreScreen
 import com.example.zar.features.settings.presentation.screen.SettingsScreen
 import com.example.zar.features.transactions.presentation.activity.screen.EditEntryScreen
@@ -70,7 +71,7 @@ fun ZarNavHost(
     val onAddOption: (AddEntryOption) -> Unit = { option ->
         when (option) {
             AddEntryOption.Manual -> navController.navigate(ManualEntryRoute())
-            AddEntryOption.QuickNote -> navController.navigate(ManualEntryRoute(focusNote = true))
+            AddEntryOption.QuickNote -> navController.navigate(QuickNoteRoute)
             // Voice is outside the launch scope and is no longer offered in the Add sheet.
             AddEntryOption.Voice -> Unit
         }
@@ -153,6 +154,19 @@ fun ZarNavHost(
                     navController.navigate(IncomeFormRoute()) { popUpTo<ManualEntryRoute> { inclusive = true } }
                 },
                 onAddAccount = { navController.navigate(AccountFormRoute()) },
+            )
+        }
+        dialog<QuickNoteRoute>(
+            dialogProperties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
+        ) {
+            QuickNoteScreen(
+                onDone = { navController.popBackStack() },
+                // The note comes along as the title, so nothing typed is lost when reading is not wanted or not possible.
+                onFillForm = { note ->
+                    navController.navigate(ManualEntryRoute(focusNote = true, prefillTitle = note.trim().take(120).ifEmpty { null })) {
+                        popUpTo<QuickNoteRoute> { inclusive = true }
+                    }
+                },
             )
         }
         composable<EntryDetailRoute> {
