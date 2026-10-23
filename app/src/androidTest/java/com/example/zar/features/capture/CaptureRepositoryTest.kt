@@ -4,6 +4,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import com.example.zar.core.data.remote.firestore.*
 import com.example.zar.core.domain.model.*
 import com.example.zar.core.domain.model.money.*
+import com.example.zar.core.domain.repository.LinkWrite
 import com.example.zar.core.domain.repository.UserSessionProvider
 import com.example.zar.features.accounts.data.repository.AccountDocumentMapper
 import com.example.zar.features.capture.domain.CapturedDraftRules
@@ -92,4 +93,37 @@ class CaptureRepositoryTest {
         session.current=null
         assertTrue(runCatching { repo.saveDraft(draft()) }.exceptionOrNull() is LedgerError.NotSignedIn)
     }
+
+    private suspend fun entryFrom(repo:FirestoreDraftRepository,bank:Account):Transaction {
+        val d=draft();repo.saveDraft(d)
+        val expense=CapturedDraftRules.transactionFrom(d,bank,TransactionType.EXPENSE,SpendingClass.UNKNOWN,now)
+        repo.confirmCapturedDraft(d,expense);return expense
+    }
+    @Test fun linkingAttachesTheMessageAndClosesTheDraftWithoutPostingMoneyAndReplaysAreSafe()=runBlocking {
+        val repo=repository();val bank=bank();seed(bank);val existing=entryFrom(repo,bank)
+        val d=draft();repo.saveDraft(d)
+        val link=EvidenceLink(EvidenceId(d.id.value),existing.id,now)
+        val recordsBefore=userCollection("transactions").get().await().size()
+        assertEquals(LinkWrite.SAVED,repo.closeAsLinked(d,link))
+        assertEquals(LinkWrite.SAVED,repo.closeAsLinked(d,link))
+        assertEquals(existing.id.value,userCollection("evidenceLinks").document(d.id.value).get().await().getString("transactionId"))
+        assertEquals("CONFIRMED",userCollection("drafts").document(d.id.value).get().await().getString("status"))
+        assertEquals("no money was posted",recordsBefore,userCollection("transactions").get().await().size())
+        assertTrue(runCatching { repo.closeAsLinked(d,link.copy(transactionId=TransactionId("other"))) }.isFailure)
+        assertEquals(existing.id.value,userCollection("evidenceLinks").document(d.id.value).get().await().getString("transactionId"))
+    }
+    @Test fun aDraftThatWasDiscardedCannotBeLinked()=runBlocking {
+        val repo=repository();val bank=bank();seed(bank);val existing=entryFrom(repo,bank)
+        val d=draft();repo.saveDraft(d);repo.setStatus(d.id,DraftStatus.DISCARDED)
+        assertTrue(runCatching { repo.closeAsLinked(d,EvidenceLink(EvidenceId(d.id.value),existing.id,now)) }.isFailure)
+        assertFalse(userCollection("evidenceLinks").document(d.id.value).get().await().exists())
+        assertEquals("DISCARDED",userCollection("drafts").document(d.id.value).get().await().getString("status"))
+    }
+    @Test fun theMessageDirectionIsStoredWithTheDraftAndReadBack()=runBlocking {
+        val repo=repository();val d=draft();repo.saveDraft(d)
+        val stored=userCollection("drafts").document(d.id.value).get().await().get("proposals") as List<*>
+        assertEquals("OUT",(stored.single() as Map<*,*>)["direction"])
+        assertEquals(Direction.OUT,((repo.observeDrafts().first().first{it.id==d.id}.proposals.single()) as DraftProposal.ActualTransaction).direction)
+    }
+
 }
