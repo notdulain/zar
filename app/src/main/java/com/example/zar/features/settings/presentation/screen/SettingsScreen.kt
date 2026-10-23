@@ -96,6 +96,7 @@ private fun SettingsContent(
                 onClick = onSignOut,
                 modifier = Modifier.fillMaxWidth().testTag("sign-out"),
                 style = ZarButtonStyle.Soft,
+                enabled = !uiState.isSigningOut,
             )
         }
     }

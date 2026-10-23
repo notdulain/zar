@@ -56,9 +56,12 @@ These are the shared models, repository interfaces and saving rules that every f
 | Reporting currency (LKR) | Fixed domain value, `Currencies.REPORTING`, read through `AppPreferencesRepository`. Not stored | No. Not editable |
 | Signed-in email | Firebase Auth session (`ObserveSessionUseCase`) | Follows the session |
 | Catch-up reminder (on/off, day, time, skipped week) | This phone only: DataStore (`features/catchup`) | Edited on the reminder screen. Cleared on sign-out (`ResetCatchUpOnSignOut`) |
-| Accounts, entries, everything financial | Firestore under `users/{uid}/` | Synced to the user's Zar account |
+| Overdue-milestone alerts switch and reminders already shown | This phone only: DataStore `payment_reminders` (`features/reminders`) | Cleared on sign-out (`ResetRemindersOnSignOut`) |
+| Dismissed subscription suggestions | This phone only: DataStore `subscription_suggestions` (`features/bills`) | Cleared on sign-out (`ResetSuggestionsOnSignOut`) |
+| Bank text shared into Zar | Memory only (`SharedTextInbox`), never written to disk | Cleared once taken and on sign-out |
+| Accounts, entries, bills and their reminder choice, everything financial | Firestore under `users/{uid}/` | Synced to the user's Zar account |
 
-Nothing on the Settings or reminder screens is held only in memory. Masking, export and capture-source settings are not built yet; their stories add their own rows here.
+Nothing on the Settings or reminder screens is held only in memory. Masking and export settings are not built yet; their stories add their own rows here.
 
 ## Decisions to confirm as a team
 
