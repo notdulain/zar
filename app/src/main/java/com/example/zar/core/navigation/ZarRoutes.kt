@@ -70,6 +70,10 @@ data object CatchUpRoute
 @Serializable
 data object ReminderSettingsRoute
 
+/** The names Zar was asked to remember a category for, with an editor for each. */
+@Serializable
+data object CategoryRulesRoute
+
 @Serializable
 data object FreelanceRoute
 

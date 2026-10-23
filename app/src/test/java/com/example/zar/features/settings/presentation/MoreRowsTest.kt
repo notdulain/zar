@@ -17,6 +17,7 @@ class MoreRowsTest {
         onOpenCrypto = { opened += "crypto" },
         onOpenCapture = { opened += "capture" },
         onOpenBills = { opened += "bills" },
+        onOpenRules = { opened += "rules" },
         onOpenReminder = { opened += "reminder" },
         onOpenSettings = { opened += "settings" },
     )
@@ -31,6 +32,7 @@ class MoreRowsTest {
                 R.string.crypto_open,
                 R.string.more_capture,
                 R.string.bills_open,
+                R.string.more_rules,
                 R.string.more_reminder,
                 R.string.settings_title,
             ),
@@ -39,7 +41,7 @@ class MoreRowsTest {
         assertEquals(
             listOf(
                 "open-accounts", "open-income", "open-freelance", "open-crypto",
-                "open-capture", "open-bills", "open-reminder", "open-settings",
+                "open-capture", "open-bills", "open-rules", "open-reminder", "open-settings",
             ),
             rows.map { it.tag },
         )
@@ -57,7 +59,7 @@ class MoreRowsTest {
         rows.forEach { it.onClick() }
 
         assertEquals(
-            listOf("accounts", "income", "freelance", "crypto", "capture", "bills", "reminder", "settings"),
+            listOf("accounts", "income", "freelance", "crypto", "capture", "bills", "rules", "reminder", "settings"),
             opened,
         )
     }

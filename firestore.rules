@@ -216,7 +216,8 @@ service cloud.firestore {
     function isValidTransaction(transactionId) {
       let d = data();
       return hasOnlyAllowedFields(['id', 'accountId', 'type', 'amount', 'date', 'time', 'conversion', 'spendingClass',
-          'categoryId', 'merchant', 'note', 'source', 'transferId', 'refundOf', 'createdAt'])
+          'categoryId', 'merchant', 'note', 'source', 'transferId', 'refundOf', 'appliedRuleId', 'appliedRuleVersion',
+          'createdAt'])
         && hasRequiredFields(['id', 'accountId', 'type', 'amount', 'date', 'conversion', 'source', 'createdAt'])
         && d.id == transactionId
         && isId(d.accountId)
@@ -238,7 +239,11 @@ service cloud.firestore {
         && (!('transferId' in d) || isId(d.transferId))
         && isOptionalString(d, 'categoryId', 64)
         && isOptionalString(d, 'merchant', 120)
-        && isOptionalString(d, 'note', 500);
+        && isOptionalString(d, 'note', 500)
+        // The category rule that filled in the category: both fields together, on expenses only.
+        && (('appliedRuleId' in d) == ('appliedRuleVersion' in d))
+        && (!('appliedRuleId' in d) || (d.type == 'EXPENSE' && isId(d.appliedRuleId)
+          && d.appliedRuleVersion is int && d.appliedRuleVersion >= 1));
     }
 
     function isValidCorrection(correctionId) {
@@ -404,6 +409,22 @@ service cloud.firestore {
         && (!('cancelledFrom' in d) || isDateString(d.cancelledFrom));
     }
 
+    function isValidCategoryRule(ruleId) {
+      let d = data();
+      return hasOnlyAllowedFields(['id', 'merchantKey', 'displayName', 'categoryId', 'accountId', 'enabled', 'version',
+          'createdAt', 'updatedAt'])
+        && hasRequiredFields(['id', 'merchantKey', 'displayName', 'categoryId', 'enabled', 'version', 'createdAt', 'updatedAt'])
+        && d.id == ruleId
+        && isShortString(d.merchantKey, 120)
+        && isShortString(d.displayName, 120)
+        && isShortString(d.categoryId, 64)
+        && isOptionalString(d, 'accountId', 128)
+        && d.enabled is bool
+        && d.version is int && d.version >= 1
+        && isMillis(d.createdAt)
+        && isMillis(d.updatedAt);
+    }
+
     function isValidProposal(p) {
       return p is map
         && p.keys().hasOnly(['kind', 'type', 'direction', 'amount', 'sent', 'received', 'accountId', 'fromAccountId',
@@ -532,6 +553,16 @@ service cloud.firestore {
         allow create: if isOwner(userId) && isValidBill(billId);
         allow update: if isOwner(userId) && isValidBill(billId) && areImmutableFieldsUnchanged(['id', 'createdAt']);
         // Stopped bills keep their history.
+        allow delete: if false;
+      }
+
+      // A rule keeps its name and start date; every edit raises the version. Rules are switched off, never deleted.
+      match /categoryRules/{ruleId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidCategoryRule(ruleId) && data().version == 1;
+        allow update: if isOwner(userId) && isValidCategoryRule(ruleId)
+          && areImmutableFieldsUnchanged(['id', 'merchantKey', 'displayName', 'createdAt'])
+          && data().version > resource.data.version;
         allow delete: if false;
       }
 

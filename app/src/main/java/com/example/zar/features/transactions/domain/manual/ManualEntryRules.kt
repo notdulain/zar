@@ -139,6 +139,8 @@ object ManualEntryRules {
         note = details.description,
         createdAt = createdAt,
         time = details.time,
+        appliedRuleId = details.appliedRuleId,
+        appliedRuleVersion = details.appliedRuleVersion,
     )
 
     fun newTransfer(id: TransferId, details: TransferDetails, createdAt: Instant): Transfer {

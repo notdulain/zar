@@ -1,5 +1,7 @@
 package com.example.zar.features.transactions.presentation.activity
 
+import com.example.zar.features.rules.FakeCategoryRules
+import com.example.zar.features.rules.newInbox
 import androidx.lifecycle.SavedStateHandle
 import com.example.zar.core.domain.TestLedger.bank
 import com.example.zar.core.domain.TestLedger.cash
@@ -48,11 +50,16 @@ class EditEntryViewModelTest {
     @Before fun setUp() = Dispatchers.setMain(UnconfinedTestDispatcher())
     @After fun tearDown() = Dispatchers.resetMain()
 
+    private val rules = FakeCategoryRules()
+    private val inbox = newInbox()
+
     private fun viewModel(id: String = "e1") = EditEntryViewModel(
         savedStateHandle = SavedStateHandle(mapOf("entryId" to id)),
         observeDetail = ObserveEntryDetailUseCase(ledger, accounts),
         observeOnline = ObserveOnlineStatusUseCase(connectivity),
         correctExpense = CorrectExpenseUseCase(CorrectTransactionUseCase(ledger)),
+        observeRules = rules.observeUseCase(),
+        ruleInbox = inbox,
     )
 
     private suspend fun saveExpense(id: String = "e1") {
@@ -246,5 +253,69 @@ class EditEntryViewModelTest {
         vm.save()
         assertTrue(vm.uiState.value.isFinished)
         assertEquals(lkr(4000), entry().current.amount)
+    }
+
+    // --- Category rules (SCRUM-39) ---
+
+    @Test
+    fun aCorrectionThatChangesTheCategoryOffersToRememberIt() = runTest(UnconfinedTestDispatcher()) {
+        saveExpense()
+        val vm = viewModel()
+        vm.onCategorySelect("coffee-dining")
+        vm.save()
+
+        val offer = inbox.state.value.offer
+        assertEquals("keells super", offer?.merchantKey)
+        assertEquals("coffee-dining", offer?.categoryId)
+        assertEquals(cash.id, offer?.accountId)
+        assertTrue(rules.rules.value.isEmpty())
+    }
+
+    @Test
+    fun aCorrectionThatChangesTheNameAlsoOffers() = runTest(UnconfinedTestDispatcher()) {
+        saveExpense()
+        val vm = viewModel()
+        vm.onTitleChange("Keells Nugegoda")
+        vm.save()
+
+        assertEquals("keells nugegoda", inbox.state.value.offer?.merchantKey)
+    }
+
+    @Test
+    fun aCorrectionToOnlyTheAmountOffersNothing() = runTest(UnconfinedTestDispatcher()) {
+        saveExpense()
+        val vm = viewModel()
+        vm.onAmountChange("8,900")
+        vm.save()
+
+        assertTrue(vm.uiState.value.isFinished)
+        assertNull(inbox.state.value.offer)
+    }
+
+    @Test
+    fun noOfferWhenARuleAlreadyCoversTheChoiceOrTheNameIsGeneral() = runTest(UnconfinedTestDispatcher()) {
+        rules.rules.value = listOf(com.example.zar.features.rules.rule("Keells Super", category = "bills"))
+        saveExpense()
+        val covered = viewModel()
+        covered.onCategorySelect("bills")
+        covered.save()
+        assertNull(inbox.state.value.offer)
+
+        ledger.save(tx("e2", TransactionType.EXPENSE, lkr(1_250), cash, today, SpendingClass.DISCRETIONARY).copy(merchant = "PickMe", categoryId = "transport"))
+        val general = viewModel("e2")
+        general.onCategorySelect("other")
+        general.save()
+        assertNull(inbox.state.value.offer)
+    }
+
+    @Test
+    fun aFailedCorrectionOffersNothing() = runTest(UnconfinedTestDispatcher()) {
+        saveExpense()
+        ledger.correctionError = IOException("offline")
+        val vm = viewModel()
+        vm.onCategorySelect("coffee-dining")
+        vm.save()
+
+        assertNull(inbox.state.value.offer)
     }
 }
