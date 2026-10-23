@@ -1,5 +1,7 @@
 package com.example.zar.features.capture.domain
 
+import com.example.zar.features.rules.rule
+import com.example.zar.features.rules.FakeCategoryRules
 import com.example.zar.core.data.remote.firestore.DraftDocumentMapper
 import com.example.zar.core.domain.FakeLedgerRepository
 import com.example.zar.core.domain.TestLedger.T0
@@ -124,7 +126,7 @@ class CaptureTest {
         val ledger = drafts.ledger
         CaptureTextUseCase(BankSmsParser(), drafts)(credit, DraftSource.SHARED_TEXT, T0)
         val draft = drafts.drafts.value.values.single()
-        val confirm = ConfirmCapturedDraftUseCase(drafts)
+        val confirm = ConfirmCapturedDraftUseCase(drafts, FakeCategoryRules().observeUseCase())
 
         assertTrue(confirm(draft, bank, TransactionType.INCOME, null, Instant.parse("2026-10-22T04:00:00Z")).isSuccess)
         assertTrue(confirm(draft, bank, TransactionType.INCOME, null, Instant.parse("2026-10-22T04:00:00Z")).isSuccess)
@@ -140,7 +142,7 @@ class CaptureTest {
         val ledger = drafts.ledger
         CaptureTextUseCase(BankSmsParser(), drafts)(purchase, DraftSource.SHARED_TEXT, T0)
         val draft = drafts.drafts.value.values.single()
-        val confirm = ConfirmCapturedDraftUseCase(drafts)
+        val confirm = ConfirmCapturedDraftUseCase(drafts, FakeCategoryRules().observeUseCase())
 
         assertTrue(confirm(draft, payoneer, TransactionType.EXPENSE, SpendingClass.DISCRETIONARY, Instant.parse("2026-10-22T04:00:00Z")).exceptionOrNull() is LedgerError.CurrencyMismatch)
         assertTrue(confirm(draft, bank, TransactionType.TRANSFER_OUT, null, T0).isFailure)
@@ -186,7 +188,7 @@ class CaptureTest {
         val drafts = FakeDrafts()
         CaptureTextUseCase(BankSmsParser(), drafts)(purchase, DraftSource.SHARED_TEXT, T0).getOrThrow()
         val draft = drafts.drafts.value.values.single()
-        val confirm = ConfirmCapturedDraftUseCase(drafts)
+        val confirm = ConfirmCapturedDraftUseCase(drafts, FakeCategoryRules().observeUseCase())
         val now = Instant.parse("2026-10-22T04:00:00Z")
         drafts.failConfirm = true
         assertTrue(confirm(draft, bank, TransactionType.EXPENSE, SpendingClass.UNKNOWN, now).isFailure)
@@ -203,12 +205,58 @@ class CaptureTest {
         val drafts = FakeDrafts()
         CaptureTextUseCase(BankSmsParser(), drafts)(purchase, DraftSource.SHARED_TEXT, T0).getOrThrow()
         val draft = drafts.drafts.value.values.single()
-        val confirm = ConfirmCapturedDraftUseCase(drafts)
+        val confirm = ConfirmCapturedDraftUseCase(drafts, FakeCategoryRules().observeUseCase())
         val now = Instant.parse("2026-10-22T04:00:00Z")
         assertTrue(confirm(draft, bank, TransactionType.EXPENSE, SpendingClass.UNKNOWN, T0).isFailure)
         assertTrue(confirm(draft, bank.copy(isArchived = true), TransactionType.EXPENSE, SpendingClass.UNKNOWN, now).isFailure)
         assertTrue(confirm(draft.copy(source = DraftSource.QUICK_NOTE), bank, TransactionType.EXPENSE, SpendingClass.UNKNOWN, now).isFailure)
         assertTrue(drafts.ledger.transactions.isEmpty())
+    }
+    // --- Category rules (SCRUM-39) ---
+
+    private suspend fun confirmPurchaseWith(rules: List<com.example.zar.features.rules.domain.model.CategoryRule>, type: TransactionType = TransactionType.EXPENSE): FakeDrafts {
+        val drafts = FakeDrafts()
+        CaptureTextUseCase(BankSmsParser(), drafts)(purchase, DraftSource.SHARED_TEXT, T0).getOrThrow()
+        val draft = drafts.drafts.value.values.single()
+        val confirm = ConfirmCapturedDraftUseCase(drafts, FakeCategoryRules(rules).observeUseCase())
+        confirm(draft, bank, type, if (type == TransactionType.EXPENSE) SpendingClass.UNKNOWN else null, Instant.parse("2026-10-22T04:00:00Z")).getOrThrow()
+        return drafts
+    }
+
+    @Test fun aRememberedNameFilesTheCapturedExpenseAndKeepsTheAmount() = runBlocking {
+        val rule = rule("CAFE SEVENTY THREE MALABE LK", category = "coffee-dining", id = "cafe", version = 2)
+        val saved = confirmPurchaseWith(listOf(rule)).ledger.transactions.values.single()
+
+        assertEquals("coffee-dining", saved.categoryId)
+        assertEquals("cafe", saved.appliedRuleId)
+        assertEquals(2, saved.appliedRuleVersion)
+        assertEquals(lkr(800), saved.amount)
+        assertEquals(SpendingClass.UNKNOWN, saved.spendingClass)
+    }
+
+    @Test fun anUnknownNameLeavesTheCapturedExpenseWithoutACategory() = runBlocking {
+        val saved = confirmPurchaseWith(listOf(rule("Keells Super"))).ledger.transactions.values.single()
+
+        assertNull(saved.categoryId)
+        assertNull(saved.appliedRuleId)
+    }
+
+    @Test fun aSwitchedOffRuleAndDisagreeingRulesLeaveItUnresolved() = runBlocking {
+        val off = rule("CAFE SEVENTY THREE MALABE LK", enabled = false)
+        assertNull(confirmPurchaseWith(listOf(off)).ledger.transactions.values.single().categoryId)
+
+        val a = rule("CAFE SEVENTY THREE MALABE LK", category = "groceries", id = "a")
+        val b = rule("CAFE SEVENTY THREE MALABE LK", category = "coffee-dining", id = "b")
+        assertNull(confirmPurchaseWith(listOf(a, b)).ledger.transactions.values.single().categoryId)
+    }
+
+    @Test fun aRuleNeverCategorisesIncome() = runBlocking {
+        val rule = rule("CAFE SEVENTY THREE MALABE LK", category = "coffee-dining")
+        val saved = confirmPurchaseWith(listOf(rule), TransactionType.INCOME).ledger.transactions.values.single()
+
+        assertNull(saved.categoryId)
+        assertNull(saved.appliedRuleId)
+        assertNull(saved.spendingClass)
     }
 
 }
