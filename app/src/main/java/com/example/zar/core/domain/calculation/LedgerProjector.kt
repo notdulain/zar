@@ -59,6 +59,7 @@ object LedgerProjector {
         amount = changes.amount ?: transaction.amount,
         reportingConversion = changes.reportingConversion ?: transaction.reportingConversion,
         date = changes.date ?: transaction.date,
+        time = changes.time.applyTo(transaction.time),
         spendingClass = changes.spendingClass ?: transaction.spendingClass,
         categoryId = changes.categoryId.applyTo(transaction.categoryId),
         merchant = changes.merchant.applyTo(transaction.merchant),

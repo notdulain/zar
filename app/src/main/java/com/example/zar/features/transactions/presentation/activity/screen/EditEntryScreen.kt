@@ -63,6 +63,8 @@ import com.example.zar.features.transactions.presentation.manual.screen.Section
 import com.example.zar.features.transactions.presentation.manual.screen.Segmented
 import com.example.zar.features.transactions.presentation.manual.screen.TextInput
 import com.example.zar.features.transactions.presentation.manual.screen.labelRes
+import com.example.zar.core.presentation.components.TransactionTimeField
+import java.time.LocalTime
 import java.time.LocalDate
 
 /**
@@ -82,6 +84,7 @@ fun EditEntryScreen(
             onClose = onDone,
             onAmount = viewModel::onAmountChange,
             onDate = viewModel::onDateSelect,
+            onTime = viewModel::onTimeSelect,
             onCategory = viewModel::onCategorySelect,
             onSpendingClass = viewModel::onSpendingClassSelect,
             onTitle = viewModel::onTitleChange,
@@ -100,6 +103,7 @@ internal class EditActions(
     val onTitle: (String) -> Unit,
     val onDescription: (String) -> Unit,
     val onSave: () -> Unit,
+    val onTime: (LocalTime?) -> Unit = {},
 )
 
 @Composable
@@ -258,6 +262,7 @@ private fun EditFields(state: EditEntryUiState, amount: String, actions: EditAct
     ZarDivider()
 
     DateRow(input.date, actions.onDate)
+    TransactionTimeField(input.time, tag = "edit-time", onSelect = actions.onTime)
     FieldError(if (EditProblem.DATE_IN_FUTURE in problems) R.string.manual_error_date_future else null, Modifier.testTag("edit-error-date"))
     ZarDivider()
 

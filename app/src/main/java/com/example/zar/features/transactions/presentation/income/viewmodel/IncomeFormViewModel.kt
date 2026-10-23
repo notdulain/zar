@@ -48,6 +48,7 @@ data class IncomeFormUiState(
     val lockedCurrency: Currency? = null,
     val amount: String = "",
     val date: LocalDate = ZarTime.today(),
+    val time: java.time.LocalTime? = null,
     val rate: String = "",
     val receivedFrom: String = "",
     val category: IncomeCategory? = null,
@@ -115,6 +116,7 @@ class IncomeFormViewModel @Inject constructor(
                     lockedCurrency = tx.amount.currency,
                     amount = tx.amount.toDecimal().toPlainString(),
                     date = tx.date,
+                    time = tx.time,
                     rate = IncomeRules.storedRate(tx.reportingConversion)?.toPlainString().orEmpty(),
                     receivedFrom = tx.merchant.orEmpty(),
                     category = IncomeCategory.fromId(tx.categoryId),
@@ -134,6 +136,8 @@ class IncomeFormViewModel @Inject constructor(
 
     fun onDateSelect(value: LocalDate) = edit(IncomeProblem.DATE_IN_FUTURE) { copy(date = value) }
 
+    fun onTimeSelect(value: java.time.LocalTime?) = edit { copy(time = value) }
+
     fun onRateChange(value: String) = edit(IncomeProblem.RATE_INVALID) { copy(rate = value) }
 
     fun onReceivedFromChange(value: String) = edit(IncomeProblem.RECEIVED_FROM_TOO_LONG) { copy(receivedFrom = value) }
@@ -150,6 +154,7 @@ class IncomeFormViewModel @Inject constructor(
             amount = state.amount,
             currency = currency,
             date = state.date,
+            time = state.time,
             rate = state.rate,
             receivedFrom = state.receivedFrom,
             category = state.category,

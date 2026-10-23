@@ -161,6 +161,7 @@ object LedgerDocumentMapper {
             c.amount?.let { put("amount", moneyToMap(it)) }
             c.reportingConversion?.let { put("conversion", conversionToMap(it)) }
             c.date?.let { put("date", it.toString()) }
+            c.time?.let { put("time", (it as? FieldUpdate.Set)?.value?.format(transactionTimeFormat)) }
             c.spendingClass?.let { put("spendingClass", it.name) }
             c.categoryId?.let { put("categoryId", it.valueOrNull()) }
             c.merchant?.let { put("merchant", it.valueOrNull()) }
@@ -184,6 +185,11 @@ object LedgerDocumentMapper {
                 amount = (changes["amount"] as Map<*, *>?)?.let { moneyFromMap(it)!! },
                 reportingConversion = (changes["conversion"] as Map<*, *>?)?.let { conversionFromMap(it)!! },
                 date = (changes["date"] as String?)?.let(LocalDate::parse),
+                time = when {
+                    !changes.containsKey("time") -> null
+                    changes["time"] == null -> FieldUpdate.Clear
+                    else -> FieldUpdate.Set(LocalTime.parse(changes["time"] as String, transactionTimeFormat))
+                },
                 spendingClass = (changes["spendingClass"] as String?)?.let(SpendingClass::valueOf),
                 categoryId = changes.fieldUpdate("categoryId"),
                 merchant = changes.fieldUpdate("merchant"),

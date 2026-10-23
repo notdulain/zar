@@ -41,6 +41,15 @@ class IncomeRulesTest {
     private fun problems(input: IncomeFormInput): Set<IncomeProblem> =
         (IncomeRules.validate(input, today) as IncomeFormResult.Invalid).problems
 
+    @Test fun selectedTimeIsSavedAndIncludedInCorrections() {
+        val time = java.time.LocalTime.of(18, 30)
+        val details = valid(input().copy(time = time))
+        val original = IncomeRules.newIncome(TransactionId("timed"), bank, details, T0)
+        assertEquals(time, original.time)
+        assertTrue(IncomeRules.changesBetween(original, details, T0).isEmpty)
+        assertEquals(FieldUpdate.Clear, IncomeRules.changesBetween(original, details.copy(time = null), T0).time)
+    }
+
     @Test
     fun validLkrIncomeIsTrimmedAndHasNoRate() {
         val details = valid(input(rate = "300"))

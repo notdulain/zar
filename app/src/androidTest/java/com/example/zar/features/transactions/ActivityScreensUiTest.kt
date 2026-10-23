@@ -484,6 +484,37 @@ class ActivityScreensUiTest {
         compose.onNodeWithTag("activity-detail-not-found").assertIsDisplayed()
     }
 
+    @Test fun detailShowsRecordedTime() {
+        val timed = entry(tx("timed", TransactionType.EXPENSE, 850, cash, "Uber to SLIIT from office").copy(time = java.time.LocalTime.of(18, 30)))
+        showDetail(detailOf(timed))
+        compose.onNodeWithText("6:30 PM").performScrollTo().assertIsDisplayed()
+        captureCorrectionEvidence("activity-time")
+    }
+
+    @Test fun savedTimeCanBeEdited() {
+        var selected: java.time.LocalTime? = null
+        compose.setContent {
+            ZarTheme(darkTheme = false) {
+                EditEntryBody(editState { copy(input = input?.copy(time = java.time.LocalTime.of(18, 30))) },
+                    EditActions({}, {}, {}, {}, {}, {}, {}, {}, onTime = { selected = it }))
+            }
+        }
+        compose.onNodeWithTag("edit-time").performScrollTo().performClick()
+        compose.onNodeWithText("AM").performClick()
+        compose.onNodeWithTag("edit-time-confirm").performClick()
+        assertEquals(java.time.LocalTime.of(6, 30), selected)
+        captureCorrectionEvidence("activity-edit-time")
+    }
+
+    private fun captureCorrectionEvidence(name: String) {
+        compose.waitForIdle()
+        val instrumentation = androidx.test.platform.app.InstrumentationRegistry.getInstrumentation()
+        val dir = java.io.File(instrumentation.targetContext.cacheDir, "correction-evidence").apply { mkdirs() }
+        val screenshot = checkNotNull(instrumentation.uiAutomation.takeScreenshot())
+        java.io.File(dir, "$name.png").outputStream().use { screenshot.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }
+        screenshot.recycle()
+    }
+
     // --- Edit -----------------------------------------------------------------------------------
 
     private class EditRecorder {

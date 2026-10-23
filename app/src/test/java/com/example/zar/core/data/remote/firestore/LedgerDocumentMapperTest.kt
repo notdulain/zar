@@ -22,6 +22,16 @@ import org.junit.Test
 
 class LedgerDocumentMapperTest {
 
+    @Test fun timeCorrectionsRoundTripIncludingClear() {
+        for (update in listOf(com.example.zar.core.domain.model.FieldUpdate.Set(java.time.LocalTime.of(18, 30)), com.example.zar.core.domain.model.FieldUpdate.Clear)) {
+            val c = com.example.zar.core.domain.model.Correction(
+                com.example.zar.core.domain.model.CorrectionId("time"), com.example.zar.core.domain.model.TransactionId("t1"),
+                com.example.zar.core.domain.model.TransactionChanges(time = update), java.time.Instant.parse("2026-10-24T10:00:00Z"),
+            )
+            assertEquals(c, LedgerDocumentMapper.correctionFromMap(LedgerDocumentMapper.correctionToMap(c)))
+        }
+    }
+
     @Test
     fun roundTripsConvertedFiatTransaction() {
         val original = tx("usd", TransactionType.INCOME, usd(100), account = payoneer).copy(note = "Invoice 4")

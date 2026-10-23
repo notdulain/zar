@@ -311,3 +311,11 @@ test('category rules: invalid documents are rejected', async () => {
   await assertFails(setDoc(p('f'), noCategory));                          // a category is required
   await assertFails(setDoc(p('g'), rule('g', { createdAt: 0 })));
 });
+
+test('corrections can set and clear time but reject malformed values', async () => {
+  const write = (id, time) => setDoc(doc(alice(), path('alice', 'corrections', id)), { id, transactionId: 't1', changes: { time }, correctedAt: 1790000000001 });
+  await assertSucceeds(write('set-time', '18:30'));
+  await assertSucceeds(write('clear-time', null));
+  await assertFails(write('invalid-time', '25:61'));
+  await assertFails(write('seconds', '18:30:59'));
+});

@@ -24,6 +24,9 @@ object EntryHistory {
         if (before.amount != after.amount) {
             add(FieldChange(CorrectedField.AMOUNT, FieldValue.Amount(before.amount), FieldValue.Amount(after.amount)))
         }
+        if (before.time != after.time) {
+            add(FieldChange(CorrectedField.TIME, FieldValue.Time(before.time), FieldValue.Time(after.time)))
+        }
         if (before.date != after.date) {
             add(FieldChange(CorrectedField.DATE, FieldValue.Day(before.date), FieldValue.Day(after.date)))
         }

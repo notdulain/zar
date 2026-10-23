@@ -257,10 +257,11 @@ service cloud.firestore {
         && isOptionalString(d, 'reason', 300)
         && c is map
         && c.size() > 0
-        && c.keys().hasOnly(['amount', 'conversion', 'date', 'spendingClass', 'categoryId', 'merchant', 'note'])
+        && c.keys().hasOnly(['amount', 'conversion', 'date', 'time', 'spendingClass', 'categoryId', 'merchant', 'note'])
         && (!('amount' in c) || isPositiveMoney(c.amount))
         && (!('conversion' in c) || isConversion(c.conversion))
         && (!('date' in c) || isDateString(c.date))
+        && (!('time' in c) || c.time == null || isTimeString(c.time))
         && (!('spendingClass' in c) || isSpendingClass(c.spendingClass))
         && isClearableString(c, 'categoryId', 64)
         && isClearableString(c, 'merchant', 120)

@@ -27,6 +27,7 @@ import com.example.zar.features.transactions.domain.activity.usecase.ObserveEntr
 import com.example.zar.features.transactions.domain.manual.usecase.ObserveOnlineStatusUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.time.Instant
+import java.time.LocalTime
 import java.time.LocalDate
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -107,6 +108,8 @@ class EditEntryViewModel @Inject constructor(
         edit(setOf(EditProblem.AMOUNT_MISSING, EditProblem.AMOUNT_INVALID)) { it.copy(amount = value) }
 
     fun onDateSelect(value: LocalDate) = edit(setOf(EditProblem.DATE_IN_FUTURE)) { it.copy(date = value) }
+
+    fun onTimeSelect(value: LocalTime?) = edit { it.copy(time = value) }
 
     fun onCategorySelect(id: String) = edit { it.copy(categoryId = id) }
 

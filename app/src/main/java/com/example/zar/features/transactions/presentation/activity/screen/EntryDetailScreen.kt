@@ -219,7 +219,7 @@ private fun DetailContent(state: EntryDetailUiState, detail: EntryDetail, action
             modifier = Modifier.padding(top = 2.dp).testTag("detail-amount"),
         )
         Text(
-            "${stringResource(EntryDisplay.typeLabel(tx.type))} · ${EntryDisplay.day(tx.date)}",
+            "${stringResource(EntryDisplay.typeLabel(tx.type))} · ${EntryDisplay.day(tx.date)}" + (tx.time?.let { " · ${it.format(java.time.format.DateTimeFormatter.ofPattern("h:mm a", java.util.Locale.ENGLISH))}" } ?: ""),
             style = ZarType.bodyCaption.copy(lineHeight = 16.sp),
             color = colors.textSecondary,
             modifier = Modifier.padding(top = 4.dp),
@@ -303,6 +303,7 @@ private fun DetailsCard(state: EntryDetailUiState, detail: EntryDetail, modifier
     val colors = ZarTheme.colors
     val none = stringResource(R.string.activity_none)
     val rows = buildList<@Composable () -> Unit> {
+        add { ValueRow(stringResource(R.string.entry_field_time), tx.time?.format(java.time.format.DateTimeFormatter.ofPattern("h:mm a", java.util.Locale.ENGLISH)) ?: stringResource(R.string.entry_time_not_set), placeholder = tx.time == null) }
         if (detail.isTransfer) {
             val isOut = entry.original.type == TransactionType.TRANSFER_OUT
             val from = if (isOut) detail.account else detail.counterpartAccount
@@ -472,6 +473,7 @@ private fun HistoryLine(title: String, detail: String, dot: Color) {
 private fun historyTitle(field: CorrectedField): Int = when (field) {
     CorrectedField.AMOUNT -> R.string.activity_history_amount
     CorrectedField.DATE -> R.string.activity_history_date
+    CorrectedField.TIME -> R.string.entry_field_time
     CorrectedField.CATEGORY -> R.string.activity_history_category
     CorrectedField.SPENDING_CLASS -> R.string.activity_history_class
     CorrectedField.TITLE -> R.string.activity_history_title_field
@@ -482,6 +484,7 @@ private fun historyTitle(field: CorrectedField): Int = when (field) {
 private fun historyValue(value: FieldValue): String = when (value) {
     is FieldValue.Amount -> IncomeFormat.withCode(value.money)
     is FieldValue.Day -> IncomeFormat.shortDate(value.date)
+    is FieldValue.Time -> value.time?.format(java.time.format.DateTimeFormatter.ofPattern("h:mm a", java.util.Locale.ENGLISH)) ?: stringResource(R.string.entry_time_not_set)
     is FieldValue.Class -> stringResource((value.spendingClass ?: SpendingClass.UNKNOWN).labelRes())
     is FieldValue.Text -> value.text?.let { text -> EntryDisplay.categoryLabel(text)?.let { stringResource(it) } ?: text }
         ?: stringResource(R.string.activity_none)

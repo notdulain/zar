@@ -30,6 +30,7 @@ data class IncomeDetails(
     val receivedFrom: String?,
     val category: IncomeCategory?,
     val note: String?,
+    val time: java.time.LocalTime? = null,
 )
 
 /** What the user typed into the income form. */
@@ -41,6 +42,7 @@ data class IncomeFormInput(
     val receivedFrom: String,
     val category: IncomeCategory?,
     val note: String,
+    val time: java.time.LocalTime? = null,
 )
 
 enum class IncomeProblem {

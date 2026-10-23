@@ -62,6 +62,7 @@ object IncomeRules {
             IncomeDetails(
                 amount = amount,
                 date = input.date,
+                time = input.time,
                 rateToReporting = rate,
                 receivedFrom = receivedFrom.ifEmpty { null },
                 category = input.category,
@@ -93,6 +94,7 @@ object IncomeRules {
         type = TransactionType.INCOME,
         amount = details.amount,
         date = details.date,
+        time = details.time,
         reportingConversion = reportingConversion(details, createdAt),
         categoryId = details.category?.id,
         merchant = details.receivedFrom,
@@ -110,6 +112,7 @@ object IncomeRules {
             amount = edited.amount.takeIf { it != current.amount },
             reportingConversion = if (rateChanged) reportingConversion(edited, asOf) else null,
             date = edited.date.takeIf { it != current.date },
+            time = fieldUpdate(current.time, edited.time),
             categoryId = fieldUpdate(current.categoryId, edited.category?.id),
             merchant = fieldUpdate(current.merchant, edited.receivedFrom),
             note = fieldUpdate(current.note, edited.note),
@@ -122,7 +125,7 @@ object IncomeRules {
     private fun sameRate(a: BigDecimal?, b: BigDecimal?): Boolean =
         if (a == null || b == null) a == b else a.compareTo(b) == 0
 
-    private fun fieldUpdate(current: String?, edited: String?): FieldUpdate<String>? = when {
+    private fun <T> fieldUpdate(current: T?, edited: T?): FieldUpdate<T>? = when {
         current == edited -> null
         edited == null -> FieldUpdate.Clear
         else -> FieldUpdate.Set(edited)

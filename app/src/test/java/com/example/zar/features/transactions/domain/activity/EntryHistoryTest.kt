@@ -24,6 +24,20 @@ class EntryHistoryTest {
     private fun entryWith(vararg corrections: com.example.zar.core.domain.model.Correction): LedgerEntry =
         LedgerProjector.project(listOf(original), corrections.toList(), emptyList()).single()
 
+    @Test fun timeHistoryKeepsTheOriginalAndEveryCorrection() {
+        val time = java.time.LocalTime.of(18, 30)
+        val entry = entryWith(
+            correction("c1", "e1", TransactionChanges(time = FieldUpdate.Set(time)), T0.plusSeconds(60)),
+            correction("c2", "e1", TransactionChanges(time = FieldUpdate.Clear), T0.plusSeconds(120)),
+        )
+        val history = EntryHistory.build(entry)
+        assertEquals(FieldValue.Time(time), history[0].changes.single().after)
+        assertEquals(FieldValue.Time(time), history[1].changes.single().before)
+        assertEquals(FieldValue.Time(null), history[1].changes.single().after)
+        assertEquals(null, entry.original.time)
+        assertEquals(null, entry.current.time)
+    }
+
     @Test
     fun anUntouchedEntryHasNoHistory() {
         assertTrue(EntryHistory.build(entryWith()).isEmpty())
