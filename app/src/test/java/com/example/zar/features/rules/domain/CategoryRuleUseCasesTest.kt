@@ -6,6 +6,7 @@ import com.example.zar.core.domain.model.LedgerError
 import com.example.zar.features.rules.FakeCategoryRules
 import com.example.zar.features.rules.domain.model.CategoryRuleId
 import com.example.zar.features.rules.domain.model.OfferDecision
+import com.example.zar.features.rules.domain.model.RuleMatch
 import com.example.zar.features.rules.domain.model.RuleScope
 import com.example.zar.features.rules.domain.usecase.EditCategoryRuleUseCase
 import com.example.zar.features.rules.domain.usecase.ObserveCategoryRulesUseCase
@@ -74,6 +75,19 @@ class CategoryRuleUseCasesTest {
         assertEquals(setOf("any", "cash-rule"), repo.rules.value.map { it.id.value }.toSet())
         assertEquals(cash.id, repo.rules.value.first { it.id.value == "cash-rule" }.accountId)
         assertEquals(1, repo.rules.value.first { it.id.value == "any" }.version)
+    }
+
+    @Test
+    fun rememberingAgainForTheSameAccountChangesItsRuleInsteadOfAddingOneThatDisagrees() = runBlocking {
+        remember(offer(), RuleScope.THIS_ACCOUNT, CategoryRuleId("cash-1"), now)
+        remember(offer(category = "coffee-dining"), RuleScope.THIS_ACCOUNT, CategoryRuleId("cash-2"), now.plusSeconds(5))
+
+        val only = repo.rules.value.single()
+        assertEquals("cash-1", only.id.value)
+        assertEquals("coffee-dining", only.categoryId)
+        assertEquals(2, only.version)
+        val match = CategoryRuleMatcher.match(repo.rules.value, "Keells Super", cash.id)
+        assertEquals(only, (match as RuleMatch.Applied).rule)
     }
 
     @Test

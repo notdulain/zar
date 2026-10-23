@@ -37,12 +37,27 @@ object RuleOfferRules {
     }
 
     /**
-     * The rule saved when the person agrees. With [RuleScope.ANY_ACCOUNT] and an existing rule for the
-     * name, that rule is changed (version + 1) instead of adding a second one that would disagree.
+     * The saved rule that remembering [offer] with [scope] changes: the one for the same name and the same
+     * account (or every account). Changing it, instead of adding a second rule of the same weight, keeps the
+     * two from disagreeing and filing nothing.
      */
-    fun remember(offer: RuleOffer, scope: RuleScope, newId: CategoryRuleId, now: Instant): CategoryRule {
-        val existing = offer.existing
-        return if (scope == RuleScope.ANY_ACCOUNT && existing != null) {
+    fun ruleToChange(offer: RuleOffer, scope: RuleScope, rules: List<CategoryRule>): CategoryRule? {
+        val accountId = if (scope == RuleScope.THIS_ACCOUNT) offer.accountId else null
+        return rules.firstOrNull { it.merchantKey == offer.merchantKey && it.accountId == accountId }
+    }
+
+    /**
+     * The rule saved when the person agrees. When [existing] is the rule for this name and scope, it is
+     * changed (version + 1) instead of adding a second one that would disagree.
+     */
+    fun remember(
+        offer: RuleOffer,
+        scope: RuleScope,
+        newId: CategoryRuleId,
+        now: Instant,
+        existing: CategoryRule? = if (scope == RuleScope.ANY_ACCOUNT) offer.existing else null,
+    ): CategoryRule {
+        return if (existing != null) {
             existing.copy(categoryId = offer.categoryId, enabled = true, version = existing.version + 1, updatedAt = now)
         } else {
             CategoryRule(

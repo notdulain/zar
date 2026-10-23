@@ -706,6 +706,19 @@ class ManualEntryViewModelTest {
     }
 
     @Test
+    fun aCategoryTheRuleFilledIsTakenBackWhenTheNameNoLongerMatches() {
+        rules.rules.value = listOf(rule("Keells Super", category = "groceries"))
+        val vm = viewModel()
+        vm.onTitleChange("Keells Super")
+        assertEquals(ExpenseCategory.GROCERIES, vm.uiState.value.category)
+
+        vm.onTitleChange("Keells Super Kandy")
+
+        assertNull(vm.uiState.value.category)
+        assertNull(vm.uiState.value.appliedRule)
+    }
+
+    @Test
     fun savingAPreciseNamePostsAnOfferToRemember() {
         val vm = viewModel()
         vm.onAmountChange("850")

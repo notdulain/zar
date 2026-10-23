@@ -35,12 +35,12 @@ class RememberCategoryUseCase @Inject constructor(
         attempt {
             val current = rules.observeRules().first()
             current.firstOrNull { it.id == newId }?.let { return@attempt it }
-            val existing = offer.existing?.let { stale -> current.firstOrNull { it.id == stale.id } }
+            val existing = RuleOfferRules.ruleToChange(offer, scope, current)
             // A rule for this name already has the category (an earlier attempt landed): nothing to add.
-            if (scope == RuleScope.ANY_ACCOUNT && existing != null && existing.enabled && existing.categoryId == offer.categoryId) {
+            if (existing != null && existing.enabled && existing.categoryId == offer.categoryId) {
                 return@attempt existing
             }
-            val rule = RuleOfferRules.remember(offer.copy(existing = existing), scope, newId, now)
+            val rule = RuleOfferRules.remember(offer, scope, newId, now, existing)
             rules.saveRule(rule)
             rule
         }

@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -35,6 +36,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -118,8 +120,8 @@ private fun OfferCard(offer: RuleOffer, onOpen: () -> Unit, onDismiss: () -> Uni
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(stringResource(R.string.rules_offer_title, offer.displayName), style = ZarType.labelAction, color = colors.textPrimary, maxLines = 1)
-            Text(stringResource(R.string.rules_offer_body, category), style = ZarType.bodyS, color = colors.textSecondary, maxLines = 2)
+            Text(stringResource(R.string.rules_offer_title, offer.displayName), style = ZarType.labelAction, color = colors.textPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(stringResource(R.string.rules_offer_body, category), style = ZarType.bodyS, color = colors.textSecondary, maxLines = 2, overflow = TextOverflow.Ellipsis)
         }
         Text(
             stringResource(R.string.rules_offer_remember),
@@ -165,8 +167,8 @@ private fun RememberSheet(state: RuleOfferUiState, offer: RuleOffer, onDismiss: 
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 ZarIconChip(R.drawable.ic_ph_receipt, background = colors.surface)
-                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text(offer.displayName, style = ZarType.bodyM, color = colors.textPrimary, maxLines = 1)
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(offer.displayName, style = ZarType.bodyM, color = colors.textPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     Text(stringResource(R.string.rules_sheet_entry_detail, category), style = ZarType.bodyS, color = colors.textSecondary)
                 }
             }
@@ -225,7 +227,7 @@ private fun ScopeRow(selected: Boolean, title: String, detail: String, onClick: 
         Modifier
             .fillMaxWidth()
             .background(if (selected) colors.selectedTint else colors.subtle)
-            .clickable(role = Role.RadioButton, onClick = onClick)
+            .selectable(selected = selected, role = Role.RadioButton, onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 14.dp)
             .semantics(mergeDescendants = true) {}
             .testTag(tag),

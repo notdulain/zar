@@ -37,6 +37,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -697,12 +698,13 @@ private fun AdjustmentCard(detail: EntryDetail, modifier: Modifier = Modifier) {
 private fun DetailActionsBar(detail: EntryDetail, actions: DetailActions, modifier: Modifier = Modifier) {
     val colors = ZarTheme.colors
     val canvas = colors.canvas
+    val fadeEnd = with(LocalDensity.current) { 28.dp.toPx() }
     // Figma: the caption sits at y779 and the 58dp buttons at y811, 46dp above the screen edge.
     Column(
         modifier
             .fillMaxWidth()
-            // Fades the content out under the buttons so text never runs through them.
-            .background(Brush.verticalGradient(listOf(Color.Transparent, canvas, canvas)))
+            // Fades the content out above the caption, then a solid canvas so text never runs through the caption or buttons.
+            .background(Brush.verticalGradient(listOf(Color.Transparent, canvas), endY = fadeEnd))
             .navigationBarsPadding()
             .padding(top = 28.dp, bottom = 22.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),

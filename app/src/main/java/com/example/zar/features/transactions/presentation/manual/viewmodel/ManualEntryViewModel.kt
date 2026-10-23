@@ -237,6 +237,7 @@ class ManualEntryViewModel @Inject constructor(
             title = suggestion.title,
             suggestions = emptyList(),
             category = suggestion.category ?: it.category,
+            appliedRule = if (suggestion.category != null) null else it.appliedRule,
             accountId = account.id,
             amount = it.amount.ifBlank { suggestion.amount.toDecimal().stripTrailingZeros().toPlainString() },
             spendingClass = suggestion.spendingClass,
@@ -351,11 +352,15 @@ class ManualEntryViewModel @Inject constructor(
         )
     }
 
-    /** Fills in the category a remembered rule gives for the typed title, unless the person already chose one. */
+    /**
+     * Fills in the category a remembered rule gives for the typed title, unless the person already chose one.
+     * A category a rule filled in is taken back when the title or account no longer matches that rule.
+     */
     private fun ManualEntryUiState.withRule(): ManualEntryUiState {
         if (kind != ManualEntryKind.EXPENSE || categoryChosen) return this
         val rule = (CategoryRuleMatcher.match(rules, title, accountId) as? RuleMatch.Applied)?.rule
-        val filed = rule?.let { ExpenseCategory.fromId(it.categoryId) } ?: return copy(appliedRule = null)
+        val filed = rule?.let { ExpenseCategory.fromId(it.categoryId) }
+            ?: return if (appliedRule != null) copy(category = null, appliedRule = null) else this
         val usual = filed.usualClass
         return copy(
             category = filed,
