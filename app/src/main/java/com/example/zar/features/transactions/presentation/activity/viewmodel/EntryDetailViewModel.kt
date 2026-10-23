@@ -7,6 +7,11 @@ import com.example.zar.core.domain.model.LedgerError
 import com.example.zar.core.domain.model.TransactionId
 import com.example.zar.core.domain.usecase.VoidTransactionUseCase
 import com.example.zar.core.navigation.EntryDetailRoute
+import com.example.zar.features.rules.domain.RuleCard
+import com.example.zar.features.rules.domain.RuleCardRules
+import com.example.zar.features.rules.domain.model.RuleOffer
+import com.example.zar.features.rules.domain.repository.RuleOfferInbox
+import com.example.zar.features.rules.domain.usecase.ObserveCategoryRulesUseCase
 import com.example.zar.features.transactions.domain.activity.model.EntryDetail
 import com.example.zar.features.transactions.domain.activity.usecase.ObserveEntryDetailUseCase
 import com.example.zar.features.transactions.domain.manual.usecase.ObserveOnlineStatusUseCase
@@ -40,6 +45,8 @@ data class EntryDetailUiState(
     val showVoidSheet: Boolean = false,
     val isVoiding: Boolean = false,
     val voidProblem: VoidProblem? = null,
+    /** What this entry's page says about category rules: an offer, a general name, or the rule that filed it. */
+    val ruleCard: RuleCard = RuleCard.Hidden,
 )
 
 @HiltViewModel
@@ -48,6 +55,8 @@ class EntryDetailViewModel @Inject constructor(
     observeDetail: ObserveEntryDetailUseCase,
     observeOnline: ObserveOnlineStatusUseCase,
     private val voidTransaction: VoidTransactionUseCase,
+    observeRules: ObserveCategoryRulesUseCase,
+    private val ruleInbox: RuleOfferInbox,
 ) : ViewModel() {
 
     // Read by name instead of toRoute so the ViewModel can be created in plain unit tests.
@@ -66,9 +75,14 @@ class EntryDetailViewModel @Inject constructor(
         content,
         observeOnline().catch { emit(true) },
         local,
-    ) { content, online, local ->
-        EntryDetailUiState(content, online, local.showSheet, local.isVoiding, local.problem)
+        observeRules().catch { emit(emptyList()) },
+    ) { content, online, local, rules ->
+        val card = (content as? EntryDetailContent.Ready)?.let { RuleCardRules.of(it.detail.entry, rules) } ?: RuleCard.Hidden
+        EntryDetailUiState(content, online, local.showSheet, local.isVoiding, local.problem, card)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), EntryDetailUiState())
+
+    /** Opens the "Remember this choice" sheet for the offer on this page. */
+    fun rememberChoice(offer: RuleOffer) = ruleInbox.open(offer)
 
     fun showVoidSheet() = local.update { it.copy(showSheet = true, problem = null) }
 

@@ -36,6 +36,7 @@ import com.example.zar.features.freelance.presentation.screen.ProjectFormScreen
 import com.example.zar.features.freelance.presentation.screen.ProjectScreen
 import com.example.zar.features.home.presentation.screen.HomeScreen
 import com.example.zar.features.plans.presentation.screen.PlansScreen
+import com.example.zar.features.rules.presentation.screen.CategoryRulesScreen
 import com.example.zar.features.settings.presentation.screen.MoreScreen
 import com.example.zar.features.settings.presentation.screen.SettingsScreen
 import com.example.zar.features.transactions.presentation.activity.screen.EditEntryScreen
@@ -109,6 +110,7 @@ fun ZarNavHost(
                 onOpenCapture = { navController.navigate(CaptureRoute) },
                 onOpenBills = { navController.navigate(BillsRoute) },
                 onOpenReminder = { navController.navigate(ReminderSettingsRoute) },
+                onOpenRules = { navController.navigate(CategoryRulesRoute) },
             )
         }
         composable<NeedsReviewRoute> {
@@ -125,6 +127,9 @@ fun ZarNavHost(
                 onOpenEntry = { id -> navController.navigate(EntryDetailRoute(id)) },
                 onAddCashAccount = { navController.navigate(AccountFormRoute()) },
             )
+        }
+        composable<CategoryRulesRoute> {
+            CategoryRulesScreen(onBack = { navController.popBackStack() })
         }
         composable<ReminderSettingsRoute> {
             ReminderSettingsScreen(onBack = { navController.popBackStack() })
@@ -163,6 +168,7 @@ fun ZarNavHost(
                 onAddAgain = { navController.navigate(ManualEntryRoute()) },
                 onRefund = { id -> navController.navigate(RefundRoute(id)) },
                 onOpenEntry = { id -> navController.navigate(EntryDetailRoute(id)) },
+                onOpenRules = { navController.navigate(CategoryRulesRoute) },
             )
         }
         composable<EditEntryRoute> {
