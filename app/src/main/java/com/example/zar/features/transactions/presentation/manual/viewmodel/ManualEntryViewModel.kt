@@ -139,6 +139,7 @@ class ManualEntryViewModel @Inject constructor(
     // Read by name instead of toRoute so the ViewModel can be created in plain unit tests.
     private val prefillAmount: String? = savedStateHandle.get<String>(ManualEntryRoute::prefillAmount.name)
     private val prefillAccountId: String? = savedStateHandle.get<String>(ManualEntryRoute::prefillAccountId.name)
+    private val prefillTitle: String? = savedStateHandle.get<String>(ManualEntryRoute::prefillTitle.name)
 
     // Created once per screen and reused on every retry, so a repeated save can't duplicate.
     private val expenseId = TransactionId(RecordIds.newId())
@@ -146,7 +147,12 @@ class ManualEntryViewModel @Inject constructor(
     private var allSuggestions: List<EntrySuggestion> = emptyList()
     private var rules: List<CategoryRule> = emptyList()
 
-    private val _uiState = MutableStateFlow(ManualEntryUiState(amount = if (prefillAccountId != null) prefillAmount.orEmpty() else ""))
+    private val _uiState = MutableStateFlow(
+        ManualEntryUiState(
+            amount = if (prefillAccountId != null) prefillAmount.orEmpty() else "",
+            title = prefillTitle.orEmpty(),
+        ),
+    )
     val uiState: StateFlow<ManualEntryUiState> = _uiState.asStateFlow()
 
     init {

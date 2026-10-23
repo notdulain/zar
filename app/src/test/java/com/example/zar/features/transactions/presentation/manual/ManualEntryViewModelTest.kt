@@ -601,6 +601,17 @@ class ManualEntryViewModelTest {
     }
 
     @Test
+    fun aNoteCarriedOverFromQuickNoteFillsTheTitleAndNothingElse() {
+        val vm = viewModel(SavedStateHandle(mapOf("prefillTitle" to "paid 1250 at keells super")))
+
+        val state = vm.uiState.value
+        assertEquals("paid 1250 at keells super", state.title)
+        assertEquals("", state.amount)
+        assertNull(state.category)
+        assertFalse(state.accountLocked)
+    }
+
+    @Test
     fun anOrdinaryFormHasNoGapAndAnUnlockedAccount() {
         val state = viewModel().uiState.value
 
