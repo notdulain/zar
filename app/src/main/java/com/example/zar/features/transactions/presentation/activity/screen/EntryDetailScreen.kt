@@ -222,7 +222,7 @@ private fun DetailContent(state: EntryDetailUiState, detail: EntryDetail, action
             "${stringResource(EntryDisplay.typeLabel(tx.type))} · ${EntryDisplay.day(tx.date)}" + (tx.time?.let { " · ${EntryDisplay.time(it)}" } ?: ""),
             style = ZarType.bodyCaption.copy(lineHeight = 16.sp),
             color = colors.textSecondary,
-            modifier = Modifier.padding(top = 4.dp),
+            modifier = Modifier.padding(top = 4.dp).testTag("detail-when"),
         )
         if (entry.isCorrected) {
             val amountChanged = entry.original.amount != tx.amount
@@ -303,7 +303,6 @@ private fun DetailsCard(state: EntryDetailUiState, detail: EntryDetail, modifier
     val colors = ZarTheme.colors
     val none = stringResource(R.string.activity_none)
     val rows = buildList<@Composable () -> Unit> {
-        add { ValueRow(stringResource(R.string.entry_field_time), tx.time?.let(EntryDisplay::time) ?: stringResource(R.string.entry_time_not_set), placeholder = tx.time == null) }
         if (detail.isTransfer) {
             val isOut = entry.original.type == TransactionType.TRANSFER_OUT
             val from = if (isOut) detail.account else detail.counterpartAccount

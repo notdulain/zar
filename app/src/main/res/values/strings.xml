@@ -23,7 +23,6 @@
 
     <string name="income_field_amount">Amount</string>
     <string name="income_field_account">Account</string>
-    <string name="income_field_account_locked">To change the account, undo this income and add it again.</string>
     <string name="income_field_date">Date received</string>
     <string name="income_field_rate">1 %1$s = ? LKR</string>
     <string name="income_field_rate_hint">Leave empty if you don\'t know. It will show as a missing rate.</string>

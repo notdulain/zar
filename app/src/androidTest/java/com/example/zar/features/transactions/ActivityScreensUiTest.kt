@@ -488,7 +488,7 @@ class ActivityScreensUiTest {
     @Test fun detailShowsRecordedTime() {
         val timed = entry(tx("timed", TransactionType.EXPENSE, 850, cash, "Uber to SLIIT from office").copy(time = java.time.LocalTime.of(18, 30)))
         showDetail(detailOf(timed))
-        compose.onNodeWithText("6:30 PM").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("detail-when").assertTextContains("· 6:30 PM", substring = true)
         captureCorrectionEvidence("activity-time")
     }
 
