@@ -28,6 +28,8 @@ sealed interface DraftProposal {
         val merchant: String? = null,
         val note: String? = null,
         override val uncertainFields: Set<DraftField> = emptySet(),
+        /** Which way the money went, as the bank message said. The type can still be a guess; this is not. */
+        val direction: Direction? = null,
     ) : DraftProposal {
         override val missingFields: Set<DraftField>
             get() = buildSet {
