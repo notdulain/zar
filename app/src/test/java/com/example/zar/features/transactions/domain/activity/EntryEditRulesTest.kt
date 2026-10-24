@@ -31,6 +31,16 @@ class EntryEditRulesTest {
     private fun changes(input: ExpenseEditInput, entry: LedgerEntry = expense) =
         (EntryEditRules.validate(entry, input, today) as EditResult.Valid).changes
 
+    @Test fun timeCanBeAddedChangedAndCleared() {
+        val time = java.time.LocalTime.of(18, 30)
+        assertEquals(FieldUpdate.Set(time), changes(start.copy(time = time)).time)
+        val timed = expense.copy(current = expense.current.copy(time = time))
+        val input = ExpenseEditInput.from(timed.current)
+        assertEquals(time, input.time)
+        assertEquals(FieldUpdate.Clear, changes(input.copy(time = null), timed).time)
+        assertEquals(setOf(EditProblem.NOTHING_CHANGED), problems(input, timed))
+    }
+
     @Test
     fun theFormStartsFromTheEntrysCurrentValues() {
         assertEquals("8400", start.amount)

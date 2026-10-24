@@ -27,6 +27,7 @@ import com.example.zar.features.transactions.domain.income.usecase.ObserveIncome
 import com.example.zar.features.transactions.domain.income.usecase.RecordIncomeUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.time.Instant
+import java.time.LocalTime
 import java.time.LocalDate
 import javax.inject.Inject
 import kotlin.coroutines.cancellation.CancellationException
@@ -44,10 +45,11 @@ data class IncomeFormUiState(
     val isEditing: Boolean = false,
     val accounts: List<Account> = emptyList(),
     val accountId: AccountId? = null,
-    /** The edited record's currency. Its account can't change, so neither can this. */
+    /** The edited record's currency. Account corrections keep this currency fixed. */
     val lockedCurrency: Currency? = null,
     val amount: String = "",
     val date: LocalDate = ZarTime.today(),
+    val time: LocalTime? = null,
     val rate: String = "",
     val receivedFrom: String = "",
     val category: IncomeCategory? = null,
@@ -115,6 +117,7 @@ class IncomeFormViewModel @Inject constructor(
                     lockedCurrency = tx.amount.currency,
                     amount = tx.amount.toDecimal().toPlainString(),
                     date = tx.date,
+                    time = tx.time,
                     rate = IncomeRules.storedRate(tx.reportingConversion)?.toPlainString().orEmpty(),
                     receivedFrom = tx.merchant.orEmpty(),
                     category = IncomeCategory.fromId(tx.categoryId),
@@ -130,9 +133,16 @@ class IncomeFormViewModel @Inject constructor(
 
     fun onAmountChange(value: String) = edit(IncomeProblem.AMOUNT_MISSING, IncomeProblem.AMOUNT_INVALID) { copy(amount = value) }
 
-    fun onAccountSelect(id: AccountId) = edit { copy(accountId = id, rate = "") }
+    fun onAccountSelect(id: AccountId) {
+        val state = _uiState.value
+        val account = state.accounts.firstOrNull { it.id == id && !it.isArchived } ?: return
+        if (state.isEditing && account.currency != state.lockedCurrency) return
+        edit { copy(accountId = id, rate = if (isEditing) rate else "") }
+    }
 
     fun onDateSelect(value: LocalDate) = edit(IncomeProblem.DATE_IN_FUTURE) { copy(date = value) }
+
+    fun onTimeSelect(value: LocalTime?) = edit { copy(time = value) }
 
     fun onRateChange(value: String) = edit(IncomeProblem.RATE_INVALID) { copy(rate = value) }
 
@@ -150,6 +160,7 @@ class IncomeFormViewModel @Inject constructor(
             amount = state.amount,
             currency = currency,
             date = state.date,
+            time = state.time,
             rate = state.rate,
             receivedFrom = state.receivedFrom,
             category = state.category,
@@ -162,7 +173,7 @@ class IncomeFormViewModel @Inject constructor(
                 val now = Instant.now()
                 val existing = entry
                 val outcome = if (existing != null) {
-                    editIncome(existing, result.details, correctionId, now)
+                    editIncome(existing, result.details, correctionId, now, accountId = state.accountId)
                 } else {
                     val account = state.selectedAccount
                         ?: return@launch _uiState.update { it.copy(isSaving = false, message = IncomeFormMessage.NO_ACCOUNTS) }

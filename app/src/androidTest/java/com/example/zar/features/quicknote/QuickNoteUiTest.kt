@@ -276,6 +276,34 @@ class QuickNoteUiTest {
         showState(review.copy(proposals = listOf(ProposalState(0, actual(), saveFailed = true))), "15-save-error")
     }
 
+    @Test fun guessedDateAndTimeRemainReadableAndEditable() {
+        val input = actual(uncertain = setOf(DraftField.DATE)).copy(time = java.time.LocalTime.of(18, 30))
+        val current = mutableStateOf(QuickNoteUiState(stage = QuickNoteStage.REVIEWING, accounts = listOf(cash), proposals = listOf(ProposalState(0, input)), editing = 0))
+        compose.setContent {
+            ZarTheme(darkTheme = false) {
+                QuickNoteContent(current.value, QuickNoteActions(
+                    onClose = {}, onNote = {}, onInterpret = {}, onCancelReading = {}, onFillForm = {}, onEditNote = {},
+                    onOpenEditor = {}, onCloseEditor = {},
+                    onUpdate = { _, transform -> current.value = current.value.copy(proposals = listOf(ProposalState(0, transform(current.value.proposals.single().input)))) },
+                    onConfirm = {}, onDiscard = {}, onDiscardAll = {},
+                ))
+            }
+        }
+        compose.onNodeWithTag("quicknote-date").performScrollTo().performClick()
+        compose.onNodeWithText("Cancel").performClick()
+        compose.onNodeWithTag("quicknote-time").performScrollTo().assertIsDisplayed()
+        capture("16-edit-date-time")
+        compose.onNodeWithTag("quicknote-time").performClick()
+        compose.onNodeWithTag("quicknote-time-picker").assertIsDisplayed()
+        capture("17-time-picker")
+        compose.onNodeWithText("AM").performClick()
+        compose.onNodeWithTag("quicknote-time-confirm").performClick()
+        compose.runOnIdle { assertEquals(java.time.LocalTime.of(6, 30), (current.value.proposals.single().input as ProposalInput.Actual).time) }
+        compose.onNodeWithTag("quicknote-time").performClick()
+        compose.onNodeWithTag("quicknote-time-clear").performClick()
+        compose.runOnIdle { assertEquals(null, (current.value.proposals.single().input as ProposalInput.Actual).time) }
+    }
+
     private fun capture(name: String) {
         compose.waitForIdle()
         SystemClock.sleep(650)

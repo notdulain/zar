@@ -16,6 +16,7 @@ import com.example.zar.features.transactions.domain.manual.model.ExpenseCategory
 import com.example.zar.features.transactions.presentation.income.IncomeFormat
 import com.example.zar.features.transactions.presentation.manual.screen.labelRes
 import java.time.Instant
+import java.time.LocalTime
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -24,10 +25,13 @@ import java.util.Locale
 internal object EntryDisplay {
     private val DAY = DateTimeFormatter.ofPattern("EEEE, d MMM", Locale.ENGLISH)
     private val STAMP = DateTimeFormatter.ofPattern("d MMM, h:mm a", Locale.ENGLISH)
+    private val TIME = DateTimeFormatter.ofPattern("h:mm a", Locale.ENGLISH)
     private val DAY_MONTH = DateTimeFormatter.ofPattern("d MMM", Locale.ENGLISH)
 
-    /** "Thursday, 24 Oct". Entries record a calendar day, not a time of day. */
+    /** "Thursday, 24 Oct". */
     fun day(date: LocalDate): String = date.format(DAY)
+
+    fun time(time: LocalTime): String = time.format(TIME)
 
     /** "25 Oct, 9:10 AM" in Sri Lanka time, for when a correction was made. */
     fun stamp(at: Instant): String = at.atZone(ZarTime.ZONE).format(STAMP)

@@ -86,3 +86,11 @@ test('account references outside the supplied list become missing', () => {
   const [none] = parseProposals(JSON.stringify({ proposals: [{ ...base, accountId: 'boc' }] }));
   assert.equal(none.accountId, null, 'with no supplied accounts every reference is missing');
 });
+
+test('keeps only explicit valid minute-precision local times', () => {
+  for (const time of ['24:00', '18:60', '7:30', '7 PM', '18:30:59']) {
+    assert.equal(parse({ proposals: [{ ...base, time }] })[0].time, null);
+  }
+  assert.equal(parse({ proposals: [{ ...base, time: '18:30' }] })[0].time, '18:30');
+  assert.equal(parse({ proposals: [base] })[0].time, null);
+});

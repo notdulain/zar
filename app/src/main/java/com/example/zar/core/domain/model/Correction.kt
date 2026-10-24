@@ -3,6 +3,7 @@ package com.example.zar.core.domain.model
 import com.example.zar.core.domain.model.money.Money
 import com.example.zar.core.domain.model.money.ReportingConversion
 import java.time.Instant
+import java.time.LocalTime
 import java.time.LocalDate
 
 /** Change to an optional field: set a new value or clear it. */
@@ -21,10 +22,12 @@ data class TransactionChanges(
     val categoryId: FieldUpdate<String>? = null,
     val merchant: FieldUpdate<String>? = null,
     val note: FieldUpdate<String>? = null,
+    val time: FieldUpdate<LocalTime>? = null,
+    val accountId: AccountId? = null,
 ) {
     val isEmpty: Boolean
         get() = amount == null && reportingConversion == null && date == null && spendingClass == null &&
-            categoryId == null && merchant == null && note == null
+            categoryId == null && merchant == null && note == null && time == null && accountId == null
 }
 
 /**

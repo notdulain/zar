@@ -4,9 +4,8 @@ import com.example.zar.features.quicknote.domain.model.QuickNoteDraftError
 import com.example.zar.features.quicknote.domain.model.QuickNoteDraftError.InputProblem
 
 /**
- * Maps a failed callable to a typed error. The service always sends a `reason` detail
- * (see functions/src/errors.js); without it the failure came from Firebase itself (no network, App Check,
- * an expired sign-in) and the Firebase error code decides. Provider or server text is never read.
+ * Maps service reason codes to the existing typed UI errors. Shared by the HTTP Worker transport and
+ * the original callable contract. Provider messages and other server text are never read.
  */
 internal object CallableErrorMapper {
 

@@ -1,0 +1,27 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "zar-quick-notes",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-23",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": true,
+  "secrets": { "required": ["OPENROUTER_API_KEY"] },
+  "vars": {
+    "FIREBASE_PROJECT_ID": "zar-app-35602",
+    "FIREBASE_PROJECT_NUMBER": "588119468948",
+    "FIREBASE_APP_ID": "1:588119468948:android:61ae9f5e46dc9cf09bbd81",
+    "OPENROUTER_MODEL": "google/gemini-3.5-flash-lite"
+  },
+  "ratelimits": [
+    {
+      "name": "NOTE_RATE_LIMITER",
+      "namespace_id": "1041024",
+      "simple": { "limit": 10, "period": 60 }
+    }
+  ],
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1,
+    "logs": { "invocation_logs": false }
+  }
+}

@@ -1,11 +1,13 @@
 package com.example.zar.features.transactions.domain.activity
 
+import com.example.zar.core.domain.model.AccountId
 import com.example.zar.core.domain.model.FieldUpdate
 import com.example.zar.core.domain.model.LedgerEntry
 import com.example.zar.core.domain.model.SpendingClass
 import com.example.zar.core.domain.model.Transaction
 import com.example.zar.core.domain.model.TransactionChanges
 import com.example.zar.core.domain.model.money.Money
+import java.time.LocalTime
 import java.time.LocalDate
 
 /** What the correction form holds. Starts as the entry's current values. */
@@ -18,11 +20,15 @@ data class ExpenseEditInput(
     /** Saved as the entry's title (merchant). */
     val title: String,
     val description: String,
+    val time: LocalTime? = null,
+    val accountId: AccountId? = null,
 ) {
     companion object {
         fun from(tx: Transaction) = ExpenseEditInput(
             amount = tx.amount.toDecimal().stripTrailingZeros().toPlainString(),
             date = tx.date,
+            time = tx.time,
+            accountId = tx.accountId,
             categoryId = tx.categoryId,
             spendingClass = tx.spendingClass ?: SpendingClass.UNKNOWN,
             title = tx.merchant.orEmpty(),
@@ -41,7 +47,7 @@ enum class EditProblem {
 }
 
 sealed interface EditResult {
-    /** Only the fields that changed. The account and currency can never be corrected. */
+    /** Only the fields that changed. The stored currency stays fixed. */
     data class Valid(val changes: TransactionChanges) : EditResult
 
     data class Invalid(val problems: Set<EditProblem>) : EditResult
@@ -75,6 +81,8 @@ object EntryEditRules {
         val changes = TransactionChanges(
             amount = amount.takeIf { it != current.amount },
             date = input.date.takeIf { it != current.date },
+            time = fieldUpdate(current.time, input.time),
+            accountId = input.accountId?.takeIf { it != current.accountId },
             spendingClass = input.spendingClass.takeIf { it != current.spendingClass },
             categoryId = fieldUpdate(current.categoryId, input.categoryId),
             merchant = fieldUpdate(current.merchant, title.ifEmpty { null }),
@@ -83,7 +91,7 @@ object EntryEditRules {
         return if (changes.isEmpty) EditResult.Invalid(setOf(EditProblem.NOTHING_CHANGED)) else EditResult.Valid(changes)
     }
 
-    private fun fieldUpdate(current: String?, edited: String?): FieldUpdate<String>? = when {
+    private fun <T> fieldUpdate(current: T?, edited: T?): FieldUpdate<T>? = when {
         current == edited -> null
         edited == null -> FieldUpdate.Clear
         else -> FieldUpdate.Set(edited)
