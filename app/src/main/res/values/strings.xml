@@ -359,6 +359,28 @@
     <string name="more_privacy_detail">Hide amounts and protect the app</string>
     <string name="more_export">Export data</string>
     <string name="more_export_detail">Save a copy of your records</string>
+
+    <!-- Export data (U08) -->
+    <string name="export_back">Back</string>
+    <string name="export_title">Export data</string>
+    <string name="export_subtitle">Two separate CSV files, so money you received is never mixed with money you expect.</string>
+    <string name="export_transactions_title">Actual transactions</string>
+    <string name="export_transactions_detail">Money you received and spent, with corrected values. Undone entries are included and marked.</string>
+    <string name="export_expected_title">Expected payments</string>
+    <string name="export_expected_detail">Client milestones and bill due dates, with what has been matched. This is not money received.</string>
+    <plurals name="export_rows">
+        <item quantity="one">%d row</item>
+        <item quantity="other">%d rows</item>
+    </plurals>
+    <string name="export_empty">Nothing to export yet</string>
+    <string name="export_action">Export CSV</string>
+    <string name="export_working">Preparing…</string>
+    <string name="export_load_failed">Couldn\'t load your records. Check your connection and try again.</string>
+    <string name="export_nothing">There is nothing to export yet.</string>
+    <string name="export_build_failed">Couldn\'t prepare the export. Try again.</string>
+    <string name="export_save_failed">Couldn\'t save the file. Try again or choose another location.</string>
+    <string name="export_saved">Saved %1$s (%2$d rows).</string>
+    <string name="export_footnote">Raw bank messages are never included. You choose where each file is saved.</string>
     <string name="more_settings_detail">Currency and sign out</string>
     <string name="more_income_detail">View and manage received money</string>
     <string name="more_freelance_detail">Projects, milestones and client payments</string>

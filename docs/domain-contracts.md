@@ -54,6 +54,15 @@ An optional early warning for discretionary spending. It starts off, and reads t
 - **Remaining** is the allowance minus eligible spending. Negative remaining is shown as "Overspent by". The current week refreshes at Colombo midnight without a ledger write. There is no rollover and no carried-over debt.
 - **Saving:** settings persist in the local Firestore queue. Queued and rejected writes are shown explicitly. Fast rejection keeps the editor open; while the ViewModel lives, reopening after a later rejection restores the last submitted choices for retry.
 
+## CSV export (`features/export`)
+
+Two separate files, so money that arrived is never mixed with money that is only expected. Both are saved where the user chooses through the system file picker, as UTF-8 with a byte-order mark so Excel reads Sinhala and Tamil text.
+
+- **Actual transactions** (`zar-transactions-<date>.csv`): one row per saved transaction, oldest first. The main columns hold the corrected values; `original_amount`, `original_date` and `corrected` show what changed. Undone entries stay and are marked `VOIDED`. `reporting_amount_lkr` and `exchange_rate` are the values stored at save time, never today's rate; a missing rate is empty with `reporting_status` = `MISSING`.
+- **Expected payments** (`zar-expected-payments-<date>.csv`): milestones and bill due dates with `settlement_state` (`NOT_MATCHED`, `PARTIALLY_MATCHED`, `MATCHED`, `CANCELLED`), matched, remaining and overdue amounts, and the transactions that count towards each. Bill due dates appear once a payment is linked; later dates are worked out from the schedule and are not saved records.
+- **Never exported:** raw bank messages (evidence is only counted) and other users' records. A signed-out export fails instead of writing an empty file.
+- **Escaping:** RFC 4180 quoting, CRLF line ends, and a leading apostrophe on text starting with `=`, `+`, `-` or `@` so a spreadsheet cannot run it as a formula.
+
 ## Storage
 
 - **Firestore is the primary financial store.** Everything is under `users/{uid}/` with these subcollections: `accounts`, `transactions`, `corrections`, `voids`, `evidenceLinks`, `expectedPayments`, `paymentMatches`, `drafts` (`FirestoreCollections`).

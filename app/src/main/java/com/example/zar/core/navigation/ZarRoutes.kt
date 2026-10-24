@@ -27,6 +27,10 @@ data object MoreRoute
 @Serializable
 data object SettingsRoute
 
+/** Export data: two separate CSV files, actual transactions and expected payments. */
+@Serializable
+data object ExportRoute
+
 @Serializable
 data object IncomeRoute
 
