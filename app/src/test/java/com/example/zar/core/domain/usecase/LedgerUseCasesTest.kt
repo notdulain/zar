@@ -36,6 +36,31 @@ class LedgerUseCasesTest {
         createdAt = T0,
     )
 
+    @Test fun accountCorrectionsRejectMissingArchivedAndForeignCurrencyAccounts() = runBlocking {
+        val accounts = com.example.zar.core.domain.FakeAccountRepository(cash, bank.copy(isArchived = true), payoneer)
+        val correct = CorrectTransactionUseCase(repo, accounts)
+        val entry = entry(tx("account-check", TransactionType.EXPENSE, lkr(850), cash))
+        for ((id, expected) in listOf(
+            com.example.zar.core.domain.model.AccountId("missing") to LedgerError.InvalidRecord::class.java,
+            bank.id to LedgerError.AccountArchived::class.java,
+            payoneer.id to LedgerError.CurrencyMismatch::class.java,
+        )) {
+            val result = correct(entry, TransactionChanges(accountId = id), CorrectionId(id.value), T0)
+            assertTrue(expected.isInstance(result.exceptionOrNull()))
+        }
+        assertTrue(repo.corrections.isEmpty())
+    }
+
+    @Test fun expenseWithRefundsMustKeepItsAccount() = runBlocking {
+        val purchase = tx("purchase", TransactionType.EXPENSE, lkr(850), cash)
+        repo.saveTransaction(purchase)
+        repo.saveTransaction(tx("refund", TransactionType.REFUND, lkr(100), cash, refundOf = "purchase"))
+        val correct = CorrectTransactionUseCase(repo, com.example.zar.core.domain.FakeAccountRepository(cash, bank))
+        val result = correct(entry(purchase), TransactionChanges(accountId = bank.id), CorrectionId("move"), T0)
+        assertTrue(result.exceptionOrNull() is LedgerError.HasActiveRefunds)
+        assertTrue(repo.corrections.isEmpty())
+    }
+
     @Test
     fun rejectsAmountInAnotherCurrency() = runBlocking {
         val result = SaveTransactionUseCase(repo)(tx("x", TransactionType.EXPENSE, usd(5)), bank)
@@ -69,7 +94,7 @@ class LedgerUseCasesTest {
     @Test
     fun correctingAForeignAmountReusesTheHistoricalRate() = runBlocking {
         val income = tx("usd", TransactionType.INCOME, usd(100), account = payoneer)
-        CorrectTransactionUseCase(repo)(entry(income), TransactionChanges(amount = usd(120)), CorrectionId("c1"), T0).getOrThrow()
+        CorrectTransactionUseCase(repo, com.example.zar.core.domain.FakeAccountRepository(bank, com.example.zar.core.domain.TestLedger.cash, payoneer))(entry(income), TransactionChanges(amount = usd(120)), CorrectionId("c1"), T0).getOrThrow()
         val corrected = LedgerProjector.project(repo.transactions.values + income, repo.corrections, emptyList()).single().current
         val conversion = corrected.reportingConversion as ReportingConversion.Converted
         assertEquals(usdRate, conversion.rate)
@@ -78,7 +103,7 @@ class LedgerUseCasesTest {
 
     @Test
     fun cannotCorrectAnUndoneEntry() = runBlocking {
-        val result = CorrectTransactionUseCase(repo)(
+        val result = CorrectTransactionUseCase(repo, com.example.zar.core.domain.FakeAccountRepository(bank, com.example.zar.core.domain.TestLedger.cash, payoneer))(
             entry(tx("x", TransactionType.EXPENSE), voided = true), TransactionChanges(amount = lkr(5)), CorrectionId("c"), T0,
         )
         assertTrue(result.exceptionOrNull() is LedgerError.AlreadyVoided)
@@ -87,7 +112,7 @@ class LedgerUseCasesTest {
 
     @Test
     fun emptyCorrectionIsRejected() = runBlocking {
-        val result = CorrectTransactionUseCase(repo)(entry(tx("x", TransactionType.EXPENSE)), TransactionChanges(), CorrectionId("c"), T0)
+        val result = CorrectTransactionUseCase(repo, com.example.zar.core.domain.FakeAccountRepository(bank, com.example.zar.core.domain.TestLedger.cash, payoneer))(entry(tx("x", TransactionType.EXPENSE)), TransactionChanges(), CorrectionId("c"), T0)
         assertTrue(result.exceptionOrNull() is LedgerError.NothingToChange)
     }
 }

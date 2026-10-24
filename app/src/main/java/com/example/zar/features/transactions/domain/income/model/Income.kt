@@ -5,6 +5,7 @@ import com.example.zar.core.domain.model.LedgerEntry
 import com.example.zar.core.domain.model.money.Currency
 import com.example.zar.core.domain.model.money.Money
 import java.math.BigDecimal
+import java.time.LocalTime
 import java.time.LocalDate
 
 /** Stored in `Transaction.categoryId` for INCOME records. */
@@ -30,6 +31,7 @@ data class IncomeDetails(
     val receivedFrom: String?,
     val category: IncomeCategory?,
     val note: String?,
+    val time: LocalTime? = null,
 )
 
 /** What the user typed into the income form. */
@@ -41,6 +43,7 @@ data class IncomeFormInput(
     val receivedFrom: String,
     val category: IncomeCategory?,
     val note: String,
+    val time: LocalTime? = null,
 )
 
 enum class IncomeProblem {

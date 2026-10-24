@@ -17,6 +17,7 @@ import com.example.zar.features.quicknote.domain.model.QuickNoteDraftRequest
 import com.example.zar.features.quicknote.domain.model.QuickNoteLimits
 import java.time.DateTimeException
 import java.time.Instant
+import java.time.LocalTime
 import java.time.LocalDate
 
 /**
@@ -80,9 +81,11 @@ internal object QuickNoteDraftMapper {
                 amount = amount,
                 accountId = account?.id,
                 date = pastDate(map["date"]),
+                time = parseTime(map["time"]),
                 spendingClass = spendingClass,
                 categoryId = category(map["category"]),
                 merchant = text(map["merchant"], 80),
+                title = text(map["title"], 120),
                 note = text(map["note"], 300),
                 uncertainFields = uncertain,
             )
@@ -118,6 +121,7 @@ internal object QuickNoteDraftMapper {
                 sent = sent,
                 received = received,
                 date = pastDate(map["date"]),
+                time = parseTime(map["time"]),
                 uncertainFields = uncertain,
             )
         }
@@ -155,6 +159,10 @@ internal object QuickNoteDraftMapper {
             if (!AmountGrounding.isGrounded(money.toDecimal(), request.note)) uncertain.add(DraftField.AMOUNT)
             return money
         }
+
+        private fun parseTime(raw: Any?): LocalTime? = try {
+            (raw as? String)?.takeIf { Regex("([01]\\d|2[0-3]):[0-5]\\d").matches(it) }?.let(LocalTime::parse)
+        } catch (_: DateTimeException) { null }
 
         private fun pastDate(raw: Any?): LocalDate? =
             parseDate(raw)?.takeIf { it <= request.today }

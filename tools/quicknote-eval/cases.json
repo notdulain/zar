@@ -43,7 +43,8 @@
           "transactionType": "EXPENSE",
           "amount": "850",
           "currency": "LKR",
-          "accountId": "sampath"
+          "accountId": "sampath",
+          "time": null
         }
       ]
     },
@@ -318,6 +319,34 @@
         }
       ],
       "comment": "Ambiguous: either reading is acceptable if flagged; review decides."
+    },
+    {
+      "id": "en-descriptive-title",
+      "note": "uber to sliit from office 850 cash",
+      "expect": [
+        {
+          "kind": "ACTUAL_TRANSACTION",
+          "transactionType": "EXPENSE",
+          "amount": "850",
+          "currency": "LKR",
+          "accountId": "cash",
+          "title": "Uber to SLIIT from office"
+        }
+      ]
+    },
+    {
+      "id": "en-explicit-time",
+      "note": "uber to sliit from office 850 cash at 6:30 pm",
+      "expect": [
+        {
+          "kind": "ACTUAL_TRANSACTION",
+          "transactionType": "EXPENSE",
+          "amount": "850",
+          "currency": "LKR",
+          "accountId": "cash",
+          "time": "18:30"
+        }
+      ]
     }
   ]
 }

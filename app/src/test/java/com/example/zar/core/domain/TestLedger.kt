@@ -117,3 +117,11 @@ class FakeLedgerRepository : LedgerRepository {
         publish()
     }
 }
+
+class FakeAccountRepository(vararg initial: com.example.zar.core.domain.model.Account) : com.example.zar.core.domain.repository.AccountRepository {
+    private val accounts = MutableStateFlow(initial.toList())
+    override fun observeAccounts(): Flow<List<com.example.zar.core.domain.model.Account>> = accounts
+    override suspend fun saveAccount(account: com.example.zar.core.domain.model.Account) {
+        accounts.value = accounts.value.filterNot { it.id == account.id } + account
+    }
+}

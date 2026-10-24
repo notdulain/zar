@@ -50,7 +50,7 @@ class ActivityUseCasesTest {
     private val repo = FakeLedgerRepository()
     private val accounts = FakeAccounts(bank, cash)
     private val observeDetail = ObserveEntryDetailUseCase(repo, accounts)
-    private val correct = CorrectExpenseUseCase(CorrectTransactionUseCase(repo))
+    private val correct = CorrectExpenseUseCase(CorrectTransactionUseCase(repo, accounts))
     private val void = VoidTransactionUseCase(repo)
     private val period = YearMonth.from(OCT_10).toDateRange()
 
@@ -67,6 +67,28 @@ class ActivityUseCasesTest {
     )
 
     private suspend fun entry(id: String) = repo.observeLedger().first().first { it.id.value == id }
+
+    @Test fun movingAnExpenseUpdatesBothBalancesFiltersDetailAndHistory() = runBlocking {
+        val original = tx("move", TransactionType.EXPENSE, lkr(850), cash)
+        repo.saveTransaction(original)
+        val id = CorrectionId("move-account")
+        correct(entry("move"), TransactionChanges(accountId = bank.id), id, T0.plusSeconds(10)).getOrThrow()
+        // Retry with the same source and ID: one stored correction and one movement.
+        correct(com.example.zar.core.domain.TestLedger.entry(original), TransactionChanges(accountId = bank.id), id, T0.plusSeconds(10)).getOrThrow()
+        val entries = repo.observeLedger().first()
+        assertEquals(1, repo.corrections.size)
+        assertEquals(cash.id, entries.single().original.accountId)
+        assertEquals(bank.id, entries.single().current.accountId)
+        assertEquals(lkr(0), AccountBalanceCalculator.calculate(cash, entries).netMovement)
+        assertEquals(lkr(-850), AccountBalanceCalculator.calculate(bank, entries).netMovement)
+        val detail = observeDetail(original.id).first()!!
+        assertEquals(bank, detail.account)
+        assertEquals(com.example.zar.features.transactions.domain.activity.model.CorrectedField.ACCOUNT, detail.history.single().changes.single().field)
+        assertEquals(com.example.zar.features.transactions.domain.activity.model.FieldValue.AccountName(bank.name), detail.history.single().changes.single().after)
+        val snapshot = com.example.zar.features.transactions.domain.activity.model.ActivitySnapshot(entries, listOf(cash, bank))
+        assertTrue(com.example.zar.features.transactions.domain.activity.ActivityQuery.apply(snapshot, com.example.zar.features.transactions.domain.activity.model.ActivityFilter(accountId = cash.id), OCT_10).rows.isEmpty())
+        assertEquals(1, com.example.zar.features.transactions.domain.activity.ActivityQuery.apply(snapshot, com.example.zar.features.transactions.domain.activity.model.ActivityFilter(accountId = bank.id), OCT_10).rows.size)
+    }
 
     @Test
     fun anExpenseCanBeCorrectedAndShowsItsHistory() = runBlocking {

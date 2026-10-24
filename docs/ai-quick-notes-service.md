@@ -1,5 +1,8 @@
 # AI quick-note drafts: service and app integration (D06)
 
+> Historical Firebase callable implementation. The current Android client uses
+> [Cloudflare Workers and OpenRouter](openrouter-quick-notes.md); follow that document for deployment and setup.
+
 The question behind this ticket: how does a typed note become an editable draft without leaking private money data or skipping review?
 
 **Answer:** the app calls one authenticated backend function. It returns *suggestions only*. The app maps them to the shared `Draft` types, and the review flow (S07) decides what gets saved. Decisions on hosting, model and cost are in [ai-quick-notes-feasibility.md](ai-quick-notes-feasibility.md) (D05). They are unchanged here.

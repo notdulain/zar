@@ -23,7 +23,6 @@
 
     <string name="income_field_amount">Amount</string>
     <string name="income_field_account">Account</string>
-    <string name="income_field_account_locked">To change the account, undo this income and add it again.</string>
     <string name="income_field_date">Date received</string>
     <string name="income_field_rate">1 %1$s = ? LKR</string>
     <string name="income_field_rate_hint">Leave empty if you don\'t know. It will show as a missing rate.</string>
@@ -1406,4 +1405,9 @@
     <string name="quicknote_edit">Edit</string>
     <string name="quicknote_done">Done</string>
     <string name="quicknote_pick_purchase_empty">No purchase with something left to refund.</string>
+    <string name="entry_field_time">Time</string>
+    <string name="entry_time_not_set">Not set</string>
+    <string name="entry_account_same_currency">Choose an account in the same currency. Both account balances update when you save.</string>
+    <string name="entry_account_linked">Undo linked refunds or the transfer before changing this account.</string>
+    <string name="entry_account_unavailable">That account is unavailable. Choose an active account in the same currency.</string>
 </resources>

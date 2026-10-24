@@ -3,6 +3,7 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.INTERNET" />
     <!-- Lets the weekly catch-up reminder show on Android 13 and later. The person is asked when they turn it on. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- Optional automatic capture of new bank SMS. Asked only when the person turns it on in Capture sources. -->

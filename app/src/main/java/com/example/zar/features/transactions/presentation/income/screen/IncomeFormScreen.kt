@@ -59,6 +59,8 @@ import com.example.zar.features.transactions.presentation.income.viewmodel.Incom
 import com.example.zar.features.transactions.presentation.income.viewmodel.IncomeFormUiState
 import com.example.zar.features.transactions.presentation.income.viewmodel.IncomeFormViewModel
 import java.time.Instant
+import com.example.zar.core.presentation.components.TransactionTimeField
+import java.time.LocalTime
 import java.time.LocalDate
 import java.time.ZoneOffset
 
@@ -76,6 +78,7 @@ fun IncomeFormScreen(
             onAmountChange = viewModel::onAmountChange,
             onAccountSelect = viewModel::onAccountSelect,
             onDateSelect = viewModel::onDateSelect,
+            onTimeSelect = viewModel::onTimeSelect,
             onRateChange = viewModel::onRateChange,
             onReceivedFromChange = viewModel::onReceivedFromChange,
             onCategorySelect = viewModel::onCategorySelect,
@@ -86,7 +89,7 @@ fun IncomeFormScreen(
     )
 }
 
-private class IncomeFormActions(
+internal class IncomeFormActions(
     val onBack: () -> Unit,
     val onAmountChange: (String) -> Unit,
     val onAccountSelect: (AccountId) -> Unit,
@@ -97,11 +100,12 @@ private class IncomeFormActions(
     val onNoteChange: (String) -> Unit,
     val onSave: () -> Unit,
     val onUndo: () -> Unit,
+    val onTimeSelect: (LocalTime?) -> Unit = {},
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun IncomeFormContent(uiState: IncomeFormUiState, actions: IncomeFormActions) {
+internal fun IncomeFormContent(uiState: IncomeFormUiState, actions: IncomeFormActions) {
     Scaffold(
         topBar = {
             TopAppBar(
@@ -144,6 +148,7 @@ private fun IncomeFormContent(uiState: IncomeFormUiState, actions: IncomeFormAct
             AccountPicker(uiState, actions.onAccountSelect)
 
             DateField(uiState.date, IncomeProblem.DATE_IN_FUTURE in uiState.problems, actions.onDateSelect)
+            TransactionTimeField(uiState.time, tag = "income-time", onSelect = actions.onTimeSelect)
 
             if (uiState.needsRate) {
                 OutlinedTextField(
@@ -218,18 +223,18 @@ private fun AccountPicker(uiState: IncomeFormUiState, onSelect: (AccountId) -> U
             return@Column
         }
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            uiState.accounts.forEach { account ->
+            uiState.accounts.filter { !uiState.isEditing || it.currency == uiState.lockedCurrency }.forEach { account ->
                 FilterChip(
                     selected = account.id == uiState.accountId,
                     onClick = { onSelect(account.id) },
-                    enabled = !uiState.isEditing,
+                    enabled = !account.isArchived,
                     label = { Text("${account.name} · ${account.currency.code}", fontFamily = ZarMono) },
                 )
             }
         }
         if (uiState.isEditing) {
             Text(
-                stringResource(R.string.income_field_account_locked),
+                stringResource(R.string.entry_account_same_currency),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

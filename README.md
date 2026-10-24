@@ -90,7 +90,7 @@ Machine paths, IDE files, build output, Firebase configuration and credentials a
 
 Models, repository interfaces, saving rules and total calculations shared by every feature are described in [docs/domain-contracts.md](docs/domain-contracts.md). Read it before saving or totalling money.
 
-AI quick-note hosting, cost, privacy and the draft format are documented in [docs/ai-quick-notes-feasibility.md](docs/ai-quick-notes-feasibility.md). The draft-generation service, its setup and how the app uses it are in [docs/ai-quick-notes-service.md](docs/ai-quick-notes-service.md); backend tests run with `npm ci && npm test` in `functions/`.
+AI quick notes use OpenRouter through a Cloudflare Worker. Deployment, Firebase authentication/App Check, secrets, Android configuration and evaluation are in [docs/openrouter-quick-notes.md](docs/openrouter-quick-notes.md). Worker checks run with `npm ci && npm run check && npm test` in `worker/`. The original [Gemini feasibility results](docs/ai-quick-notes-feasibility.md) and [Firebase callable](docs/ai-quick-notes-service.md) remain as historical references.
 
 ## Layer rules
 
@@ -99,6 +99,19 @@ AI quick-note hosting, cost, privacy and the draft format are documented in [doc
 - Inject Firebase objects (from `di/FirebaseModule`) only into `data` classes.
 - Add new destinations to `core/navigation/ZarRoutes.kt` and `ZarNavHost.kt`.
 - Firestore rules live in `firestore.rules`; run `npm install && npm test` in `firestore-tests/` (needs Java) after changing them, and deploy with `npx -y firebase-tools@latest deploy --only firestore:rules`.
+
+## Jira feature command
+
+Run a Jira task through OpenSpec planning, Sonnet 5.5 implementation in a separate worktree, Figma verification, one commit per completed task, and a PR using the repository template:
+
+- **Claude Code:** `/jira-feature SCRUM-42`
+- **Codex:** `$jira-feature SCRUM-42` (or select `jira-feature` with `/skills`).
+
+Both accept a Jira URL, an optional Figma selection URL and `base=<branch>`. The default base is the latest `origin/main`.
+
+The shared workflow is in [.agents/skills/jira-feature/SKILL.md](.agents/skills/jira-feature/SKILL.md). Jira, Figma for UI tasks, OpenSpec and GitHub access must be available. In T3, it discovers the exact Sonnet 5.5 model from the provider catalog. Native Claude Code can use the included Sonnet worker; Codex needs a Claude delegation provider such as T3. If that provider is unavailable, the command reports the blocker instead of switching models. Restart the agent session if the new command is not listed.
+
+OpenSpec plans remain git-ignored. UI PRs include screenshots captured from the running app. Invocation includes feature commits, pushing and PR creation; merging and deployment are separate actions.
 
 ## Team backlog
 

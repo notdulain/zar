@@ -8,6 +8,7 @@ import com.example.zar.core.domain.model.LedgerEntry
 import com.example.zar.core.domain.model.SpendingClass
 import com.example.zar.core.domain.model.money.Money
 import com.example.zar.features.transactions.domain.refund.RefundSummary
+import java.time.LocalTime
 import java.time.LocalDate
 
 enum class DatePreset { THIS_MONTH, LAST_7_DAYS, LAST_MONTH, CUSTOM }
@@ -85,6 +86,8 @@ data class EntryDetail(
     /** For a refund: the purchase it belongs to, and that purchase's account. */
     val refundedPurchase: LedgerEntry? = null,
     val refundedPurchaseAccount: Account? = null,
+    val accounts: List<Account> = emptyList(),
+    val canChangeAccount: Boolean = true,
 ) {
     val isTransfer: Boolean get() = entry.original.transferId != null
 
@@ -92,13 +95,15 @@ data class EntryDetail(
     val hasActiveRefunds: Boolean get() = refunds?.hasRefunds == true
 }
 
-enum class CorrectedField { AMOUNT, DATE, CATEGORY, SPENDING_CLASS, TITLE, NOTE }
+enum class CorrectedField { AMOUNT, DATE, TIME, ACCOUNT, CATEGORY, SPENDING_CLASS, TITLE, NOTE }
 
 /** A field value before or after a correction. The screen decides how to word each kind. */
 sealed interface FieldValue {
     data class Amount(val money: Money) : FieldValue
     data class Day(val date: LocalDate) : FieldValue
+    data class Time(val time: LocalTime?) : FieldValue
     data class Text(val text: String?) : FieldValue
+    data class AccountName(val name: String) : FieldValue
     data class Class(val spendingClass: SpendingClass?) : FieldValue
 }
 

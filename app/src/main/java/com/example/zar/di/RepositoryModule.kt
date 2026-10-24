@@ -48,7 +48,7 @@ import com.example.zar.features.export.domain.repository.ExportFileWriter
 import com.example.zar.features.allowance.domain.repository.AllowanceRepository
 import com.example.zar.features.plans.data.repository.FirestoreGoalRepository
 import com.example.zar.features.plans.domain.repository.GoalRepository
-import com.example.zar.features.quicknote.data.remote.FirebaseQuickNoteDraftTransport
+import com.example.zar.features.quicknote.data.remote.HttpQuickNoteDraftTransport
 import com.example.zar.features.reminders.data.DataStoreReminderPreferencesRepository
 import com.example.zar.features.reminders.data.ResetRemindersOnSignOut
 import com.example.zar.features.reminders.data.WorkManagerPaymentReminderScheduler
@@ -134,7 +134,7 @@ abstract class RepositoryModule {
 
     @Binds
     @Singleton
-    abstract fun bindQuickNoteDraftTransport(impl: FirebaseQuickNoteDraftTransport): QuickNoteDraftTransport
+    abstract fun bindQuickNoteDraftTransport(impl: HttpQuickNoteDraftTransport): QuickNoteDraftTransport
 
     @Binds
     @Singleton

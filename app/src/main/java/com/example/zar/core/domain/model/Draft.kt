@@ -2,13 +2,14 @@ package com.example.zar.core.domain.model
 
 import com.example.zar.core.domain.model.money.Money
 import java.time.Instant
+import java.time.LocalTime
 import java.time.LocalDate
 
 enum class DraftSource { QUICK_NOTE, SMS, SHARED_TEXT }
 
 enum class DraftStatus { PENDING_REVIEW, CONFIRMED, DISCARDED }
 
-enum class DraftField { TYPE, AMOUNT, ACCOUNT, COUNTERPART_ACCOUNT, DATE, CATEGORY, MERCHANT, TITLE }
+enum class DraftField { TYPE, AMOUNT, ACCOUNT, COUNTERPART_ACCOUNT, DATE, TIME, CATEGORY, MERCHANT, TITLE }
 
 /**
  * A proposed record awaiting review. Null fields are missing and must be filled by the user;
@@ -28,6 +29,9 @@ sealed interface DraftProposal {
         val merchant: String? = null,
         val note: String? = null,
         override val uncertainFields: Set<DraftField> = emptySet(),
+        /** Descriptive label for the movement, distinct from the merchant's name. */
+        val title: String? = null,
+        val time: LocalTime? = null,
         /** Which way the money went, as the bank message said. The type can still be a guess; this is not. */
         val direction: Direction? = null,
     ) : DraftProposal {
@@ -64,6 +68,7 @@ sealed interface DraftProposal {
         val received: Money?,
         val date: LocalDate?,
         override val uncertainFields: Set<DraftField> = emptySet(),
+        val time: LocalTime? = null,
     ) : DraftProposal {
         override val missingFields: Set<DraftField>
             get() = buildSet {
