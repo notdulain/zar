@@ -74,6 +74,9 @@ import com.example.zar.core.presentation.theme.ZarTheme
 import com.example.zar.core.presentation.theme.ZarTrack
 import com.example.zar.core.presentation.theme.ZarType
 import com.example.zar.core.presentation.theme.ZarWhite
+import com.example.zar.features.allowance.presentation.screen.AllowanceCard
+import com.example.zar.features.allowance.presentation.screen.AllowanceEditorDialog
+import com.example.zar.features.allowance.presentation.viewmodel.AllowanceViewModel
 import com.example.zar.features.plans.domain.model.BackedGoalProgress
 import com.example.zar.features.plans.domain.model.GoalBackingCalculator
 import com.example.zar.features.plans.domain.model.GoalId
@@ -96,8 +99,10 @@ fun PlansScreen(
     onNavigate: (TopLevelDestination) -> Unit,
     onAddOption: (AddEntryOption) -> Unit,
     viewModel: PlansViewModel = hiltViewModel(),
+    allowanceViewModel: AllowanceViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val allowance by allowanceViewModel.uiState.collectAsStateWithLifecycle()
     PlansScreenContent(
         state = state,
         onNavigate = onNavigate,
@@ -105,7 +110,23 @@ fun PlansScreen(
         onRetry = viewModel::retry,
         onEditGoal = viewModel::openGoalEditor,
         onAllocate = viewModel::openAllocationEditor,
+        allowanceSection = {
+            AllowanceCard(allowance, onEdit = allowanceViewModel::openEditor, onRetry = allowanceViewModel::retry)
+        },
     )
+    allowance.editor?.let { editor ->
+        AllowanceEditorDialog(
+            editor = editor,
+            isSaving = allowance.isSaving,
+            message = allowance.message,
+            onEnabledChange = allowanceViewModel::setEnabled,
+            onAmountChange = allowanceViewModel::updateAmount,
+            onToggleCategory = allowanceViewModel::toggleCategory,
+            onWeekStartChange = allowanceViewModel::setWeekStart,
+            onDismiss = allowanceViewModel::closeEditor,
+            onSave = allowanceViewModel::submit,
+        )
+    }
     state.goalEditor?.let { editor ->
         GoalEditorDialog(
             editor = editor,
@@ -140,6 +161,9 @@ internal fun PlansScreenContent(
     onRetry: () -> Unit,
     onEditGoal: () -> Unit,
     onAllocate: () -> Unit,
+    allowanceSection: @Composable () -> Unit = {
+        PlanShellCard(R.string.plans_allowance, R.string.plans_allowance_empty)
+    },
 ) {
     ZarScreenScaffold(
         destination = TopLevelDestination.Plans,
@@ -171,7 +195,7 @@ internal fun PlansScreenContent(
                     val progress = overview.progress
                     if (goal != null && progress != null) GoalProgressDetails(goal, progress)
                 }
-                PlanShellCard(R.string.plans_allowance, R.string.plans_allowance_empty)
+                allowanceSection()
                 PlanShellCard(R.string.home_bills, R.string.plans_bills_empty)
             }
         }
@@ -321,7 +345,7 @@ private fun PlanShellCard(label: Int, value: Int) {
 
 /** Bounded, scrollable form so the actions remain reachable with large text or an IME. */
 @Composable
-private fun PlanEditor(title: String, isSaving: Boolean, onDismiss: () -> Unit, onSave: () -> Unit, content: @Composable ColumnScope.() -> Unit) {
+internal fun PlanEditor(title: String, isSaving: Boolean, onDismiss: () -> Unit, onSave: () -> Unit, content: @Composable ColumnScope.() -> Unit) {
     Dialog(onDismissRequest = { if (!isSaving) onDismiss() }) {
         Surface(modifier = Modifier.testTag("plans-editor"), shape = ZarShapes.xl, color = ZarTheme.colors.surface) {
             Column(Modifier.imePadding().verticalScroll(rememberScrollState()).padding(24.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {

@@ -3,6 +3,8 @@ package com.example.zar.features.home.presentation.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.zar.core.domain.calculation.ZarTime
+import com.example.zar.features.allowance.domain.model.AllowanceOverview
+import com.example.zar.features.allowance.domain.usecase.ObserveAllowanceUseCase
 import com.example.zar.features.home.domain.model.HomeCommitments
 import com.example.zar.features.home.domain.model.HomeOverview
 import com.example.zar.features.home.domain.usecase.ObserveHomeCommitmentsUseCase
@@ -36,18 +38,27 @@ sealed interface HomeCommitmentsContent {
     data class Ready(val commitments: HomeCommitments) : HomeCommitmentsContent
 }
 
+/** The weekly allowance snapshot. Also loaded on its own, so it never hides the totals. */
+sealed interface HomeAllowanceContent {
+    data object Loading : HomeAllowanceContent
+    data object Error : HomeAllowanceContent
+    data class Ready(val overview: AllowanceOverview) : HomeAllowanceContent
+}
+
 data class HomeUiState(
     val month: YearMonth,
     /** False on the current month: Home never shows a future month. */
     val canGoForward: Boolean,
     val content: HomeContent,
     val commitments: HomeCommitmentsContent = HomeCommitmentsContent.Loading,
+    val allowance: HomeAllowanceContent = HomeAllowanceContent.Loading,
 )
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     observeOverview: ObserveHomeOverviewUseCase,
     observeCommitments: ObserveHomeCommitmentsUseCase,
+    observeAllowance: ObserveAllowanceUseCase,
 ) : ViewModel() {
 
     private val month = MutableStateFlow(currentMonth())
@@ -72,8 +83,17 @@ class HomeViewModel @Inject constructor(
             .catch { emit(HomeCommitmentsContent.Error) }
     }
 
-    val uiState: StateFlow<HomeUiState> = combine(overviewState, commitmentsState) { overview, commitments ->
-        overview.copy(commitments = commitments)
+    // This week's allowance depends on today, like the commitments.
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private val allowanceState: Flow<HomeAllowanceContent> = attempt.flatMapLatest {
+        observeAllowance()
+            .map<AllowanceOverview, HomeAllowanceContent> { HomeAllowanceContent.Ready(it) }
+            .onStart { emit(HomeAllowanceContent.Loading) }
+            .catch { emit(HomeAllowanceContent.Error) }
+    }
+
+    val uiState: StateFlow<HomeUiState> = combine(overviewState, commitmentsState, allowanceState) { overview, commitments, allowance ->
+        overview.copy(commitments = commitments, allowance = allowance)
     }
         .stateIn(
             viewModelScope,
