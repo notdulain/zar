@@ -1,5 +1,7 @@
 package com.example.zar.di
 
+import com.example.zar.core.domain.repository.AmountPrivacyRepository
+import com.example.zar.core.data.local.SharedPreferencesAmountPrivacyRepository
 import android.content.Context
 import androidx.room.Room
 import com.example.zar.features.capture.data.auto.CaptureStagingDatabase
@@ -125,6 +127,10 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun bindAllowanceRepository(impl: FirestoreAllowanceRepository): AllowanceRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindAmountPrivacyRepository(impl: SharedPreferencesAmountPrivacyRepository): AmountPrivacyRepository
 
     @Binds
     @Singleton

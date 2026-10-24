@@ -78,6 +78,7 @@ import com.example.zar.core.presentation.components.ZarChip
 import com.example.zar.core.presentation.components.ZarFormRow
 import com.example.zar.core.presentation.components.ZarIcon
 import com.example.zar.core.presentation.components.ZarMonoLabel
+import com.example.zar.core.presentation.privacy.AmountMask
 import com.example.zar.core.presentation.theme.ZarShapes
 import com.example.zar.core.presentation.theme.ZarTheme
 import com.example.zar.core.presentation.theme.ZarType
@@ -555,7 +556,7 @@ private fun ProposalCard(item: ProposalState, accounts: List<Account>, actions: 
         is ProposalInput.Expected -> input.currency
         is ProposalInput.Transfer -> input.currency
     } ?: account?.currency ?: Currencies.REPORTING
-    val amount = if (amountText.isBlank()) stringResource(R.string.quicknote_add_amount) else (Money.parse(amountText, currency)?.let { IncomeFormat.withCode(it) } ?: amountText)
+    val amount = if (amountText.isBlank()) stringResource(R.string.quicknote_add_amount) else (Money.parse(amountText, currency)?.let { IncomeFormat.withCode(it) } ?: if (AmountMask.isHidden) AmountMask.HIDDEN_TEXT else amountText)
     val sign = if (input is ProposalInput.Actual && input.type == TransactionType.EXPENSE && amountText.isNotBlank()) "− " else ""
     val when_ = when (input) {
         is ProposalInput.Actual -> input.date
@@ -599,7 +600,7 @@ private fun ProposalCard(item: ProposalState, accounts: List<Account>, actions: 
         if (meta.isNotEmpty()) Text(meta, style = ZarType.bodyCaption, color = colors.textSecondary)
         if (input is ProposalInput.Transfer && input.received.isNotBlank()) {
             val receivedCurrency = input.receivedCurrency ?: accounts.firstOrNull { it.id == input.toId }?.currency ?: Currencies.REPORTING
-            val received = Money.parse(input.received, receivedCurrency)?.let { IncomeFormat.withCode(it) } ?: input.received
+            val received = Money.parse(input.received, receivedCurrency)?.let { IncomeFormat.withCode(it) } ?: if (AmountMask.isHidden) AmountMask.HIDDEN_TEXT else input.received
             Text("${stringResource(R.string.quicknote_field_received)}: $received", style = ZarType.bodyCaption, color = colors.textSecondary)
         }
         if (input is ProposalInput.Expected) {

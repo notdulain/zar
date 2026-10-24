@@ -1,5 +1,7 @@
 package com.example.zar.features.home.presentation.screen
 
+import com.example.zar.core.presentation.privacy.AmountPrivacyViewModel
+import com.example.zar.core.presentation.privacy.AmountMask
 import androidx.annotation.StringRes
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -91,6 +93,7 @@ fun HomeScreen(
     onOpenBills: () -> Unit,
     onOpenBill: (String) -> Unit,
     viewModel: HomeViewModel = hiltViewModel(),
+    privacyViewModel: AmountPrivacyViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     HomeScreenContent(
@@ -104,6 +107,7 @@ fun HomeScreen(
         onOpenFreelance = onOpenFreelance,
         onOpenBills = onOpenBills,
         onOpenBill = onOpenBill,
+        onToggleAmounts = privacyViewModel::toggle,
     )
 }
 
@@ -119,6 +123,7 @@ internal fun HomeScreenContent(
     onOpenFreelance: () -> Unit = {},
     onOpenBills: () -> Unit = {},
     onOpenBill: (String) -> Unit = {},
+    onToggleAmounts: () -> Unit = {},
 ) {
     ZarScreenScaffold(
         destination = TopLevelDestination.Home,
@@ -155,6 +160,7 @@ internal fun HomeScreenContent(
                     onOpenFreelance = onOpenFreelance,
                     onOpenBills = onOpenBills,
                     onOpenBill = onOpenBill,
+                    onToggleAmounts = onToggleAmounts,
                 )
             }
         }
@@ -192,8 +198,9 @@ private fun OverviewBlock(
     onOpenFreelance: () -> Unit,
     onOpenBills: () -> Unit,
     onOpenBill: (String) -> Unit,
+    onToggleAmounts: () -> Unit,
 ) {
-    ReceivedHero(overview, canGoForward, onPreviousMonth, onNextMonth)
+    ReceivedHero(overview, canGoForward, onPreviousMonth, onNextMonth, onToggleAmounts)
 
     Column(
         Modifier.fillMaxWidth().padding(horizontal = 9.dp).padding(top = 12.dp, bottom = 28.dp),
@@ -231,6 +238,7 @@ private fun ReceivedHero(
     canGoForward: Boolean,
     onPreviousMonth: () -> Unit,
     onNextMonth: () -> Unit,
+    onToggleAmounts: () -> Unit,
 ) {
     val colors = ZarTheme.colors
     var chartMode by rememberSaveable { mutableIntStateOf(0) }
@@ -270,9 +278,10 @@ private fun ReceivedHero(
             HeroStatus(overview)
             Spacer(Modifier.weight(1f))
             val chartModifier = Modifier.fillMaxWidth().height(165.dp).padding(horizontal = 18.dp)
-            when (chartMode) {
-                0 -> ReceivedBarChart(overview, chartModifier)
-                1 -> SpendingDonutChart(overview, chartModifier)
+            when {
+                AmountMask.isHidden -> HiddenChart(chartModifier)
+                chartMode == 0 -> ReceivedBarChart(overview, chartModifier)
+                chartMode == 1 -> SpendingDonutChart(overview, chartModifier)
                 else -> ReceivedLineChart(overview, chartModifier)
             }
             Spacer(Modifier.height(7.dp))
@@ -282,6 +291,38 @@ private fun ReceivedHero(
             }
             Spacer(Modifier.height(22.dp))
         }
+        HideAmountsToggle(onToggleAmounts, Modifier.align(Alignment.TopEnd).padding(top = 48.dp, end = 14.dp))
+    }
+}
+
+/** The labelled control that hides or shows every amount in the app. */
+@Composable
+private fun HideAmountsToggle(onToggle: () -> Unit, modifier: Modifier = Modifier) {
+    val hidden = AmountMask.isHidden
+    val label = stringResource(if (hidden) R.string.amounts_show else R.string.amounts_hide)
+    IconButton(
+        onClick = onToggle,
+        modifier = modifier.size(48.dp).testTag("hide-amounts-toggle").semantics { contentDescription = label },
+    ) {
+        Icon(
+            painterResource(if (hidden) R.drawable.ic_ph_eye_slash else R.drawable.ic_ph_eye),
+            contentDescription = null,
+            modifier = Modifier.size(22.dp),
+            tint = Color.White,
+        )
+    }
+}
+
+/** Stands in for the charts, whose bars and slices would otherwise reveal the amounts. */
+@Composable
+private fun HiddenChart(modifier: Modifier = Modifier) {
+    Box(modifier.testTag("received-chart-hidden"), Alignment.Center) {
+        Text(
+            stringResource(R.string.home_chart_hidden),
+            style = ZarType.bodyCaption,
+            color = Color.White.copy(alpha = 0.7f),
+            textAlign = TextAlign.Center,
+        )
     }
 }
 

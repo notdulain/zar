@@ -1,5 +1,6 @@
 package com.example.zar.features.transactions.presentation.income
 
+import com.example.zar.core.presentation.privacy.AmountMask
 import com.example.zar.core.domain.model.money.Currencies
 import com.example.zar.core.domain.model.money.Money
 import java.text.DecimalFormat
@@ -17,6 +18,7 @@ object IncomeFormat {
 
     /** "125,000" for whole amounts, "1,094.95" otherwise. */
     fun amount(money: Money): String {
+        if (AmountMask.isHidden) return AmountMask.HIDDEN_TEXT
         val value = money.toDecimal()
         val format = DecimalFormat("#,##0", DecimalFormatSymbols(Locale.US))
         if (value.stripTrailingZeros().scale() > 0) {

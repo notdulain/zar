@@ -1,5 +1,7 @@
 package com.example.zar.features.transactions.presentation.manual.screen
 
+import androidx.compose.ui.text.input.VisualTransformation
+import com.example.zar.core.presentation.privacy.amountFieldTransformation
 import androidx.activity.compose.BackHandler
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.DatePicker
@@ -739,6 +741,7 @@ internal fun TextInput(
         cursorBrush = SolidColor(colors.textSelected),
         singleLine = true,
         keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
+        visualTransformation = if (keyboardType == KeyboardType.Decimal) amountFieldTransformation() else VisualTransformation.None,
         modifier = modifier,
         decorationBox = { inner ->
             Box(Modifier.fillMaxWidth().padding(vertical = 8.dp), Alignment.CenterStart) {

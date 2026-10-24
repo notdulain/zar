@@ -91,6 +91,11 @@
 
     <!-- Sign out -->
     <string name="settings_subtitle">Your sign-in and where Zar keeps your settings.</string>
+    <string name="amounts_hide">Hide amounts</string>
+    <string name="amounts_show">Show amounts</string>
+    <string name="home_chart_hidden">Chart hidden while amounts are hidden</string>
+    <string name="settings_hide_amounts">Hide amounts</string>
+    <string name="settings_hide_amounts_detail">Replaces every amount with •••• on every screen, chart and notification. Your records are not changed.</string>
     <string name="settings_signed_in_as">Signed in as</string>
     <string name="settings_where_title">Where your settings live</string>
     <string name="settings_where_body">Your accounts and entries sync to your Zar account. The catch-up reminder stays on this phone and resets when you sign out.</string>
@@ -404,7 +409,6 @@
     <string name="action_save">Save</string>
     <string name="action_retry">Try again</string>
     <string name="plans_goal_name">MacBook fund</string>
-    <string name="plans_zero_amount">LKR 0</string>
     <string name="plans_of_target">of %1$s</string>
     <string name="plans_goal_not_created">Create the goal to choose its target</string>
     <string name="plans_nothing_allocated">Nothing allocated yet</string>

@@ -1,5 +1,6 @@
 package com.example.zar.features.crypto.presentation.screen
 
+import com.example.zar.core.presentation.privacy.amountFieldTransformation
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -309,6 +310,7 @@ private fun OpeningCostDialog(wallet: Account, uiState: CryptoUiState, viewModel
                         { Text(stringResource(R.string.crypto_cost_invalid)) }
                     } else null,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    visualTransformation = amountFieldTransformation(),
                     singleLine = true,
                 )
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -468,6 +470,7 @@ private fun AmountField(label: String, value: String, code: String?, error: Stri
         isError = error != null,
         supportingText = (error ?: hint)?.let { { Text(it) } },
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+        visualTransformation = amountFieldTransformation(),
         singleLine = true,
         modifier = Modifier.fillMaxWidth(),
     )

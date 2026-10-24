@@ -1,5 +1,6 @@
 package com.example.zar.features.transactions.presentation.income.screen
 
+import com.example.zar.core.presentation.privacy.amountFieldTransformation
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -137,6 +138,7 @@ private fun IncomeFormContent(uiState: IncomeFormUiState, actions: IncomeFormAct
                 isError = IncomeProblem.AMOUNT_MISSING in uiState.problems || IncomeProblem.AMOUNT_INVALID in uiState.problems,
                 supportingText = amountError(uiState.problems)?.let { { Text(stringResource(it)) } },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                visualTransformation = amountFieldTransformation(),
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )

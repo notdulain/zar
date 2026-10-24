@@ -1,5 +1,6 @@
 package com.example.zar.features.allowance.presentation.screen
 
+import com.example.zar.core.presentation.privacy.amountFieldTransformation
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -226,7 +227,7 @@ fun AllowanceEditorDialog(
         OutlinedTextField(
             editor.amount, onAmountChange, modifier = Modifier.fillMaxWidth().testTag("allowance-amount"),
             label = { Text(stringResource(R.string.allowance_amount_field)) }, prefix = { Text("LKR ") },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), singleLine = true, visualTransformation = amountFieldTransformation(),
             shape = ZarShapes.md,
             colors = OutlinedTextFieldDefaults.colors(
                 focusedBorderColor = colors.textSelected, focusedLabelColor = colors.textSelected, cursorColor = colors.textSelected,

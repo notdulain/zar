@@ -1,5 +1,6 @@
 package com.example.zar.core.presentation.components
 
+import com.example.zar.core.presentation.privacy.AmountMask
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -92,6 +93,11 @@ fun ZarSplitBar(
     val safeDiscretionary = discretionary.coerceAtLeast(0f)
     val safeUnknown = unknown.coerceAtLeast(0f)
     val total = (safeCommitted + safeDiscretionary + safeUnknown).coerceAtLeast(1f)
+    if (AmountMask.isHidden) {
+        // The proportions would reveal the split, so show one neutral bar instead.
+        Box(modifier.fillMaxWidth().height(5.dp).background(colors.chartUnknown, RoundedCornerShape(3.dp)))
+        return
+    }
     Row(
         modifier.fillMaxWidth().height(5.dp),
         horizontalArrangement = Arrangement.spacedBy(3.dp),

@@ -1,5 +1,7 @@
 package com.example.zar.features.plans.presentation.screen
 
+import com.example.zar.core.presentation.privacy.AmountMask
+import com.example.zar.core.presentation.privacy.amountFieldTransformation
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -230,7 +232,7 @@ private fun GoalHero(overview: PlansOverview, onEditGoal: () -> Unit, onAllocate
             Text(goal?.name ?: stringResource(R.string.plans_goal_name), style = ZarType.bodyL, color = ZarWhite)
             ZarMonoLabel(stringResource(R.string.plans_backed_heading), color = ZarSubtle)
             Text(
-                progress?.backed?.formatWithCode() ?: stringResource(R.string.plans_zero_amount),
+                progress?.backed?.formatWithCode() ?: FiatMoney(0, Currencies.LKR).formatWithCode(),
                 style = ZarType.amountL, color = ZarWhite, modifier = Modifier.testTag("plans-backed"),
             )
             Text(
@@ -276,11 +278,14 @@ private fun GoalProgressBars(goal: SavingsGoal, progress: BackedGoalProgress) {
 private fun ProgressRow(label: String, fraction: Float, tag: String, color: androidx.compose.ui.graphics.Color) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(label, style = ZarType.bodyCaption, color = ZarSubtle)
-        LinearProgressIndicator(
-            progress = { fraction },
-            modifier = Modifier.fillMaxWidth().height(5.dp).testTag(tag),
-            color = color, trackColor = ZarTrack.copy(alpha = 0.35f),
-        )
+        // A bar would show how much is set aside, so it is left out while amounts are hidden.
+        if (!AmountMask.isHidden) {
+            LinearProgressIndicator(
+                progress = { fraction },
+                modifier = Modifier.fillMaxWidth().height(5.dp).testTag(tag),
+                color = color, trackColor = ZarTrack.copy(alpha = 0.35f),
+            )
+        }
     }
 }
 
@@ -374,7 +379,7 @@ internal fun GoalEditorDialog(
         OutlinedTextField(
             editor.target, onTargetChange, modifier = Modifier.fillMaxWidth(),
             label = { Text(stringResource(R.string.plans_target_field)) }, prefix = { Text("LKR ") },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), singleLine = true, visualTransformation = amountFieldTransformation(),
             shape = ZarShapes.md, colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = ZarTheme.colors.textSelected, focusedLabelColor = ZarTheme.colors.textSelected, cursorColor = ZarTheme.colors.textSelected), enabled = !isSaving,
         )
         GoalDateField(editor.targetDate, onDateChange, enabled = !isSaving)
@@ -449,7 +454,7 @@ private fun AllocationDialog(
             editor.amount, onAmountChange, modifier = Modifier.fillMaxWidth(),
             label = { Text(stringResource(R.string.plans_allocation_field)) }, prefix = { Text("LKR ") },
             supportingText = { Text(stringResource(R.string.plans_zero_removes)) },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), singleLine = true, visualTransformation = amountFieldTransformation(),
             shape = ZarShapes.md, colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = ZarTheme.colors.textSelected, focusedLabelColor = ZarTheme.colors.textSelected, cursorColor = ZarTheme.colors.textSelected), enabled = !isSaving,
         )
         if (message != null) DialogError(message)

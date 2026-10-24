@@ -1,5 +1,6 @@
 package com.example.zar.core.presentation.format
 
+import com.example.zar.core.presentation.privacy.AmountMask
 import com.example.zar.core.domain.model.money.AssetKind
 import com.example.zar.core.domain.model.money.Currencies
 import com.example.zar.core.domain.model.money.Money
@@ -8,6 +9,8 @@ import java.util.Locale
 
 /** "1,250" for whole amounts and "1,250.50" otherwise. Crypto keeps its full currency precision. */
 fun Money.formatNumber(): String {
+    // Every printed amount comes through here, so hiding amounts is decided in one place.
+    if (AmountMask.isHidden) return AmountMask.HIDDEN_TEXT
     val value = toDecimal()
     val maxDigits = currency.fractionDigits
     val isFiat = currency.kind == AssetKind.FIAT

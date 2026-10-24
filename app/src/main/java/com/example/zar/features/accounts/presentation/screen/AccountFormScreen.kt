@@ -1,5 +1,7 @@
 package com.example.zar.features.accounts.presentation.screen
 
+import androidx.compose.ui.text.input.VisualTransformation
+import com.example.zar.core.presentation.privacy.amountFieldTransformation
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -232,6 +234,7 @@ private fun TextInput(
         cursorBrush = SolidColor(colors.textSelected),
         singleLine = true,
         keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
+        visualTransformation = if (keyboardType == KeyboardType.Decimal) amountFieldTransformation() else VisualTransformation.None,
         modifier = modifier,
         decorationBox = { inner ->
             Box(Modifier.fillMaxWidth().padding(vertical = 8.dp), Alignment.CenterStart) {
