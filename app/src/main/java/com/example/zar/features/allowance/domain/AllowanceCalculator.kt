@@ -26,7 +26,8 @@ import java.time.LocalDate
  * - A refund reduces the original purchase, capped at that purchase, in the purchase's week.
  * - Income never increases the allowance. There is no rollover.
  * - Expenses with no class yet are left out and reported, rather than guessed.
- * - Records with no LKR rate are left out and reported, rather than guessed.
+ * - Unvalued expenses are omitted. An unvalued refund leaves the known purchase gross in place,
+ *   with a warning that its net total is incomplete.
  */
 object AllowanceCalculator {
 

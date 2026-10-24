@@ -59,8 +59,11 @@ data class AllowanceStatus(
         get() = missingRateCount > 0 || unclassifiedExpenseCount > 0 || adjustmentCount > 0
 }
 
+enum class AllowanceSyncState { SAVED, QUEUED, FAILED }
+
 /** The saved settings and, while the allowance is on, this week's status. */
 data class AllowanceOverview(
     val settings: AllowanceSettings,
     val status: AllowanceStatus?,
+    val syncState: AllowanceSyncState = AllowanceSyncState.SAVED,
 )

@@ -50,8 +50,9 @@ An optional early warning for discretionary spending. It starts off, and reads t
 - **Counts:** expenses classed `DISCRETIONARY` dated in the current week, in the chosen categories (none chosen means all), net of linked refunds.
 - **Never counts:** committed spending (including transfer fees), expenses linked to a bill due date, transfers, goal allocations, income and adjustments.
 - **Refunds** reduce the original purchase, capped at it, in the purchase's own week.
-- **Left out and reported, never guessed:** expenses with no spending class, expenses with no LKR rate, and cash catch-up outflows. Each is shown as a "Check:" line beside the remaining amount.
-- **Remaining** is the allowance minus eligible spending. Negative remaining is shown as "Overspent by". There is no rollover and no carried-over debt.
+- **Coverage, never guessed:** unclassified expenses, unvalued expenses, and cash catch-up outflows are left out and flagged. If a linked refund cannot be valued, the known purchase gross remains and the missing refund valuation is flagged; the net total is incomplete. Each gap is shown as a "Check:" line beside the remaining amount.
+- **Remaining** is the allowance minus eligible spending. Negative remaining is shown as "Overspent by". The current week refreshes at Colombo midnight without a ledger write. There is no rollover and no carried-over debt.
+- **Saving:** settings persist in the local Firestore queue. Queued and rejected writes are shown explicitly. Fast rejection keeps the editor open; while the ViewModel lives, reopening after a later rejection restores the last submitted choices for retry.
 
 ## Storage
 

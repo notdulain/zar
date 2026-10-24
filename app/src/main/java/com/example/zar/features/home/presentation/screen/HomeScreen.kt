@@ -126,7 +126,7 @@ internal fun HomeScreenContent(
         onAddOption = onAddOption,
     ) { padding ->
         Column(
-            Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(padding),
+            Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(0.dp),
         ) {
             when (val content = state.content) {

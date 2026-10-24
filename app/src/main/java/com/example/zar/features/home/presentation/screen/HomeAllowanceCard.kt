@@ -7,6 +7,8 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
@@ -24,6 +26,7 @@ import com.example.zar.core.presentation.theme.ZarTheme
 import com.example.zar.core.presentation.theme.ZarType
 import com.example.zar.features.allowance.presentation.screen.allowanceHeadline
 import com.example.zar.features.allowance.presentation.screen.weekRange
+import com.example.zar.features.allowance.presentation.screen.AllowanceSyncNotice
 import com.example.zar.features.home.presentation.viewmodel.HomeAllowanceContent
 
 /**
@@ -41,7 +44,7 @@ internal fun WeeklyLimitCard(
     val colors = ZarTheme.colors
     val status = (allowance as? HomeAllowanceContent.Ready)?.overview?.status
     ZarCard(
-        modifier.height(116.dp).testTag("weekly-limit-card"),
+        modifier.heightIn(min = 116.dp).testTag("weekly-limit-card"),
         onClick = if (allowance is HomeAllowanceContent.Error) onRetry else onOpenPlans,
         contentPadding = PaddingValues(16.dp),
     ) {
@@ -64,15 +67,13 @@ internal fun WeeklyLimitCard(
                 modifier = Modifier.testTag("weekly-limit-value"),
             )
             else -> {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp)) {
                     if (status.isOverspent) Box(Modifier.size(6.dp).background(colors.attention, CircleShape))
                     Text(
                         allowanceHeadline(status),
                         style = ZarType.bodyM,
                         color = colors.textPrimary,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.testTag("weekly-limit-value"),
+                        modifier = Modifier.weight(1f).testTag("weekly-limit-value"),
                     )
                 }
                 Spacer(Modifier.height(4.dp))
@@ -82,12 +83,11 @@ internal fun WeeklyLimitCard(
                     style = ZarType.bodyCaption,
                     color = if (status.hasCoverageWarning) colors.textPrimary else colors.textSecondary,
                     fontWeight = if (status.hasCoverageWarning) FontWeight.Bold else FontWeight.Normal,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.testTag("weekly-limit-detail"),
                 )
             }
         }
+        (allowance as? HomeAllowanceContent.Ready)?.overview?.let { AllowanceSyncNotice(it.syncState) }
         Spacer(Modifier.weight(1f))
         Text(
             stringResource(

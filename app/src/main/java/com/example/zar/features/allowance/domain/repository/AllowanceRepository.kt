@@ -1,6 +1,7 @@
 package com.example.zar.features.allowance.domain.repository
 
 import com.example.zar.features.allowance.domain.model.AllowanceSettings
+import com.example.zar.features.allowance.domain.model.AllowanceSyncState
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -9,6 +10,7 @@ import kotlinx.coroutines.flow.Flow
  */
 interface AllowanceRepository {
     fun observeSettings(): Flow<AllowanceSettings>
+    fun observeSyncState(): Flow<AllowanceSyncState>
 
     /** Creates or replaces the one setting. Returns once stored locally (offline first). */
     suspend fun saveSettings(settings: AllowanceSettings)

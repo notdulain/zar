@@ -5,6 +5,8 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -186,6 +188,7 @@ fun ZarChip(
     modifier: Modifier = Modifier,
     @DrawableRes icon: Int? = null,
     enabled: Boolean = true,
+    multiSelect: Boolean = false,
 ) {
     val colors = ZarTheme.colors
     val foreground = if (selected) colors.textOnInverse else colors.textPrimary
@@ -194,7 +197,8 @@ fun ZarChip(
             .alpha(if (enabled) 1f else 0.45f)
             .clip(ZarShapes.sm)
             .background(if (selected) colors.accentSelected else colors.subtle)
-            .clickable(enabled = enabled, role = Role.RadioButton, onClick = onClick)
+            .then(if (multiSelect) Modifier.toggleable(value = selected, enabled = enabled, role = Role.Checkbox, onValueChange = { onClick() })
+                else Modifier.selectable(selected = selected, enabled = enabled, role = Role.RadioButton, onClick = onClick))
             .padding(start = 12.dp, end = 14.dp, top = 9.dp, bottom = 9.dp),
         horizontalArrangement = Arrangement.spacedBy(7.dp),
         verticalAlignment = Alignment.CenterVertically,

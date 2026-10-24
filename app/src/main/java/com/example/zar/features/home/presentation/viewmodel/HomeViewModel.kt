@@ -86,7 +86,7 @@ class HomeViewModel @Inject constructor(
     // This week's allowance depends on today, like the commitments.
     @OptIn(ExperimentalCoroutinesApi::class)
     private val allowanceState: Flow<HomeAllowanceContent> = attempt.flatMapLatest {
-        observeAllowance(ZarTime.today())
+        observeAllowance()
             .map<AllowanceOverview, HomeAllowanceContent> { HomeAllowanceContent.Ready(it) }
             .onStart { emit(HomeAllowanceContent.Loading) }
             .catch { emit(HomeAllowanceContent.Error) }

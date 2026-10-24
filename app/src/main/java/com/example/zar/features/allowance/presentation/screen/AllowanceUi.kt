@@ -16,9 +16,13 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
+import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -35,6 +39,7 @@ import com.example.zar.core.presentation.theme.ZarShapes
 import com.example.zar.core.presentation.theme.ZarTheme
 import com.example.zar.core.presentation.theme.ZarType
 import com.example.zar.features.allowance.domain.model.AllowanceStatus
+import com.example.zar.features.allowance.domain.model.AllowanceSyncState
 import com.example.zar.features.allowance.presentation.viewmodel.AllowanceEditorState
 import com.example.zar.features.allowance.presentation.viewmodel.AllowanceMessage
 import com.example.zar.features.allowance.presentation.viewmodel.AllowanceUiState
@@ -107,7 +112,17 @@ fun AllowanceCard(state: AllowanceUiState, onEdit: () -> Unit, onRetry: () -> Un
                 )
             }
         }
+        state.overview?.let { AllowanceSyncNotice(it.syncState) }
     }
+}
+
+@Composable
+internal fun AllowanceSyncNotice(state: AllowanceSyncState) {
+    if (state != AllowanceSyncState.SAVED) Text(
+        stringResource(if (state == AllowanceSyncState.QUEUED) R.string.allowance_sync_queued else R.string.allowance_sync_failed),
+        style = ZarType.bodyCaption, color = ZarTheme.colors.textPrimary,
+        modifier = Modifier.padding(top = 8.dp).testTag("allowance-sync"),
+    )
 }
 
 @Composable
@@ -153,13 +168,13 @@ internal fun AllowanceCoverage(status: AllowanceStatus) {
     val prefix = stringResource(R.string.home_warning_prefix) + " "
     val notes = buildList {
         if (status.missingRateCount > 0) {
-            add("allowance-warning-rate" to stringResource(R.string.allowance_check_missing_rate, status.missingRateCount))
+            add("allowance-warning-rate" to pluralStringResource(R.plurals.allowance_check_missing_rate, status.missingRateCount, status.missingRateCount))
         }
         if (status.unclassifiedExpenseCount > 0) {
-            add("allowance-warning-unclassified" to stringResource(R.string.allowance_check_unclassified, status.unclassifiedExpenseCount))
+            add("allowance-warning-unclassified" to pluralStringResource(R.plurals.allowance_check_unclassified, status.unclassifiedExpenseCount, status.unclassifiedExpenseCount))
         }
         if (status.adjustmentCount > 0) {
-            add("allowance-warning-adjustment" to stringResource(R.string.allowance_check_adjustments, status.adjustmentCount))
+            add("allowance-warning-adjustment" to pluralStringResource(R.plurals.allowance_check_adjustments, status.adjustmentCount, status.adjustmentCount))
         }
     }
     notes.forEach { (tag, text) ->
@@ -205,7 +220,8 @@ fun AllowanceEditorDialog(
                 color = colors.textPrimary,
                 modifier = Modifier.weight(1f),
             )
-            ZarSwitch(editor.enabled, onEnabledChange, Modifier.testTag("allowance-switch"), enabled = !isSaving)
+            val switchLabel = stringResource(R.string.allowance_switch_label)
+            ZarSwitch(editor.enabled, onEnabledChange, Modifier.testTag("allowance-switch").semantics { contentDescription = switchLabel }, enabled = !isSaving)
         }
         OutlinedTextField(
             editor.amount, onAmountChange, modifier = Modifier.fillMaxWidth().testTag("allowance-amount"),
@@ -216,6 +232,7 @@ fun AllowanceEditorDialog(
                 focusedBorderColor = colors.textSelected, focusedLabelColor = colors.textSelected, cursorColor = colors.textSelected,
             ),
             enabled = !isSaving,
+            isError = message == AllowanceMessage.INVALID_AMOUNT,
         )
         ZarMonoLabel(stringResource(R.string.allowance_categories_heading))
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -225,13 +242,14 @@ fun AllowanceEditorDialog(
                     selected = category.id in editor.categoryIds,
                     onClick = { onToggleCategory(category.id) },
                     modifier = Modifier.testTag("allowance-category-${category.id}"),
+                    multiSelect = true,
                     enabled = !isSaving,
                 )
             }
         }
         Text(stringResource(R.string.allowance_categories_note), style = ZarType.bodyCaption, color = colors.textTertiary)
         ZarMonoLabel(stringResource(R.string.allowance_week_start_heading))
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        FlowRow(Modifier.selectableGroup(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             DayOfWeek.entries.forEach { day ->
                 ZarChip(
                     label = day.getDisplayName(TextStyle.SHORT, Locale.ENGLISH),

@@ -7,9 +7,16 @@ import com.example.zar.core.domain.model.LedgerError
 import com.example.zar.core.domain.model.money.FiatMoney
 import com.example.zar.core.domain.repository.UserSessionProvider
 import com.example.zar.features.allowance.domain.model.AllowanceSettings
+import com.example.zar.features.allowance.domain.model.AllowanceSyncState
 import com.example.zar.features.allowance.domain.repository.AllowanceRepository
 import com.google.firebase.firestore.DocumentReference
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.MetadataChanges
+import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.update
 import java.time.DayOfWeek
 import java.time.Instant
 import javax.inject.Inject
@@ -28,13 +35,23 @@ class FirestoreAllowanceRepository @Inject constructor(
     private val session: UserSessionProvider,
 ) : AllowanceRepository {
 
+    private val syncStates = MutableStateFlow<Map<String, AllowanceSyncState>>(emptyMap())
+
     @OptIn(ExperimentalCoroutinesApi::class)
     override fun observeSettings(): Flow<AllowanceSettings> = session.observeUserId().flatMapLatest { uid ->
         if (uid == null) flowOf(AllowanceSettings.Disabled) else callbackFlow {
-            val registration = document(uid.value).addSnapshotListener { snapshot, error ->
+            val registration = document(uid.value).addSnapshotListener(MetadataChanges.INCLUDE) { snapshot, error ->
                 if (error != null) {
                     close(error)
                     return@addSnapshotListener
+                }
+                syncStates.update { states ->
+                    val state = when {
+                        snapshot?.metadata?.hasPendingWrites() == true -> AllowanceSyncState.QUEUED
+                        states[uid.value] == AllowanceSyncState.FAILED -> AllowanceSyncState.FAILED
+                        else -> AllowanceSyncState.SAVED
+                    }
+                    states + (uid.value to state)
                 }
                 val data = snapshot?.data
                 trySend(
@@ -49,11 +66,24 @@ class FirestoreAllowanceRepository @Inject constructor(
         }
     }
 
+    @OptIn(ExperimentalCoroutinesApi::class)
+    override fun observeSyncState(): Flow<AllowanceSyncState> = session.observeUserId().flatMapLatest { uid ->
+        syncStates.map { states -> uid?.value?.let(states::get) ?: AllowanceSyncState.SAVED }
+    }
+
     override suspend fun saveSettings(settings: AllowanceSettings) {
         val uid = session.currentUserId() ?: throw LedgerError.NotSignedIn()
-        document(uid.value)
-            .set(AllowanceDocumentMapper.toMap(settings, Instant.now()))
-            .addOnFailureListener { Log.w(TAG, "saveSettings was rejected", it) }
+        syncStates.update { it + (uid.value to AllowanceSyncState.QUEUED) }
+        val write = document(uid.value).set(AllowanceDocumentMapper.toMap(settings, Instant.now()))
+        write.addOnSuccessListener { syncStates.update { it + (uid.value to AllowanceSyncState.SAVED) } }
+        write.addOnFailureListener {
+            syncStates.update { it + (uid.value to AllowanceSyncState.FAILED) }
+            Log.w(TAG, "saveSettings was rejected", it)
+        }
+        // Local persistence remains usable offline; fast server rejection keeps the form open.
+        // Later acknowledgement/rejection is still observed after the form closes.
+        withTimeoutOrNull(4_000L) { write.await() }
+        if (session.currentUserId() != uid) throw LedgerError.NotSignedIn()
     }
 
     private fun document(uid: String): DocumentReference = firestore.collection(FirestoreCollections.USERS)

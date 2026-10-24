@@ -14,7 +14,10 @@ import java.time.DayOfWeek
 import java.time.Instant
 import java.time.LocalDate
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.runCurrent
+import kotlinx.coroutines.test.advanceTimeBy
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -22,6 +25,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
+@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class AllowanceUseCasesTest {
 
     private val today = LocalDate.of(2026, 10, 21)
@@ -124,4 +128,36 @@ class AllowanceUseCasesTest {
             ),
         )
     }
+    @Test fun anOpenObserverMovesToTheNewWeekWithoutAnyLedgerWrite() = runTest {
+        val sunday = LocalDate.of(2026, 10, 25)
+        val dates = kotlinx.coroutines.flow.MutableStateFlow(sunday)
+        repo.settings.value = AllowanceSettings(true, lkr(5_000))
+        ledger.entries.value = LedgerProjector.project(listOf(
+            tx("sunday", TransactionType.EXPENSE, lkr(900), date = sunday),
+            tx("monday", TransactionType.EXPENSE, lkr(100), date = sunday.plusDays(1)),
+        ), emptyList(), emptyList())
+        val values = mutableListOf<com.example.zar.features.allowance.domain.model.AllowanceOverview>()
+        backgroundScope.launch(kotlinx.coroutines.test.UnconfinedTestDispatcher(testScheduler)) {
+            ObserveAllowanceUseCase(repo, ledger, expected, dates)().collect { values += it }
+        }
+        runCurrent()
+        assertEquals(lkr(4_100), values.last().status!!.remaining)
+        dates.value = sunday.plusDays(1)
+        runCurrent()
+        assertEquals(sunday.plusDays(1), values.last().status!!.week.start)
+        assertEquals(lkr(4_900), values.last().status!!.remaining)
+    }
+
+    @Test fun theLiveDateSourceChangesAtColomboMidnightRatherThanUtcMidnight() = runTest {
+        val start = Instant.parse("2026-10-25T18:29:59Z")
+        val values = mutableListOf<LocalDate>()
+        backgroundScope.launch(kotlinx.coroutines.test.UnconfinedTestDispatcher(testScheduler)) {
+            com.example.zar.features.allowance.domain.usecase.allowanceDates { start.plusMillis(testScheduler.currentTime) }
+                .collect { values += it }
+        }
+        assertEquals(listOf(LocalDate.of(2026, 10, 25)), values)
+        advanceTimeBy(1_000); runCurrent()
+        assertEquals(listOf(LocalDate.of(2026, 10, 25), LocalDate.of(2026, 10, 26)), values)
+    }
+
 }

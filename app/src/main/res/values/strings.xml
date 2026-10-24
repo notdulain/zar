@@ -324,9 +324,18 @@
     <string name="allowance_overspent">Overspent by %1$s</string>
     <string name="allowance_spent_of">Spent %1$s of %2$s</string>
     <string name="allowance_rules_note">Counts discretionary spending only. Bills, transfers and goal allocations are not counted. It starts again each week with no rollover.</string>
-    <string name="allowance_check_missing_rate">%1$d expense(s) have no LKR rate and are left out of this total.</string>
-    <string name="allowance_check_unclassified">%1$d expense(s) have no class yet and are left out. Classify them to count them.</string>
-    <string name="allowance_check_adjustments">%1$d cash catch-up adjustment(s) this week are not counted.</string>
+    <plurals name="allowance_check_missing_rate">
+        <item quantity="one">%1$d record cannot be valued in LKR. This total may be incomplete.</item>
+        <item quantity="other">%1$d records cannot be valued in LKR. This total may be incomplete.</item>
+    </plurals>
+    <plurals name="allowance_check_unclassified">
+        <item quantity="one">%1$d expense has no class yet and is left out. Classify it to count it.</item>
+        <item quantity="other">%1$d expenses have no class yet and are left out. Classify them to count them.</item>
+    </plurals>
+    <plurals name="allowance_check_adjustments">
+        <item quantity="one">%1$d cash catch-up adjustment this week is not counted.</item>
+        <item quantity="other">%1$d cash catch-up adjustments this week are not counted.</item>
+    </plurals>
     <string name="allowance_editor_title">Weekly allowance</string>
     <string name="allowance_switch_label">Use a weekly allowance</string>
     <string name="allowance_amount_field">Amount per week</string>
@@ -334,6 +343,8 @@
     <string name="allowance_categories_note">Leave all off to count every discretionary category.</string>
     <string name="allowance_week_start_heading">Week starts on</string>
     <string name="allowance_invalid_amount">Enter an amount above zero.</string>
+    <string name="allowance_sync_queued">Saved on this phone. Waiting to sync.</string>
+    <string name="allowance_sync_failed">Couldn\'t sync your allowance. Edit it to try again.</string>
     <string name="allowance_save_failed">Couldn\'t save. Try again.</string>
     <string name="home_view_allowance">View allowance →</string>
     <string name="home_allowance_check">Check: some spending is left out</string>

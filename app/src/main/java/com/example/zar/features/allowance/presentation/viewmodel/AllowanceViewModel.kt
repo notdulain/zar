@@ -2,7 +2,7 @@ package com.example.zar.features.allowance.presentation.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.zar.core.domain.calculation.ZarTime
+import com.example.zar.features.allowance.domain.model.AllowanceSyncState
 import com.example.zar.core.domain.model.money.Currencies
 import com.example.zar.core.domain.model.money.FiatMoney
 import com.example.zar.features.allowance.domain.model.AllowanceOverview
@@ -49,6 +49,7 @@ class AllowanceViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(AllowanceUiState())
     val uiState: StateFlow<AllowanceUiState> = _uiState.asStateFlow()
     private var observation: Job? = null
+    private var lastSubmission: AllowanceEditorState? = null
 
     init { observe() }
 
@@ -56,6 +57,12 @@ class AllowanceViewModel @Inject constructor(
 
     /** Opens the form with the saved setting, or with the allowance switched on for a first set-up. */
     fun openEditor() {
+        if (_uiState.value.isSaving) return
+        val failed = lastSubmission.takeIf { _uiState.value.overview?.syncState == AllowanceSyncState.FAILED }
+        if (failed != null) {
+            _uiState.update { it.copy(editor = failed, message = AllowanceMessage.SAVE_FAILED) }
+            return
+        }
         val saved = _uiState.value.overview?.settings ?: AllowanceSettings.Disabled
         _uiState.update {
             it.copy(
@@ -70,7 +77,7 @@ class AllowanceViewModel @Inject constructor(
         }
     }
 
-    fun closeEditor() = _uiState.update { it.copy(editor = null, message = null) }
+    fun closeEditor() { if (!_uiState.value.isSaving) _uiState.update { it.copy(editor = null, message = null) } }
 
     fun setEnabled(value: Boolean) = editEditor { it.copy(enabled = value) }
 
@@ -92,8 +99,9 @@ class AllowanceViewModel @Inject constructor(
             return
         }
         if (_uiState.value.isSaving) return
+        lastSubmission = editor
+        _uiState.update { it.copy(isSaving = true, message = null) }
         viewModelScope.launch {
-            _uiState.update { it.copy(isSaving = true, message = null) }
             try {
                 val settings = AllowanceSettings(editor.enabled, amount, editor.categoryIds, editor.weekStart)
                 saveSettings(settings)
@@ -110,13 +118,13 @@ class AllowanceViewModel @Inject constructor(
     }
 
     private fun editEditor(change: (AllowanceEditorState) -> AllowanceEditorState) =
-        _uiState.update { state -> state.copy(editor = state.editor?.let(change), message = null) }
+        _uiState.update { state -> if (state.isSaving) state else state.copy(editor = state.editor?.let(change), message = null) }
 
     private fun observe() {
         observation?.cancel()
         observation = viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, loadFailed = false) }
-            observeAllowance(ZarTime.today())
+            observeAllowance()
                 .catch { error ->
                     if (error is CancellationException) throw error
                     _uiState.update { it.copy(isLoading = false, loadFailed = true) }

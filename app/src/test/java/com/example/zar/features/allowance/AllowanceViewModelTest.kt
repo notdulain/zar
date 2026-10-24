@@ -34,7 +34,7 @@ class AllowanceViewModelTest {
     @After fun tearDown() = Dispatchers.resetMain()
 
     private fun viewModel() = AllowanceViewModel(
-        ObserveAllowanceUseCase(repo, StaticLedgerRepository(), FakeExpectedPaymentRepository()),
+        ObserveAllowanceUseCase(repo, StaticLedgerRepository(), FakeExpectedPaymentRepository(), kotlinx.coroutines.flow.flowOf(com.example.zar.core.domain.calculation.ZarTime.today())),
         SaveAllowanceSettingsUseCase(repo),
     )
 
@@ -155,4 +155,30 @@ class AllowanceViewModelTest {
         assertFalse(vm.uiState.value.loadFailed)
         assertNotNull(vm.uiState.value.overview)
     }
+    @Test fun repeatedSaveAndEditsDuringASaveCannotChangeOrDuplicateTheSubmittedChoice() = runTest {
+        repo.saveGate = kotlinx.coroutines.CompletableDeferred()
+        val vm = viewModel(); vm.openEditor(); vm.updateAmount("5000")
+        vm.submit(); vm.submit()
+        vm.updateAmount("9000"); vm.closeEditor()
+        assertTrue(vm.uiState.value.isSaving)
+        assertEquals("5000", vm.uiState.value.editor!!.amount)
+        repo.saveGate!!.complete(Unit); advanceUntilIdle()
+        assertEquals(1, repo.saveCount)
+        assertEquals(lkr(5_000), repo.settings.value.amount)
+    }
+
+    @Test fun aRejectedQueuedSaveRetainsTheDesiredValuesForRetryAfterTheFormClosed() = runTest {
+        val vm = viewModel(); vm.openEditor(); vm.updateAmount("8000")
+        vm.toggleCategory("groceries"); vm.setWeekStart(DayOfWeek.SUNDAY)
+        vm.submit(); advanceUntilIdle()
+        assertNull(vm.uiState.value.editor)
+        repo.settings.value = AllowanceSettings.Disabled
+        repo.syncState.value = com.example.zar.features.allowance.domain.model.AllowanceSyncState.FAILED
+        vm.openEditor()
+        assertEquals("8000", vm.uiState.value.editor!!.amount)
+        assertEquals(setOf("groceries"), vm.uiState.value.editor!!.categoryIds)
+        assertEquals(DayOfWeek.SUNDAY, vm.uiState.value.editor!!.weekStart)
+        assertEquals(AllowanceMessage.SAVE_FAILED, vm.uiState.value.message)
+    }
+
 }

@@ -74,7 +74,7 @@ class HomeRig {
     val allowanceSettings = FakeAllowanceRepository()
 
     val overview = ObserveHomeOverviewUseCase(ledger)
-    val allowance = ObserveAllowanceUseCase(allowanceSettings, ledger, expected)
+    val allowance = ObserveAllowanceUseCase(allowanceSettings, ledger, expected, kotlinx.coroutines.flow.flowOf(com.example.zar.core.domain.calculation.ZarTime.today()))
     val commitments = ObserveHomeCommitmentsUseCase(
         ObserveOutstandingUseCase(ObserveFreelanceUseCase(projects, expected, ledger)),
         ObserveNextBillUseCase(ObserveBillsUseCase(bills, accounts, expected, ledger)),

@@ -217,6 +217,15 @@ class AllowanceCalculatorTest {
     }
 
     @Test
+    fun anUnvaluedRefundKeepsTheKnownPurchaseGrossAndFlagsTheIncompleteNet() {
+        val s = status(discretionary("shoes", 2_000),
+            tx("refund", TransactionType.REFUND, lkr(500), refundOf = "shoes", conversion = ReportingConversion.Missing(Currencies.LKR)).onToday())
+        assertEquals(lkr(2_000), s.spent.amount)
+        assertEquals(1, s.missingRateCount)
+        assertTrue(s.hasCoverageWarning)
+    }
+
+    @Test
     fun aCleanWeekHasNoCoverageWarning() {
         assertFalse(status(discretionary("a", 1_000)).hasCoverageWarning)
     }
