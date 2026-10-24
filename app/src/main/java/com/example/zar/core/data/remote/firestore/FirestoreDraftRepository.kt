@@ -15,6 +15,7 @@ import com.example.zar.core.domain.model.LedgerError
 import com.example.zar.core.domain.model.SpendingClass
 import com.example.zar.core.domain.model.TransactionType
 import com.example.zar.core.domain.model.Transaction
+import com.example.zar.core.domain.model.TransactionId
 import kotlinx.coroutines.tasks.await
 import com.example.zar.core.domain.repository.DraftRepository
 import com.example.zar.core.domain.repository.LinkWrite
@@ -22,6 +23,7 @@ import com.example.zar.core.domain.repository.UserSessionProvider
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FirebaseFirestoreException
 import com.google.firebase.firestore.Source
+import com.google.firebase.firestore.MetadataChanges
 import java.time.Instant
 import java.time.LocalDate
 import javax.inject.Inject
@@ -150,6 +152,22 @@ class FirestoreDraftRepository @Inject constructor(
             if (finished?.status != DraftStatus.CONFIRMED || saved?.transactionId != link.transactionId) throw e
             LinkWrite.SAVED
         }
+    }
+
+    override fun observeLinkWrite(id: DraftId, target: TransactionId): Flow<LinkWrite> = callbackFlow {
+        val uid = requireUid()
+        val ref = firestore.collection(FirestoreCollections.USERS).document(uid)
+            .collection(FirestoreCollections.EVIDENCE_LINKS).document(id.value)
+        val registration = ref.addSnapshotListener(MetadataChanges.INCLUDE) { snapshot, error ->
+            when {
+                error != null -> close(error)
+                session.currentUserId()?.value != uid -> close(LedgerError.NotSignedIn())
+                snapshot == null || !snapshot.exists() || snapshot.getString("transactionId") != target.value -> close(IllegalStateException("Link was not saved"))
+                snapshot.metadata.hasPendingWrites() -> trySend(LinkWrite.QUEUED)
+                else -> trySend(LinkWrite.SAVED)
+            }
+        }
+        awaitClose { registration.remove() }
     }
 
     override suspend fun setStatus(id: DraftId, status: DraftStatus) {

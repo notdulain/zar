@@ -25,6 +25,7 @@ class CaptureViewModelTest {
         override suspend fun saveDraft(draft:Draft):Draft { gate?.await(); values.value=values.value+draft;return draft }
         override suspend fun confirmCapturedDraft(draft:Draft,transaction:Transaction) { }
         override suspend fun setStatus(id:DraftId,status:DraftStatus) { }
+        override fun observeLinkWrite(id: DraftId, target: com.example.zar.core.domain.model.TransactionId): Flow<LinkWrite> = kotlinx.coroutines.flow.flowOf(LinkWrite.SAVED)
         override suspend fun closeAsLinked(draft:Draft,link:EvidenceLink)=LinkWrite.SAVED
     }
     @Before fun setup()=Dispatchers.setMain(UnconfinedTestDispatcher())

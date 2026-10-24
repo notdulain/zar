@@ -1,7 +1,9 @@
 package com.example.zar.features.capture.presentation.screen
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -202,6 +204,7 @@ internal data class CaptureSettleActions(
     val onUndo: () -> Unit = {},
     val onFinish: () -> Unit = {},
     val onRetry: () -> Unit = {},
+    val onUndoKeepApart: () -> Unit = {},
 )
 
 @Composable
@@ -210,7 +213,7 @@ fun CaptureReviewScreen(onDone: () -> Unit, viewModel: CaptureReviewViewModel = 
     LaunchedEffect(state.isFinished) { if (state.isFinished) onDone() }
     val settle = CaptureSettleActions(
         viewModel::onTransferSelect, viewModel::onTransferChoice, viewModel::onLinkTransfer, viewModel::onSamePayment,
-        viewModel::onKeepApart, viewModel::onUndo, viewModel::onFinish, viewModel::onRetry,
+        viewModel::onKeepApart, viewModel::onUndo, viewModel::onFinish, viewModel::onRetry, viewModel::onUndoKeepApart,
     )
     CaptureReviewContent(state, viewModel::onFinish, viewModel::onAccountSelect, viewModel::onTypeSelect,
         viewModel::onSpendingClassSelect, viewModel::confirm, viewModel::discard, settle)
@@ -245,7 +248,7 @@ internal fun CaptureReviewContent(
             when {
                 state.asTransfer -> {
                     ZarButton(stringResource(R.string.capture_transfer_link), settle.onLinkTransfer,
-                        Modifier.fillMaxWidth().testTag("capture-link-transfer"), enabled = editable && state.transferChoice != null)
+                        Modifier.fillMaxWidth().testTag("capture-link-transfer"), enabled = editable && state.transferMatches.any { it.leg.id == state.transferChoice })
                     ZarButton(stringResource(R.string.capture_review_discard), onDiscard, Modifier.fillMaxWidth().testTag("capture-discard"),
                         style = ZarButtonStyle.Soft, enabled = editable)
                 }
@@ -277,6 +280,14 @@ internal fun CaptureReviewContent(
         if (state.twins.isNotEmpty()) Detail(stringResource(R.string.capture_twins))
         if (state.matchesUnavailable) Detail(stringResource(R.string.capture_dup_unavailable), true)
         duplicate?.let { DuplicateCard(it, state) }
+        if (state.keptApart.isNotEmpty() && !state.asTransfer) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(stringResource(R.string.capture_kept_apart), Modifier.weight(1f), style = ZarType.bodyS)
+                ZarButton(stringResource(R.string.capture_undo), settle.onUndoKeepApart,
+                    Modifier.testTag("capture-undo-apart"), enabled = editable,
+                    style = ZarButtonStyle.Soft, size = ZarButtonSize.Medium)
+            }
+        }
         ZarCard(Modifier.fillMaxWidth()) {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 ZarMonoLabel(stringResource(R.string.capture_review_account))
@@ -290,13 +301,13 @@ internal fun CaptureReviewContent(
                 ZarMonoLabel(stringResource(R.string.capture_review_type))
                 if (proposal.type == null || DraftField.TYPE in proposal.uncertainFields) Detail(stringResource(R.string.capture_review_type_hint))
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    CaptureChip(stringResource(R.string.capture_type_expense), state.type == TransactionType.EXPENSE, editable, Modifier.testTag("capture-type-expense")) { onType(TransactionType.EXPENSE) }
-                    CaptureChip(stringResource(R.string.capture_type_income), state.type == TransactionType.INCOME, editable, Modifier.testTag("capture-type-income")) { onType(TransactionType.INCOME) }
+                    CaptureChip(stringResource(R.string.capture_type_expense), !state.asTransfer && state.type == TransactionType.EXPENSE, editable, Modifier.testTag("capture-type-expense")) { onType(TransactionType.EXPENSE) }
+                    CaptureChip(stringResource(R.string.capture_type_income), !state.asTransfer && state.type == TransactionType.INCOME, editable, Modifier.testTag("capture-type-income")) { onType(TransactionType.INCOME) }
                     CaptureChip(stringResource(R.string.capture_type_transfer), state.asTransfer, editable, Modifier.testTag("capture-type-transfer")) { settle.onTransfer() }
                 }
                 Detail(stringResource(R.string.capture_review_other_type))
                 if (state.showErrors && state.type == null && !state.asTransfer) Detail(stringResource(R.string.capture_review_pick_type), true)
-                if (state.type == TransactionType.EXPENSE) {
+                if (!state.asTransfer && state.type == TransactionType.EXPENSE) {
                     ZarMonoLabel(stringResource(R.string.capture_review_counts_as))
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         listOf(SpendingClass.COMMITTED to R.string.capture_class_committed,
@@ -363,11 +374,11 @@ private fun TransferPicker(state: CaptureReviewUiState, editable: Boolean, onCho
         return
     }
     ZarCard(Modifier.fillMaxWidth()) {
-        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Column(Modifier.selectableGroup(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             matches.forEach { match ->
                 val id = match.leg.id
                 Row(
-                    Modifier.fillMaxWidth().clickable(enabled = editable) { onChoice(id) }.testTag("capture-transfer-${id.value}"),
+                    Modifier.fillMaxWidth().selectable(selected = id == state.transferChoice, enabled = editable, role = Role.RadioButton) { onChoice(id) }.testTag("capture-transfer-${id.value}"),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {

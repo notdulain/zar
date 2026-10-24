@@ -5,6 +5,7 @@ import com.example.zar.core.domain.model.DraftId
 import com.example.zar.core.domain.model.DraftStatus
 import com.example.zar.core.domain.model.EvidenceLink
 import com.example.zar.core.domain.model.Transaction
+import com.example.zar.core.domain.model.TransactionId
 import kotlinx.coroutines.flow.Flow
 
 /** Whether a closing write reached the server, or is stored on this phone and will sync when it can. */
@@ -28,4 +29,7 @@ interface DraftRepository {
      * posted. Repeating the same link is a success; it works offline and syncs later ([LinkWrite.QUEUED]).
      */
     suspend fun closeAsLinked(draft: Draft, link: EvidenceLink): LinkWrite
+
+    /** Follows a queued link until acknowledgement; a rejected write fails the flow. */
+    fun observeLinkWrite(id: DraftId, target: TransactionId): Flow<LinkWrite>
 }

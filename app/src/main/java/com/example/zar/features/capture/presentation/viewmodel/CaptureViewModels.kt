@@ -180,7 +180,7 @@ data class CaptureReviewUiState(
         get() {
             val current = draft ?: return emptyList()
             if (asTransfer || settlement != null) return emptyList()
-            return CaptureMatchRules.possibleDuplicates(current, accountId, ledger, type).filter { it.entry.id !in keptApart }
+            return CaptureMatchRules.possibleDuplicates(current, accountId, ledger.filter { it.id !in keptApart }, type)
         }
 
     /** Transfer legs this message would be the bank's record of. Only asked about once the person says it is a transfer. */
@@ -226,6 +226,7 @@ class CaptureReviewViewModel internal constructor(
     val uiState: StateFlow<CaptureReviewUiState> = _uiState.asStateFlow()
     private var filled = false
     private var undoTimer: Job? = null
+    private var syncWatcher: Job? = null
 
     init {
         // Matching is a help, never a gate: if the entries cannot be read the review still works, and says so.
@@ -261,7 +262,12 @@ class CaptureReviewViewModel internal constructor(
 
     private fun canEdit(): Boolean = _uiState.value.run { !confirmationStarted && !isSaving && settlement == null }
 
-    fun onAccountSelect(id: AccountId) { if (canEdit()) _uiState.update { it.copy(accountId = id, message = null) } }
+    fun onAccountSelect(id: AccountId) {
+        if (canEdit()) _uiState.update { state ->
+            val next = state.copy(accountId = id, message = null)
+            next.copy(transferChoice = next.transferChoice?.takeIf { id -> next.transferMatches.any { it.leg.id == id } })
+        }
+    }
     fun onTypeSelect(type: TransactionType) { if (canEdit()) _uiState.update { it.copy(type = type, asTransfer = false, transferChoice = null, message = null) } }
     fun onSpendingClassSelect(value: SpendingClass) { if (canEdit()) _uiState.update { it.copy(spendingClass = value) } }
 
@@ -269,8 +275,8 @@ class CaptureReviewViewModel internal constructor(
     fun onTransferSelect() {
         if (!canEdit()) return
         _uiState.update { state ->
-            val only = state.copy(asTransfer = true, type = null, message = null).transferMatches.singleOrNull()
-            state.copy(asTransfer = true, type = null, transferChoice = only?.leg?.id, message = null)
+            val only = state.copy(asTransfer = true, message = null).transferMatches.singleOrNull()
+            state.copy(asTransfer = true, transferChoice = only?.leg?.id, message = null)
         }
     }
 
@@ -279,7 +285,13 @@ class CaptureReviewViewModel internal constructor(
     /** "It's a different purchase": nothing is attached, and these entries are not offered again for this message. */
     fun onKeepApart() {
         if (!canEdit()) return
-        _uiState.update { state -> state.copy(keptApart = state.keptApart + state.duplicates.map { it.entry.id }) }
+        _uiState.update { state -> state.copy(keptApart = state.keptApart + listOfNotNull(state.duplicates.firstOrNull()?.entry?.id)) }
+    }
+
+    /** Restore the most recent "different purchase" answer before saving a new entry. */
+    fun onUndoKeepApart() {
+        if (!canEdit()) return
+        _uiState.update { state -> state.copy(keptApart = state.keptApart.toList().dropLast(1).toSet()) }
     }
 
     /** "It's the same payment": the message becomes evidence on the existing entry, once the short undo window has passed. */
@@ -312,6 +324,7 @@ class CaptureReviewViewModel internal constructor(
         val stage = _uiState.value.settlement?.stage
         if (stage != SettleStage.UNDO_WINDOW && stage != SettleStage.FAILED) return
         undoTimer?.cancel()
+        syncWatcher?.cancel()
         _uiState.update { it.copy(settlement = null, message = null) }
     }
 
@@ -344,9 +357,24 @@ class CaptureReviewViewModel internal constructor(
             onSuccess = { write ->
                 val stage = if (write == LinkWrite.QUEUED) SettleStage.QUEUED else SettleStage.SAVED
                 _uiState.update { it.copy(settlement = settlement.copy(stage = stage), isFinished = thenFinish) }
+                if (write == LinkWrite.QUEUED) watchSync(draft, settlement)
             },
             onFailure = { e -> _uiState.update { it.copy(settlement = settlement.copy(stage = SettleStage.FAILED), message = e.toCaptureMessage()) } },
         )
+    }
+
+    private fun watchSync(draft: Draft, settlement: CaptureSettlement) {
+        syncWatcher?.cancel()
+        syncWatcher = viewModelScope.launch {
+            linkDraft.observeWrite(draft.id, settlement.target.id)
+                .catch { e ->
+                    _uiState.update { it.copy(settlement = settlement.copy(stage = SettleStage.FAILED), message = e.toCaptureMessage()) }
+                }
+                .collect { write ->
+                    val stage = if (write == LinkWrite.SAVED) SettleStage.SAVED else SettleStage.QUEUED
+                    _uiState.update { it.copy(settlement = settlement.copy(stage = stage)) }
+                }
+        }
     }
 
     fun confirm() {

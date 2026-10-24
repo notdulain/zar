@@ -109,6 +109,7 @@ class AutoCaptureTest {
         }
         override suspend fun confirmCapturedDraft(draft: Draft, transaction: Transaction) = Unit
         override suspend fun setStatus(id: DraftId, status: DraftStatus) = Unit
+        override fun observeLinkWrite(id: DraftId, target: com.example.zar.core.domain.model.TransactionId): Flow<LinkWrite> = kotlinx.coroutines.flow.flowOf(LinkWrite.SAVED)
         override suspend fun closeAsLinked(draft: Draft, link: EvidenceLink) = LinkWrite.SAVED
     }
 

@@ -993,6 +993,7 @@
     <string name="capture_dup_explain">Same amount, a day or two apart. Nothing is added or removed until you choose, and you can take the choice back for a few seconds afterwards.</string>
     <string name="capture_dup_same">It\'s the same payment</string>
     <string name="capture_dup_apart">It\'s a different purchase</string>
+    <string name="capture_kept_apart">Kept as a different purchase. You can undo this before saving.</string>
     <string name="capture_dup_unavailable">Could not check your entries for duplicates. Save this only if it is a new payment.</string>
     <string name="capture_twins">Another waiting message looks like the same payment. Review one first; the other is then offered it as a possible duplicate.</string>
     <string name="capture_transfer_which">Which transfer?</string>
@@ -1012,7 +1013,7 @@
     <string name="capture_settled_evidence_value">Bank message attached</string>
     <string name="capture_settled_same_explain">This message matches the entry you already have, so it is attached to it as evidence. No money was added again and your totals did not change.</string>
     <string name="capture_settled_linked_explain">The message is attached to the transfer in your ledger. Nothing was posted again, so no balance changed.</string>
-    <string name="capture_settled_queued">You are offline. Your choice is saved on this phone and will sync when you are back online. It will not be applied twice.</string>
+    <string name="capture_settled_queued">Your choice is saved on this phone and waiting to sync. It will sync when a connection is available and will not be applied twice.</string>
     <string name="capture_settled_failed">Could not save your choice. Check your connection and try again. Nothing was changed.</string>
     <string name="capture_toast_same">Marked as the same payment</string>
     <string name="capture_toast_linked">Linked to the transfer</string>

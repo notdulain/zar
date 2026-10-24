@@ -36,7 +36,7 @@ class CaptureUiTest {
         compose.waitForIdle(); SystemClock.sleep(500)
         val inst = InstrumentationRegistry.getInstrumentation()
         val bitmap = checkNotNull(inst.uiAutomation.takeScreenshot())
-        val dir = File(inst.targetContext.cacheDir, "pr22").apply { mkdirs() }
+        val dir = File(inst.targetContext.cacheDir, "pr30").apply { mkdirs() }
         File(dir, "$name.png").outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG,100,it) }
         bitmap.recycle()
     }
@@ -147,13 +147,18 @@ class CaptureUiTest {
         compose.onNodeWithTag("capture-same-payment").performClick()
         compose.onNodeWithTag("capture-keep-apart").performClick()
         assertEquals(1, same); assertEquals(1, apart)
+        capture("01-possible-duplicate")
     }
 
     @Test fun onceDifferentTheEntryCanBeSavedAsNew() {
+        var undos = 0
         settleReview(CaptureReviewUiState(isLoading = false, draft = draft, accounts = listOf(bank), accountId = bank.id, type = TransactionType.EXPENSE,
-            ledger = listOf(spendEntry("earlier")), keptApart = setOf(TransactionId("earlier"))), CaptureSettleActions())
+            ledger = listOf(spendEntry("earlier")), keptApart = setOf(TransactionId("earlier"))), CaptureSettleActions(onUndoKeepApart = { undos++ }))
         compose.onNodeWithTag("capture-duplicate").assertDoesNotExist()
         compose.onNodeWithTag("capture-confirm").assertIsEnabled()
+        capture("02-different-purchase")
+        compose.onNodeWithTag("capture-undo-apart").performScrollTo().performClick()
+        assertEquals(1, undos)
     }
 
     @Test fun anAnswerWaitingToBeWrittenCanBeUndoneOrFinished() {
@@ -166,6 +171,7 @@ class CaptureUiTest {
         compose.onNodeWithTag("capture-undo").performClick()
         compose.onNodeWithTag("capture-done").performClick()
         assertEquals(1, undo); assertEquals(1, finish)
+        capture("03-same-payment-undo")
     }
 
     @Test fun aWrittenAnswerHasNoUndo() {
@@ -173,12 +179,14 @@ class CaptureUiTest {
         settleReview(CaptureReviewUiState(isLoading = false, draft = draft, accounts = listOf(bank), settlement = written), CaptureSettleActions())
         compose.onNodeWithTag("capture-undo").assertDoesNotExist()
         compose.onNodeWithTag("capture-done").assertIsEnabled()
+        capture("04-same-payment-saved")
     }
 
     @Test fun anOfflineAnswerIsSavedOnThePhone() {
         val queued = CaptureSettlement(SettleKind.SAME_PAYMENT, spendEntry("earlier"), stage = SettleStage.QUEUED)
         settleReview(CaptureReviewUiState(isLoading = false, draft = draft, accounts = listOf(bank), settlement = queued), CaptureSettleActions())
         compose.onNodeWithText("saved on this phone", substring = true).assertIsDisplayed()
+        capture("05-waiting-to-sync")
     }
 
     @Test fun aFailedWriteOffersTryAgainAndUndo() {
@@ -189,6 +197,7 @@ class CaptureUiTest {
         compose.onNodeWithTag("capture-retry").performClick()
         compose.onNodeWithTag("capture-undo-choice").performClick()
         assertEquals(1, retry); assertEquals(1, undo)
+        capture("06-failed-link-retry")
     }
 
     @Test fun aCreditCanBeChosenAsATransfer() {
@@ -207,7 +216,9 @@ class CaptureUiTest {
         settleReview(base, CaptureSettleActions(onTransferChoice = { picked = it }))
         compose.onNodeWithText("Savings → Commercial Bank").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("capture-link-transfer").assertIsNotEnabled()
-        compose.onNodeWithTag("capture-transfer-t1-in").performClick()
+        compose.onNodeWithText("Choose the transfer this message belongs to.").performScrollTo()
+        capture("07-transfer-picker")
+        compose.onNodeWithTag("capture-transfer-t1-in").assertIsNotSelected().performClick()
         assertEquals(TransactionId("t1-in"), picked)
     }
 
@@ -218,12 +229,55 @@ class CaptureUiTest {
             asTransfer = true, transferChoice = TransactionId("t1-in")), CaptureSettleActions(onLinkTransfer = { link++ }))
         compose.onNodeWithTag("capture-link-transfer").assertIsEnabled().performClick()
         assertEquals(1, link)
+        compose.onNodeWithTag("capture-transfer-t1-in").performScrollTo().assertIsSelected()
+        compose.onNodeWithText("Linking attaches this message", substring = true).performScrollTo()
+        capture("08-transfer-selected")
     }
 
     @Test fun withNoMatchingTransferNothingCanBeLinked() {
         settleReview(CaptureReviewUiState(isLoading = false, draft = creditDraft, accounts = listOf(bank), accountId = bank.id, asTransfer = true), CaptureSettleActions())
         compose.onNodeWithText("No transfer between your accounts matches", substring = true).performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("capture-link-transfer").assertIsNotEnabled()
+        capture("09-no-transfer")
+    }
+
+    @Test fun aStaleTransferChoiceCannotEnableLinking() {
+        settleReview(CaptureReviewUiState(isLoading = false, draft = creditDraft, accounts = listOf(bank), accountId = bank.id,
+            asTransfer = true, transferChoice = TransactionId("removed")), CaptureSettleActions())
+        compose.onNodeWithTag("capture-link-transfer").assertIsNotEnabled()
+    }
+
+    @Test fun aLegacyTransferShowsOnlyTheTransferChipSelected() {
+        val legacy = creditDraft.copy(proposals = listOf((creditDraft.proposals.single() as DraftProposal.ActualTransaction).copy(direction = null)))
+        settleReview(CaptureReviewUiState(isLoading = false, draft = legacy, accounts = listOf(bank, savings), accountId = bank.id,
+            type = TransactionType.INCOME, asTransfer = true, ledger = listOf(legEntry("t1-in", TransactionType.TRANSFER_IN, bank))), CaptureSettleActions())
+        compose.onNodeWithTag("capture-type-transfer").performScrollTo().assertIsSelected()
+        compose.onNodeWithTag("capture-type-income").assertIsNotSelected()
+        compose.onNodeWithTag("capture-transfer-t1-in").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test fun linkedTransferHasUndoBeforeItIsWritten() {
+        val target = legEntry("t1-in", TransactionType.TRANSFER_IN, bank)
+        val other = legEntry("t1-out", TransactionType.TRANSFER_OUT, savings)
+        settleReview(CaptureReviewUiState(isLoading = false, draft = creditDraft, accounts = listOf(bank, savings),
+            settlement = CaptureSettlement(SettleKind.TRANSFER, target, other)), CaptureSettleActions())
+        compose.onNodeWithTag("capture-undo").assertIsDisplayed()
+        capture("10-transfer-undo")
+    }
+
+    @Test fun expiredMessageOffersManualRecoveryAndKeepsSavedEntries() {
+        var adds = 0
+        compose.setContent { ZarTheme(darkTheme = false) {
+            CaptureContent(CaptureUiState(health = CaptureHealth(null, null, 0)), {}, {}, {}, {}, {}) {
+                AutoCaptureCard(AutoCaptureUiState(isLoading = false, status = com.example.zar.features.capture.domain.auto.AutoCaptureStatus(
+                    queue = com.example.zar.features.capture.domain.auto.StagingQueue(expired = listOf(now.minusSeconds(8 * 86_400), now.minusSeconds(9 * 86_400))))),
+                    true, true, false, {}, {}, {}, onAddManually = { adds++ })
+            }
+        } }
+        compose.onNodeWithTag("auto-capture-expired-add").performScrollTo().performClick()
+        assertEquals(1, adds)
+        compose.onNodeWithText("Nothing was uploaded", substring = true).assertIsDisplayed()
+        capture("11-expired-message")
     }
 
 }

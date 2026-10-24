@@ -149,6 +149,8 @@ class LinkCapturedDraftUseCase @Inject constructor(
     private val drafts: DraftRepository,
     private val ledger: LedgerRepository,
 ) {
+    fun observeWrite(id: DraftId, target: TransactionId): Flow<LinkWrite> = drafts.observeLinkWrite(id, target)
+
     suspend operator fun invoke(draft: Draft, target: TransactionId, now: Instant): Result<LinkWrite> = attempt {
         require(draft.status == DraftStatus.PENDING_REVIEW) { "Draft already reviewed" }
         require(ledger.observeLedger().first().active().any { it.id == target }) { "That entry no longer exists" }

@@ -126,4 +126,53 @@ class CaptureRepositoryTest {
         assertEquals(Direction.OUT,((repo.observeDrafts().first().first{it.id==d.id}.proposals.single()) as DraftProposal.ActualTransaction).direction)
     }
 
+    @Test fun anOfflineLinkReportsQueuedThenAcknowledgedAfterReconnecting() = runBlocking {
+        val repo = repository(); val bank = bank(); seed(bank)
+        val existing = entryFrom(repo, bank); val d = draft(); repo.saveDraft(d)
+        try {
+            db.disableNetwork().await()
+            assertEquals(LinkWrite.QUEUED, repo.closeAsLinked(d, EvidenceLink(EvidenceId(d.id.value), existing.id, now)))
+            assertEquals(LinkWrite.QUEUED, withTimeout(5_000) { repo.observeLinkWrite(d.id, existing.id).first() })
+        } finally { db.enableNetwork().await() }
+        assertEquals(LinkWrite.SAVED, withTimeout(15_000) { repo.observeLinkWrite(d.id, existing.id).first { it == LinkWrite.SAVED } })
+        assertEquals(existing.id.value, userCollection("evidenceLinks").document(d.id.value).get(com.google.firebase.firestore.Source.SERVER).await().getString("transactionId"))
+    }
+
+    @Test fun aQueuedLinkRejectedAfterReconnectFailsItsStatusStreamAndRestoresTheDraft() = runBlocking {
+        val repo = repository(); val bank = bank(); seed(bank)
+        val existing = entryFrom(repo, bank); val d = draft(); repo.saveDraft(d)
+        try {
+            db.disableNetwork().await()
+            assertEquals(LinkWrite.QUEUED, repo.closeAsLinked(d, EvidenceLink(EvidenceId(d.id.value), existing.id, now)))
+            // Another device discarded this draft while this device was offline. The emulator's admin REST
+            // endpoint simulates that server state without touching the device's queued write.
+            withContext(Dispatchers.IO) {
+                val url = java.net.URL("http://10.0.2.2:8080/v1/projects/demo-zar/databases/(default)/documents/users/${uid.value}/drafts/${d.id.value}?updateMask.fieldPaths=status")
+                val connection = url.openConnection() as java.net.HttpURLConnection
+                try {
+                    connection.requestMethod = "PATCH"
+                    connection.setRequestProperty("Authorization", "Bearer owner")
+                    connection.setRequestProperty("Content-Type", "application/json")
+                    connection.doOutput = true
+                    connection.outputStream.use { it.write("""{"fields":{"status":{"stringValue":"DISCARDED"}}}""".toByteArray()) }
+                    assertEquals(200, connection.responseCode)
+                } finally { connection.disconnect() }
+            }
+        } finally { db.enableNetwork().await() }
+        val result = runCatching {
+            withTimeout(15_000) { repo.observeLinkWrite(d.id, existing.id).first { it == LinkWrite.SAVED } }
+        }
+        assertTrue(result.exceptionOrNull() is IllegalStateException)
+        assertFalse(userCollection("evidenceLinks").document(d.id.value).get(com.google.firebase.firestore.Source.SERVER).await().exists())
+        assertEquals("DISCARDED", userCollection("drafts").document(d.id.value).get(com.google.firebase.firestore.Source.SERVER).await().getString("status"))
+    }
+
+    @Test fun anotherTargetForTheSameMessageIsNotReportedAsThisChoicesSuccess() = runBlocking {
+        val repo = repository(); val bank = bank(); seed(bank)
+        val existing = entryFrom(repo, bank); val d = draft(); repo.saveDraft(d)
+        repo.closeAsLinked(d, EvidenceLink(EvidenceId(d.id.value), existing.id, now))
+        val result = runCatching { withTimeout(5_000) { repo.observeLinkWrite(d.id, TransactionId("another-entry")).first() } }
+        assertTrue(result.exceptionOrNull() is IllegalStateException)
+    }
+
 }

@@ -69,6 +69,7 @@ class CaptureTest {
         override suspend fun setStatus(id: DraftId, status: DraftStatus) {
             drafts.value[id]?.let { drafts.value = drafts.value + (id to it.copy(status = status)) }
         }
+        override fun observeLinkWrite(id: DraftId, target: com.example.zar.core.domain.model.TransactionId): Flow<LinkWrite> = kotlinx.coroutines.flow.flowOf(LinkWrite.SAVED)
         override suspend fun closeAsLinked(draft: Draft, link: EvidenceLink): LinkWrite {
             val current = requireNotNull(drafts.value[draft.id])
             if (current.status == DraftStatus.PENDING_REVIEW) {

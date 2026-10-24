@@ -69,6 +69,8 @@ class CaptureReviewViewModelTest {
         val values = MutableStateFlow<List<Draft>>(emptyList())
         val links = mutableListOf<EvidenceLink>()
         var linkWrite = LinkWrite.SAVED
+        val syncState = MutableStateFlow(LinkWrite.QUEUED)
+        var failSync = false
         var failLink = false
         override fun observePendingDrafts(): Flow<List<Draft>> = values.map { it.filter { d -> d.status == DraftStatus.PENDING_REVIEW } }
         override fun observeDrafts(): Flow<List<Draft>> = values
@@ -78,6 +80,10 @@ class CaptureReviewViewModelTest {
             close(draft.id)
         }
         override suspend fun setStatus(id: DraftId, status: DraftStatus) = close(id, status)
+        override fun observeLinkWrite(id: DraftId, target: com.example.zar.core.domain.model.TransactionId): Flow<LinkWrite> = syncState.map {
+            if (failSync) throw IOException("Rejected after reconnect")
+            it
+        }
         override suspend fun closeAsLinked(draft: Draft, link: EvidenceLink): LinkWrite {
             if (failLink) throw IOException("Offline")
             links += link
@@ -245,6 +251,82 @@ class CaptureReviewViewModelTest {
         val vm = viewModel(); runCurrent()
 
         assertEquals(listOf("d2"), vm.uiState.value.twins.map { it.id.value })
+    }
+
+    @Test
+    fun rejectingOneVisibleDuplicateStillOffersTheOthersIncludingBeyondTheFirstThree() = runTest {
+        (1..5).forEach { earlierPurchase("purchase-$it") }
+        drafts.saveDraft(purchaseDraft())
+        val vm = viewModel(); runCurrent()
+        repeat(4) { index ->
+            assertEquals("purchase-${index + 1}", vm.uiState.value.duplicates.first().entry.id.value)
+            vm.onKeepApart()
+        }
+        assertEquals(listOf(TransactionId("purchase-5")), vm.uiState.value.duplicates.map { it.entry.id })
+        vm.onSamePayment(); vm.onFinish(); runCurrent()
+        assertEquals(TransactionId("purchase-5"), drafts.links.single().transactionId)
+        assertEquals(5, ledger.transactions.size)
+    }
+
+    @Test
+    fun aDifferentPurchaseAnswerCanBeUndoneBeforeSaving() = runTest {
+        earlierPurchase("first"); earlierPurchase("second"); drafts.saveDraft(purchaseDraft())
+        val vm = viewModel(); runCurrent()
+        vm.onKeepApart(); vm.onKeepApart()
+        assertTrue(vm.uiState.value.duplicates.isEmpty())
+        vm.onUndoKeepApart()
+        assertEquals(listOf(TransactionId("second")), vm.uiState.value.duplicates.map { it.entry.id })
+        assertEquals(setOf(TransactionId("first")), vm.uiState.value.keptApart)
+        assertTrue(drafts.links.isEmpty())
+    }
+
+    @Test
+    fun anOldDraftKeepsTheChosenDirectionWhenSwitchingToTransfer() = runTest {
+        transfer()
+        drafts.saveDraft(purchaseDraft(direction = null, amount = 25_000))
+        val vm = viewModel(); runCurrent()
+        vm.onTypeSelect(TransactionType.INCOME)
+        vm.onAccountSelect(bank.id)
+        vm.onTransferSelect()
+        assertEquals(listOf("t1-in"), vm.uiState.value.transferMatches.map { it.leg.id.value })
+        vm.onLinkTransfer(); vm.onFinish(); runCurrent()
+        assertEquals(TransactionId("t1-in"), drafts.links.single().transactionId)
+    }
+
+    @Test
+    fun switchingAccountsClearsATransferThatNoLongerMatches() = runTest {
+        transfer()
+        drafts.saveDraft(purchaseDraft(direction = Direction.IN, amount = 25_000))
+        val vm = viewModel(); runCurrent()
+        vm.onAccountSelect(bank.id); vm.onTransferSelect()
+        assertNotNull(vm.uiState.value.transferChoice)
+        vm.onAccountSelect(cash.id)
+        assertNull(vm.uiState.value.transferChoice)
+        vm.onLinkTransfer()
+        assertNull(vm.uiState.value.settlement)
+    }
+
+    @Test
+    fun aQueuedWriteUpdatesToSavedAfterServerAcknowledgement() = runTest {
+        earlierPurchase(); drafts.saveDraft(purchaseDraft()); drafts.linkWrite = LinkWrite.QUEUED
+        val vm = viewModel(); runCurrent(); vm.onSamePayment()
+        advanceTimeBy(window + 1); runCurrent()
+        assertEquals(SettleStage.QUEUED, vm.uiState.value.settlement?.stage)
+        drafts.syncState.value = LinkWrite.SAVED; runCurrent()
+        assertEquals(SettleStage.SAVED, vm.uiState.value.settlement?.stage)
+    }
+
+    @Test
+    fun aQueuedWriteRejectedLaterKeepsTheChoiceAndOffersRecovery() = runTest {
+        earlierPurchase(); drafts.saveDraft(purchaseDraft()); drafts.linkWrite = LinkWrite.QUEUED
+        val vm = viewModel(); runCurrent(); vm.onSamePayment()
+        advanceTimeBy(window + 1); runCurrent()
+        drafts.failSync = true; drafts.syncState.value = LinkWrite.SAVED; runCurrent()
+        assertEquals(SettleStage.FAILED, vm.uiState.value.settlement?.stage)
+        assertEquals(TransactionId("earlier"), vm.uiState.value.settlement?.target?.id)
+        assertEquals(CaptureMessage.FAILED, vm.uiState.value.message)
+        vm.onUndo()
+        assertNull(vm.uiState.value.settlement)
     }
 
     // --- Offline, failure and retry --------------------------------------------------------
