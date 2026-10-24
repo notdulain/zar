@@ -43,6 +43,8 @@ import com.example.zar.features.crypto.domain.repository.OpeningCostRepository
 import com.example.zar.features.freelance.data.repository.FirestoreProjectRepository
 import com.example.zar.features.freelance.domain.repository.ProjectRepository
 import com.example.zar.features.allowance.data.repository.FirestoreAllowanceRepository
+import com.example.zar.features.export.data.ContentResolverExportFileWriter
+import com.example.zar.features.export.domain.repository.ExportFileWriter
 import com.example.zar.features.allowance.domain.repository.AllowanceRepository
 import com.example.zar.features.plans.data.repository.FirestoreGoalRepository
 import com.example.zar.features.plans.domain.repository.GoalRepository
@@ -125,6 +127,10 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun bindAllowanceRepository(impl: FirestoreAllowanceRepository): AllowanceRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindExportFileWriter(impl: ContentResolverExportFileWriter): ExportFileWriter
 
     @Binds
     @Singleton

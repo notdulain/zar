@@ -20,6 +20,7 @@ class MoreRowsTest {
         onOpenRules = { opened += "rules" },
         onOpenReminder = { opened += "reminder" },
         onOpenSettings = { opened += "settings" },
+        onOpenExport = { opened += "export" },
     )
 
     @Test
@@ -33,6 +34,7 @@ class MoreRowsTest {
                 R.string.more_capture,
                 R.string.bills_open,
                 R.string.more_rules,
+                R.string.more_export,
                 R.string.more_reminder,
                 R.string.settings_title,
             ),
@@ -41,7 +43,7 @@ class MoreRowsTest {
         assertEquals(
             listOf(
                 "open-accounts", "open-income", "open-freelance", "open-crypto",
-                "open-capture", "open-bills", "open-rules", "open-reminder", "open-settings",
+                "open-capture", "open-bills", "open-rules", "open-export", "open-reminder", "open-settings",
             ),
             rows.map { it.tag },
         )
@@ -51,7 +53,6 @@ class MoreRowsTest {
     fun rowsShowOnlyFeaturesThatExist() {
         val titles = rows.map { it.title }
         assertFalse(R.string.more_privacy in titles)
-        assertFalse(R.string.more_export in titles)
     }
 
     @Test
@@ -59,7 +60,7 @@ class MoreRowsTest {
         rows.forEach { it.onClick() }
 
         assertEquals(
-            listOf("accounts", "income", "freelance", "crypto", "capture", "bills", "rules", "reminder", "settings"),
+            listOf("accounts", "income", "freelance", "crypto", "capture", "bills", "rules", "export", "reminder", "settings"),
             opened,
         )
     }
