@@ -60,7 +60,7 @@ private fun Context.canReadSms() =
  * a refusal leaves it off; sharing and pasting keep working either way.
  */
 @Composable
-fun AutoCaptureSection(viewModel: AutoCaptureViewModel = hiltViewModel()) {
+fun AutoCaptureSection(onAddManually: (() -> Unit)? = null, viewModel: AutoCaptureViewModel = hiltViewModel()) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val canReceive = remember { context.canReceiveSms() }
@@ -98,6 +98,7 @@ fun AutoCaptureSection(viewModel: AutoCaptureViewModel = hiltViewModel()) {
             }
         },
         onDismissExpired = viewModel::dismissExpired,
+        onAddManually = onAddManually,
     )
 }
 
@@ -111,6 +112,8 @@ internal fun AutoCaptureCard(
     onToggle: (Boolean) -> Unit,
     onAllow: () -> Unit,
     onDismissExpired: () -> Unit,
+    /** Offered next to an expired-message notice, so a payment that was lost can still be added. */
+    onAddManually: (() -> Unit)? = null,
 ) {
     val colors = ZarTheme.colors
     val status = state.status
@@ -178,6 +181,14 @@ internal fun AutoCaptureCard(
                     color = colors.textAttention,
                     modifier = Modifier.testTag("auto-capture-expired"),
                 )
+                if (onAddManually != null) {
+                    ZarButton(
+                        stringResource(R.string.capture_expired_add),
+                        onAddManually,
+                        Modifier.testTag("auto-capture-expired-add"),
+                        size = ZarButtonSize.Medium,
+                    )
+                }
                 ZarButton(
                     stringResource(R.string.auto_capture_expired_dismiss),
                     onDismissExpired,

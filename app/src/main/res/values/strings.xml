@@ -949,8 +949,8 @@
         <item quantity="other">%d messages waiting on this phone. They will be saved as drafts when you\'re online and signed in.</item>
     </plurals>
     <plurals name="auto_capture_expired">
-        <item quantity="one">%1$d message from %2$s couldn\'t be saved within 7 days, so it was deleted from this phone. If it was a payment, add it manually.</item>
-        <item quantity="other">%1$d messages from %2$s on couldn\'t be saved within 7 days, so they were deleted from this phone. If they were payments, add them manually.</item>
+        <item quantity="one">%1$d message from %2$s couldn\'t be saved within 7 days, so it was deleted from this phone. Nothing was uploaded, and entries you already saved are unchanged. If it was a payment, add it manually.</item>
+        <item quantity="other">%1$d messages from %2$s couldn\'t be saved within 7 days, so they were deleted from this phone. Nothing was uploaded, and entries you already saved are unchanged. If they were payments, add them manually.</item>
     </plurals>
     <string name="auto_capture_expired_dismiss">Got it</string>
     <string name="auto_capture_failed">Couldn\'t change automatic capture. Try again.</string>
@@ -960,8 +960,8 @@
     <string name="capture_review_account">Account</string>
     <string name="capture_review_no_account">No %1$s account yet. Add one under More → Accounts, or add this entry manually.</string>
     <string name="capture_review_type">Type</string>
-    <string name="capture_review_type_hint">A debit may be spending or a transfer. A credit may be income, a refund or a transfer. Choose what actually happened.</string>
-    <string name="capture_review_other_type">Refund or transfer? Discard this and add it manually.</string>
+    <string name="capture_review_type_hint">A debit may be spending or a transfer. A credit may be income or a transfer. Choose what actually happened: Zar never assumes income.</string>
+    <string name="capture_review_other_type">A refund? Discard this and add it manually.</string>
     <string name="capture_review_counts_as">Counts as</string>
     <string name="capture_review_confirm">Save entry</string>
     <string name="capture_review_discard">Discard</string>
@@ -982,6 +982,46 @@
     <string name="capture_reading">Reading…</string>
     <string name="capture_saving">Saving…</string>
     <string name="capture_connection_hint">Connect to save or discard. Saving closes this draft and adds its entry together. If saving fails, retry before changing your choices.</string>
+    <!-- Capture review: duplicates, transfers, already counted (SCRUM-40) -->
+    <string name="capture_type_transfer">Transfer</string>
+    <string name="capture_dup_label_likely">Possible duplicate</string>
+    <string name="capture_dup_label_possible">Maybe the same</string>
+    <string name="capture_dup_have">Already have</string>
+    <string name="capture_dup_amount">Amount</string>
+    <string name="capture_dup_date">Date</string>
+    <string name="capture_dup_account">Account</string>
+    <string name="capture_dup_explain">Same amount, a day or two apart. Nothing is added or removed until you choose, and you can take the choice back for a few seconds afterwards.</string>
+    <string name="capture_dup_same">It\'s the same payment</string>
+    <string name="capture_dup_apart">It\'s a different purchase</string>
+    <string name="capture_kept_apart">Kept as a different purchase. You can undo this before saving.</string>
+    <string name="capture_dup_unavailable">Could not check your entries for duplicates. Save this only if it is a new payment.</string>
+    <string name="capture_twins">Another waiting message looks like the same payment. Review one first; the other is then offered it as a possible duplicate.</string>
+    <string name="capture_transfer_which">Which transfer?</string>
+    <string name="capture_transfer_option">%1$s → %2$s</string>
+    <string name="capture_transfer_option_detail">%1$s · %2$s</string>
+    <string name="capture_transfer_none">No transfer between your accounts matches this message yet. Add the transfer first, then review this message again. Nothing was changed.</string>
+    <string name="capture_transfer_pick">Choose the transfer this message belongs to.</string>
+    <string name="capture_transfer_explain">Linking attaches this message to your entry as evidence. It does not add %1$s again.</string>
+    <string name="capture_transfer_link">Link, add nothing</string>
+    <string name="capture_settled_same_title">Counted once</string>
+    <string name="capture_settled_linked_title">Linked</string>
+    <string name="capture_settled_entry">Entry</string>
+    <string name="capture_settled_transfer">Transfer</string>
+    <string name="capture_settled_amount">Amount</string>
+    <string name="capture_settled_account">Account</string>
+    <string name="capture_settled_evidence">Evidence</string>
+    <string name="capture_settled_evidence_value">Bank message attached</string>
+    <string name="capture_settled_same_explain">This message matches the entry you already have, so it is attached to it as evidence. No money was added again and your totals did not change.</string>
+    <string name="capture_settled_linked_explain">The message is attached to the transfer in your ledger. Nothing was posted again, so no balance changed.</string>
+    <string name="capture_settled_queued">Your choice is saved on this phone and waiting to sync. It will sync when a connection is available and will not be applied twice.</string>
+    <string name="capture_settled_failed">Could not save your choice. Check your connection and try again. Nothing was changed.</string>
+    <string name="capture_toast_same">Marked as the same payment</string>
+    <string name="capture_toast_linked">Linked to the transfer</string>
+    <string name="capture_undo">Undo</string>
+    <string name="capture_undo_choice">Undo my choice</string>
+    <string name="capture_retry">Try again</string>
+    <string name="capture_done">Done</string>
+    <string name="capture_expired_add">Add it manually</string>
     <!-- Bills (L05) -->
     <string name="bills_title">Bills</string>
     <string name="bills_open">Bills</string>

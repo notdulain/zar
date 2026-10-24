@@ -8,7 +8,9 @@ import com.example.zar.core.domain.model.DraftStatus
 import com.example.zar.core.domain.model.Transaction
 import com.example.zar.core.domain.model.TransactionType
 import com.example.zar.core.domain.model.UserId
+import com.example.zar.core.domain.model.EvidenceLink
 import com.example.zar.core.domain.repository.DraftRepository
+import com.example.zar.core.domain.repository.LinkWrite
 import com.example.zar.core.domain.repository.UserSessionProvider
 import com.example.zar.features.capture.domain.auto.AutoCapturePreferences
 import com.example.zar.features.capture.domain.auto.AutoCaptureRules
@@ -107,6 +109,8 @@ class AutoCaptureTest {
         }
         override suspend fun confirmCapturedDraft(draft: Draft, transaction: Transaction) = Unit
         override suspend fun setStatus(id: DraftId, status: DraftStatus) = Unit
+        override fun observeLinkWrite(id: DraftId, target: com.example.zar.core.domain.model.TransactionId): Flow<LinkWrite> = kotlinx.coroutines.flow.flowOf(LinkWrite.SAVED)
+        override suspend fun closeAsLinked(draft: Draft, link: EvidenceLink) = LinkWrite.SAVED
     }
 
     private class Fixture(signedIn: UserId?, enabledFor: UserId?) {
