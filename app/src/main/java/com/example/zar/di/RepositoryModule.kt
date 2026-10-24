@@ -42,6 +42,8 @@ import com.example.zar.features.crypto.data.repository.FirestoreOpeningCostRepos
 import com.example.zar.features.crypto.domain.repository.OpeningCostRepository
 import com.example.zar.features.freelance.data.repository.FirestoreProjectRepository
 import com.example.zar.features.freelance.domain.repository.ProjectRepository
+import com.example.zar.features.allowance.data.repository.FirestoreAllowanceRepository
+import com.example.zar.features.allowance.domain.repository.AllowanceRepository
 import com.example.zar.features.plans.data.repository.FirestoreGoalRepository
 import com.example.zar.features.plans.domain.repository.GoalRepository
 import com.example.zar.features.quicknote.data.remote.HttpQuickNoteDraftTransport
@@ -119,6 +121,10 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun bindGoalRepository(impl: FirestoreGoalRepository): GoalRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindAllowanceRepository(impl: FirestoreAllowanceRepository): AllowanceRepository
 
     @Binds
     @Singleton

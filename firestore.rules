@@ -64,6 +64,11 @@ rules_version = '2';
 //   id (== doc id), name (1-80), target (positive Money), targetDate? (YYYY-MM-DD), allocations (max 10),
 //   allocation {accountId, amount}; allocations reserve money but do not write ledger entries.
 //
+// allowance/weekly                create, update (one document; no delete: switch it off instead)
+//   id ('weekly' == doc id), enabled (bool), amount? (positive LKR FIAT Money; required when enabled),
+//   categoryIds (list of up to 8 category ids), weekStart (MONDAY..SUNDAY), updatedAt (int)
+//   The allowance reads the ledger but never writes to it.
+//
 // drafts/{draftId}                create, update, delete (unconfirmed proposals)
 //   id (== doc id), source, status, proposals (list of maps, max 5), createdAt (immutable)
 //   Raw message text is never stored here; it stays in encrypted on-device staging.
@@ -366,6 +371,30 @@ service cloud.firestore {
             && m == {'currency': target.currency, 'kind': 'CRYPTO', 'digits': target.digits, 'quantity': m.quantity});
     }
 
+    function isValidAllowance(docId) {
+      let d = data();
+      let c = d.categoryIds;
+      let count = c.size();
+      return hasOnlyAllowedFields(['id', 'enabled', 'amount', 'categoryIds', 'weekStart', 'updatedAt'])
+        && hasRequiredFields(['id', 'enabled', 'categoryIds', 'weekStart', 'updatedAt'])
+        && docId == 'weekly'
+        && d.id == docId
+        && d.enabled is bool
+        && (!('amount' in d) || (isPositiveMoney(d.amount) && d.amount.kind == 'FIAT' && d.amount.currency == 'LKR'))
+        && (!d.enabled || 'amount' in d)
+        && d.weekStart in ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY']
+        && isMillis(d.updatedAt)
+        && c is list && count <= 8
+        && (count < 1 || isShortString(c[0], 64))
+        && (count < 2 || isShortString(c[1], 64))
+        && (count < 3 || isShortString(c[2], 64))
+        && (count < 4 || isShortString(c[3], 64))
+        && (count < 5 || isShortString(c[4], 64))
+        && (count < 6 || isShortString(c[5], 64))
+        && (count < 7 || isShortString(c[6], 64))
+        && (count < 8 || isShortString(c[7], 64));
+    }
+
     function isValidGoal(goalId) {
       let d = data();
       let a = d.allocations;
@@ -552,6 +581,12 @@ service cloud.firestore {
         allow create: if isOwner(userId) && isValidGoal(goalId);
         allow update: if isOwner(userId) && isValidGoal(goalId)
           && areImmutableFieldsUnchanged(['id']);
+        allow delete: if false;
+      }
+
+      match /allowance/{docId} {
+        allow read: if isOwner(userId);
+        allow create, update: if isOwner(userId) && isValidAllowance(docId);
         allow delete: if false;
       }
 

@@ -18,7 +18,9 @@ import com.example.zar.core.domain.model.LedgerError
 import com.example.zar.core.domain.model.RecordSource
 import com.example.zar.core.domain.model.SpendingClass
 import com.example.zar.core.domain.model.TransactionType
+import com.example.zar.core.domain.model.EvidenceLink
 import com.example.zar.core.domain.repository.DraftRepository
+import com.example.zar.core.domain.repository.LinkWrite
 import com.example.zar.core.domain.model.Transaction
 import java.time.Instant
 import java.io.IOException
@@ -66,6 +68,15 @@ class CaptureTest {
         }
         override suspend fun setStatus(id: DraftId, status: DraftStatus) {
             drafts.value[id]?.let { drafts.value = drafts.value + (id to it.copy(status = status)) }
+        }
+        override fun observeLinkWrite(id: DraftId, target: com.example.zar.core.domain.model.TransactionId): Flow<LinkWrite> = kotlinx.coroutines.flow.flowOf(LinkWrite.SAVED)
+        override suspend fun closeAsLinked(draft: Draft, link: EvidenceLink): LinkWrite {
+            val current = requireNotNull(drafts.value[draft.id])
+            if (current.status == DraftStatus.PENDING_REVIEW) {
+                ledger.linkEvidence(link)
+                drafts.value = drafts.value + (draft.id to current.copy(status = DraftStatus.CONFIRMED))
+            }
+            return LinkWrite.SAVED
         }
     }
 

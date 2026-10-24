@@ -54,6 +54,7 @@ object CapturedDraftRules {
             spendingClass = if (type == TransactionType.EXPENSE) SpendingClass.UNKNOWN else null,
             merchant = parsed.counterparty?.take(120),
             uncertainFields = uncertain,
+            direction = parsed.direction,
         )
         return Draft(id, source, listOf(proposal), DraftStatus.PENDING_REVIEW, createdAt)
     }

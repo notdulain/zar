@@ -32,6 +32,8 @@ sealed interface DraftProposal {
         /** Descriptive label for the movement, distinct from the merchant's name. */
         val title: String? = null,
         val time: LocalTime? = null,
+        /** Which way the money went, as the bank message said. The type can still be a guess; this is not. */
+        val direction: Direction? = null,
     ) : DraftProposal {
         override val missingFields: Set<DraftField>
             get() = buildSet {

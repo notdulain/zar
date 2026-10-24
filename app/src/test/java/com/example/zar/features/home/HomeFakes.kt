@@ -7,6 +7,8 @@ import com.example.zar.core.domain.model.Transaction
 import com.example.zar.core.domain.model.Transfer
 import com.example.zar.core.domain.model.VoidMarker
 import com.example.zar.core.domain.repository.LedgerRepository
+import com.example.zar.features.allowance.FakeAllowanceRepository
+import com.example.zar.features.allowance.domain.usecase.ObserveAllowanceUseCase
 import com.example.zar.features.bills.domain.model.Bill
 import com.example.zar.features.bills.domain.repository.BillRepository
 import com.example.zar.features.bills.domain.usecase.ObserveBillsUseCase
@@ -69,8 +71,10 @@ class HomeRig {
     val expected = FakeExpectedPaymentRepository()
     val bills = SwitchableBills()
     private val accounts = FakePlanAccounts(emptyList())
+    val allowanceSettings = FakeAllowanceRepository()
 
     val overview = ObserveHomeOverviewUseCase(ledger)
+    val allowance = ObserveAllowanceUseCase(allowanceSettings, ledger, expected, kotlinx.coroutines.flow.flowOf(com.example.zar.core.domain.calculation.ZarTime.today()))
     val commitments = ObserveHomeCommitmentsUseCase(
         ObserveOutstandingUseCase(ObserveFreelanceUseCase(projects, expected, ledger)),
         ObserveNextBillUseCase(ObserveBillsUseCase(bills, accounts, expected, ledger)),

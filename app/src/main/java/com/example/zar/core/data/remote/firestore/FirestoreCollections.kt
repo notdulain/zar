@@ -19,5 +19,6 @@ object FirestoreCollections {
     const val CRYPTO_OPENING_COSTS = "cryptoOpeningCosts"
     const val BILLS = "bills"
     const val GOALS = "goals"
+    const val ALLOWANCE = "allowance"
     const val CATEGORY_RULES = "categoryRules"
 }

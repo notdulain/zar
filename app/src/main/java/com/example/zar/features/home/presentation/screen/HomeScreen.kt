@@ -69,6 +69,7 @@ import com.example.zar.core.presentation.theme.ZarHighlight
 import com.example.zar.core.presentation.theme.ZarTheme
 import com.example.zar.core.presentation.theme.ZarType
 import com.example.zar.features.home.domain.model.HomeOverview
+import com.example.zar.features.home.presentation.viewmodel.HomeAllowanceContent
 import com.example.zar.features.home.presentation.viewmodel.HomeCommitmentsContent
 import com.example.zar.features.home.presentation.viewmodel.HomeContent
 import com.example.zar.features.home.presentation.viewmodel.HomeUiState
@@ -125,7 +126,7 @@ internal fun HomeScreenContent(
         onAddOption = onAddOption,
     ) { padding ->
         Column(
-            Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(padding),
+            Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(0.dp),
         ) {
             when (val content = state.content) {
@@ -149,6 +150,7 @@ internal fun HomeScreenContent(
                     onNavigate = onNavigate,
                     onOpenReview = onOpenReview,
                     commitments = state.commitments,
+                    allowance = state.allowance,
                     onRetry = onRetry,
                     onOpenFreelance = onOpenFreelance,
                     onOpenBills = onOpenBills,
@@ -185,6 +187,7 @@ private fun OverviewBlock(
     onNavigate: (TopLevelDestination) -> Unit,
     onOpenReview: () -> Unit,
     commitments: HomeCommitmentsContent,
+    allowance: HomeAllowanceContent,
     onRetry: () -> Unit,
     onOpenFreelance: () -> Unit,
     onOpenBills: () -> Unit,
@@ -212,11 +215,10 @@ private fun OverviewBlock(
                 onRetry = onRetry,
                 modifier = Modifier.weight(1f),
             )
-            StatCard(
-                title = stringResource(R.string.home_weekly_limit),
-                value = stringResource(R.string.home_weekly_limit_empty),
-                action = stringResource(R.string.home_choose_amount),
-                onClick = { onNavigate(TopLevelDestination.Plans) },
+            WeeklyLimitCard(
+                allowance = allowance,
+                onOpenPlans = { onNavigate(TopLevelDestination.Plans) },
+                onRetry = onRetry,
                 modifier = Modifier.weight(1f),
             )
         }
@@ -605,18 +607,6 @@ private fun typeLabelRes(type: TransactionType): Int = when (type) {
     TransactionType.REFUND -> R.string.home_activity_refund
     TransactionType.ADJUSTMENT_IN -> R.string.home_activity_adjustment_in
     TransactionType.ADJUSTMENT_OUT -> R.string.home_activity_adjustment_out
-}
-
-@Composable
-private fun StatCard(title: String, value: String, action: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    val colors = ZarTheme.colors
-    ZarCard(modifier.height(116.dp), onClick = onClick, contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp)) {
-        Text(title.uppercase(), style = ZarType.monoLabel, color = colors.textTertiary)
-        Spacer(Modifier.height(10.dp))
-        Text(value, style = ZarType.bodyM, color = colors.textPrimary)
-        Spacer(Modifier.weight(1f))
-        Text(action, style = ZarType.labelAction, color = colors.textSelected, maxLines = 1, overflow = TextOverflow.Ellipsis)
-    }
 }
 
 @Preview(showBackground = true)
