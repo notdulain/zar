@@ -59,6 +59,13 @@ class ExportUiTest {
     }
 
     @Test
+    fun aOneRowConfirmationIsSingular() {
+        val file = ExportFile(ExportKind.EXPECTED_PAYMENTS, "zar-expected-payments-2026-10-25.csv", "csv", 1)
+        show(ready(0, 1) { copy(saved = file) })
+        compose.onNodeWithTag("export-status").performScrollTo().assertTextContains("(1 row).", substring = true)
+    }
+
+    @Test
     fun aSaveFailureIsExplained() {
         show(ready(24, 0) { copy(message = ExportMessage.SAVE_FAILED) })
         compose.onNodeWithTag("export-status").performScrollTo().assertIsDisplayed()

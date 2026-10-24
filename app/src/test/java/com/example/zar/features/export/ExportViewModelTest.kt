@@ -17,6 +17,7 @@ import com.example.zar.features.freelance.FreelanceFixtures
 import com.example.zar.features.home.StaticLedgerRepository
 import com.example.zar.features.plans.FakePlanAccounts
 import java.io.IOException
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.flow
@@ -97,6 +98,45 @@ class ExportViewModelTest {
         assertEquals("content://docs/7", writer.written.single().first)
         assertEquals(ExportKind.EXPECTED_PAYMENTS, state.saved!!.kind)
         assertFalse(state.isWorking)
+    }
+
+    @Test
+    fun thePickerIsOpenedOnceEvenIfTheScreenIsRecreated() = runTest {
+        withRecords()
+        val vm = viewModel()
+        vm.export(ExportKind.TRANSACTIONS)
+        advanceUntilIdle()
+        assertTrue(vm.uiState.value.needsPicker)
+
+        vm.onPickerOpened()
+        // A rotation recomposes the screen with the same pending file; it must not reopen the picker.
+        assertFalse(vm.uiState.value.needsPicker)
+        assertNotNull(vm.uiState.value.pending)
+
+        writer.gate = CompletableDeferred()
+        vm.onDestinationPicked("content://docs/7")
+        // While the file is being written the picker must not be asked for again.
+        assertTrue(vm.uiState.value.isWorking)
+        assertFalse(vm.uiState.value.needsPicker)
+
+        writer.gate!!.complete(Unit)
+        advanceUntilIdle()
+        assertFalse(vm.uiState.value.pickerOpen)
+        assertFalse(vm.uiState.value.needsPicker)
+        assertEquals(1, writer.written.size)
+    }
+
+    @Test
+    fun theConfirmationUsesTheNameTheUserSavedUnder() = runTest {
+        withRecords()
+        writer.savedName = "march-backup.csv"
+        val vm = viewModel()
+        vm.export(ExportKind.TRANSACTIONS)
+        advanceUntilIdle()
+        vm.onDestinationPicked("content://docs/7")
+        advanceUntilIdle()
+
+        assertEquals("march-backup.csv", vm.uiState.value.saved!!.fileName)
     }
 
     @Test

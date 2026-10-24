@@ -45,6 +45,7 @@ import com.example.zar.features.export.domain.model.ExportKind
 import com.example.zar.features.export.presentation.viewmodel.ExportMessage
 import com.example.zar.features.export.presentation.viewmodel.ExportUiState
 import com.example.zar.features.export.presentation.viewmodel.ExportViewModel
+import com.example.zar.features.transactions.presentation.activity.screen.DarkStatusBarIcons
 
 /** Export data: two separate CSV files, saved wherever the user chooses. */
 @Composable
@@ -53,12 +54,20 @@ fun ExportScreen(
     viewModel: ExportViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    // More has a dark hero with white glyphs; this light screen needs dark ones, as Settings does.
+    DarkStatusBarIcons()
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/csv")) { uri ->
         viewModel.onDestinationPicked(uri?.toString())
     }
     // The file is built first, then the system picker opens so the user chooses where it goes.
+    // Opening is recorded so a rotation while the picker is up does not open a second one.
     val pending = state.pending
-    LaunchedEffect(pending) { if (pending != null) picker.launch(pending.fileName) }
+    LaunchedEffect(pending, state.pickerOpen) {
+        if (pending != null && state.needsPicker) {
+            picker.launch(pending.fileName)
+            viewModel.onPickerOpened()
+        }
+    }
     ExportContent(
         state = state,
         onBack = onBack,
@@ -185,7 +194,7 @@ private fun ExportStatus(state: ExportUiState) {
         state.message == ExportMessage.NOTHING_TO_EXPORT -> stringResource(R.string.export_nothing)
         state.message == ExportMessage.BUILD_FAILED -> stringResource(R.string.export_build_failed)
         state.message == ExportMessage.SAVE_FAILED -> stringResource(R.string.export_save_failed)
-        saved != null -> stringResource(R.string.export_saved, saved.fileName, saved.rowCount)
+        saved != null -> pluralStringResource(R.plurals.export_saved, saved.rowCount, saved.fileName, saved.rowCount)
         else -> return
     }
     Text(

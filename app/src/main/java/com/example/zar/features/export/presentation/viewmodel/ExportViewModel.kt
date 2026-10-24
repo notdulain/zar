@@ -27,11 +27,15 @@ data class ExportUiState(
     val counts: ExportCounts? = null,
     /** Built and waiting for the user to pick where to save it. */
     val pending: ExportFile? = null,
+    /** The picker for [pending] is already open, so a recreated screen must not open it again. */
+    val pickerOpen: Boolean = false,
     val isWorking: Boolean = false,
     val message: ExportMessage? = null,
     /** The export most recently saved, for the confirmation line. */
     val saved: ExportFile? = null,
-)
+) {
+    val needsPicker: Boolean get() = pending != null && !pickerOpen
+}
 
 @HiltViewModel
 class ExportViewModel @Inject constructor(
@@ -64,19 +68,27 @@ class ExportViewModel @Inject constructor(
         }
     }
 
+    /** The screen launched the picker for [ExportUiState.pending]. */
+    fun onPickerOpened() = _uiState.update { if (it.pending != null) it.copy(pickerOpen = true) else it }
+
     /** The picker's answer: where to save, or null when the user backed out. */
     fun onDestinationPicked(location: String?) {
         val file = _uiState.value.pending ?: return
         if (location == null) {
-            _uiState.update { it.copy(pending = null) }
+            _uiState.update { it.copy(pending = null, pickerOpen = false) }
             return
         }
         viewModelScope.launch {
+            // pickerOpen stays set until pending clears, so the screen never reopens it mid-save.
             _uiState.update { it.copy(isWorking = true, message = null) }
             saveExport(location, file)
-                .onSuccess { _uiState.update { it.copy(pending = null, isWorking = false, saved = file) } }
+                .onSuccess { saved ->
+                    _uiState.update { it.copy(pending = null, pickerOpen = false, isWorking = false, saved = saved) }
+                }
                 .onFailure {
-                    _uiState.update { it.copy(pending = null, isWorking = false, message = ExportMessage.SAVE_FAILED) }
+                    _uiState.update {
+                        it.copy(pending = null, pickerOpen = false, isWorking = false, message = ExportMessage.SAVE_FAILED)
+                    }
                 }
         }
     }

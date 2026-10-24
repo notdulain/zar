@@ -5,6 +5,7 @@ import com.example.zar.core.domain.repository.UserSessionProvider
 import com.example.zar.features.export.domain.model.ExportFile
 import com.example.zar.features.export.domain.repository.ExportFileWriter
 import java.io.IOException
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 
@@ -18,10 +19,17 @@ class FakeSession(user: String? = "alice") : UserSessionProvider {
 class RecordingWriter : ExportFileWriter {
     val written = mutableListOf<Pair<String, ExportFile>>()
     var failing = false
+    /** The name the destination reports back; null means it reports none. */
+    var savedName: String? = null
 
-    override suspend fun write(location: String, file: ExportFile) {
+    /** When set, writing waits for it, so tests can look at the state mid-save. */
+    var gate: CompletableDeferred<Unit>? = null
+
+    override suspend fun write(location: String, file: ExportFile): String? {
+        gate?.await()
         if (failing) throw IOException("cannot write")
         written += location to file
+        return savedName
     }
 }
 

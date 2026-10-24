@@ -64,11 +64,15 @@ class BuildExportUseCase @Inject constructor(
     }
 }
 
-/** Writes a finished export to the destination the user picked. */
+/**
+ * Writes a finished export to the destination the user picked. The result carries the name it
+ * was actually saved under, so the confirmation never names a file the user renamed.
+ */
 class SaveExportUseCase @Inject constructor(
     private val writer: ExportFileWriter,
 ) {
-    suspend operator fun invoke(location: String, file: ExportFile): Result<Unit> = resultOf {
-        writer.write(location, file)
+    suspend operator fun invoke(location: String, file: ExportFile): Result<ExportFile> = resultOf {
+        val savedName = writer.write(location, file)
+        if (savedName.isNullOrBlank()) file else file.copy(fileName = savedName)
     }
 }
