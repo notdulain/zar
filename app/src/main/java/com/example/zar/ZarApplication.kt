@@ -1,5 +1,7 @@
 package com.example.zar
 
+import com.example.zar.core.presentation.privacy.syncAmountMask
+import com.example.zar.core.domain.repository.AmountPrivacyRepository
 import android.app.Application
 import com.example.zar.core.data.remote.AppCheckInstaller
 import com.example.zar.features.capture.domain.auto.ResumeAutoCaptureUseCase
@@ -18,9 +20,12 @@ class ZarApplication : Application() {
     @Inject lateinit var scheduleReminder: ScheduleReminderUseCase
     @Inject lateinit var paymentReminders: PaymentReminderScheduler
     @Inject lateinit var resumeAutoCapture: ResumeAutoCaptureUseCase
+    @Inject lateinit var amountPrivacy: AmountPrivacyRepository
 
     override fun onCreate() {
         super.onCreate()
+        // Read the hide-amounts choice before anything is drawn, so a hidden amount is never shown first.
+        CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate).syncAmountMask(amountPrivacy)
         AppCheckInstaller.install(this)
         // Restore the weekly reminder without delaying startup.
         CoroutineScope(SupervisorJob() + Dispatchers.Default).launch { runCatching { scheduleReminder() } }

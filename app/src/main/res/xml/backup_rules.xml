@@ -7,4 +7,6 @@
     <exclude domain="database" path="capture_staging.db-shm" />
     <!-- Who turned automatic capture on. A restored copy would show it on while the SMS receiver stays off. -->
     <exclude domain="file" path="datastore/auto_sms_capture.preferences_pb" />
+    <!-- Whether amounts are hidden is a choice about this phone, not about the account. -->
+    <exclude domain="sharedpref" path="amount_privacy.xml" />
 </full-backup-content>

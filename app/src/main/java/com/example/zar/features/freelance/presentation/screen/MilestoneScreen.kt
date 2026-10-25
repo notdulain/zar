@@ -1,5 +1,6 @@
 package com.example.zar.features.freelance.presentation.screen
 
+import com.example.zar.core.presentation.privacy.amountFieldTransformation
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -133,6 +134,7 @@ private fun MilestoneFields(uiState: MilestoneUiState, viewModel: MilestoneViewM
         isError = uiState.problems.amountErrorRes() != null,
         supportingText = uiState.problems.amountErrorRes()?.let { { Text(stringResource(it)) } },
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+        visualTransformation = amountFieldTransformation(),
         singleLine = true,
         modifier = Modifier.fillMaxWidth(),
     )
@@ -206,6 +208,7 @@ private fun CandidateCard(uiState: MilestoneUiState, candidate: ReceiptCandidate
                     isError = problems.amountErrorRes() != null,
                     supportingText = problems.amountErrorRes()?.let { { Text(stringResource(it)) } },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    visualTransformation = amountFieldTransformation(),
                     singleLine = true,
                     modifier = Modifier.weight(1f),
                 )

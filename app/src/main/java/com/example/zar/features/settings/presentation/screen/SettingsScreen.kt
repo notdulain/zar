@@ -1,5 +1,7 @@
 package com.example.zar.features.settings.presentation.screen
 
+import com.example.zar.core.presentation.privacy.AmountPrivacyViewModel
+import com.example.zar.core.presentation.components.ZarSwitch
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -54,9 +56,13 @@ import com.example.zar.features.transactions.presentation.activity.screen.SheetS
 fun SettingsScreen(
     onBack: () -> Unit,
     viewModel: SettingsViewModel = hiltViewModel(),
+    privacyViewModel: AmountPrivacyViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val amountsHidden by privacyViewModel.hidden.collectAsStateWithLifecycle()
     SettingsContent(
+        amountsHidden = amountsHidden,
+        onAmountsHiddenChange = privacyViewModel::set,
         uiState = uiState,
         onBack = onBack,
         onSignOut = viewModel::onSignOutClick,
@@ -67,6 +73,8 @@ fun SettingsScreen(
 
 @Composable
 private fun SettingsContent(
+    amountsHidden: Boolean = false,
+    onAmountsHiddenChange: (Boolean) -> Unit = {},
     uiState: SettingsUiState,
     onBack: () -> Unit,
     onSignOut: () -> Unit,
@@ -89,6 +97,9 @@ private fun SettingsContent(
                     ZarDivider()
                 }
                 SettingsRow(stringResource(R.string.settings_currency), uiState.currencyCode, Modifier.testTag("settings-currency"))
+            }
+            ZarCard(Modifier.fillMaxWidth(), contentPadding = PaddingValues(horizontal = 20.dp, vertical = 14.dp)) {
+                HideAmountsRow(amountsHidden, onAmountsHiddenChange)
             }
             SettingsNote(stringResource(R.string.settings_where_title), stringResource(R.string.settings_where_body))
             ZarButton(
@@ -145,6 +156,22 @@ private fun SettingsRow(label: String, value: String, modifier: Modifier = Modif
     ) {
         Text(label, style = ZarType.bodyS, color = ZarTheme.colors.textSecondary)
         Text(value, Modifier.weight(1f), style = ZarType.bodyM, color = ZarTheme.colors.textPrimary, textAlign = TextAlign.End)
+    }
+}
+
+/** "Hide amounts": one switch for the whole app, remembered on this phone. */
+@Composable
+private fun HideAmountsRow(hidden: Boolean, onChange: (Boolean) -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().semantics(mergeDescendants = true) {},
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(stringResource(R.string.settings_hide_amounts), style = ZarType.bodyM, color = ZarTheme.colors.textPrimary)
+            Text(stringResource(R.string.settings_hide_amounts_detail), style = ZarType.bodyCaption, color = ZarTheme.colors.textSecondary)
+        }
+        ZarSwitch(hidden, onChange, Modifier.testTag("settings-hide-amounts"))
     }
 }
 
