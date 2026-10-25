@@ -74,14 +74,23 @@ class AmountMaskTest {
     }
 
     @Test
-    fun amountFieldsAreMaskedCharacterForCharacterWhileHidden() {
+    fun amountFieldsShowAFixedMaskThatHidesTheNumberOfDigits() {
         val typed = AnnotatedString("1500.50")
         assertEquals("1500.50", amountFieldTransformation().filter(typed).text.text)
 
         AmountMask.set(true)
-        val masked = amountFieldTransformation().filter(typed).text.text
-        assertEquals(typed.length, masked.length)
-        assertTrue(masked.all { it == '•' })
+        assertEquals(AmountMask.HIDDEN_TEXT, amountFieldTransformation().filter(typed).text.text)
+        assertEquals(AmountMask.HIDDEN_TEXT, amountFieldTransformation().filter(AnnotatedString("2")).text.text)
+        assertEquals("", amountFieldTransformation().filter(AnnotatedString("")).text.text)
         assertFalse(amountFieldTransformation() === VisualTransformation.None)
+    }
+
+    @Test
+    fun theCursorOfAMaskedFieldStaysAfterTheTypedDigits() {
+        AmountMask.set(true)
+        val typed = AnnotatedString("1500.50")
+        val mapping = amountFieldTransformation().filter(typed).offsetMapping
+        (0..typed.length).forEach { assertEquals(AmountMask.HIDDEN_TEXT.length, mapping.originalToTransformed(it)) }
+        (0..AmountMask.HIDDEN_TEXT.length).forEach { assertEquals(typed.length, mapping.transformedToOriginal(it)) }
     }
 }

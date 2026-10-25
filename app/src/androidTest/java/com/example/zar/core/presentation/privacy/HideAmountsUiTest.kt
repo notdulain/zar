@@ -1,6 +1,10 @@
 package com.example.zar.core.presentation.privacy
 
 import android.graphics.Bitmap
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
@@ -10,6 +14,14 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performTextInput
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.test.platform.app.InstrumentationRegistry
 import com.example.zar.core.domain.calculation.PeriodSummary
 import com.example.zar.core.domain.calculation.ReportingTotal
@@ -163,5 +175,24 @@ class HideAmountsUiTest {
         }
         compose.onNodeWithTag("plans-backed").assertTextContains("LKR ••••")
         compose.onAllNodesWithText("LKR 0", substring = true).assertCountEquals(0)
+    }
+
+    @Test
+    fun aMaskedAmountFieldStillTakesTypingWithoutShowingItsLength() {
+        AmountMask.set(true)
+        var typed = ""
+        compose.setContent {
+            var value by remember { mutableStateOf("1850.50") }
+            BasicTextField(
+                value = value,
+                onValueChange = { value = it; typed = it },
+                visualTransformation = amountFieldTransformation(),
+                modifier = Modifier.testTag("masked-amount"),
+            )
+        }
+        compose.onNodeWithTag("masked-amount").performClick().performTextInput("9")
+        compose.runOnIdle { assertEquals("1850.509", typed) }
+        // What is drawn and announced is the fixed mask; only the field's raw value keeps the digits.
+        compose.onNodeWithTag("masked-amount").assert(SemanticsMatcher.expectValue(SemanticsProperties.EditableText, AnnotatedString(AmountMask.HIDDEN_TEXT)))
     }
 }

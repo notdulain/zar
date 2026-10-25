@@ -3,7 +3,9 @@ package com.example.zar.core.presentation.privacy
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.input.OffsetMapping
+import androidx.compose.ui.text.input.TransformedText
 import androidx.compose.ui.text.input.VisualTransformation
 import com.example.zar.core.domain.repository.AmountPrivacyRepository
 import kotlinx.coroutines.CoroutineScope
@@ -37,9 +39,23 @@ object AmountMask {
 /**
  * Masks what is typed into, or already filled into, an amount field while amounts are hidden, so
  * an edit screen does not show a balance either. The digits still work: only the display changes.
+ * The mask has a fixed width like the formatters, so the number of digits does not give away how
+ * large the amount is.
  */
 fun amountFieldTransformation(): VisualTransformation =
-    if (AmountMask.isHidden) PasswordVisualTransformation('•') else VisualTransformation.None
+    if (AmountMask.isHidden) FixedAmountMask else VisualTransformation.None
+
+private object FixedAmountMask : VisualTransformation {
+    override fun filter(text: AnnotatedString): TransformedText {
+        val shown = if (text.isEmpty()) "" else AmountMask.HIDDEN_TEXT
+        // Every position maps to the end, so the cursor stays after the typed digits.
+        val mapping = object : OffsetMapping {
+            override fun originalToTransformed(offset: Int) = shown.length
+            override fun transformedToOriginal(offset: Int) = text.length
+        }
+        return TransformedText(AnnotatedString(shown), mapping)
+    }
+}
 
 /**
  * Applies the saved choice before anything is drawn, then follows later changes. Call it once from
