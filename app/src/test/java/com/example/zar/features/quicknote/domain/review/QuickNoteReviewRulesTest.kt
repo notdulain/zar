@@ -67,7 +67,25 @@ class QuickNoteReviewRulesTest {
         assertNull(input.currency)
     }
 
+    @Test fun selectedTimeIsSavedAndCanBeRemovedWithoutInventingOne() {
+        val time = java.time.LocalTime.of(18, 30)
+        assertEquals(time, (check(expense().copy(time = time)).record as ConfirmableRecord.Ledger).transaction.time)
+        assertNull((check(expense()).record as ConfirmableRecord.Ledger).transaction.time)
+    }
+
     // --- Actual records ------------------------------------------------------------------------
+
+    @Test fun descriptiveTitleSurvivesReviewAndSave() {
+        val proposal = DraftProposal.ActualTransaction(
+            type = TransactionType.EXPENSE, amount = lkr(850), accountId = cash.id, date = yesterday,
+            merchant = "Uber", title = "Uber to SLIIT from office", note = "Paid by card",
+        )
+        val input = QuickNoteReviewRules.inputFrom(proposal) as ProposalInput.Actual
+        assertEquals("Uber to SLIIT from office", input.title)
+        val record = check(input).record as ConfirmableRecord.Ledger
+        assertEquals("Uber to SLIIT from office", record.transaction.merchant)
+        assertEquals("Paid by card", record.transaction.note)
+    }
 
     @Test
     fun aCompleteExpenseBecomesAQuickNoteRecordWithAStableId() {

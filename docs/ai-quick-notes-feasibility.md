@@ -1,5 +1,8 @@
 # AI quick notes: feasibility (D05)
 
+> These are historical direct-Gemini measurements. The current service runs through
+> [OpenRouter on Cloudflare Workers](openrouter-quick-notes.md); its evaluation must be reported separately.
+
 The question behind this ticket: can a typed rough note ("dialog bill eka 2450 gewwa card eken") reliably become an editable draft, without leaking private money data or skipping the review step?
 
 **Answer: yes.** In testing, Gemini 3.5 Flash-Lite matched every expected field in 93% of drafts across English, Sinhala, Tamil and mixed notes. It costs well under one rupee per note and answers in about 2.5 s. There are two conditions: the project needs the paid tier, and the call needs a small backend. Details below.

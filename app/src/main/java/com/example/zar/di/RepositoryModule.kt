@@ -45,10 +45,12 @@ import com.example.zar.features.crypto.domain.repository.OpeningCostRepository
 import com.example.zar.features.freelance.data.repository.FirestoreProjectRepository
 import com.example.zar.features.freelance.domain.repository.ProjectRepository
 import com.example.zar.features.allowance.data.repository.FirestoreAllowanceRepository
+import com.example.zar.features.export.data.ContentResolverExportFileWriter
+import com.example.zar.features.export.domain.repository.ExportFileWriter
 import com.example.zar.features.allowance.domain.repository.AllowanceRepository
 import com.example.zar.features.plans.data.repository.FirestoreGoalRepository
 import com.example.zar.features.plans.domain.repository.GoalRepository
-import com.example.zar.features.quicknote.data.remote.FirebaseQuickNoteDraftTransport
+import com.example.zar.features.quicknote.data.remote.HttpQuickNoteDraftTransport
 import com.example.zar.features.reminders.data.DataStoreReminderPreferencesRepository
 import com.example.zar.features.reminders.data.ResetRemindersOnSignOut
 import com.example.zar.features.reminders.data.WorkManagerPaymentReminderScheduler
@@ -134,7 +136,11 @@ abstract class RepositoryModule {
 
     @Binds
     @Singleton
-    abstract fun bindQuickNoteDraftTransport(impl: FirebaseQuickNoteDraftTransport): QuickNoteDraftTransport
+    abstract fun bindExportFileWriter(impl: ContentResolverExportFileWriter): ExportFileWriter
+
+    @Binds
+    @Singleton
+    abstract fun bindQuickNoteDraftTransport(impl: HttpQuickNoteDraftTransport): QuickNoteDraftTransport
 
     @Binds
     @Singleton

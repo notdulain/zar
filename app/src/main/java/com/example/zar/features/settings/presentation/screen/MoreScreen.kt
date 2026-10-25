@@ -49,6 +49,7 @@ fun MoreScreen(
     onOpenBills: () -> Unit,
     onOpenReminder: () -> Unit,
     onOpenRules: () -> Unit = {},
+    onOpenExport: () -> Unit = {},
 ) {
     ZarScreenScaffold(
         destination = TopLevelDestination.More,
@@ -70,7 +71,7 @@ fun MoreScreen(
             ) {
                 moreRows(
                     onOpenAccounts, onOpenIncome, onOpenFreelance, onOpenCrypto,
-                    onOpenCapture, onOpenBills, onOpenRules, onOpenReminder, onOpenSettings,
+                    onOpenCapture, onOpenBills, onOpenRules, onOpenReminder, onOpenSettings, onOpenExport,
                 ).forEach { row -> MoreOption(row) }
             }
         }
@@ -117,6 +118,7 @@ internal fun moreRows(
     onOpenRules: () -> Unit,
     onOpenReminder: () -> Unit,
     onOpenSettings: () -> Unit,
+    onOpenExport: () -> Unit = {},
 ): List<MoreRow> = listOf(
     MoreRow(R.string.more_accounts, R.string.more_accounts_detail, R.drawable.ic_ph_wallet, "open-accounts", onOpenAccounts),
     MoreRow(R.string.income_open, R.string.more_income_detail, R.drawable.ic_ph_receipt, "open-income", onOpenIncome),
@@ -125,6 +127,7 @@ internal fun moreRows(
     MoreRow(R.string.more_capture, R.string.more_capture_detail, R.drawable.ic_ph_chat_text, "open-capture", onOpenCapture),
     MoreRow(R.string.bills_open, R.string.more_bills_detail, R.drawable.ic_ph_tray, "open-bills", onOpenBills),
     MoreRow(R.string.more_rules, R.string.more_rules_detail, R.drawable.ic_ph_funnel, "open-rules", onOpenRules),
+    MoreRow(R.string.more_export, R.string.more_export_detail, R.drawable.ic_ph_export, "open-export", onOpenExport),
     MoreRow(R.string.more_reminder, R.string.more_reminder_detail, R.drawable.ic_ph_lightning, "open-reminder", onOpenReminder),
     MoreRow(R.string.settings_title, R.string.more_settings_detail, R.drawable.ic_ph_gearsix_inactive, "open-settings", onOpenSettings),
 )

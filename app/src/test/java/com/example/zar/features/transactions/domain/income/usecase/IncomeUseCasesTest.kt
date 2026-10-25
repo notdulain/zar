@@ -53,6 +53,18 @@ class IncomeUseCasesTest {
         override suspend fun linkEvidence(link: EvidenceLink) = Unit
     }
 
+    @Test fun incomeCanMoveAccountsWithoutChangingItsAmountOrTime() = runBlocking {
+        val cash = com.example.zar.core.domain.TestLedger.cash
+        val original = tx("income-move", TransactionType.INCOME, lkr(500), bank).copy(time = java.time.LocalTime.of(18, 30))
+        repo.saveTransaction(original)
+        val edit = EditIncomeUseCase(CorrectTransactionUseCase(repo, com.example.zar.core.domain.FakeAccountRepository(bank, cash)))
+        edit(entry(original), IncomeDetails(original.amount, original.date, null, null, null, null, original.time), CorrectionId("move"), T0, accountId = cash.id).getOrThrow()
+        val updated = repo.observeLedger().first().single()
+        assertEquals(cash.id, updated.current.accountId)
+        assertEquals(original.amount, updated.current.amount)
+        assertEquals(original.time, updated.current.time)
+    }
+
     @Test
     fun receivedCountsOnlyIncomeAndFlagsMissingRates() = runBlocking {
         val ledger = FixedLedger(
@@ -114,7 +126,7 @@ class IncomeUseCasesTest {
     @Test
     fun editingAmountKeepsTheHistoricalRate() = runBlocking {
         val original = tx("i1", TransactionType.INCOME, usd(100), account = payoneer)
-        val edit = EditIncomeUseCase(CorrectTransactionUseCase(repo))
+        val edit = EditIncomeUseCase(CorrectTransactionUseCase(repo, com.example.zar.core.domain.FakeAccountRepository(bank, com.example.zar.core.domain.TestLedger.cash, payoneer)))
 
         assertTrue(edit(entry(original), details(usd(120), rate = "300"), CorrectionId("c1"), T0).isSuccess)
 
@@ -127,13 +139,13 @@ class IncomeUseCasesTest {
     @Test
     fun editingWithoutChangesIsRejected() = runBlocking {
         val original = tx("i1", TransactionType.INCOME, lkr(50_000)).copy(merchant = "Client")
-        val result = EditIncomeUseCase(CorrectTransactionUseCase(repo))(entry(original), details(), CorrectionId("c1"), T0)
+        val result = EditIncomeUseCase(CorrectTransactionUseCase(repo, com.example.zar.core.domain.FakeAccountRepository(bank, com.example.zar.core.domain.TestLedger.cash, payoneer)))(entry(original), details(), CorrectionId("c1"), T0)
         assertTrue(result.exceptionOrNull() is LedgerError.NothingToChange)
     }
 
     @Test
     fun editingUndoneOrNonIncomeIsRejected() = runBlocking {
-        val edit = EditIncomeUseCase(CorrectTransactionUseCase(repo))
+        val edit = EditIncomeUseCase(CorrectTransactionUseCase(repo, com.example.zar.core.domain.FakeAccountRepository(bank, com.example.zar.core.domain.TestLedger.cash, payoneer)))
         val undone = edit(entry(tx("i1", TransactionType.INCOME), voided = true), details(lkr(1)), CorrectionId("c1"), T0)
         val expense = edit(entry(tx("e1", TransactionType.EXPENSE)), details(), CorrectionId("c2"), T0)
 

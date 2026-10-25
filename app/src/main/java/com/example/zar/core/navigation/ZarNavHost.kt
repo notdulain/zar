@@ -30,6 +30,7 @@ import com.example.zar.features.bills.presentation.screen.BillPaymentScreen
 import com.example.zar.features.bills.presentation.screen.BillsScreen
 import com.example.zar.features.crypto.presentation.screen.CryptoMovementScreen
 import com.example.zar.features.crypto.presentation.screen.CryptoScreen
+import com.example.zar.features.export.presentation.screen.ExportScreen
 import com.example.zar.features.freelance.presentation.screen.FreelanceScreen
 import com.example.zar.features.freelance.presentation.screen.MilestoneScreen
 import com.example.zar.features.freelance.presentation.screen.ProjectFormScreen
@@ -114,6 +115,7 @@ fun ZarNavHost(
                 onOpenCapture = { navController.navigate(CaptureRoute) },
                 onOpenBills = { navController.navigate(BillsRoute) },
                 onOpenReminder = { navController.navigate(ReminderSettingsRoute) },
+                onOpenExport = { navController.navigate(ExportRoute) },
                 onOpenRules = { navController.navigate(CategoryRulesRoute) },
             )
         }
@@ -137,6 +139,9 @@ fun ZarNavHost(
         }
         composable<ReminderSettingsRoute> {
             ReminderSettingsScreen(onBack = { navController.popBackStack() })
+        }
+        composable<ExportRoute> {
+            ExportScreen(onBack = { navController.popBackStack() })
         }
         composable<SettingsRoute> {
             SettingsScreen(onBack = { navController.popBackStack() })

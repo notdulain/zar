@@ -219,10 +219,10 @@ private fun DetailContent(state: EntryDetailUiState, detail: EntryDetail, action
             modifier = Modifier.padding(top = 2.dp).testTag("detail-amount"),
         )
         Text(
-            "${stringResource(EntryDisplay.typeLabel(tx.type))} · ${EntryDisplay.day(tx.date)}",
+            "${stringResource(EntryDisplay.typeLabel(tx.type))} · ${EntryDisplay.day(tx.date)}" + (tx.time?.let { " · ${EntryDisplay.time(it)}" } ?: ""),
             style = ZarType.bodyCaption.copy(lineHeight = 16.sp),
             color = colors.textSecondary,
-            modifier = Modifier.padding(top = 4.dp),
+            modifier = Modifier.padding(top = 4.dp).testTag("detail-when"),
         )
         if (entry.isCorrected) {
             val amountChanged = entry.original.amount != tx.amount
@@ -472,6 +472,8 @@ private fun HistoryLine(title: String, detail: String, dot: Color) {
 private fun historyTitle(field: CorrectedField): Int = when (field) {
     CorrectedField.AMOUNT -> R.string.activity_history_amount
     CorrectedField.DATE -> R.string.activity_history_date
+    CorrectedField.TIME -> R.string.entry_field_time
+    CorrectedField.ACCOUNT -> R.string.manual_field_account
     CorrectedField.CATEGORY -> R.string.activity_history_category
     CorrectedField.SPENDING_CLASS -> R.string.activity_history_class
     CorrectedField.TITLE -> R.string.activity_history_title_field
@@ -481,7 +483,9 @@ private fun historyTitle(field: CorrectedField): Int = when (field) {
 @Composable
 private fun historyValue(value: FieldValue): String = when (value) {
     is FieldValue.Amount -> IncomeFormat.withCode(value.money)
+    is FieldValue.AccountName -> value.name
     is FieldValue.Day -> IncomeFormat.shortDate(value.date)
+    is FieldValue.Time -> value.time?.let(EntryDisplay::time) ?: stringResource(R.string.entry_time_not_set)
     is FieldValue.Class -> stringResource((value.spendingClass ?: SpendingClass.UNKNOWN).labelRes())
     is FieldValue.Text -> value.text?.let { text -> EntryDisplay.categoryLabel(text)?.let { stringResource(it) } ?: text }
         ?: stringResource(R.string.activity_none)
