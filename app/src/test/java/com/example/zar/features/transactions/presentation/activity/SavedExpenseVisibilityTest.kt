@@ -20,6 +20,8 @@ import com.example.zar.features.transactions.domain.activity.model.ActivityFilte
 import com.example.zar.features.transactions.domain.activity.model.DatePreset
 import com.example.zar.features.transactions.domain.activity.usecase.ObserveActivityUseCase
 import com.example.zar.features.transactions.domain.activity.usecase.ObserveEntryDetailUseCase
+import com.example.zar.features.transactions.domain.category.FakeExpenseCategoryRepository
+import com.example.zar.features.transactions.domain.category.usecase.ObserveExpenseCategoryCatalogUseCase
 import com.example.zar.features.transactions.domain.manual.model.ExpenseCategory
 import com.example.zar.features.transactions.domain.manual.model.ExpenseDetails
 import com.example.zar.features.transactions.domain.manual.usecase.ObserveOnlineStatusUseCase
@@ -79,7 +81,11 @@ class SavedExpenseVisibilityTest {
     private fun runScreen(block: suspend kotlinx.coroutines.test.TestScope.(ActivityViewModel) -> Unit) =
         runTest(UnconfinedTestDispatcher()) {
             val vm = ActivityViewModel(
-                observeActivity = ObserveActivityUseCase(ledger, accounts),
+                observeActivity = ObserveActivityUseCase(
+                    ledger,
+                    accounts,
+                    ObserveExpenseCategoryCatalogUseCase(FakeExpenseCategoryRepository()),
+                ),
                 observeOnline = ObserveOnlineStatusUseCase(FakeConnectivity()),
                 observeRejected = ObserveRejectedLedgerWritesUseCase(ledger),
                 retryRejected = RetryRejectedLedgerWriteUseCase(ledger),
