@@ -15,6 +15,7 @@ import com.google.firebase.firestore.Source
 import java.time.Instant
 import java.util.UUID
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.tasks.await
@@ -108,6 +109,34 @@ class ExpenseCategoryRepositoryTest {
         assertEquals(1, serverCategories.documents.count { it.id == id })
         assertEquals("Pets", serverCategories.documents.first { it.id == id }.getString("name"))
         assertEquals(id, step("server expense") { transactions(uid).document("e1").get(Source.SERVER).await() }.getString("categoryId"))
+    }
+
+    /**
+     * An offline create the server then refuses (an 81-character name breaks the rules' 80-character bound) is
+     * accepted locally and create() returns normally. On reconnect Firestore rolls the category back; that must be
+     * reported as a late rejection rather than the category quietly disappearing from the catalog.
+     */
+    @Test fun anOfflineCreateTheServerLaterRefusesIsReportedNotSilentlyDropped() = runBlocking {
+        val id = CustomCategoryIds.newId()
+        val repo = repository()
+        val tooLong = "P".repeat(81)
+        val reported = kotlinx.coroutines.CompletableDeferred<CustomExpenseCategory>()
+        val collector = launch { repo.lateRejections.collect { reported.complete(it) } }
+        try {
+            step("disableNetwork", 5_000) { db.disableNetwork().await() }
+            step("create offline", 10_000) { repo.create(category(id, tooLong)) }
+            assertTrue(snapshot(repo) { it.categories.any { c -> c.id == id } }.categories.any { it.id == id })
+            assertFalse("not reported while the write is merely queued", reported.isCompleted)
+        } finally {
+            step("enableNetwork", 10_000) { db.enableNetwork().await() }
+        }
+        val rejected = step("late rejection reported", 20_000) { reported.await() }
+        collector.cancel()
+        assertEquals(id, rejected.id)
+        assertEquals(tooLong, rejected.name)
+        // Firestore rolled the local copy back, so the catalog no longer has it and nothing reached the server.
+        snapshot(repo) { it.categories.none { c -> c.id == id } }
+        assertFalse(categories(uid).document(id).get(Source.SERVER).await().exists())
     }
 
     @Test fun aRetryOfTheSameIdWritesOneDocumentAndADifferentWriteIsRefused() = runBlocking {

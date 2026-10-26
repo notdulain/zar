@@ -2,6 +2,7 @@ package com.example.zar.features.transactions.domain.category.repository
 
 import com.example.zar.features.transactions.domain.manual.model.CustomExpenseCategory
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emptyFlow
 
 /**
  * The user's custom categories as last known, and whether the live read is currently degraded.
@@ -41,4 +42,10 @@ interface ExpenseCategoryRepository {
      * (LedgerError.NotSignedIn).
      */
     suspend fun create(category: CustomExpenseCategory)
+
+    /**
+     * Categories whose [create] already returned but whose write the server refused afterwards, so the local copy was
+     * rolled back. Nothing is emitted for a quick rejection (that [create] throws) or for a write that is still queued.
+     */
+    val lateRejections: Flow<CustomExpenseCategory> get() = emptyFlow()
 }

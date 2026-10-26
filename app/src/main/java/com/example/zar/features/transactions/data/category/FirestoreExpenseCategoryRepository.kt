@@ -10,11 +10,14 @@ import com.example.zar.features.transactions.domain.manual.model.CustomExpenseCa
 import com.google.firebase.firestore.CollectionReference
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Source
+import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flatMapLatest
@@ -85,13 +88,25 @@ class FirestoreExpenseCategoryRepository @Inject constructor(
         return snapshot.documents.mapNotNull { it.data?.let(ExpenseCategoryDocumentMapper::fromMap) }
     }
 
+    private val late = MutableSharedFlow<CustomExpenseCategory>(extraBufferCapacity = LATE_BUFFER)
+    override val lateRejections: Flow<CustomExpenseCategory> = late.asSharedFlow()
+
     override suspend fun create(category: CustomExpenseCategory) {
         val uid = session.currentUserId() ?: throw LedgerError.NotSignedIn()
         val write = categoriesOf(uid.value).document(category.id).set(ExpenseCategoryDocumentMapper.toMap(category))
-        write.addOnFailureListener { Log.w(TAG, "create ${category.id} was rejected", it) }
+        val handedBack = AtomicBoolean(false)
+        write.addOnFailureListener { error ->
+            Log.w(TAG, "create ${category.id} was rejected", error)
+            // A rejection after create() returned (an offline write the server refused on reconnect) rolls the local
+            // category back. Tell the screen, so the person is not left holding a category that has silently gone.
+            if (handedBack.get()) late.tryEmit(category)
+        }
         // The write is accepted locally at once and works offline. Wait briefly so a fast server rejection
         // (a rules failure) is reported to the caller; an unacknowledged offline write is simply queued.
         withTimeoutOrNull(WAIT_FOR_SERVER_MS) { write.await() }
+        handedBack.set(true)
+        // The write may have failed in the instant between the timeout and the flag; the listener missed it.
+        if (write.isComplete && !write.isSuccessful) late.tryEmit(category)
         if (session.currentUserId() != uid) throw LedgerError.NotSignedIn()
     }
 
@@ -102,5 +117,6 @@ class FirestoreExpenseCategoryRepository @Inject constructor(
         const val TAG = "FirestoreExpenseCategories"
         const val WAIT_FOR_SERVER_MS = 4_000L
         const val RETRY_DELAY_MS = 3_000L
+        const val LATE_BUFFER = 8
     }
 }

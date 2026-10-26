@@ -883,6 +883,48 @@ class ManualEntryViewModelTest {
     }
 
     @Test
+    fun aCategoryTheServerRefusesLaterIsTakenBackAndTheTypedNameCanBeRetried() {
+        val vm = viewModel()
+        vm.onAccountSelect(cash.id)
+        vm.onAmountChange("850")
+        vm.onTitleChange("Vet")
+        makeCategory(vm, "Pets")
+        val id = vm.uiState.value.categoryCatalog.customs.single().id
+
+        categoryRepo.rejectLate(id)
+
+        // Not a silent disappearance: the selection is released and the form reopens with the name, ready to retry.
+        val state = vm.uiState.value
+        assertNull(state.category)
+        assertTrue(state.categoryCatalog.customs.isEmpty())
+        assertTrue(state.newCategory!!.failed)
+        assertEquals("Pets", state.newCategory!!.name)
+        // The rest of the draft is untouched.
+        assertEquals("850", state.amount)
+        assertEquals("Vet", state.title)
+        assertEquals(cash.id, state.accountId)
+
+        // Retrying reuses the same ID, so the category comes back once under the id the draft already used.
+        vm.onAddCategorySave()
+        assertEquals(id, vm.uiState.value.categoryCatalog.customs.single().id)
+        assertEquals(id, vm.uiState.value.category!!.id)
+        assertNull(vm.uiState.value.newCategory)
+    }
+
+    @Test
+    fun aLateRefusalOfACategoryThePersonHasSinceReplacedChangesNothing() {
+        val vm = viewModel()
+        makeCategory(vm, "Pets")
+        val id = vm.uiState.value.categoryCatalog.customs.single().id
+        vm.onCategorySelect(ExpenseCategory.BILLS)
+
+        categoryRepo.rejectLate(id)
+
+        assertEquals(ExpenseCategory.BILLS, vm.uiState.value.category)
+        assertNull(vm.uiState.value.newCategory)
+    }
+
+    @Test
     fun anExpenseSavedUnderACustomCategoryStoresItsStableIdAndChosenClass() {
         val vm = viewModel()
         vm.onAccountSelect(cash.id)

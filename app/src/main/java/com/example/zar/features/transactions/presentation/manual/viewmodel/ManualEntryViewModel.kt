@@ -31,6 +31,7 @@ import com.example.zar.features.transactions.domain.category.usecase.ObserveExpe
 import com.example.zar.features.transactions.domain.manual.EntrySuggestions
 import com.example.zar.features.transactions.domain.manual.ManualEntryRules
 import com.example.zar.features.transactions.domain.manual.model.CustomCategoryIds
+import com.example.zar.features.transactions.domain.manual.model.CustomExpenseCategory
 import com.example.zar.features.transactions.domain.manual.model.EntrySuggestion
 import com.example.zar.features.transactions.domain.manual.model.ExpenseCategoryChoice
 import com.example.zar.features.transactions.domain.manual.model.ExpenseFormInput
@@ -204,6 +205,9 @@ class ManualEntryViewModel @Inject constructor(
             observeCategories().collect { catalog -> _uiState.update { it.copy(categoryCatalog = catalog).withRule() } }
         }
         viewModelScope.launch {
+            createCategory.lateRejections.collect(::onCategoryRejectedLate)
+        }
+        viewModelScope.launch {
             observeRules().catch { }.collect { list ->
                 rules = list
                 _uiState.update { it.withRule() }
@@ -292,6 +296,24 @@ class ManualEntryViewModel @Inject constructor(
                     }
                 },
             )
+        }
+    }
+
+    /**
+     * The server refused a category that was already saved and selected (an offline create, refused on reconnect), and
+     * the local copy is gone. Taking it back and reopening "Add category" with the same name and ID keeps the person's
+     * typing and offers a retry, instead of leaving a selection that points at a category that no longer exists.
+     * Nothing else in the draft changes. A category the person has since replaced with another is left alone.
+     */
+    private fun onCategoryRejectedLate(rejected: CustomExpenseCategory) {
+        if (_uiState.value.category?.id != rejected.id) return
+        if (_uiState.value.newCategory == null) pendingCategoryId = rejected.id
+        _uiState.update {
+            it.copy(
+                category = null,
+                categoryChosen = false,
+                newCategory = it.newCategory ?: NewCategoryState(name = rejected.name, failed = true),
+            ).withRule()
         }
     }
 

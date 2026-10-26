@@ -52,6 +52,9 @@ class ObserveExpenseCategoryCatalogUseCase @Inject constructor(
 class CreateExpenseCategoryUseCase @Inject constructor(
     private val categories: ExpenseCategoryRepository,
 ) {
+    /** A category [invoke] reported as saved that the server then refused; see [ExpenseCategoryRepository.lateRejections]. */
+    val lateRejections: Flow<CustomExpenseCategory> get() = categories.lateRejections
+
     suspend operator fun invoke(
         id: String,
         rawName: String,
