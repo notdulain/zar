@@ -1,6 +1,5 @@
 package com.example.zar.core.data
 
-import androidx.test.platform.app.InstrumentationRegistry
 import com.example.zar.core.data.remote.firestore.FirestoreLedgerRepository
 import com.example.zar.core.domain.calculation.ZarTime
 import com.example.zar.core.domain.model.Account
@@ -14,13 +13,10 @@ import com.example.zar.core.domain.model.UserId
 import com.example.zar.core.domain.model.money.Currencies
 import com.example.zar.core.domain.model.money.FiatMoney
 import com.example.zar.core.domain.repository.UserSessionProvider
+import com.example.zar.features.auth.IsolatedFirebaseApp
 import com.example.zar.features.transactions.domain.manual.ManualEntryRules
 import com.example.zar.features.transactions.domain.manual.model.ExpenseCategory
 import com.example.zar.features.transactions.domain.manual.model.ExpenseDetails
-import com.google.firebase.FirebaseApp
-import com.google.firebase.FirebaseOptions
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Source
 import java.time.Instant
 import java.time.LocalTime
@@ -45,25 +41,16 @@ import org.junit.Test
  */
 class LedgerWriteOutcomeTest {
     companion object {
-        private lateinit var app: FirebaseApp
-        private lateinit var db: FirebaseFirestore
+        private lateinit var client: IsolatedFirebaseApp
+        private val db get() = client.db
         private var uid: UserId = UserId("not-connected")
 
         @JvmStatic @BeforeClass fun connect() = runBlocking {
-            app = FirebaseApp.initializeApp(
-                InstrumentationRegistry.getInstrumentation().targetContext,
-                FirebaseOptions.Builder().setProjectId("demo-zar").setApplicationId("1:123:android:ledger-outcome")
-                    .setApiKey("fake-emulator-key").build(),
-                "ledger-outcome-${UUID.randomUUID()}",
-            )
-            val auth = FirebaseAuth.getInstance(app)
-            auth.useEmulator("10.0.2.2", 9099)
-            uid = UserId(checkNotNull(auth.signInAnonymously().await().user).uid)
-            db = FirebaseFirestore.getInstance(app)
-            db.useEmulator("10.0.2.2", 8080)
+            client = IsolatedFirebaseApp.open("ledger-outcome-${UUID.randomUUID()}")
+            uid = UserId(checkNotNull(client.auth.signInAnonymously().await().user).uid)
         }
 
-        @JvmStatic @AfterClass fun disconnect() { app.delete() }
+        @JvmStatic @AfterClass fun disconnect() { client.close() }
     }
 
     private val session = object : UserSessionProvider {

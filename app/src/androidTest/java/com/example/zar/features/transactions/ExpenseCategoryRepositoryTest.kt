@@ -1,8 +1,9 @@
 package com.example.zar.features.transactions
 
-import androidx.test.platform.app.InstrumentationRegistry
 import com.example.zar.core.domain.model.UserId
 import com.example.zar.core.domain.repository.UserSessionProvider
+import com.example.zar.features.auth.IsolatedFirebaseApp
+import com.example.zar.features.auth.step
 import com.example.zar.features.transactions.data.category.FirestoreExpenseCategoryRepository
 import com.example.zar.features.transactions.domain.category.CategoryLabel
 import com.example.zar.features.transactions.domain.category.CategoryNameRules
@@ -10,10 +11,6 @@ import com.example.zar.features.transactions.domain.category.ExpenseCategoryCata
 import com.example.zar.features.transactions.domain.category.repository.CustomCategorySnapshot
 import com.example.zar.features.transactions.domain.manual.model.CustomCategoryIds
 import com.example.zar.features.transactions.domain.manual.model.CustomExpenseCategory
-import com.google.firebase.FirebaseApp
-import com.google.firebase.FirebaseOptions
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Source
 import java.time.Instant
 import java.util.UUID
@@ -33,31 +30,21 @@ import org.junit.Test
 
 /**
  * The real Android Firestore repository against the local Auth/Firestore emulators and the repository rules.
- * It exercises what the unit tests cannot: offline creation, a restart, reconnect, account switching and a
+ * It exercises what the unit tests cannot: offline creation, reconnect, account switching and a
  * listener error that must degrade instead of dropping the user's own names.
  *
  * Run with `-Pzar.useEmulators=true` while `firebase emulators:start --only auth,firestore` runs. The emulator
  * host is `10.0.2.2` (the Android emulator's loopback), so this needs its own AVD and must not share one.
+ * Every step of the offline test is time-bounded and names itself on a timeout.
  */
 class ExpenseCategoryRepositoryTest {
     companion object {
-        private lateinit var app: FirebaseApp
-        private lateinit var db: FirebaseFirestore
-        private lateinit var auth: FirebaseAuth
+        private lateinit var client: IsolatedFirebaseApp
+        private val auth get() = client.auth
+        private val db get() = client.db
         private var uid: UserId = UserId("not-connected")
-        @JvmStatic @BeforeClass fun connect() = runBlocking {
-            app = FirebaseApp.initializeApp(
-                InstrumentationRegistry.getInstrumentation().targetContext,
-                FirebaseOptions.Builder().setProjectId("demo-zar").setApplicationId("1:123:android:category-review")
-                    .setApiKey("fake-emulator-key").build(),
-                "category-${UUID.randomUUID()}",
-            )
-            auth = FirebaseAuth.getInstance(app)
-            auth.useEmulator("10.0.2.2", 9099)
-            db = FirebaseFirestore.getInstance(app)
-            db.useEmulator("10.0.2.2", 8080)
-        }
-        @JvmStatic @AfterClass fun disconnect() { app.delete() }
+        @JvmStatic @BeforeClass fun connect() { client = IsolatedFirebaseApp.open("category-${UUID.randomUUID()}") }
+        @JvmStatic @AfterClass fun disconnect() { client.close() }
     }
 
     private val users = MutableStateFlow<UserId?>(null)
@@ -87,30 +74,40 @@ class ExpenseCategoryRepositoryTest {
     private suspend fun snapshot(repo: FirestoreExpenseCategoryRepository, predicate: (CustomCategorySnapshot) -> Boolean) =
         withTimeout(15_000) { repo.observeCustomCategories().first(predicate) }
 
-    @Test fun offlineCreateThenExpenseSurvivesRestartAndReconnect() = runBlocking {
+    /**
+     * Local-first: while the network is off, the category and an expense that uses it are readable from the cache at
+     * once (a second repository on the same client sees them), and reconnecting delivers both exactly once.
+     * `set(...)` completes only on a server acknowledgement, so it is never awaited while offline; the restart across
+     * a closed client and a dead process is in [OfflineRestartTest].
+     */
+    @Test fun offlineCreateThenExpenseIsLocalFirstAndReconnectDeliversThem() = runBlocking {
         val id = CustomCategoryIds.newId()
         val repo = repository()
+        var expenseWrite: com.google.android.gms.tasks.Task<Void>? = null
         try {
-            db.disableNetwork().await()
-            repo.create(category(id, "Pets"))
+            step("disableNetwork", 5_000) { db.disableNetwork().await() }
+            step("create offline", 10_000) { repo.create(category(id, "Pets")) }
             // The write is local, so the catalog shows it at once and an expense can reference it offline.
             val offline = snapshot(repo) { it.categories.any { c -> c.id == id } }
             assertFalse(offline.isDegraded)
-            transactions(uid).document("e1").set(expense("e1", id)).await()
+            expenseWrite = transactions(uid).document("e1").set(expense("e1", id))
+            val cached = step("read expense from cache") { transactions(uid).document("e1").get(Source.CACHE).await() }
+            assertTrue(cached.exists() && cached.metadata.hasPendingWrites())
 
-            // A restart: a fresh repository reads the same local cache and still resolves the name.
-            val afterRestart = snapshot(repository()) { it.categories.any { c -> c.id == id } }
-            val label = ExpenseCategoryCatalog(afterRestart.categories).label(id)
+            // A second repository on the same client reads the same local cache and still resolves the name.
+            val reread = snapshot(repository()) { it.categories.any { c -> c.id == id } }
+            val label = ExpenseCategoryCatalog(reread.categories).label(id)
             assertEquals("Pets", (label as CategoryLabel.Custom).name)
         } finally {
-            db.enableNetwork().await()
+            step("enableNetwork", 10_000) { db.enableNetwork().await() }
         }
-        // Reconnect: the category and the expense reach the server, with no duplicate category.
-        withTimeout(15_000) { repo.observeCustomCategories().first { it.categories.any { c -> c.id == id } } }
-        val serverCategories = categories(uid).get(Source.SERVER).await()
+        // Reconnect: the acknowledgement arrives now, and the category and the expense reach the server once.
+        step("expense acknowledged after reconnect", 20_000) { checkNotNull(expenseWrite).await() }
+        step("pending writes flushed", 20_000) { db.waitForPendingWrites().await() }
+        val serverCategories = step("server categories") { categories(uid).get(Source.SERVER).await() }
         assertEquals(1, serverCategories.documents.count { it.id == id })
         assertEquals("Pets", serverCategories.documents.first { it.id == id }.getString("name"))
-        assertEquals(id, transactions(uid).document("e1").get(Source.SERVER).await().getString("categoryId"))
+        assertEquals(id, step("server expense") { transactions(uid).document("e1").get(Source.SERVER).await() }.getString("categoryId"))
     }
 
     @Test fun aRetryOfTheSameIdWritesOneDocumentAndADifferentWriteIsRefused() = runBlocking {
