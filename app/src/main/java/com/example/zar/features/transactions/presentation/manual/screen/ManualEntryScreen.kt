@@ -71,8 +71,6 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.zar.R
 import com.example.zar.core.domain.calculation.ZarTime
 import com.example.zar.core.domain.model.Account
@@ -104,7 +102,6 @@ import com.example.zar.features.transactions.presentation.income.IncomeFormat
 import com.example.zar.features.transactions.presentation.manual.viewmodel.ManualEntryKind
 import com.example.zar.features.transactions.presentation.manual.viewmodel.ManualEntryMessage
 import com.example.zar.features.transactions.presentation.manual.viewmodel.ManualEntryUiState
-import com.example.zar.features.transactions.presentation.manual.viewmodel.ManualEntryViewModel
 import com.example.zar.features.transactions.presentation.manual.viewmodel.NewCategoryState
 import java.time.LocalDate
 import java.time.LocalTime
@@ -112,50 +109,10 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 /**
- * Add a manual expense or transfer. Laid out like the Figma sheets (Z06, Z12 and the Z31–Z35 states).
- * [focusNote] opens it with the note field focused, for the Add menu's "Quick note".
+ * The expense and transfer bodies of the Add-transaction sheet (Figma Z06, Z12 and the Z31–Z35 states).
+ * [focusNote] opens it with the note field focused, for the Add menu's "Quick note". The surrounding sheet, the type
+ * switch and the one-session draft retention live in [com.example.zar.features.transactions.presentation.manual.screen.AddTransactionScreen].
  */
-@Composable
-fun ManualEntryScreen(
-    focusNote: Boolean,
-    onDone: () -> Unit,
-    onOpenIncome: () -> Unit,
-    onAddAccount: () -> Unit,
-    viewModel: ManualEntryViewModel = hiltViewModel(),
-) {
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    LaunchedEffect(uiState.isFinished) { if (uiState.isFinished) onDone() }
-    ManualEntryContent(
-        uiState = uiState,
-        focusNote = focusNote,
-        actions = ManualEntryActions(
-            onClose = onDone,
-            onOpenIncome = onOpenIncome,
-            onAddAccount = onAddAccount,
-            onKind = viewModel::onKindSelect,
-            onAmount = viewModel::onAmountChange,
-            onDate = viewModel::onDateSelect,
-            onTime = viewModel::onTimeSelect,
-            onAccount = viewModel::onAccountSelect,
-            onCategory = viewModel::onCategorySelect,
-            onAddCategoryStart = viewModel::onAddCategoryStart,
-            onNewCategoryName = viewModel::onNewCategoryNameChange,
-            onAddCategoryCancel = viewModel::onAddCategoryCancel,
-            onAddCategorySave = viewModel::onAddCategorySave,
-            onSpendingClass = viewModel::onSpendingClassSelect,
-            onTitle = viewModel::onTitleChange,
-            onDescription = viewModel::onDescriptionChange,
-            onSuggestion = viewModel::onSuggestionSelect,
-            onFee = viewModel::onFeeChange,
-            onFrom = viewModel::onFromSelect,
-            onTo = viewModel::onToSelect,
-            onSwap = viewModel::onSwapAccounts,
-            onTransferNote = viewModel::onTransferNoteChange,
-            onSave = viewModel::save,
-        ),
-    )
-}
-
 internal class ManualEntryActions(
     val onClose: () -> Unit,
     val onOpenIncome: () -> Unit,

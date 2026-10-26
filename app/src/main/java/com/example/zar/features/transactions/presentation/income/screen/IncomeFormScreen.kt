@@ -126,6 +126,11 @@ internal class IncomeFormActions(
     val onSave: () -> Unit,
     val onUndo: () -> Unit,
     val onTimeSelect: (LocalTime?) -> Unit = {},
+    /**
+     * Switch to another tab of the one Add-transaction session (0 Expense, 1 Income, 2 Transfer). Null in edit mode,
+     * where the type switch is not shown at all: an edit is not a creation and must not offer the other types.
+     */
+    val onSelectKind: ((Int) -> Unit)? = null,
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -159,20 +164,24 @@ internal fun IncomeFormContent(uiState: IncomeFormUiState, actions: IncomeFormAc
                     Alignment.Center,
                 ) { ZarIcon(R.drawable.ic_ph_x, size = 20.dp) }
             }
-            Segmented(
-                labels = listOf(
-                    stringResource(R.string.manual_kind_expense),
-                    stringResource(R.string.manual_kind_income),
-                    stringResource(R.string.manual_kind_transfer),
-                ),
-                selectedIndex = 1,
-                // Income is the current tab; the other two leave this surface back the way it opened.
-                onSelect = { if (it != 1) actions.onBack() },
-                modifier = Modifier.padding(horizontal = 24.dp),
-                segmentHeight = 38.dp,
-                tagPrefix = "income-kind",
-                tags = listOf("expense", "income", "transfer"),
-            )
+            // The type switch belongs to the one Add-transaction session. Editing an existing income hides it: an
+            // edit keeps its own type and must not silently become a new creation in another tab.
+            if (!uiState.isEditing) {
+                Segmented(
+                    labels = listOf(
+                        stringResource(R.string.manual_kind_expense),
+                        stringResource(R.string.manual_kind_income),
+                        stringResource(R.string.manual_kind_transfer),
+                    ),
+                    selectedIndex = 1,
+                    // Income is the current tab; Expense and Transfer switch the shared session instead of closing it.
+                    onSelect = { actions.onSelectKind?.invoke(it) },
+                    modifier = Modifier.padding(horizontal = 24.dp),
+                    segmentHeight = 38.dp,
+                    tagPrefix = "income-kind",
+                    tags = listOf("expense", "income", "transfer"),
+                )
+            }
 
             if (uiState.isLoading) {
                 Box(Modifier.weight(1f).fillMaxWidth(), Alignment.Center) { CircularProgressIndicator(color = colors.accentSelected) }

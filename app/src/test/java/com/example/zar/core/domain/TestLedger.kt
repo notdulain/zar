@@ -89,6 +89,9 @@ class FakeLedgerRepository : LedgerRepository {
     val rejectedWrites = MutableStateFlow<List<RejectedLedgerWrite>>(emptyList())
     val retriedWrites = mutableListOf<String>()
 
+    /** When set, the next single save fails with this before storing anything (a lost write), then clears. */
+    var failNext: Throwable? = null
+
     override fun observeLedger(): Flow<List<LedgerEntry>> = ledger
 
     override fun observeRejectedWrites(): Flow<List<RejectedLedgerWrite>> = rejectedWrites
@@ -108,6 +111,7 @@ class FakeLedgerRepository : LedgerRepository {
     }
 
     override suspend fun saveTransaction(transaction: Transaction) {
+        failNext?.let { failNext = null; throw it }
         transactions.putIfAbsent(transaction.id, transaction)
         publish()
     }

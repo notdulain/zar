@@ -164,6 +164,8 @@ class ManualEntryViewModel @Inject constructor(
     private val prefillAmount: String? = savedStateHandle.get<String>(ManualEntryRoute::prefillAmount.name)
     private val prefillAccountId: String? = savedStateHandle.get<String>(ManualEntryRoute::prefillAccountId.name)
     private val prefillTitle: String? = savedStateHandle.get<String>(ManualEntryRoute::prefillTitle.name)
+    private val initialKind: ManualEntryKind =
+        if (savedStateHandle.get<String>(ManualEntryRoute::initialKind.name) == "transfer") ManualEntryKind.TRANSFER else ManualEntryKind.EXPENSE
 
     // Created once per screen and reused on every retry, so a repeated save can't duplicate.
     private val expenseId = TransactionId(RecordIds.newId())
@@ -176,6 +178,7 @@ class ManualEntryViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow(
         ManualEntryUiState(
+            kind = initialKind,
             amount = if (prefillAccountId != null) prefillAmount.orEmpty() else "",
             title = prefillTitle.orEmpty(),
         ),

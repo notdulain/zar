@@ -70,7 +70,7 @@ import com.example.zar.features.transactions.presentation.activity.screen.EditEn
 import com.example.zar.features.transactions.presentation.activity.screen.EntryDetailScreen
 import com.example.zar.features.transactions.presentation.income.screen.IncomeFormScreen
 import com.example.zar.features.transactions.presentation.income.screen.IncomeListScreen
-import com.example.zar.features.transactions.presentation.manual.screen.ManualEntryScreen
+import com.example.zar.features.transactions.presentation.manual.screen.AddTransactionScreen
 import com.example.zar.features.transactions.presentation.refund.screen.RefundFormScreen
 import com.example.zar.features.transactions.presentation.screen.ActivityScreen
 
@@ -233,7 +233,8 @@ fun ZarNavHost(
         composable<IncomeRoute> {
             IncomeListScreen(
                 onBack = { navController.popBackStack() },
-                onAddIncome = { navController.navigate(IncomeFormRoute()) },
+                // Add opens the one Add-transaction session on its Income tab, over this same origin.
+                onAddIncome = { navController.navigate(ManualEntryRoute(initialKind = "income")) },
                 onOpenIncome = { id -> navController.navigate(IncomeFormRoute(incomeId = id)) },
             )
         }
@@ -243,13 +244,11 @@ fun ZarNavHost(
         dialog<ManualEntryRoute>(
             dialogProperties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
         ) { entry ->
-            ManualEntryScreen(
-                focusNote = entry.toRoute<ManualEntryRoute>().focusNote,
+            val route = entry.toRoute<ManualEntryRoute>()
+            AddTransactionScreen(
+                focusNote = route.focusNote,
+                initialKind = route.initialKind,
                 onDone = { navController.popBackStack() },
-                // The Income tab of the Add form is the existing income screen; swap it in place.
-                onOpenIncome = {
-                    navController.navigate(IncomeFormRoute()) { popUpTo<ManualEntryRoute> { inclusive = true } }
-                },
                 onAddAccount = { navController.navigate(AccountFormRoute()) },
             )
         }
