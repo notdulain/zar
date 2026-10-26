@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -32,10 +33,12 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -65,6 +68,8 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -93,12 +98,14 @@ import com.example.zar.features.transactions.domain.manual.model.ExpenseCategory
 import com.example.zar.features.transactions.domain.manual.model.ExpenseCategoryChoice
 import com.example.zar.features.transactions.domain.manual.model.ExpenseProblem
 import com.example.zar.features.transactions.domain.manual.model.TransferProblem
+import com.example.zar.features.transactions.domain.category.CategoryNameProblem
 import com.example.zar.features.transactions.presentation.activity.screen.InfoBanner
 import com.example.zar.features.transactions.presentation.income.IncomeFormat
 import com.example.zar.features.transactions.presentation.manual.viewmodel.ManualEntryKind
 import com.example.zar.features.transactions.presentation.manual.viewmodel.ManualEntryMessage
 import com.example.zar.features.transactions.presentation.manual.viewmodel.ManualEntryUiState
 import com.example.zar.features.transactions.presentation.manual.viewmodel.ManualEntryViewModel
+import com.example.zar.features.transactions.presentation.manual.viewmodel.NewCategoryState
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
@@ -131,6 +138,10 @@ fun ManualEntryScreen(
             onTime = viewModel::onTimeSelect,
             onAccount = viewModel::onAccountSelect,
             onCategory = viewModel::onCategorySelect,
+            onAddCategoryStart = viewModel::onAddCategoryStart,
+            onNewCategoryName = viewModel::onNewCategoryNameChange,
+            onAddCategoryCancel = viewModel::onAddCategoryCancel,
+            onAddCategorySave = viewModel::onAddCategorySave,
             onSpendingClass = viewModel::onSpendingClassSelect,
             onTitle = viewModel::onTitleChange,
             onDescription = viewModel::onDescriptionChange,
@@ -155,6 +166,10 @@ internal class ManualEntryActions(
     val onTime: (LocalTime) -> Unit,
     val onAccount: (AccountId) -> Unit,
     val onCategory: (ExpenseCategoryChoice) -> Unit,
+    val onAddCategoryStart: () -> Unit,
+    val onNewCategoryName: (String) -> Unit,
+    val onAddCategoryCancel: () -> Unit,
+    val onAddCategorySave: () -> Unit,
     val onSpendingClass: (SpendingClass) -> Unit,
     val onTitle: (String) -> Unit,
     val onDescription: (String) -> Unit,
@@ -287,6 +302,16 @@ internal fun ManualEntryContent(uiState: ManualEntryUiState, focusNote: Boolean,
             )
         }
         }
+        if (uiState.newCategory != null) {
+            Box(Modifier.fillMaxSize().background(colors.scrim.copy(alpha = 0.64f)).clickable(onClick = actions.onAddCategoryCancel))
+            AddCategorySheet(
+                state = uiState.newCategory,
+                onName = actions.onNewCategoryName,
+                onCancel = actions.onAddCategoryCancel,
+                onSave = actions.onAddCategorySave,
+                modifier = Modifier.align(Alignment.BottomCenter),
+            )
+        }
     }
 }
 }
@@ -333,15 +358,12 @@ private fun ExpenseFields(state: ManualEntryUiState, actions: ManualEntryActions
 
     Section(stringResource(R.string.manual_field_category), stringResource(R.string.manual_all_categories), { allCategories = !allCategories }) {
         if (allCategories) {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                state.categoryCatalog.choices.forEach { category ->
-                    ZarChip(
-                        label = category.labelText(), selected = category.id == state.category?.id,
-                        onClick = { actions.onCategory(category); allCategories = false },
-                        icon = category.iconRes(), modifier = Modifier.testTag("manual-category-${category.id}"),
-                    )
-                }
-            }
+            CategoryGrid(
+                choices = state.categoryCatalog.choices,
+                selectedId = state.category?.id,
+                onSelect = { actions.onCategory(it); allCategories = false },
+                onAddCategory = actions.onAddCategoryStart,
+            )
         } else {
             Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 state.categoryCatalog.choices.forEach { category ->
@@ -644,6 +666,148 @@ internal fun Section(label: String, action: String? = null, onAction: (() -> Uni
         }
         content()
     }
+}
+
+/**
+ * "All categories" opens this complete picker: a visible Add category action above a three equal-width column grid,
+ * built-ins first then the user's own, each tile at least 48dp tall with the label wrapping rather than shrinking.
+ */
+@Composable
+private fun CategoryGrid(
+    choices: List<ExpenseCategoryChoice>,
+    selectedId: String?,
+    onSelect: (ExpenseCategoryChoice) -> Unit,
+    onAddCategory: () -> Unit,
+) {
+    val colors = ZarTheme.colors
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(
+            Modifier
+                .clip(ZarShapes.sm)
+                .background(colors.subtle)
+                .clickable(role = Role.Button, onClick = onAddCategory)
+                .padding(start = 12.dp, end = 14.dp, top = 9.dp, bottom = 9.dp)
+                .testTag("manual-add-category"),
+            horizontalArrangement = Arrangement.spacedBy(7.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            ZarIcon(R.drawable.ic_ph_plus, size = 16.dp, tint = colors.textSelected)
+            Text(stringResource(R.string.manual_add_category), style = ZarType.labelChip, color = colors.textSelected)
+        }
+        // Three equal columns, row-major. The final partial row keeps the same width by filling the gap with spacers.
+        Column(Modifier.fillMaxWidth().selectableGroup(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            choices.chunked(3).forEach { row ->
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    row.forEach { category ->
+                        CategoryTile(
+                            category = category,
+                            selected = category.id == selectedId,
+                            onClick = { onSelect(category) },
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                    repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CategoryTile(
+    category: ExpenseCategoryChoice,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val colors = ZarTheme.colors
+    Column(
+        modifier
+            .heightIn(min = 64.dp)
+            .clip(ZarShapes.sm)
+            .background(if (selected) colors.accentSelected else colors.subtle)
+            .selectable(selected = selected, role = Role.RadioButton, onClick = onClick)
+            .padding(horizontal = 8.dp, vertical = 10.dp)
+            .testTag("manual-category-${category.id}"),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        ZarIcon(
+            category.iconRes(),
+            size = 20.dp,
+            tint = if (selected) colors.textOnInverse else colors.iconStrong,
+        )
+        Text(
+            category.labelText(),
+            style = ZarType.labelChip,
+            color = if (selected) colors.textOnInverse else colors.textPrimary,
+            textAlign = TextAlign.Center,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+/** The Add category form. It never saves the transaction; a name problem or a failed write keeps the typed name. */
+@Composable
+private fun AddCategorySheet(
+    state: NewCategoryState,
+    onName: (String) -> Unit,
+    onCancel: () -> Unit,
+    onSave: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val colors = ZarTheme.colors
+    val nameFocus = remember { FocusRequester() }
+    LaunchedEffect(Unit) { runCatching { nameFocus.requestFocus() } }
+    Column(
+        modifier.fillMaxWidth().heightIn(max = 420.dp)
+            .shadow(14.dp, ZarShapes.sheet, ambientColor = Color(0x1F000000), spotColor = Color(0x1F000000))
+            .clip(ZarShapes.sheet).background(colors.surface).pointerInput(Unit) { detectTapGestures {} }
+            .navigationBarsPadding().imePadding()
+            .padding(start = 24.dp, end = 24.dp, top = 10.dp, bottom = 22.dp)
+            .testTag("manual-new-category-sheet"),
+        verticalArrangement = Arrangement.spacedBy(22.dp),
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            Box(Modifier.fillMaxWidth(), Alignment.Center) {
+                Box(Modifier.size(36.dp, 4.dp).background(colors.trackOff, RoundedCornerShape(2.dp)))
+            }
+            Text(stringResource(R.string.manual_new_category_title), style = ZarType.headingSheet, color = colors.textPrimary)
+        }
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Box(Modifier.fillMaxWidth().clip(ZarShapes.md).background(colors.subtle).padding(horizontal = 14.dp)) {
+                TextInput(
+                    value = state.name,
+                    onValueChange = onName,
+                    placeholder = stringResource(R.string.manual_new_category_hint),
+                    modifier = Modifier.fillMaxWidth().focusRequester(nameFocus).testTag("manual-new-category-name"),
+                )
+            }
+            val problemRes = state.problem?.let { it.textRes() } ?: if (state.failed) R.string.manual_category_error_failed else null
+            FieldError(problemRes, Modifier.testTag("manual-new-category-error"))
+        }
+        Row(Modifier.fillMaxWidth().padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            ZarButton(
+                text = stringResource(R.string.action_cancel),
+                onClick = onCancel,
+                modifier = Modifier.weight(1f).testTag("manual-new-category-cancel"),
+                style = ZarButtonStyle.Soft,
+            )
+            ZarButton(
+                text = stringResource(R.string.action_save),
+                onClick = onSave,
+                modifier = Modifier.weight(1f).testTag("manual-new-category-save"),
+                enabled = !state.isSaving && state.name.isNotBlank(),
+            )
+        }
+    }
+}
+
+private fun CategoryNameProblem.textRes(): Int = when (this) {
+    CategoryNameProblem.EMPTY -> R.string.manual_category_error_empty
+    CategoryNameProblem.TOO_LONG -> R.string.manual_category_error_too_long
+    CategoryNameProblem.INVALID_CHARACTERS -> R.string.manual_category_error_invalid
+    CategoryNameProblem.DUPLICATE -> R.string.manual_category_error_duplicate
 }
 
 /** Z32's "No accounts yet" state: recording needs an account, so point at adding one. */

@@ -525,6 +525,14 @@
     <string name="manual_category_subscriptions">Subscriptions</string>
     <string name="manual_category_other">Other</string>
     <string name="category_unavailable">Unavailable category</string>
+    <string name="manual_add_category">Add category</string>
+    <string name="manual_new_category_title">New category</string>
+    <string name="manual_new_category_hint">Category name</string>
+    <string name="manual_category_error_empty">Enter a category name</string>
+    <string name="manual_category_error_too_long">Use 40 characters or fewer</string>
+    <string name="manual_category_error_invalid">Use letters, numbers or spaces only</string>
+    <string name="manual_category_error_duplicate">This category already exists</string>
+    <string name="manual_category_error_failed">Couldn\'t save. Check your connection and try again.</string>
 
     <string name="manual_suggestions_header">From your recent entries</string>
     <string name="manual_suggestions_fills">Fills the form</string>
