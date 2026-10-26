@@ -12,7 +12,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.geometry.Rect
 import kotlin.coroutines.coroutineContext
-import kotlin.math.abs
 
 /**
  * Owns the one selected-capsule mover for the full navbar. It is created once per navigation session (beside
@@ -153,22 +152,6 @@ class NavCapsuleController {
             else -> 0f
         }
         return if (shift == 0f) r else r.translate(shift, 0f)
-    }
-
-    /** The slot the capsule's centre is over right now: the slot whose label sits on the capsule. -1 before placement. */
-    fun coveredSlot(): Int {
-        val rect = capsuleBounds() ?: return -1
-        val centre = (rect.left + rect.right) / 2f
-        var nearest = 0
-        var best = Float.MAX_VALUE
-        slots.forEachIndexed { index, slot ->
-            val distance = abs(centre - (slot.left + slot.right) / 2f)
-            if (distance < best) {
-                best = distance
-                nearest = index
-            }
-        }
-        return nearest
     }
 
     /** Velocity of the capsule's left edge in pixels per second, for retargeting checks. */

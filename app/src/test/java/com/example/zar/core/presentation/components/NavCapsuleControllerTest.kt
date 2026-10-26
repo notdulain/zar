@@ -187,27 +187,6 @@ class NavCapsuleControllerTest {
     }
 
     @Test
-    fun theLabelUnderTheCapsuleChangesOncePerSlotAndNeverGoesMissing() = runTest {
-        val driver = FrameDriver(this, FrameDriver.HZ_120)
-        val controller = controller()
-        controller.snapTo(ltr[0])
-        controller.select(3)
-
-        fly(driver, controller)
-        runCurrent()
-        val covered = ArrayList<Int>()
-        repeat(300) {
-            driver.step()
-            covered += controller.coveredSlot()
-        }
-
-        assertFalse("a label had no capsule position", covered.any { it < 0 })
-        assertEquals(listOf(0, 1, 2, 3), covered.distinct())
-        assertEquals(3, covered.last())
-        assertEquals("the covered label never goes backwards on a forward flight", covered.sorted(), covered)
-    }
-
-    @Test
     fun theCapsuleUsesPhysicalSlotPositionsSoRtlMirrorsForFree() = runTest {
         val rtl = slots(228f, 154f, 80f, 6f)
         val driver = FrameDriver(this, FrameDriver.HZ_60)

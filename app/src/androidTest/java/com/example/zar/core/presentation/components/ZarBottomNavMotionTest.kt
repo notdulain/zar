@@ -9,7 +9,10 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.height
 import androidx.compose.ui.unit.width
@@ -184,5 +187,20 @@ class ZarBottomNavMotionTest {
         // Home is no longer selected: its resting height is the unselected 56dp, the selected one 59dp.
         assertEquals(56f, compose.onNodeWithTag("nav-home").getUnclippedBoundsInRoot().height.value, 0.2f)
         assertEquals(59f, compose.onNodeWithTag("nav-more").getUnclippedBoundsInRoot().height.value, 0.2f)
+    }
+
+    /** Real frames of a Home -> More flight, written for the evidence record (adb pull from the app's files dir). */
+    @Test
+    fun midFlightFramesAreCapturedForTheEvidenceRecord() {
+        show(full)
+        tap("nav-more")
+        frame()
+        val target = androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().targetContext.getExternalFilesDir(null)!!
+        listOf(2, 1, 1, 1, 1, 1, 2, 4).forEachIndexed { index, advance ->
+            frame(advance)
+            val bitmap = compose.onRoot().captureToImage().asAndroidBitmap()
+            java.io.FileOutputStream(target.resolve("nav-flight-%02d.png".format(index))).use { bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }
+            assertTrue(bitmap.width > 0)
+        }
     }
 }
