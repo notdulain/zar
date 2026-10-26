@@ -6,8 +6,12 @@ import com.example.zar.features.auth.domain.usecase.ObserveSessionUseCase
 import com.example.zar.features.auth.domain.usecase.SignInUseCase
 import com.example.zar.features.auth.domain.usecase.SignOutUseCase
 import com.example.zar.features.auth.domain.model.SessionState
+import com.example.zar.features.settings.FakeDisplayPreferences
 import com.example.zar.features.settings.data.repository.ReportingCurrencyPreferencesRepository
+import com.example.zar.features.settings.domain.model.AppearanceMode
 import com.example.zar.features.settings.domain.usecase.ObserveAppPreferencesUseCase
+import com.example.zar.features.settings.domain.usecase.ObserveDisplayPreferencesUseCase
+import com.example.zar.features.settings.domain.usecase.SetAppearanceUseCase
 import com.example.zar.features.settings.presentation.viewmodel.SettingsViewModel
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
@@ -48,6 +52,7 @@ class SettingsViewModelTest {
         }
     }
 
+    private val display = FakeDisplayPreferences()
     private val fake = FakeAuthRepository()
     private val auth = CountingAuth(fake)
 
@@ -62,6 +67,8 @@ class SettingsViewModelTest {
             ObserveAppPreferencesUseCase(ReportingCurrencyPreferencesRepository()),
             ObserveSessionUseCase(auth),
             SignOutUseCase(auth, emptySet()),
+            ObserveDisplayPreferencesUseCase(display),
+            SetAppearanceUseCase(display),
         )
         backgroundScope.launch { vm.uiState.collect {} }
         vm.uiState.first { !it.isLoading }
@@ -145,5 +152,58 @@ class SettingsViewModelTest {
 
         assertEquals(1, auth.unsyncedChecks)
         assertEquals(1, auth.signOuts)
+    }
+
+    @Test
+    fun appearanceStartsAtTheSavedChoice() = runTest {
+        val vm = signedInViewModel(unsynced = false)
+
+        assertEquals(AppearanceMode.LIGHT, vm.uiState.value.appearance)
+        assertFalse(vm.uiState.value.displayPreferenceError)
+    }
+
+    @Test
+    fun choosingAnAppearanceSavesItAndSigningOutKeepsIt() = runTest {
+        val vm = signedInViewModel(unsynced = false)
+
+        vm.onAppearanceSelected(AppearanceMode.DARK)
+        advanceUntilIdle()
+        assertEquals(AppearanceMode.DARK, vm.uiState.value.appearance)
+
+        vm.onSignOutClick()
+        advanceUntilIdle()
+        assertEquals(SessionState.SignedOut, fake.session.value)
+        assertEquals(AppearanceMode.DARK, display.current().appearance)
+    }
+
+    @Test
+    fun aFailedSaveKeepsTheOldChoiceShowsAnErrorAndRetryRepeatsTheSameChoice() = runTest {
+        val vm = signedInViewModel(unsynced = false)
+        display.failing = true
+
+        vm.onAppearanceSelected(AppearanceMode.DARK)
+        advanceUntilIdle()
+        assertEquals(AppearanceMode.LIGHT, vm.uiState.value.appearance)
+        assertTrue(vm.uiState.value.displayPreferenceError)
+
+        display.failing = false
+        vm.retryDisplayPreference()
+        advanceUntilIdle()
+        assertEquals(AppearanceMode.DARK, vm.uiState.value.appearance)
+        assertFalse(vm.uiState.value.displayPreferenceError)
+    }
+
+    @Test
+    fun dismissingTheErrorClearsIt() = runTest {
+        val vm = signedInViewModel(unsynced = false)
+        display.failing = true
+        vm.onAppearanceSelected(AppearanceMode.SYSTEM)
+        advanceUntilIdle()
+
+        vm.dismissDisplayPreferenceError()
+        advanceUntilIdle()
+
+        assertFalse(vm.uiState.value.displayPreferenceError)
+        assertEquals(AppearanceMode.LIGHT, vm.uiState.value.appearance)
     }
 }

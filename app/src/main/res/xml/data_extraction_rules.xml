@@ -10,6 +10,8 @@
         <exclude domain="file" path="datastore/auto_sms_capture.preferences_pb" />
         <!-- Whether amounts are hidden is a choice about this phone, not about the account. -->
         <exclude domain="sharedpref" path="amount_privacy.xml" />
+        <!-- How this phone shows the app (Light/Dark/System, Reduce motion) is a choice about this phone, not about the account. -->
+        <exclude domain="sharedpref" path="display_preferences.xml" />
     </cloud-backup>
     <device-transfer>
         <!-- Staged bank SMS stay on this phone: encrypted with a key that is never backed up. -->
@@ -20,5 +22,7 @@
         <exclude domain="file" path="datastore/auto_sms_capture.preferences_pb" />
         <!-- Whether amounts are hidden is a choice about this phone, not about the account. -->
         <exclude domain="sharedpref" path="amount_privacy.xml" />
+        <!-- How this phone shows the app (Light/Dark/System, Reduce motion) is a choice about this phone, not about the account. -->
+        <exclude domain="sharedpref" path="display_preferences.xml" />
     </device-transfer>
 </data-extraction-rules>
