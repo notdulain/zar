@@ -52,3 +52,9 @@ Figma elevation is neutral: card shadows are `#0F1A2B0A` (0, 1, blur 2) and `#0F
 The shared theme, controls, navigation, and icon resources apply across the app. Home, More, Accounts, Account Detail, and Settings use the Figma spacing and type scale directly. Figma's sample amounts, account freshness, and goal progress are design examples; screens continue to show the values the app actually has.
 
 The ongoing Add, Activity, reconciliation, and Plans stories (SCRUM-35–38 and SCRUM-47–48) retain their current feature implementations. Their owners can consume the shared tokens as those stories finish.
+
+## Appearance
+
+The saved Light / Dark / System choice (Settings → Appearance, `DisplayPreferencesRepository`) is resolved once in `MainActivity`, above `ZarRoot`, by `ZarAppearance`. It feeds `ZarTheme`, the system-bar glyphs and the activity window background. Light is used until a choice is saved; Android's own mode is only consulted when System is selected. `MainActivity` declares `configChanges="uiMode"`, so an Android theme change recomposes in place instead of recreating the activity.
+
+The system splash that Android 12+ draws before the app starts reads the manifest theme, which cannot see the saved choice. `Theme.Zar` is therefore Light-only, matching the Light default; everything the app draws itself uses the resolved appearance from the first frame.

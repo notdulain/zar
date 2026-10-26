@@ -179,7 +179,7 @@ internal fun EmptyCard(
     }
 }
 
-/** Dark status bar icons for a light screen, so the clock stays visible on the detail and form screens. */
+/** Status bar icons that contrast with a plain screen: dark on Light, light on Dark, so the clock stays visible. */
 @Composable
 internal fun DarkStatusBarIcons() {
     val view = LocalView.current
@@ -187,7 +187,7 @@ internal fun DarkStatusBarIcons() {
     val isLightTheme = ZarTheme.colors.canvas == ZarLightColors.canvas
     DisposableEffect(activity, view, isLightTheme) {
         val controller = activity?.let { WindowCompat.getInsetsController(it.window, view) }
-        if (isLightTheme) controller?.isAppearanceLightStatusBars = true
+        controller?.isAppearanceLightStatusBars = isLightTheme
         onDispose { }
     }
 }
