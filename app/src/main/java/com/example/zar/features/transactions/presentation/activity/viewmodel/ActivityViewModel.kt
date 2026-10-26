@@ -4,6 +4,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.zar.core.domain.calculation.ZarTime
 import com.example.zar.core.domain.model.Account
+import com.example.zar.core.domain.model.RejectedLedgerWrite
+import com.example.zar.core.domain.usecase.DismissRejectedLedgerWriteUseCase
+import com.example.zar.core.domain.usecase.ObserveRejectedLedgerWritesUseCase
+import com.example.zar.core.domain.usecase.RetryRejectedLedgerWriteUseCase
 import com.example.zar.features.transactions.domain.activity.ActivityQuery
 import com.example.zar.features.transactions.domain.activity.model.ActivityFilter
 import com.example.zar.features.transactions.domain.activity.model.ActivityList
@@ -25,6 +29,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 
 sealed interface ActivityContent {
     data object Loading : ActivityContent
@@ -40,12 +45,17 @@ data class ActivityUiState(
     /** Activity always shows what is stored on the phone; this only lets it say so while offline. */
     val isOnline: Boolean = true,
     val today: LocalDate = ZarTime.today(),
+    /** Saves the server refused after the phone accepted them. They left the list; each can be retried or dismissed. */
+    val rejectedWrites: List<RejectedLedgerWrite> = emptyList(),
 )
 
 @HiltViewModel
 class ActivityViewModel @Inject constructor(
     observeActivity: ObserveActivityUseCase,
     observeOnline: ObserveOnlineStatusUseCase,
+    observeRejected: ObserveRejectedLedgerWritesUseCase,
+    private val retryRejected: RetryRejectedLedgerWriteUseCase,
+    private val dismissRejected: DismissRejectedLedgerWriteUseCase,
 ) : ViewModel() {
 
     private val filter = MutableStateFlow(ActivityFilter())
@@ -70,11 +80,12 @@ class ActivityViewModel @Inject constructor(
         source,
         filter,
         observeOnline().catch { emit(true) },
-    ) { src, selected, online ->
+        observeRejected().catch { emit(emptyList()) },
+    ) { src, selected, online, rejected ->
         val today = ZarTime.today()
         when (src) {
-            Source.Loading -> ActivityUiState(selected, ActivityContent.Loading, isOnline = online, today = today)
-            Source.Failed -> ActivityUiState(selected, ActivityContent.Error, isOnline = online, today = today)
+            Source.Loading -> ActivityUiState(selected, ActivityContent.Loading, isOnline = online, today = today, rejectedWrites = rejected)
+            Source.Failed -> ActivityUiState(selected, ActivityContent.Error, isOnline = online, today = today, rejectedWrites = rejected)
             is Source.Ready -> {
                 latest = src.snapshot
                 ActivityUiState(
@@ -83,6 +94,7 @@ class ActivityViewModel @Inject constructor(
                     accounts = src.snapshot.accounts.filterNot { it.isArchived },
                     isOnline = online,
                     today = today,
+                    rejectedWrites = rejected,
                 )
             }
         }
@@ -94,6 +106,13 @@ class ActivityViewModel @Inject constructor(
     fun clearFilters() = filter.update { ActivityFilter() }
 
     fun setQuery(value: String) = filter.update { it.copy(query = value) }
+
+    /** Resubmits a refused save under its original IDs. A refusal that happens again is listed again. */
+    fun retryRejectedWrite(id: String) {
+        viewModelScope.launch { retryRejected(id) }
+    }
+
+    fun dismissRejectedWrite(id: String) = dismissRejected(id)
 
     /** Tries again after a loading error. */
     fun retry() = attempt.update { it + 1 }

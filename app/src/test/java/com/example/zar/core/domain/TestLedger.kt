@@ -10,6 +10,7 @@ import com.example.zar.core.domain.model.CorrectionId
 import com.example.zar.core.domain.model.EvidenceLink
 import com.example.zar.core.domain.model.LedgerEntry
 import com.example.zar.core.domain.model.OpeningBalance
+import com.example.zar.core.domain.model.RejectedLedgerWrite
 import com.example.zar.core.domain.model.SpendingClass
 import com.example.zar.core.domain.model.Transaction
 import com.example.zar.core.domain.model.TransactionChanges
@@ -84,7 +85,22 @@ class FakeLedgerRepository : LedgerRepository {
     val links = mutableListOf<EvidenceLink>()
     private val ledger = MutableStateFlow<List<LedgerEntry>>(emptyList())
 
+    /** Saves a test has marked as refused by the server; retrying one removes it and records the call. */
+    val rejectedWrites = MutableStateFlow<List<RejectedLedgerWrite>>(emptyList())
+    val retriedWrites = mutableListOf<String>()
+
     override fun observeLedger(): Flow<List<LedgerEntry>> = ledger
+
+    override fun observeRejectedWrites(): Flow<List<RejectedLedgerWrite>> = rejectedWrites
+
+    override suspend fun retryRejectedWrite(id: String) {
+        retriedWrites += id
+        rejectedWrites.value = rejectedWrites.value.filterNot { it.id == id }
+    }
+
+    override fun dismissRejectedWrite(id: String) {
+        rejectedWrites.value = rejectedWrites.value.filterNot { it.id == id }
+    }
 
     /** Re-projects the stored records so observers see every save, correction and undo. */
     private fun publish() {

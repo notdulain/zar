@@ -97,6 +97,7 @@ import com.example.zar.features.transactions.domain.activity.model.DatePreset
 import com.example.zar.features.transactions.presentation.activity.EntryDisplay
 import com.example.zar.features.transactions.presentation.activity.entrySubtitle
 import com.example.zar.features.transactions.presentation.activity.entryTitle
+import com.example.zar.features.transactions.presentation.activity.screen.BannerAction
 import com.example.zar.features.transactions.presentation.activity.screen.EmptyCard
 import com.example.zar.features.transactions.presentation.activity.screen.FilterPill
 import com.example.zar.features.transactions.presentation.activity.screen.InfoBanner
@@ -143,6 +144,8 @@ fun ActivityScreen(
                 onClearFilters = viewModel::clearFilters,
                 onQuery = viewModel::setQuery,
                 onRetry = viewModel::retry,
+                onRetryRejected = viewModel::retryRejectedWrite,
+                onDismissRejected = viewModel::dismissRejectedWrite,
                 previewCount = viewModel::previewCount,
             ),
             contentPadding = padding,
@@ -158,6 +161,8 @@ internal class ActivityActions(
     val onQuery: (String) -> Unit,
     val onRetry: () -> Unit,
     val previewCount: (ActivityFilter) -> Int,
+    val onRetryRejected: (String) -> Unit = {},
+    val onDismissRejected: (String) -> Unit = {},
 )
 
 @Composable
@@ -221,6 +226,31 @@ internal fun ActivityBody(
                     modifier = gutter.testTag("activity-offline"),
                 )
             }
+        }
+        items(state.rejectedWrites, key = { "rejected-${it.id}" }) { write ->
+            val first = write.transactions.first()
+            InfoBanner(
+                title = stringResource(
+                    R.string.activity_rejected_title,
+                    "${entryTitle(first)} · ${EntryDisplay.money(first.amount)}",
+                ),
+                body = stringResource(R.string.activity_rejected_body),
+                modifier = gutter.testTag("activity-rejected"),
+                icon = R.drawable.ic_ph_info,
+                actions = {
+                    BannerAction(
+                        stringResource(R.string.activity_rejected_retry),
+                        onClick = { actions.onRetryRejected(write.id) },
+                        modifier = Modifier.testTag("activity-rejected-retry"),
+                    )
+                    BannerAction(
+                        stringResource(R.string.activity_rejected_dismiss),
+                        onClick = { actions.onDismissRejected(write.id) },
+                        modifier = Modifier.testTag("activity-rejected-dismiss"),
+                        filled = false,
+                    )
+                },
+            )
         }
         if (list != null) {
             val unresolved = list.summary.received.unresolvedCount + list.summary.spent.total.unresolvedCount
