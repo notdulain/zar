@@ -88,7 +88,9 @@ import com.example.zar.core.presentation.theme.ZarTheme
 import com.example.zar.core.presentation.theme.ZarType
 import com.example.zar.features.accounts.presentation.screen.iconRes
 import com.example.zar.features.transactions.domain.manual.model.EntrySuggestion
+import com.example.zar.features.transactions.domain.manual.model.CustomExpenseCategory
 import com.example.zar.features.transactions.domain.manual.model.ExpenseCategory
+import com.example.zar.features.transactions.domain.manual.model.ExpenseCategoryChoice
 import com.example.zar.features.transactions.domain.manual.model.ExpenseProblem
 import com.example.zar.features.transactions.domain.manual.model.TransferProblem
 import com.example.zar.features.transactions.presentation.activity.screen.InfoBanner
@@ -152,7 +154,7 @@ internal class ManualEntryActions(
     val onDate: (LocalDate) -> Unit,
     val onTime: (LocalTime) -> Unit,
     val onAccount: (AccountId) -> Unit,
-    val onCategory: (ExpenseCategory) -> Unit,
+    val onCategory: (ExpenseCategoryChoice) -> Unit,
     val onSpendingClass: (SpendingClass) -> Unit,
     val onTitle: (String) -> Unit,
     val onDescription: (String) -> Unit,
@@ -367,7 +369,7 @@ private fun ExpenseFields(state: ManualEntryUiState, actions: ManualEntryActions
             ZarMonoLabel(stringResource(R.string.manual_field_counts_as))
             state.category?.takeIf { it.usualClass != null }?.let {
                 Text(
-                    stringResource(R.string.manual_counts_as_hint, stringResource(it.labelRes())),
+                    stringResource(R.string.manual_counts_as_hint, it.labelText()),
                     style = ZarType.bodyCaption,
                     color = ZarTheme.colors.textSecondary,
                 )
@@ -450,7 +452,7 @@ private fun Suggestions(state: ManualEntryUiState, onSelect: (EntrySuggestion) -
         }
         state.suggestions.forEach { suggestion ->
             val account = state.accounts.firstOrNull { it.id == suggestion.accountId }
-            val details = listOfNotNull(suggestion.category?.let { stringResource(it.labelRes()) }, account?.name).joinToString(" · ")
+            val details = listOfNotNull(suggestion.category?.let { it.labelText() }, account?.name).joinToString(" · ")
             Row(
                 Modifier
                     .fillMaxWidth()
@@ -825,6 +827,14 @@ internal fun DateRow(date: LocalDate, onSelect: (LocalDate) -> Unit) {
         },
         dismissButton = { TextButton(onClick = { showPicker = false }) { Text(stringResource(R.string.action_cancel)) } },
     ) { DatePicker(state = state, colors = pickerColors) }
+}
+
+/** The text for any category choice: a built-in's string resource or a custom category's own name. */
+@Composable
+internal fun ExpenseCategoryChoice.labelText(): String = when (this) {
+    is ExpenseCategory -> stringResource(labelRes())
+    is CustomExpenseCategory -> name
+    else -> id
 }
 
 internal fun ExpenseCategory.labelRes(): Int = when (this) {

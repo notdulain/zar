@@ -63,9 +63,20 @@ Two separate files, so money that arrived is never mixed with money that is only
 - **Never exported:** raw bank messages (evidence is only counted) and other users' records. A signed-out export fails instead of writing an empty file.
 - **Escaping:** RFC 4180 quoting, CRLF line ends, and a leading apostrophe on text starting with `=`, `+`, `-` or `@` so a spreadsheet cannot run it as a formula.
 
+## Expense categories (`features/transactions/domain/category`)
+
+An expense stores its category as a plain string, `Transaction.categoryId`. That string is the only link, so renaming or reordering a category never touches the ledger.
+
+- **Built-ins** are the `ExpenseCategory` enum: `coffee-dining`, `groceries`, `transport`, `bills`, `rent`, `season-ticket`, `subscriptions`, `other`. IDs are permanent; ordinals are never stored. They keep their usual "Counts as" hint.
+- **Custom categories** live in `users/{uid}/expenseCategories/{id}` with `id` = `custom-<uuid>` (created once, reused on every retry), `name` (trimmed, 1-40 Unicode code points, no line breaks or control characters), `nameKey` (the NFKC, lower-case, single-spaced comparison key), `source` = `CUSTOM` and `createdAt` (epoch ms). No money, no spending class: a custom category never infers "Counts as" from its name, so it is `UNKNOWN` unless the person chooses one. Rules allow create, an update only if nothing changes (so a replayed save is harmless), no delete, and no rename.
+- **Duplicate names** are refused by `CategoryNameRules` against built-in names and the user's customs (case, width and spacing ignored). The check is local, so two devices that create the same name offline can both succeed. `ExpenseCategoryCatalog` reconciles that on read, deterministically and without rewriting anything: a built-in beats a custom with its name, otherwise the earliest `(createdAt, id)` is canonical. The other documents stay stored and keep resolving to the canonical name, so no expense loses its label. They are left out of the picker and listed in `catalog.conflicts`.
+- **Unknown IDs** (legacy, imported, or a custom category that has not synced yet) resolve to `CategoryLabel.Unavailable`. The entry stays visible and keeps its ID; nothing rewrites it to Other.
+- **Offline order.** The category write and the expense write go through the same local Firestore queue, so they reach the server in the order they were made and the label is available the moment the category is accepted locally. Ledger rules do not look up the category document, so a transaction never waits on it.
+- **Search** uses the resolved name (`ExpenseCategoryCatalog.searchText`), never a `custom-` ID.
+
 ## Storage
 
-- **Firestore is the primary financial store.** Everything is under `users/{uid}/` with these subcollections: `accounts`, `transactions`, `corrections`, `voids`, `evidenceLinks`, `expectedPayments`, `paymentMatches`, `drafts` (`FirestoreCollections`).
+- **Firestore is the primary financial store.** Everything is under `users/{uid}/` with these subcollections: `accounts`, `transactions`, `corrections`, `voids`, `evidenceLinks`, `expectedPayments`, `paymentMatches`, `drafts`, `expenseCategories` (`FirestoreCollections`).
 - `firestore.rules` allows only the owner and enforces each collection's schema and write-once behaviour. Tests are in `firestore-tests/` (`npm install && npm test`, needs Java).
 - **Encrypted Room is only for capture staging** (L08): raw bank messages stay on the device and are never uploaded. Drafts carry structured fields only, and the rules reject a `rawText` field.
 - Implemented now: `LedgerRepository` (Firestore), `UserSessionProvider` (Firebase Auth) and `AccountRepository` (Firestore, D03: `features/accounts`). Interfaces only, to be implemented by their owners: `ExpectedPaymentRepository` (L03/L05), `DraftRepository` (S07). Draft *generation* (D06) is separate and saves nothing: see [ai-quick-notes-service.md](ai-quick-notes-service.md). Use the field names already in `firestore.rules`.

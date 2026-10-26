@@ -27,6 +27,7 @@ import com.example.zar.features.transactions.domain.manual.EntrySuggestions
 import com.example.zar.features.transactions.domain.manual.ManualEntryRules
 import com.example.zar.features.transactions.domain.manual.model.EntrySuggestion
 import com.example.zar.features.transactions.domain.manual.model.ExpenseCategory
+import com.example.zar.features.transactions.domain.manual.model.ExpenseCategoryChoice
 import com.example.zar.features.transactions.domain.manual.model.ExpenseFormInput
 import com.example.zar.features.transactions.domain.manual.model.ExpenseFormResult
 import com.example.zar.features.transactions.domain.manual.model.ExpenseProblem
@@ -66,7 +67,7 @@ data class ManualEntryUiState(
     val time: LocalTime = LocalTime.now(ZarTime.ZONE).truncatedTo(ChronoUnit.MINUTES),
     // Expense
     val accountId: AccountId? = null,
-    val category: ExpenseCategory? = null,
+    val category: ExpenseCategoryChoice? = null,
     /** True once the user picked the category themselves, so a remembered rule no longer fills it in. */
     val categoryChosen: Boolean = false,
     /** The rule that filled in [category] for the typed title. Cleared as soon as the user picks another category. */
@@ -208,7 +209,7 @@ class ManualEntryViewModel @Inject constructor(
         it.copy(accountId = id, expenseProblems = it.expenseProblems - ExpenseProblem.ACCOUNT_MISSING).withRule()
     }
 
-    fun onCategorySelect(value: ExpenseCategory) = _uiState.update {
+    fun onCategorySelect(value: ExpenseCategoryChoice) = _uiState.update {
         val usual = value.usualClass
         it.copy(
             category = value,
