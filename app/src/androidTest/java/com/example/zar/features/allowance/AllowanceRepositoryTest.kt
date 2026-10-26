@@ -1,16 +1,13 @@
 package com.example.zar.features.allowance
 
-import androidx.test.platform.app.InstrumentationRegistry
 import com.example.zar.core.domain.model.UserId
 import com.example.zar.core.domain.model.money.Currencies
 import com.example.zar.core.domain.model.money.FiatMoney
 import com.example.zar.core.domain.repository.UserSessionProvider
+import com.example.zar.features.auth.IsolatedFirebaseApp
 import com.example.zar.features.allowance.data.repository.FirestoreAllowanceRepository
 import com.example.zar.features.allowance.domain.model.AllowanceSettings
 import com.example.zar.features.allowance.domain.model.AllowanceSyncState
-import com.google.firebase.FirebaseApp
-import com.google.firebase.FirebaseOptions
-import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Source
 import java.util.UUID
@@ -27,20 +24,15 @@ import org.junit.Assert.*
 /** Actual Android repository with local Auth/Firestore emulators and the repository rules. */
 class AllowanceRepositoryTest {
     companion object {
-        private lateinit var app: FirebaseApp
+        private lateinit var client: IsolatedFirebaseApp
         private lateinit var db: FirebaseFirestore
         private var uid: UserId = UserId("not-connected")
         @JvmStatic @BeforeClass fun connect() = runBlocking {
-            app = FirebaseApp.initializeApp(InstrumentationRegistry.getInstrumentation().targetContext,
-                FirebaseOptions.Builder().setProjectId("demo-zar").setApplicationId("1:123:android:allowance-review")
-                    .setApiKey("fake-emulator-key").build(), "allowance-${UUID.randomUUID()}")
-            val auth = FirebaseAuth.getInstance(app)
-            auth.useEmulator("10.0.2.2", 9099)
-            uid = UserId(checkNotNull(auth.signInAnonymously().await().user).uid)
-            db = FirebaseFirestore.getInstance(app)
-            db.useEmulator("10.0.2.2", 8080)
+            client = IsolatedFirebaseApp.open("allowance-${UUID.randomUUID()}")
+            uid = UserId(checkNotNull(client.auth.signInAnonymously().await().user).uid)
+            db = client.db
         }
-        @JvmStatic @AfterClass fun disconnect() { app.delete() }
+        @JvmStatic @AfterClass fun disconnect() { client.close() }
     }
     private val users by lazy { MutableStateFlow<UserId?>(uid) }
     private val session = object : UserSessionProvider {

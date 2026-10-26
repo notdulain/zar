@@ -1,6 +1,7 @@
 package com.example.zar.features.auth
 
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
@@ -13,6 +14,7 @@ import androidx.compose.ui.test.performTextReplacement
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.espresso.Espresso.pressBack
 import com.example.zar.MainActivity
+import com.google.firebase.auth.FirebaseAuth
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -30,7 +32,10 @@ class SignInFlowTest {
     @Before
     fun startSignedOut() {
         EmulatorFirebase.requireEmulators()
-        EmulatorFirebase.auth.signOut()
+        // The activity is already running, so the app's Hilt graph has configured the default Auth for the emulator;
+        // sign that same instance out. Wait for either screen first so the instance is never touched before that.
+        compose.waitUntilAtLeastOneExists(hasTestTag("email") or hasTestTag("nav-more"), timeout)
+        FirebaseAuth.getInstance().signOut()
         compose.waitUntilAtLeastOneExists(hasTestTag("email"), timeout)
     }
 
@@ -115,7 +120,8 @@ class SignInFlowTest {
         compose.onNodeWithTag("nav-home").performClick()
         compose.waitUntilAtLeastOneExists(hasTestTag("nav-more"), timeout)
         compose.onNodeWithTag("add-entry").assertExists()
-        compose.onNodeWithTag("nav-activity").assertDoesNotExist()
+        // All four tabs stay in the bar; what proves the tabs returned home is that Home is the selected one.
+        compose.onNodeWithTag("nav-home").assertIsSelected()
     }
 
     @Test

@@ -22,7 +22,7 @@ class MoreScreenTest {
     private val opened = mutableListOf<String>()
     private val rowTags = listOf(
         "open-accounts", "open-income", "open-freelance", "open-crypto",
-        "open-capture", "open-bills", "open-rules", "open-reminder", "open-settings",
+        "open-capture", "open-bills", "open-rules", "open-export", "open-reminder", "open-settings",
     )
 
     private fun show() = compose.setContent {
@@ -39,6 +39,7 @@ class MoreScreenTest {
                 onOpenBills = { opened += "bills" },
                 onOpenReminder = { opened += "reminder" },
                 onOpenRules = { opened += "rules" },
+                onOpenExport = { opened += "export" },
             )
         }
     }
@@ -50,9 +51,8 @@ class MoreScreenTest {
         rowTags.forEach {
             compose.onNodeWithTag(it).performScrollTo().assertIsDisplayed()
         }
-        listOf("Privacy", "Export data").forEach {
-            compose.onAllNodesWithText(it).assertCountEquals(0)
-        }
+        // Export is a connected row now (CSV export); Privacy is still not built, so it must not appear.
+        compose.onAllNodesWithText("Privacy").assertCountEquals(0)
     }
 
     @Test
@@ -66,7 +66,7 @@ class MoreScreenTest {
         }
 
         assertEquals(
-            listOf("accounts", "income", "freelance", "crypto", "capture", "bills", "rules", "reminder", "settings"),
+            listOf("accounts", "income", "freelance", "crypto", "capture", "bills", "rules", "export", "reminder", "settings"),
             opened,
         )
     }
