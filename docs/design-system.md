@@ -62,3 +62,21 @@ The system splash that Android 12+ draws before the app starts reads the manifes
 ## Motion policy
 
 `MotionPolicy` (`core/presentation/motion`) is the single answer to "may this move?". `ProvideZarMotion` sits under `ZarAppearance` around `ZarRoot`, so both the signed-in and auth graphs read it through `LocalZarMotion`. It combines the saved Reduce motion switch with Android's animator duration scale (0 means system animations are off) into one `MotionLevel`: `Full`, `Reduced` (app switch: no spatial travel, bounce or press scaling; crossfade at most 100 ms) or `Instant` (system animations off: final state at once). Screens never read either setting directly. Spring values live in `ZarSprings`.
+
+## Baseline proportions (prototype, not applied)
+
+Goal: with Android's Font size and/or Display size one step below default, keep the accepted default composition. `ZarProportionPolicy` (`core/presentation/theme/BaselineProportions.kt`) is the prototype. `ProvideBaselineProportions` is **not** wired into `MainActivity` yet.
+
+| Input | Rule |
+| --- | --- |
+| Display size below default (`densityDpi` < `DisplayMetrics.DENSITY_DEVICE_STABLE`) | Lay out with the stable density. One dp is then the baseline pixel count and the window has the baseline logical width. |
+| Display size at or above default | Unchanged. Larger display sizes reflow instead of being compensated. |
+| Font size below 1.0 | Floored at 1.0. |
+| Font size above 1.0 | Passed through untouched, so Android's own (non-linear on Android 14+) scaling applies. |
+| Stable density unknown | Only the font floor applies; no claim of physical invariance. |
+
+It overrides only Compose's `LocalDensity`; it never changes Android's settings or configuration, does not scale a bitmap and does not read xdpi/ydpi. Insets, the IME and pointer coordinates are converted with the same density, so touch bounds follow what is drawn. Interactive targets stay at least `ZarDimens.MinTouchTarget` (48 dp), which is never smaller than at default because density is only ever raised.
+
+Known: the repo's Pixel 6a AVD profile is 1080 x 2400 px at 420 dpi, i.e. 2.625 density and 411.4 dp wide, which matches the 412 x 915 Figma frame. That is an emulator profile, not a measurement of the physical phone.
+
+Not yet known, and why this is not applied: (1) that `DENSITY_DEVICE_STABLE` equals the density behind the accepted default-size screenshots on the physical Pixel 6a; (2) the real density and font scale of "one step smaller"; (3) how dialog and sheet windows and system pickers behave under the override. Verification checklist for the physical phone: record `densityDpi`, `DENSITY_DEVICE_STABLE`, `fontScale`, window and usable bounds, Android version and insets for default/default, small/default, default/small and small/small with one fixture and both themes; then apply the provider at the root and compare hero height, Add diameter, navbar height, card gutters and key text bounds against the default screenshots (within 5%), including the sheets, the keyboard and the date and time pickers.
