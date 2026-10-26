@@ -87,6 +87,7 @@ import com.example.zar.core.presentation.components.ZarIcon
 import com.example.zar.core.presentation.components.ZarIconChip
 import com.example.zar.core.presentation.components.ZarScreenScaffold
 import com.example.zar.core.presentation.components.ZarSwitch
+import com.example.zar.core.presentation.components.ZarHeroItemKey
 import com.example.zar.core.presentation.components.heroDisplacement
 import com.example.zar.core.presentation.components.heroParallax
 import com.example.zar.core.presentation.motion.ZarMotion
@@ -204,7 +205,7 @@ internal fun ActivityBody(
         contentPadding = PaddingValues(bottom = contentPadding.calculateBottomPadding() + ZarDimens.SpaceXl),
         verticalArrangement = Arrangement.spacedBy(ZarDimens.SpaceXs),
     ) {
-        item {
+        item(key = ZarHeroItemKey) {
             val summary = list?.summary
             ActivityHero(
                 received = summary?.let { EntryDisplay.money(it.received.amount) } ?: stringResource(R.string.activity_amount_pending),

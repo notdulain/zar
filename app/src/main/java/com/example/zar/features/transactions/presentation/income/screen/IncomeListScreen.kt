@@ -40,6 +40,7 @@ import com.example.zar.core.domain.calculation.ReportingTotal
 import com.example.zar.core.domain.model.money.Currencies
 import com.example.zar.core.domain.model.money.FiatMoney
 import com.example.zar.core.presentation.components.HeroScrollOffset
+import com.example.zar.core.presentation.components.ZarHeroItemKey
 import com.example.zar.core.presentation.components.heroDisplacement
 import com.example.zar.core.presentation.components.heroParallax
 import com.example.zar.core.presentation.motion.ZarMotion
@@ -104,7 +105,7 @@ private fun IncomeListContent(
                     contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 96.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    item { ReceivedHeader(uiState.receivedThisMonth ?: ReportingTotal.zero(), heroOffset) }
+                    item(key = ZarHeroItemKey) { ReceivedHeader(uiState.receivedThisMonth ?: ReportingTotal.zero(), heroOffset) }
                     if (uiState.months.isEmpty()) {
                         item { CenteredMessage(stringResource(R.string.income_empty), Modifier.padding(top = 48.dp)) }
                     }

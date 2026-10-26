@@ -32,6 +32,19 @@ object HeroParallax {
 
     fun chartOffset(displacementPx: Float, capPx: Float): Float =
         compensation(displacementPx, ZarMotion.PARALLAX_CHART, capPx)
+
+    /**
+     * How far a lazy hero has scrolled above its resting place. [heroOffsetPx] is the hero's layout offset in the list
+     * (null when it is not among the visible items). A lazy item's offset is measured from where the first item rests,
+     * so content padding above it is negative space and does not count. Never negative, so overscroll at the top
+     * leaves a hero at rest; a hero that has scrolled out reports a stable saturating value, and an unmeasured list with
+     * nothing visible reports zero.
+     */
+    fun lazyDisplacement(heroOffsetPx: Int?, anyItemVisible: Boolean): Float = when {
+        heroOffsetPx != null -> (-heroOffsetPx).toFloat().coerceAtLeast(0f)
+        anyItemVisible -> Float.MAX_VALUE
+        else -> 0f
+    }
 }
 
 /** A hero's own scroll displacement in pixels, read lazily from its actual scroll owner. */
@@ -42,13 +55,26 @@ fun interface HeroScrollOffset {
 /** Displacement for an ordinary vertical scroll owner whose hero is the first thing in it. */
 fun ScrollState.heroDisplacement(): HeroScrollOffset = HeroScrollOffset { value.toFloat() }
 
+/** The item key every lazy top card gives its hero, so its displacement is read from that item and not from a position. */
+const val ZarHeroItemKey = "zar-hero"
+
 /**
- * Displacement for a lazy list whose hero is the first item. While the hero is the first visible item its own scroll
- * offset is the displacement; once it has left, a stable large value keeps the compensation saturated at its cap, so
- * re-entering on reverse scroll is continuous instead of snapping back to zero.
+ * Displacement for a lazy list, read from the hero item itself: its distance above where it rests, which is zero at rest. Once the hero has left the viewport a stable large value keeps every layer saturated at
+ * its cap, so re-entering on reverse scroll is continuous instead of snapping back to zero.
+ *
+ * The hero is found by [heroKey]; if nothing carries it the list's first item stands in for it, so a list that forgot to
+ * tag its hero still rests at zero. Before the list has been measured (a restored scroll position, the first frame) the
+ * saved first-item offset is used, so a restored screen starts at the offset it was left at, not at zero.
  */
-fun LazyListState.heroDisplacement(): HeroScrollOffset = HeroScrollOffset {
-    if (firstVisibleItemIndex == 0) firstVisibleItemScrollOffset.toFloat() else Float.MAX_VALUE
+fun LazyListState.heroDisplacement(heroKey: Any = ZarHeroItemKey): HeroScrollOffset = HeroScrollOffset {
+    val info = layoutInfo
+    val visible = info.visibleItemsInfo
+    if (visible.isEmpty()) {
+        HeroParallax.lazyDisplacement(heroOffsetPx = if (firstVisibleItemIndex == 0) -firstVisibleItemScrollOffset else null, anyItemVisible = firstVisibleItemIndex != 0)
+    } else {
+        val hero = visible.firstOrNull { it.key == heroKey } ?: visible.first().takeIf { it.index == 0 }
+        HeroParallax.lazyDisplacement(hero?.offset, anyItemVisible = true)
+    }
 }
 
 /** Applies one bounded parallax layer. Zero displacement (and reduced motion) leaves the layer exactly at rest. */

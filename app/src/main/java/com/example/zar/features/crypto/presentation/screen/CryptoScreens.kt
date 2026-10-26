@@ -52,6 +52,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.zar.R
+import com.example.zar.core.presentation.components.ZarHeroItemKey
 import com.example.zar.core.presentation.components.heroDisplacement
 import com.example.zar.core.presentation.components.heroParallax
 import com.example.zar.core.presentation.motion.ZarMotion
@@ -162,7 +163,7 @@ private fun CryptoContent(
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 96.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        item {
+        item(key = ZarHeroItemKey) {
             SummaryHeaderCard(
                 label = stringResource(R.string.crypto_realized_label),
                 amount = portfolio.realized.signed(),

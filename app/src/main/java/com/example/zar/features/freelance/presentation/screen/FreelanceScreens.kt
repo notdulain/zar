@@ -46,6 +46,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.zar.R
 import com.example.zar.core.domain.model.MatchState
 import com.example.zar.core.presentation.components.HeroScrollOffset
+import com.example.zar.core.presentation.components.ZarHeroItemKey
 import com.example.zar.core.presentation.components.heroDisplacement
 import com.example.zar.core.presentation.components.heroParallax
 import com.example.zar.core.presentation.motion.ZarMotion
@@ -96,7 +97,7 @@ fun FreelanceScreen(
                     contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 96.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    item { OwedHeader(uiState.outstanding, heroOffset) }
+                    item(key = ZarHeroItemKey) { OwedHeader(uiState.outstanding, heroOffset) }
                     item { OverdueAlertsRow(enabled = overdueAlerts, onChange = viewModel::setOverdueAlerts) }
                     if (uiState.projects.isEmpty()) item { CenteredText(stringResource(R.string.freelance_empty), Modifier.padding(top = 48.dp)) }
                     items(uiState.projects, key = { it.project.id.value }) { summary ->
@@ -226,7 +227,7 @@ fun ProjectScreen(
                     contentPadding = PaddingValues(16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    item {
+                    item(key = ZarHeroItemKey) {
                         SummaryHeaderCard(
                             label = stringResource(R.string.project_still_owed),
                             amount = summary.remaining.display(),

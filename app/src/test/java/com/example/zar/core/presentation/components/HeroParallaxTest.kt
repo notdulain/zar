@@ -59,4 +59,27 @@ class HeroParallaxTest {
         assertEquals(ZarMotion.ParallaxChartCap.value, HeroParallax.chartOffset(terminal, capPx = ZarMotion.ParallaxChartCap.value), 0.0001f)
         assertEquals(ZarMotion.ParallaxBackgroundCap.value, HeroParallax.backgroundOffset(terminal, capPx = ZarMotion.ParallaxBackgroundCap.value), 0.0001f)
     }
+
+    @Test
+    fun aMeasuredLazyHeroIsReadFromItsOwnOffsetFromWhereItRests() {
+        assertEquals(0f, HeroParallax.lazyDisplacement(heroOffsetPx = 0, anyItemVisible = true), 0f)
+        assertEquals(40f, HeroParallax.lazyDisplacement(heroOffsetPx = -40, anyItemVisible = true), 0f)
+    }
+
+    @Test
+    fun overscrollPastTheTopNeverMovesALayerBackwards() {
+        assertEquals(0f, HeroParallax.lazyDisplacement(heroOffsetPx = 60, anyItemVisible = true), 0f)
+    }
+
+    @Test
+    fun aHeroThatHasLeftTheViewportStaysSaturatedWhileAnUnmeasuredListIsAtRest() {
+        assertEquals(Float.MAX_VALUE, HeroParallax.lazyDisplacement(heroOffsetPx = null, anyItemVisible = true), 0f)
+        assertEquals(0f, HeroParallax.lazyDisplacement(heroOffsetPx = null, anyItemVisible = false), 0f)
+    }
+
+    @Test
+    fun aRestoredScrollOffsetIsUsedBeforeTheFirstMeasure() {
+        val restored = LazyListState(firstVisibleItemIndex = 0, firstVisibleItemScrollOffset = 140)
+        assertEquals(140f, restored.heroDisplacement().displacementPx(), 0f)
+    }
 }
