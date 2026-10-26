@@ -28,11 +28,11 @@ printed by the tool: *no physical 120 Hz mode here: any 120 Hz result stays pend
   where neither vote applies, so on a 120 Hz API 35+ phone it could settle at a lower rate than the touch boost. No trace here
   can show that. If the 120 Hz run below shows the capsule frames at a lower cadence than the page travel, the candidate
   is `Modifier.preferredFrameRate(FrameRateCategory.High)` on the capsule while `controller.isMoving`, nothing else.
-- **Repeatable 120 Hz harness (not run, no device):** `tools/refresh-capabilities.sh <serial>`; build with
-  `-Pzar.useEmulators=false` equivalents is not needed, the benchmark seeds the local emulators, so for a physical phone use the
-  host's emulator addresses over `adb reverse`, run `:benchmark:connectedBenchmarkAndroidTest` with `ANDROID_SERIAL`, then
-  `tools/trace-frame-summary.py <traces>`: it prints the display period and the cadence frames were actually produced at, so a
-  device that downclocks to 60/90 Hz is reported as that cadence.
+- **Repeatable 120 Hz harness (not run, no device):** attach the phone, run `tools/refresh-capabilities.sh <serial>` (it must
+  list a 120 Hz mode), run `:benchmark:connectedBenchmarkAndroidTest` with `ANDROID_SERIAL=<serial>` (the benchmark build
+  reaches the host's local Auth/Firestore emulators, so `adb reverse` ports 9099 and 8080 or point the build at the host's LAN
+  address), then `tools/trace-frame-summary.py <traces>`. It prints the display period and the cadence frames were actually
+  produced at, so a device that downclocks to 60/90 Hz is reported as that cadence and not as 120 Hz.
 
 ### Five-iteration results (one unmeasured warm-up pass per journey, same fixture and `CompilationMode.Full()`)
 
