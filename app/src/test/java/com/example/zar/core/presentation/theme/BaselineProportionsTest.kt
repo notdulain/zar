@@ -124,6 +124,28 @@ class BaselineProportionsTest {
     }
 
     @Test
+    fun fixedPixelInsetsKeepTheirPhysicalOffsetUnderTheOverride() {
+        // Android reports window insets in pixels; Compose converts them through LocalDensity. Providing the raised
+        // density therefore leaves status-bar/IME/gesture offsets where the platform put them in physical pixels.
+        val resolved = resolve(smallDisplay, 1f)
+        val provided = Density(resolved.density, resolved.fontScale)
+        val insetPx = 24f * smallDisplay
+        with(provided) { assertEquals(insetPx, insetPx.toDp().toPx(), 0.001f) }
+    }
+
+    @Test
+    fun touchTargetsNeverShrinkBelowTheDefaultPixelSize() {
+        val resolved = resolve(smallDisplay, 1f)
+        val provided = Density(resolved.density, resolved.fontScale)
+        val androidSmall = Density(smallDisplay, 1f)
+        val atDefault = Density(stable, 1f)
+        with(provided) {
+            assertTrue(48.dp.toPx() >= with(androidSmall) { 48.dp.toPx() })
+            assertEquals(with(atDefault) { 48.dp.toPx() }, 48.dp.toPx(), 0.001f)
+        }
+    }
+
+    @Test
     fun theComposeDensityOverloadReadsDensityAndFontScaleFromTheCurrentDensity() {
         val small = Density(smallDisplay, smallFont)
         val r = ZarProportionPolicy.resolve(small, stableDpi)

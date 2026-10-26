@@ -8,10 +8,11 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Density
 
 /**
- * Keeps the accepted default-size composition when Android's Display size or Font size is set below default.
- * PROTOTYPE: the arithmetic is covered by unit tests, but the stable-density reference has not been confirmed against
- * the physical Pixel 6a, and [ProvideBaselineProportions] is deliberately not applied at the app root yet
- * (`stabilize-mobile-proportions` tasks 1.1 and 1.2). See docs/design-system.md "Baseline proportions".
+ * Keeps the accepted default-size composition when Android's Display size or Font size is set below default. Applied
+ * once at the app root in `MainActivity` (`stabilize-mobile-proportions` tasks 1.2 and 2.1); the arithmetic is covered
+ * by unit tests. The stable-density reference is Android's `DENSITY_DEVICE_STABLE`, whose exact match to the physical
+ * phone's accepted default has not been measured on a real Pixel 6a, so no physical-invariance claim is made yet. See
+ * docs/design-system.md "Baseline proportions".
  *
  * Font size and Display size are separate inputs and are treated separately:
  *
@@ -66,8 +67,11 @@ object ZarProportionPolicy {
 }
 
 /**
- * Lays out [content] with the baseline-size policy. A no-op (the same [Density] object) at or above default settings.
- * Not applied at the app root until the policy is verified on the device; see [ZarProportionPolicy].
+ * Lays out [content] with the baseline-size policy. A no-op (the same [Density] object) at or above default settings,
+ * so it only changes how a below-default Display size is laid out. It raises Compose's layout density and never lowers
+ * it, so drawn and interactive targets never get physically smaller, and it passes an enlarged `fontScale` through
+ * untouched so Android's own (non-linear on Android 14+) text scaling still applies. Insets and pointer coordinates are
+ * converted through the same density, so they stay aligned; see [ZarProportionPolicy].
  */
 @Composable
 fun ProvideBaselineProportions(
