@@ -27,8 +27,10 @@ class ContrastTest {
         assertEquals(1.531, contrast(light.fresh, light.canvas), 0.001)
         assertEquals(4.593, contrast(light.textIncome, light.canvas), 0.001)
         assertEquals(5.007, contrast(light.textIncome, light.surface), 0.001)
-        assertEquals(3.711, contrast(dark.textIncome, dark.surface), 0.001)
         assertEquals(11.134, contrast(light.fresh, dark.surface), 0.001)
+        // The light teal on the dark surface measured 3.711:1 and forced a dark income override; the dark teal fixes
+        // it to 7.641:1 (also asserted in darkIncomeAmountsMeetNormalTextContrastOnTheirOwnBackgrounds).
+        assertEquals(7.641, contrast(dark.textIncome, dark.surface), 0.001)
     }
 
     @Test
@@ -72,5 +74,61 @@ class ContrastTest {
             assertNotEquals(light.fresh, light.amountText(it))
             assertNotEquals(dark.fresh, dark.amountText(it))
         }
+    }
+
+    @Test
+    fun darkIncomeAmountsMeetNormalTextContrastOnTheirOwnBackgrounds() {
+        // The dark income teal is a separate value from light: teal/300 #5FB3B9, not the light teal/600.
+        assertNotEquals(light.textIncome, dark.textIncome)
+        assertTrue(contrast(dark.textIncome, dark.canvas) >= 4.5)
+        assertTrue(contrast(dark.textIncome, dark.surface) >= 4.5)
+    }
+
+    @Test
+    fun incomeOnAnIncomeTintMeetsNormalTextContrastInBothThemes() {
+        assertTrue(contrast(light.textIncomeOnTint, light.incomeTint) >= 4.5)
+        assertTrue(contrast(dark.textIncomeOnTint, dark.incomeTint) >= 4.5)
+    }
+
+    @Test
+    fun attentionTextMeetsNormalTextContrastWhereGraphicAttentionWouldNot() {
+        // text/attention is graphic/large-text only (2.77:1 on white); text/attention-strong is the readable text role.
+        assertTrue(contrast(light.textAttention, light.surface) < 4.5)
+        listOf(light, dark).forEach { colors ->
+            assertTrue(contrast(colors.textAttentionStrong, colors.surface) >= 4.5)
+            assertTrue(contrast(colors.textAttentionStrong, colors.canvas) >= 4.5)
+        }
+    }
+
+    @Test
+    fun darkPlaceholderTextIsLiftedToNormalTextContrast() {
+        // Light keeps gray/500 as the lighter placeholder role; dark was 2.92:1 and the handoff lifts it to gray/600.
+        assertTrue(contrast(dark.textPlaceholder, dark.canvas) >= 4.5)
+        assertTrue(contrast(dark.textPlaceholder, dark.surface) >= 4.5)
+    }
+
+    @Test
+    fun primaryAndSelectedAccentsMeetNonTextContrastOnTheDarkCanvas() {
+        // The dark primary/selected accent is navy/400 #41799C; white on it still clears 4.5:1 for the button label.
+        assertTrue(contrast(dark.accentPrimary, dark.canvas) >= 3.0)
+        assertTrue(contrast(dark.accentSelected, dark.surface) >= 3.0)
+        assertTrue(contrast(light.textOnInverse, dark.accentPrimary) >= 4.5)
+    }
+
+    @Test
+    fun darkGraphicalIndicatorsMeetNonTextContrast() {
+        assertTrue(contrast(dark.borderSelected, dark.surface) >= 3.0)
+        assertTrue(contrast(dark.chartUnknown, dark.surface) >= 3.0)
+        assertTrue(contrast(dark.chartCommitted, dark.surface) >= 3.0)
+        assertTrue(contrast(dark.accentIncome, dark.surface) >= 3.0)
+    }
+
+    @Test
+    fun navOutlineIsALightEdgeOnLightAndANightEdgeOnDark() {
+        assertEquals(Color(0xFFFFFFFF), light.borderNav)
+        assertEquals(Color(0xFF272B33), dark.borderNav)
+        // A hairline outline is decorative chrome, never a text colour.
+        assertNotEquals(light.borderNav, light.textPrimary)
+        assertNotEquals(dark.borderNav, dark.textPrimary)
     }
 }

@@ -41,7 +41,26 @@ Figma line height is 100% for named text styles. Currency prefixes beside amount
 
 ## Color and paint
 
-The exact light and dark semantic palette and raw primitives are in `ZarDesign.kt`. The light canvas is `#F5F5F5`, surface `#FFFFFF`, primary text `#0E0F12`, and accent primary `#0C1625`. The dark canvas is `#07080B`, surface `#111318`, primary text `#F3F3F5`, and accent primary remains `#0C1625`.
+The exact light and dark semantic palette and raw primitives are in `ZarDesign.kt`. The light canvas is `#F5F5F5`, surface `#FFFFFF`, primary text `#0E0F12`, and accent primary `#0C1625`. The dark canvas is `#07080B`, surface `#111318`, and primary text `#F3F3F5`.
+
+### Approved dark overrides
+
+Dark keeps every brand hue and changes lightness only. These are the semantic overrides from the reviewed dark Figma handoff (`add-appearance-preference`), flagged by token and contrast on the surface they actually sit on:
+
+| Token (`ZarColors`) | Light | Dark (overridden) | Measured pair |
+| --- | --- | --- | --- |
+| `textIncome` | teal/600 `#2A7A80` | teal/300 `#5FB3B9` | 7.64:1 on surface `#111318` (was 3.71) |
+| `textIncomeOnTint` (new) | teal/700 `#23676C` | teal/300 `#5FB3B9` | 5.64 / 6.28:1 on `infoTint` |
+| `textAttentionStrong` (new) | coral/800 `#A9573F` | coral/500 `#DD8468` | ≥4.5:1 text; `textAttention` stays graphic/large only (2.77 on white) |
+| `accentPrimary` | navy/900 `#0C1625` | navy/400 `#41799C` | 4.23:1 on canvas; white label 4.73:1 |
+| `accentSelected` | navy/600 `#1E3A55` | navy/400 `#41799C` | 3.93:1 on surface |
+| `chartCommitted` | navy/600 | navy/400 | ≥3:1 mark on the dark card |
+| `chartUnknown` | gray/250 `#E6E6EA` | gray/650 `#7A7B82` | 4.41:1 on surface (removes the white glare) |
+| `textPlaceholder` | gray/500 | gray/600 `#8B8C93` | 5.55:1 on surface (was 2.92) |
+| `borderSelected` | navy/600 | navy/300 `#5A86A6` | 4.77:1 selected/focus outline |
+| `borderNav` (new) | gray/0 `#FFFFFF` | night/750 `#272B33` | floating-nav outline |
+
+New primitives: navy/300 `#5A86A6`, navy/400 `#41799C`, teal/300 `#5FB3B9`, teal/700 `#23676C`, coral/800 `#A9573F`. `ContrastTest` measures every pair above so the values cannot drift.
 
 `ZarGradients.dusk`, `received`, `spent`, and `goal` preserve Figma's exact color stops, including stops past 100%, so the visible lower edge stays dark. Use them only for hero money surfaces. The `statusBarScrim` brush is the separate dark status bar overlay.
 
