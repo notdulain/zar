@@ -40,4 +40,10 @@ interface LedgerRepository {
 
     /** Saves the server refused after the phone accepted them, oldest first. Empty when nothing was refused. */
     fun observeRejectedWrites(): Flow<List<RejectedLedgerWrite>> = flowOf(emptyList())
+
+    /** Writes a refused save again under its original IDs. Does nothing if [id] is no longer listed. */
+    suspend fun retryRejectedWrite(id: String) {}
+
+    /** Gives up on a refused save so it is no longer listed. */
+    fun dismissRejectedWrite(id: String) {}
 }

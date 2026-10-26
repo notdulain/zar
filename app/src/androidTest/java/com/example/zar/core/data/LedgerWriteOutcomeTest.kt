@@ -156,4 +156,21 @@ class LedgerWriteOutcomeTest {
         assertTrue(repo.observeRejectedWrites().first().isEmpty())
         assertEquals(1, repo.observeLedger().first().count { it.id == saved.id })
     }
+
+    @Test
+    fun aRefusedSaveKeepsItsIdWhenTriedAgainAndLeavesTheListWhenDismissed() = runBlocking {
+        val repo = repository()
+        val refused = expense(title = "x".repeat(121))
+        repo.saveTransaction(refused)
+        withTimeout(10_000) { repo.observeRejectedWrites().first { it.isNotEmpty() } }
+
+        // Trying again resubmits the same record under the same ID (the rule still refuses it, so it comes back).
+        repo.retryRejectedWrite(refused.id.value)
+        val again = withTimeout(10_000) { repo.observeRejectedWrites().first { it.any { w -> w.id == refused.id.value } } }
+        assertEquals(1, again.count { it.id == refused.id.value })
+        assertEquals(listOf(refused), again.single { it.id == refused.id.value }.transactions)
+
+        repo.dismissRejectedWrite(refused.id.value)
+        assertTrue(repo.observeRejectedWrites().first().isEmpty())
+    }
 }

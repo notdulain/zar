@@ -23,6 +23,7 @@ These are the shared models, repository interfaces and saving rules that every f
 5. **Transfers are atomic.** `SaveTransferUseCase` writes both legs and any separate transfer-fee expense in one batch.
 6. **Captured counterparts link; they don't post.** When an SMS describes money already recorded (e.g. a manual transfer leg), save an `EvidenceLink`, not a new transaction. Each evidence ID links to one transaction only.
 7. **Offline first.** Repository saves return once Firestore has the write locally; sync happens later. Don't wait for the server in the UI.
+8. **A refused save is reported, not dropped.** If the server later refuses a transaction or transfer that was accepted locally (rules, a stale deployed ruleset), Firestore rolls it back and the row disappears. `LedgerRepository.observeRejectedWrites()` keeps those records so the person can retry under the same IDs (`retryRejectedWrite`) or dismiss them. A replay of a record that is already stored is denied by the write-once rules but is not reported: nothing was lost. The list lives in memory, so a refusal that arrives after the app process has ended cannot be reported.
 
 ## Money rules
 
