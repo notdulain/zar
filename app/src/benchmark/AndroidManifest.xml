@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- The benchmark build type is profiled by the :benchmark module; the shell may profile it. Never shipped. -->
+    <application>
+        <profileable android:shell="true" />
+    </application>
+</manifest>

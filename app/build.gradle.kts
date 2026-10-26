@@ -53,6 +53,15 @@ android {
                 enable = false
             }
         }
+        // The Macrobenchmark target: a release-like, non-debuggable build the benchmark module can profile. It keeps
+        // the debug signature so it installs on an emulator/device without release keys. Never shipped.
+        create("benchmark") {
+            initWith(getByName("release"))
+            signingConfig = signingConfigs.getByName("debug")
+            matchingFallbacks += listOf("release")
+            isDebuggable = false
+            buildConfigField("boolean", "USE_FIREBASE_EMULATORS", useEmulators.toString())
+        }
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17

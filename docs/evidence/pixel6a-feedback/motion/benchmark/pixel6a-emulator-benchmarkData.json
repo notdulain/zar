@@ -1,0 +1,220 @@
+{
+    "context": {
+        "build": {
+            "brand": "google",
+            "device": "emu64a16k",
+            "fingerprint": "google/sdk_gphone16k_arm64/emu64a16k:17/CP31.260623.005/15817740:user/dev-keys",
+            "id": "CP31.260623.005",
+            "model": "sdk_gphone16k_arm64",
+            "type": "user",
+            "version": {
+                "codename": "REL",
+                "sdk": 37
+            }
+        },
+        "cpuCoreCount": 4,
+        "cpuLocked": false,
+        "cpuMaxFreqHz": 2000,
+        "memTotalBytes": 4159930368,
+        "sustainedPerformanceModeEnabled": false,
+        "artMainlineVersion": 371899999,
+        "osCodenameAbbreviated": "REL",
+        "compilationMode": "run-from-apk",
+        "payload": {}
+    },
+    "benchmarks": [
+        {
+            "name": "coldStartup",
+            "params": {},
+            "className": "com.example.zar.benchmark.ZarBenchmark",
+            "totalRunTimeNs": 85143266416,
+            "metrics": {
+                "timeToInitialDisplayMs": {
+                    "minimum": 3136.160418,
+                    "maximum": 4352.233377,
+                    "median": 3377.577585,
+                    "coefficientOfVariation": 0.13867847802288097,
+                    "runs": [
+                        4352.233377,
+                        3136.160418,
+                        3214.74621,
+                        3654.634002,
+                        3377.577585
+                    ]
+                }
+            },
+            "sampledMetrics": {},
+            "warmupIterations": 0,
+            "repeatIterations": 5,
+            "thermalThrottleSleepSeconds": 0,
+            "profilerOutputs": [
+                {
+                    "type": "PerfettoTrace",
+                    "label": "Trace Iteration 0",
+                    "filename": "ZarBenchmark_coldStartup_iter000_2026-10-26-08-18-40.perfetto-trace"
+                },
+                {
+                    "type": "PerfettoTrace",
+                    "label": "Trace Iteration 1",
+                    "filename": "ZarBenchmark_coldStartup_iter001_2026-10-26-08-18-56.perfetto-trace"
+                },
+                {
+                    "type": "PerfettoTrace",
+                    "label": "Trace Iteration 2",
+                    "filename": "ZarBenchmark_coldStartup_iter002_2026-10-26-08-19-11.perfetto-trace"
+                },
+                {
+                    "type": "PerfettoTrace",
+                    "label": "Trace Iteration 3",
+                    "filename": "ZarBenchmark_coldStartup_iter003_2026-10-26-08-19-27.perfetto-trace"
+                },
+                {
+                    "type": "PerfettoTrace",
+                    "label": "Trace Iteration 4",
+                    "filename": "ZarBenchmark_coldStartup_iter004_2026-10-26-08-19-42.perfetto-trace"
+                }
+            ]
+        },
+        {
+            "name": "firstScreenScrollFrameTiming",
+            "params": {},
+            "className": "com.example.zar.benchmark.ZarBenchmark",
+            "totalRunTimeNs": 139012327858,
+            "metrics": {
+                "frameCount": {
+                    "minimum": 5.0,
+                    "maximum": 6.0,
+                    "median": 5.0,
+                    "coefficientOfVariation": 0.08600261451922267,
+                    "runs": [
+                        5.0,
+                        6.0,
+                        5.0,
+                        5.0,
+                        5.0
+                    ]
+                }
+            },
+            "sampledMetrics": {
+                "frameDurationCpuMs": {
+                    "P50": 436.6846045,
+                    "P90": 771.0378545000001,
+                    "P95": 902.5786255,
+                    "P99": 1174.86848975,
+                    "runs": [
+                        [
+                            166.442084,
+                            204.9705,
+                            195.136916,
+                            388.492626,
+                            521.451625
+                        ],
+                        [
+                            113.1025,
+                            610.591333,
+                            917.531834,
+                            545.043125,
+                            512.390709,
+                            403.894916
+                        ],
+                        [
+                            169.01725,
+                            643.905209,
+                            857.719,
+                            392.859709,
+                            253.056209
+                        ],
+                        [
+                            155.462459,
+                            684.356709,
+                            1260.647375,
+                            434.538792,
+                            438.830417
+                        ],
+                        [
+                            112.416458,
+                            416.975709,
+                            454.088708,
+                            525.475708,
+                            544.832333
+                        ]
+                    ]
+                },
+                "frameOverrunMs": {
+                    "P50": 710.7820240000001,
+                    "P90": 1380.703855,
+                    "P95": 1486.73912375,
+                    "P99": 1579.5343595,
+                    "runs": [
+                        [
+                            178.818674,
+                            213.643089,
+                            186.931719,
+                            695.745346,
+                            700.985263
+                        ],
+                        [
+                            124.430994,
+                            720.578785,
+                            958.446817,
+                            1369.860486,
+                            786.550148,
+                            436.383625
+                        ],
+                        [
+                            180.00282,
+                            771.360661,
+                            883.018118,
+                            1075.261208,
+                            414.104441
+                        ],
+                        [
+                            188.823106,
+                            1043.939679,
+                            1391.547224,
+                            1599.889227,
+                            654.771062
+                        ],
+                        [
+                            148.955575,
+                            1518.469757,
+                            441.195021,
+                            924.783522,
+                            758.520995
+                        ]
+                    ]
+                }
+            },
+            "warmupIterations": 0,
+            "repeatIterations": 5,
+            "thermalThrottleSleepSeconds": 0,
+            "profilerOutputs": [
+                {
+                    "type": "PerfettoTrace",
+                    "label": "Trace Iteration 0",
+                    "filename": "ZarBenchmark_firstScreenScrollFrameTiming_iter000_2026-10-26-08-21-03.perfetto-trace"
+                },
+                {
+                    "type": "PerfettoTrace",
+                    "label": "Trace Iteration 1",
+                    "filename": "ZarBenchmark_firstScreenScrollFrameTiming_iter001_2026-10-26-08-21-21.perfetto-trace"
+                },
+                {
+                    "type": "PerfettoTrace",
+                    "label": "Trace Iteration 2",
+                    "filename": "ZarBenchmark_firstScreenScrollFrameTiming_iter002_2026-10-26-08-21-45.perfetto-trace"
+                },
+                {
+                    "type": "PerfettoTrace",
+                    "label": "Trace Iteration 3",
+                    "filename": "ZarBenchmark_firstScreenScrollFrameTiming_iter003_2026-10-26-08-22-08.perfetto-trace"
+                },
+                {
+                    "type": "PerfettoTrace",
+                    "label": "Trace Iteration 4",
+                    "filename": "ZarBenchmark_firstScreenScrollFrameTiming_iter004_2026-10-26-08-22-35.perfetto-trace"
+                }
+            ]
+        }
+    ]
+}

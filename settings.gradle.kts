@@ -24,3 +24,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "Zar"
 include(":app")
+include(":benchmark")

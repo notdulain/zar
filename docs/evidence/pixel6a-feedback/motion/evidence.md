@@ -34,10 +34,29 @@ continuously; `HeroParallaxTest` covers rest, fractional, saturated and terminal
 - **No fixed 60 Hz cap**: a search of `app/src/main/java` finds no `Choreographer`, `withFrameNanos`,
   `Surface.setFrameRate`, `Window.setFrameRate`, `preferredFrameRate`, `requestedFrameRate` or `FrameRateCategory`
   usage. Nothing in the app pins, caps or requests a display cadence.
-- **No scoped refresh hints added**: the spec allows them "only if trace-justified"; with no trace collected here,
-  none were added, so the app never holds a high-refresh request while idle/background.
-- No Macrobenchmark or Baseline Profile module exists in the project (`settings.gradle.kts` has one `:app` module;
-  no `macrobenchmark` dependency), so the five-iteration FrameTimingMetric/Perfetto journeys were **not run**.
+- **No scoped refresh hints added**: the spec allows them "only if trace-justified"; the traces collected below do not
+  show the OS policy starving frames, so none were added, and the app never holds a high-refresh request while
+  idle/background.
+
+## Macrobenchmark module and emulator run (26 Oct 2026)
+
+A `:benchmark` module now exists (`benchmark/build.gradle.kts`, `com.android.test`, `androidx.benchmark:benchmark-macro-junit4:1.5.0`)
+targeting a new release-like, non-debuggable, profileable `benchmark` build type in `:app` (debug-signed; never shipped).
+Journeys: `coldStartup` (StartupTimingMetric, 5 iterations), `firstScreenScrollFrameTiming` (FrameTimingMetric, 5
+iterations), and signed-in `homeHeroScrollFrameTiming` / `navRetargetFrameTiming` (FrameTimingMetric) which `assumeTrue`
+a seeded signed-in session and are **skipped** without the local Firebase emulators + a seeded user.
+
+Run: `./gradlew :benchmark:connectedBenchmarkAndroidTest` on **emulator Pixel_6a (sdk_gphone16k_arm64, API 37)**,
+`CompilationMode.None()` (run-from-apk). Raw JSON: `benchmark/pixel6a-emulator-benchmarkData.json`; 10 Perfetto traces
+were written to `benchmark/build/outputs/connected_android_test_additional_output/...` (build output, not committed).
+
+- `coldStartup` TTID: median 3377.6 ms, max 4352.2 ms over 5 runs (min 3136.2 ms). This is an **emulator, interpreted
+  (no AOT) cold start** — not a device number and not a smoothness result.
+- `firstScreenScrollFrameTiming`: only 5–6 frames per iteration, because the first screen without a seeded account is
+  the sign-in screen, which is not scrollable; `frameDurationCpuMs`/`frameOverrunMs` were therefore not produced. This
+  journey needs the signed-in Home to be meaningful and is **pending** a seeded session.
+
+Emulator timings are labelled as such and are **not** a physical 60/120 Hz result. No refresh-rate hint was added.
 
 ## What was verified (real, emulator only)
 
@@ -55,6 +74,7 @@ continuously; `HeroParallaxTest` covers rest, fractional, saturated and terminal
 - **Physical 120 Hz**: no capable physical device is available. Emulators cannot prove 120 Hz; **unverified**.
 - **Physical haptics**: clock detent softness/latency is a physical check; the fake haptic sink only proves the
   changed-detent ticks, duplicate suppression and the 40 ms fast-scrub cap. **Physical haptics unverified**.
-- **Frame timing / p95 frameOverrunMs / missed deadlines / Perfetto traces**: not collected (no profileable benchmark
-  module and no physical device). No FPS number is reported.
+- **Signed-in frame timing / p95 frameOverrunMs / missed deadlines**: the signed-in journeys are skipped without a
+  seeded Firebase-emulator session, and the emulator produced no `frameOverrunMs` for the non-scrollable first screen.
+  The Macrobenchmark module and Perfetto capture path now exist and run; the signed-in numbers remain **pending**.
 - Screen recordings of scroll/parallax/capsule/predictive Back: not captured in this session.
