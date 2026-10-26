@@ -192,10 +192,11 @@ fun ManualTimePickerSheet(time: LocalTime, onCancel: () -> Unit, onSetTime: (Loc
         if (chosen != null) onSetTime(chosen)
     }) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            val now = remember { LocalTime.now(ZarTime.ZONE) }
-            listOf("Now" to now, "15 min ago" to now.minusMinutes(15), "1 hour ago" to now.minusHours(1)).forEach { (label, value) ->
+            // "Now" is read when a chip is tapped, not when the sheet composed: the picker can stay composed for
+            // minutes, and "15 min ago" must be relative to the clock at the tap.
+            listOf("Now" to 0L, "15 min ago" to 15L, "1 hour ago" to 60L).forEach { (label, minutesAgo) ->
                 ZarChip(label = label, selected = false, onClick = {
-                    selected = value.withSecond(0).withNano(0)
+                    selected = LocalTime.now(ZarTime.ZONE).minusMinutes(minutesAgo).withSecond(0).withNano(0)
                     typedHour = ((selected.hour + 11) % 12 + 1).toString()
                     typedMinute = "%02d".format(selected.minute)
                 })

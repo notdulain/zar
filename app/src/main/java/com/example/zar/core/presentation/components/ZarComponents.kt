@@ -30,6 +30,7 @@ import androidx.compose.ui.composed
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
@@ -130,6 +131,8 @@ fun ZarMonoLabel(text: String, modifier: Modifier = Modifier, color: Color = Zar
     Text(text.uppercase(), style = ZarType.monoLabel, color = color, modifier = modifier)
 }
 
+private const val ICON_MAX_FONT_SCALE = 1.2f
+
 enum class ZarButtonStyle { Primary, Soft, Outline }
 enum class ZarButtonSize { Large, Medium }
 
@@ -167,7 +170,11 @@ fun ZarButton(
         Alignment.Center,
     ) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            if (icon != null) ZarIcon(icon, size = if (size == ZarButtonSize.Large) 20.dp else 18.dp, tint = content)
+            // A decorative icon gives way to the label at large font sizes, where half-width buttons otherwise cut the
+            // label to "Quick n…".
+            if (icon != null && LocalDensity.current.fontScale <= ICON_MAX_FONT_SCALE) {
+                ZarIcon(icon, size = if (size == ZarButtonSize.Large) 20.dp else 18.dp, tint = content)
+            }
             Text(
                 text,
                 style = if (size == ZarButtonSize.Large) ZarType.labelButton else ZarType.labelChip,
