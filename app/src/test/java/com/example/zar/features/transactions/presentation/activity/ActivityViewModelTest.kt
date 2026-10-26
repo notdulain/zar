@@ -1,5 +1,7 @@
 package com.example.zar.features.transactions.presentation.activity
 
+import com.example.zar.features.transactions.domain.category.usecase.ObserveExpenseCategoryCatalogUseCase
+import com.example.zar.features.transactions.domain.category.FakeExpenseCategoryRepository
 import com.example.zar.core.domain.TestLedger.bank
 import com.example.zar.core.domain.TestLedger.cash
 import com.example.zar.core.domain.TestLedger.lkr
@@ -46,7 +48,7 @@ class ActivityViewModelTest {
     @After fun tearDown() = Dispatchers.resetMain()
 
     private fun viewModel() = ActivityViewModel(
-        observeActivity = ObserveActivityUseCase(ledger, accounts),
+        observeActivity = ObserveActivityUseCase(ledger, accounts, ObserveExpenseCategoryCatalogUseCase(FakeExpenseCategoryRepository())),
         observeOnline = ObserveOnlineStatusUseCase(connectivity),
         observeRejected = ObserveRejectedLedgerWritesUseCase(ledger),
         retryRejected = RetryRejectedLedgerWriteUseCase(ledger),

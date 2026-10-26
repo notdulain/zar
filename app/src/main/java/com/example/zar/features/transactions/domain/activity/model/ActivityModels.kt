@@ -2,6 +2,7 @@ package com.example.zar.features.transactions.domain.activity.model
 
 import com.example.zar.core.domain.calculation.PeriodSummary
 import com.example.zar.core.domain.model.Account
+import com.example.zar.features.transactions.domain.category.ExpenseCategoryCatalog
 import com.example.zar.core.domain.model.AccountId
 import com.example.zar.core.domain.model.Correction
 import com.example.zar.core.domain.model.LedgerEntry
@@ -38,6 +39,8 @@ data class ActivitySnapshot(
     val entries: List<LedgerEntry>,
     /** Includes archived accounts, so old entries still show where they were recorded. */
     val accounts: List<Account>,
+    /** Resolves custom category names for search; built-ins only until the user's catalog arrives. */
+    val categories: ExpenseCategoryCatalog = ExpenseCategoryCatalog.BUILT_IN_ONLY,
 )
 
 data class ActivityRow(

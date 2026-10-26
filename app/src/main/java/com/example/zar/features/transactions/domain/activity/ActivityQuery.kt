@@ -5,6 +5,7 @@ import com.example.zar.core.domain.calculation.toDateRange
 import com.example.zar.core.domain.model.LedgerEntry
 import com.example.zar.core.domain.model.TransactionType
 import com.example.zar.features.transactions.domain.activity.model.ActivityFilter
+import com.example.zar.features.transactions.domain.category.ExpenseCategoryCatalog
 import com.example.zar.features.transactions.domain.activity.model.ActivityList
 import com.example.zar.features.transactions.domain.activity.model.ActivityRow
 import com.example.zar.features.transactions.domain.activity.model.ActivitySnapshot
@@ -41,7 +42,7 @@ object ActivityQuery {
         val rows = onAccount
             .filter { it.current.date in range }
             .filter { filter.showVoided || !it.isVoided }
-            .filter { needle.isEmpty() || matches(it, accounts[it.current.accountId]?.name, needle) }
+            .filter { needle.isEmpty() || matches(it, accounts[it.current.accountId]?.name, snapshot.categories, needle) }
             .sortedWith(newestFirst)
             .map { ActivityRow(it, accounts[it.current.accountId]) }
 
@@ -57,10 +58,10 @@ object ActivityQuery {
      * Case-insensitive match on what a row shows: the title, description, category, account name and the kind of
      * entry ("Transfer in" has no title of its own, so people search for it by that name).
      */
-    private fun matches(entry: LedgerEntry, accountName: String?, needle: String): Boolean {
+    private fun matches(entry: LedgerEntry, accountName: String?, categories: ExpenseCategoryCatalog, needle: String): Boolean {
         val tx = entry.current
-        val category = tx.categoryId?.replace('-', ' ')
-        return listOfNotNull(tx.merchant, tx.note, category, accountName, kindWords(tx.type))
+        // The resolved name, so a custom category is found by what it is called and never by its opaque ID.
+        return (listOfNotNull(tx.merchant, tx.note, accountName, kindWords(tx.type)) + categories.searchTerms(tx.categoryId))
             .any { it.lowercase().contains(needle) }
     }
 

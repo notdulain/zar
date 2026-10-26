@@ -22,7 +22,7 @@ import com.example.zar.core.domain.model.money.Currencies
 import com.example.zar.core.domain.model.money.Currency
 import com.example.zar.core.domain.model.money.Money
 import com.example.zar.features.transactions.domain.manual.ManualEntryRules
-import com.example.zar.features.transactions.domain.manual.model.ExpenseCategory
+import com.example.zar.features.transactions.domain.category.ExpenseCategoryCatalog
 import com.example.zar.features.transactions.domain.refund.RefundFormInput
 import com.example.zar.features.transactions.domain.refund.RefundFormResult
 import com.example.zar.features.transactions.domain.refund.RefundProblem
@@ -179,8 +179,9 @@ object QuickNoteReviewRules {
         entries: List<LedgerEntry>,
         today: LocalDate,
         now: Instant,
+        categories: ExpenseCategoryCatalog = ExpenseCategoryCatalog.BUILT_IN_ONLY,
     ): ProposalCheck = when (input) {
-        is ProposalInput.Actual -> checkActual(draft, index, input, accounts, entries, today, now)
+        is ProposalInput.Actual -> checkActual(draft, index, input, accounts, entries, today, now, categories)
         is ProposalInput.Expected -> checkExpected(draft, index, input, accounts, now)
         is ProposalInput.Transfer -> checkTransfer(draft, index, input, accounts, today, now)
     }
@@ -193,6 +194,7 @@ object QuickNoteReviewRules {
         entries: List<LedgerEntry>,
         today: LocalDate,
         now: Instant,
+        categories: ExpenseCategoryCatalog,
     ): ProposalCheck {
         val blockers = mutableSetOf<ProposalBlocker>()
         val type = input.type
@@ -231,7 +233,8 @@ object QuickNoteReviewRules {
                 date = date,
                 reportingConversion = CurrencyConverter.toReporting(amount, null),
                 spendingClass = input.spendingClass ?: SpendingClass.UNKNOWN,
-                categoryId = ExpenseCategory.fromId(input.categoryId)?.id,
+                // Only a category the user's catalog knows is kept: a proposed label can never create a category ID.
+                categoryId = categories.find(input.categoryId)?.id,
                 merchant = title,
                 note = note,
                 source = RecordSource.QUICK_NOTE,

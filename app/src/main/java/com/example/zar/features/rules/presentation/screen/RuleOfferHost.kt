@@ -1,5 +1,7 @@
 package com.example.zar.features.rules.presentation.screen
 
+import com.example.zar.features.transactions.presentation.category.ProvideExpenseCategoryCatalog
+import com.example.zar.features.transactions.presentation.category.categoryDisplayNameOrFallback
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -71,13 +73,15 @@ private const val CARD_SECONDS = 12L
 @Composable
 fun RuleOfferHost(modifier: Modifier = Modifier, viewModel: RuleOfferViewModel = hiltViewModel()) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    RuleOfferContent(
-        state = state,
-        onOpen = viewModel::openSheet,
-        onDismiss = viewModel::dismiss,
-        onRemember = viewModel::remember,
-        modifier = modifier,
-    )
+    ProvideExpenseCategoryCatalog {
+        RuleOfferContent(
+            state = state,
+            onOpen = viewModel::openSheet,
+            onDismiss = viewModel::dismiss,
+            onRemember = viewModel::remember,
+            modifier = modifier,
+        )
+    }
 }
 
 @Composable
@@ -253,4 +257,4 @@ private fun ScopeRow(selected: Boolean, title: String, detail: String, onClick: 
 
 /** The label of a saved category, or the raw ID for one this app does not know. */
 @Composable
-internal fun categoryName(id: String): String = EntryDisplay.categoryLabel(id)?.let { stringResource(it) } ?: id
+internal fun categoryName(id: String): String = categoryDisplayNameOrFallback(id)

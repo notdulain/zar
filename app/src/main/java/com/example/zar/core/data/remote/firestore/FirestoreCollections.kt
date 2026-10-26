@@ -21,4 +21,5 @@ object FirestoreCollections {
     const val GOALS = "goals"
     const val ALLOWANCE = "allowance"
     const val CATEGORY_RULES = "categoryRules"
+    const val EXPENSE_CATEGORIES = "expenseCategories"
 }

@@ -65,6 +65,8 @@ import com.example.zar.features.rules.domain.repository.CategoryRuleRepository
 import com.example.zar.features.rules.domain.repository.RuleOfferInbox
 import com.example.zar.features.settings.data.repository.ReportingCurrencyPreferencesRepository
 import com.example.zar.features.settings.data.repository.SharedPreferencesDisplayPreferencesRepository
+import com.example.zar.features.transactions.data.category.FirestoreExpenseCategoryRepository
+import com.example.zar.features.transactions.domain.category.repository.ExpenseCategoryRepository
 import com.example.zar.features.settings.domain.repository.AppPreferencesRepository
 import com.example.zar.features.settings.domain.repository.DisplayPreferencesRepository
 import dagger.Binds
@@ -194,6 +196,10 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun bindCategoryRuleRepository(impl: FirestoreCategoryRuleRepository): CategoryRuleRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindExpenseCategoryRepository(impl: FirestoreExpenseCategoryRepository): ExpenseCategoryRepository
 
     @Binds
     @Singleton

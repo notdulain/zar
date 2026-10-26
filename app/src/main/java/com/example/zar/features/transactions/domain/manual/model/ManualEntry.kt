@@ -8,18 +8,24 @@ import java.time.LocalDate
 import java.time.LocalTime
 
 /**
- * Stored in `Transaction.categoryId` for manual EXPENSE records. [usualClass] is only a hint that
- * preselects "Counts as"; the user can always change it.
+ * The built-in expense categories. Stored in `Transaction.categoryId` for manual EXPENSE records. [usualClass]
+ * is only a hint that preselects "Counts as"; the user can always change it. [defaultName] is the English
+ * display name; it is used to refuse a custom category with the same name, while the UI shows the string resource.
+ * IDs are stable and never reused or renamed.
  */
-enum class ExpenseCategory(val id: String, val usualClass: SpendingClass?) {
-    COFFEE_DINING("coffee-dining", SpendingClass.DISCRETIONARY),
-    GROCERIES("groceries", SpendingClass.DISCRETIONARY),
-    TRANSPORT("transport", null),
-    BILLS("bills", SpendingClass.COMMITTED),
-    RENT("rent", SpendingClass.COMMITTED),
-    SEASON_TICKET("season-ticket", SpendingClass.COMMITTED),
-    SUBSCRIPTIONS("subscriptions", SpendingClass.DISCRETIONARY),
-    OTHER("other", null),
+enum class ExpenseCategory(
+    override val id: String,
+    override val usualClass: SpendingClass?,
+    val defaultName: String,
+) : ExpenseCategoryChoice {
+    COFFEE_DINING("coffee-dining", SpendingClass.DISCRETIONARY, "Coffee & dining"),
+    GROCERIES("groceries", SpendingClass.DISCRETIONARY, "Groceries"),
+    TRANSPORT("transport", null, "Transport"),
+    BILLS("bills", SpendingClass.COMMITTED, "Bills"),
+    RENT("rent", SpendingClass.COMMITTED, "Rent"),
+    SEASON_TICKET("season-ticket", SpendingClass.COMMITTED, "Season ticket"),
+    SUBSCRIPTIONS("subscriptions", SpendingClass.DISCRETIONARY, "Subscriptions"),
+    OTHER("other", null, "Other"),
     ;
 
     companion object {
@@ -32,7 +38,7 @@ data class ExpenseFormInput(
     val amount: String,
     val account: Account?,
     val date: LocalDate,
-    val category: ExpenseCategory?,
+    val category: ExpenseCategoryChoice?,
     val spendingClass: SpendingClass,
     /** "What was it for?" Saved as the entry's title (merchant). */
     val title: String,
@@ -55,7 +61,7 @@ data class ExpenseDetails(
     val account: Account,
     val amount: Money,
     val date: LocalDate,
-    val category: ExpenseCategory,
+    val category: ExpenseCategoryChoice,
     val spendingClass: SpendingClass,
     val title: String?,
     val description: String?,
@@ -116,7 +122,7 @@ sealed interface TransferFormResult {
 /** A recent expense the user can reuse by typing the start of its title. */
 data class EntrySuggestion(
     val title: String,
-    val category: ExpenseCategory?,
+    val category: ExpenseCategoryChoice?,
     val accountId: AccountId,
     val amount: Money,
     val spendingClass: SpendingClass,

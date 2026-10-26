@@ -1,5 +1,7 @@
 package com.example.zar.features.transactions.domain.activity.usecase
 
+import com.example.zar.features.transactions.domain.category.usecase.ObserveExpenseCategoryCatalogUseCase
+import com.example.zar.features.transactions.domain.category.FakeExpenseCategoryRepository
 import com.example.zar.core.domain.FakeLedgerRepository
 import com.example.zar.core.domain.TestLedger.OCT_10
 import com.example.zar.core.domain.TestLedger.T0
@@ -210,7 +212,7 @@ class ActivityUseCasesTest {
     fun activitySnapshotCarriesEntriesAndAccountsTogether() = runBlocking {
         repo.saveTransaction(tx("e1", TransactionType.EXPENSE, lkr(1_000), cash))
 
-        val snapshot = ObserveActivityUseCase(repo, accounts)().first()
+        val snapshot = ObserveActivityUseCase(repo, accounts, ObserveExpenseCategoryCatalogUseCase(FakeExpenseCategoryRepository()))().first()
 
         assertEquals(listOf("e1"), snapshot.entries.map { it.id.value })
         assertEquals(setOf("bank", "cash"), snapshot.accounts.map { it.id.value }.toSet())

@@ -88,7 +88,9 @@ import com.example.zar.core.presentation.theme.ZarTheme
 import com.example.zar.core.presentation.theme.ZarType
 import com.example.zar.features.accounts.presentation.screen.iconRes
 import com.example.zar.features.transactions.domain.manual.model.EntrySuggestion
+import com.example.zar.features.transactions.domain.manual.model.CustomExpenseCategory
 import com.example.zar.features.transactions.domain.manual.model.ExpenseCategory
+import com.example.zar.features.transactions.domain.manual.model.ExpenseCategoryChoice
 import com.example.zar.features.transactions.domain.manual.model.ExpenseProblem
 import com.example.zar.features.transactions.domain.manual.model.TransferProblem
 import com.example.zar.features.transactions.presentation.activity.screen.InfoBanner
@@ -152,7 +154,7 @@ internal class ManualEntryActions(
     val onDate: (LocalDate) -> Unit,
     val onTime: (LocalTime) -> Unit,
     val onAccount: (AccountId) -> Unit,
-    val onCategory: (ExpenseCategory) -> Unit,
+    val onCategory: (ExpenseCategoryChoice) -> Unit,
     val onSpendingClass: (SpendingClass) -> Unit,
     val onTitle: (String) -> Unit,
     val onDescription: (String) -> Unit,
@@ -332,9 +334,9 @@ private fun ExpenseFields(state: ManualEntryUiState, actions: ManualEntryActions
     Section(stringResource(R.string.manual_field_category), stringResource(R.string.manual_all_categories), { allCategories = !allCategories }) {
         if (allCategories) {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                ExpenseCategory.entries.forEach { category ->
+                state.categoryCatalog.choices.forEach { category ->
                     ZarChip(
-                        label = stringResource(category.labelRes()), selected = category == state.category,
+                        label = category.labelText(), selected = category.id == state.category?.id,
                         onClick = { actions.onCategory(category); allCategories = false },
                         icon = category.iconRes(), modifier = Modifier.testTag("manual-category-${category.id}"),
                     )
@@ -342,9 +344,9 @@ private fun ExpenseFields(state: ManualEntryUiState, actions: ManualEntryActions
             }
         } else {
             Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                ExpenseCategory.entries.forEach { category ->
+                state.categoryCatalog.choices.forEach { category ->
                     ZarChip(
-                        label = stringResource(category.labelRes()), selected = category == state.category,
+                        label = category.labelText(), selected = category.id == state.category?.id,
                         onClick = { actions.onCategory(category) }, icon = category.iconRes(),
                         modifier = Modifier.testTag("manual-category-${category.id}"),
                     )
@@ -367,7 +369,7 @@ private fun ExpenseFields(state: ManualEntryUiState, actions: ManualEntryActions
             ZarMonoLabel(stringResource(R.string.manual_field_counts_as))
             state.category?.takeIf { it.usualClass != null }?.let {
                 Text(
-                    stringResource(R.string.manual_counts_as_hint, stringResource(it.labelRes())),
+                    stringResource(R.string.manual_counts_as_hint, it.labelText()),
                     style = ZarType.bodyCaption,
                     color = ZarTheme.colors.textSecondary,
                 )
@@ -450,7 +452,7 @@ private fun Suggestions(state: ManualEntryUiState, onSelect: (EntrySuggestion) -
         }
         state.suggestions.forEach { suggestion ->
             val account = state.accounts.firstOrNull { it.id == suggestion.accountId }
-            val details = listOfNotNull(suggestion.category?.let { stringResource(it.labelRes()) }, account?.name).joinToString(" · ")
+            val details = listOfNotNull(suggestion.category?.let { it.labelText() }, account?.name).joinToString(" · ")
             Row(
                 Modifier
                     .fillMaxWidth()
@@ -827,6 +829,14 @@ internal fun DateRow(date: LocalDate, onSelect: (LocalDate) -> Unit) {
     ) { DatePicker(state = state, colors = pickerColors) }
 }
 
+/** The text for any category choice: a built-in's string resource or a custom category's own name. */
+@Composable
+internal fun ExpenseCategoryChoice.labelText(): String = when (this) {
+    is ExpenseCategory -> stringResource(labelRes())
+    is CustomExpenseCategory -> name
+    else -> id
+}
+
 internal fun ExpenseCategory.labelRes(): Int = when (this) {
     ExpenseCategory.COFFEE_DINING -> R.string.manual_category_coffee_dining
     ExpenseCategory.GROCERIES -> R.string.manual_category_groceries
@@ -837,6 +847,9 @@ internal fun ExpenseCategory.labelRes(): Int = when (this) {
     ExpenseCategory.SUBSCRIPTIONS -> R.string.manual_category_subscriptions
     ExpenseCategory.OTHER -> R.string.manual_category_other
 }
+
+/** A custom category has no icon of its own yet; the picker design supplies one generic icon for all of them. */
+private fun ExpenseCategoryChoice.iconRes(): Int = (this as? ExpenseCategory)?.iconRes() ?: R.drawable.ic_ph_receipt
 
 private fun ExpenseCategory.iconRes(): Int = when (this) {
     ExpenseCategory.COFFEE_DINING -> R.drawable.ic_figma_coffee

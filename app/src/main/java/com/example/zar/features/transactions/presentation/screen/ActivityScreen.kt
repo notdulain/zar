@@ -1,5 +1,6 @@
 package com.example.zar.features.transactions.presentation.screen
 
+import com.example.zar.features.transactions.presentation.category.ProvideExpenseCategoryCatalog
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -129,27 +130,29 @@ fun ActivityScreen(
     viewModel: ActivityViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    ZarScreenScaffold(
-        destination = TopLevelDestination.Activity,
-        onNavigate = onNavigate,
-        onAddOption = onAddOption,
-        heroUnderStatusBar = true,
-    ) { padding ->
-        ActivityBody(
-            state = state,
-            actions = ActivityActions(
-                onOpenEntry = onOpenEntry,
-                onAddEntry = { onAddOption(AddEntryOption.Manual) },
-                onApplyFilter = viewModel::applyFilter,
-                onClearFilters = viewModel::clearFilters,
-                onQuery = viewModel::setQuery,
-                onRetry = viewModel::retry,
-                onRetryRejected = viewModel::retryRejectedWrite,
-                onDismissRejected = viewModel::dismissRejectedWrite,
-                previewCount = viewModel::previewCount,
-            ),
-            contentPadding = padding,
-        )
+    ProvideExpenseCategoryCatalog {
+        ZarScreenScaffold(
+            destination = TopLevelDestination.Activity,
+            onNavigate = onNavigate,
+            onAddOption = onAddOption,
+            heroUnderStatusBar = true,
+        ) { padding ->
+            ActivityBody(
+                state = state,
+                actions = ActivityActions(
+                    onOpenEntry = onOpenEntry,
+                    onAddEntry = { onAddOption(AddEntryOption.Manual) },
+                    onApplyFilter = viewModel::applyFilter,
+                    onClearFilters = viewModel::clearFilters,
+                    onQuery = viewModel::setQuery,
+                    onRetry = viewModel::retry,
+                    onRetryRejected = viewModel::retryRejectedWrite,
+                    onDismissRejected = viewModel::dismissRejectedWrite,
+                    previewCount = viewModel::previewCount,
+                ),
+                contentPadding = padding,
+            )
+        }
     }
 }
 

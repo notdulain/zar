@@ -1,5 +1,6 @@
 package com.example.zar.features.quicknote.domain.usecase
 
+import com.example.zar.features.transactions.domain.category.FakeExpenseCategoryRepository
 import com.example.zar.core.domain.FakeLedgerRepository
 import com.example.zar.core.domain.TestLedger.T0
 import com.example.zar.core.domain.TestLedger.bank
@@ -32,9 +33,10 @@ class ConfirmQuickNoteProposalUseCaseTest {
     private val accounts = FakeAccounts(listOf(bank, cash))
     private val ledger = FakeLedgerRepository()
     private val expected = FakeExpectedPaymentRepository()
+    private val categories = FakeExpenseCategoryRepository()
     private val draft = Draft(DraftId("note1"), DraftSource.QUICK_NOTE, emptyList(), DraftStatus.PENDING_REVIEW, T0)
 
-    private fun useCase() = ConfirmQuickNoteProposalUseCase(accounts, ledger, expected, SaveTransactionUseCase(ledger), SaveTransferUseCase(ledger))
+    private fun useCase() = ConfirmQuickNoteProposalUseCase(accounts, ledger, expected, SaveTransactionUseCase(ledger), SaveTransferUseCase(ledger), categories)
 
     private fun expense(account: String? = "cash") = ProposalInput.Actual(
         TransactionType.EXPENSE, "1250", null, account?.let(::AccountId), today.minusDays(1), "groceries",
@@ -116,5 +118,19 @@ class ConfirmQuickNoteProposalUseCaseTest {
 
         assertTrue(result.isFailure)
         assertTrue(ledger.transactions.isEmpty())
+    }
+
+    @Test
+    fun aCustomCategoryFromTheUsersCatalogIsKeptAndAnotherUsersIsNot() = runTest {
+        categories.create(
+            com.example.zar.features.transactions.domain.manual.model.CustomExpenseCategory(
+                "custom-9f8e7d6c", "Pets", com.example.zar.features.transactions.domain.category.CategoryNameRules.keyOf("Pets"), T0,
+            ),
+        )
+        useCase()(draft, 0, expense().copy(categoryId = "custom-9f8e7d6c"), today, T0)
+        useCase()(draft, 1, expense().copy(categoryId = "custom-ffffffff"), today, T0)
+
+        assertEquals("custom-9f8e7d6c", ledger.transactions[com.example.zar.core.domain.model.TransactionId("draft-note1-0")]?.categoryId)
+        assertEquals(null, ledger.transactions[com.example.zar.core.domain.model.TransactionId("draft-note1-1")]?.categoryId)
     }
 }
