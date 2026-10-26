@@ -49,8 +49,9 @@ import com.example.zar.core.presentation.theme.ZarLightColors
 /**
  * Layout shared by the four main screens.
  *
- * - [TopLevelDestination.Home]: no navbar, Add button centred at the bottom.
- * - Everything else: pill navbar and Add button share one floating row.
+ * - [NavChrome.AddOnly] (initial Home of a fresh session): no navbar, Add button centred at the bottom.
+ * - [NavChrome.Full]: pill navbar and Add button share one floating row. Every other top-level screen, and Home once
+ *   another tab has been visited, uses this; [chrome] comes from the session in [LocalNavSession].
  *
  * [content] receives padding that already clears the navbar and the Add button, so lists can
  * scroll fully into view.
@@ -62,10 +63,10 @@ fun ZarScreenScaffold(
     onAddOption: (AddEntryOption) -> Unit,
     modifier: Modifier = Modifier,
     heroUnderStatusBar: Boolean = destination == TopLevelDestination.Home,
+    chrome: NavChrome = LocalNavSession.current.chromeFor(destination),
     content: @Composable (PaddingValues) -> Unit,
 ) {
     var showAddSheet by rememberSaveable { mutableStateOf(false) }
-    val isHome = destination == TopLevelDestination.Home
     val addDescription = stringResource(R.string.add_entry)
     val layoutDirection = LocalLayoutDirection.current
     val activity = LocalContext.current.findActivity()
@@ -98,7 +99,7 @@ fun ZarScreenScaffold(
                 contentAlignment = Alignment.Center,
             ) {
                 BoxWithConstraints(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                    if (isHome) {
+                    if (chrome == NavChrome.AddOnly) {
                         ZarAddButton(addDescription) { showAddSheet = true }
                     } else {
                         // Figma's floating group is 293 + 8 + 68 = 369dp. Keep it

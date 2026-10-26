@@ -80,9 +80,11 @@ Two separate files, so money that arrived is never mixed with money that is only
 | Overdue-milestone alerts switch and reminders already shown | This phone only: DataStore `payment_reminders` (`features/reminders`) | Cleared on sign-out (`ResetRemindersOnSignOut`) |
 | Dismissed subscription suggestions | This phone only: DataStore `subscription_suggestions` (`features/bills`) | Cleared on sign-out (`ResetSuggestionsOnSignOut`) |
 | Bank text shared into Zar | Memory only (`SharedTextInbox`), never written to disk | Cleared once taken and on sign-out |
+| Appearance (Light / Dark / System; Light until chosen) | This phone only: SharedPreferences `display_preferences` (`features/settings`), read synchronously at start-up, excluded from backup | Chosen in Settings. **Kept on sign-out** and across account switches (`DisplayPreferencesRepository` has no sign-out handler). A failed write keeps the previous choice |
+| Reduce motion (off until chosen) | Same `display_preferences` file as Appearance; combined with Android's animation setting by `MotionPolicy` | Chosen in Settings. **Kept on sign-out**. A failed write keeps the previous choice |
 | Accounts, entries, bills and their reminder choice, everything financial | Firestore under `users/{uid}/` | Synced to the user's Zar account |
 
-Nothing on the Settings or reminder screens is held only in memory. Masking and export settings are not built yet; their stories add their own rows here.
+Nothing on the Settings or reminder screens is held only in memory. Hide amounts is built and device-local (`SharedPreferences` `amount_privacy`); CSV export writes only through the system file picker and stores no setting.
 
 ## Decisions to confirm as a team
 

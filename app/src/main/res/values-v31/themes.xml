@@ -1,0 +1,9 @@
+<resources>
+    <!-- Android 12+ splash. It reads the manifest theme and cannot see the saved Appearance, so its background is the
+         same neutral brand navy as the window: a saved choice never flashes the opposite mode, and the first Compose
+         frame draws the resolved canvas. -->
+    <style name="Theme.Zar" parent="Theme.Zar.Base">
+        <item name="android:windowSplashScreenBackground">@color/zar_launch_surface</item>
+        <item name="android:windowLightNavigationBar">false</item>
+    </style>
+</resources>

@@ -1,0 +1,7 @@
+<resources>
+    <!-- Three-button navigation (API 27+): light glyphs over the transparent bar while the neutral launch surface,
+         which is dark, is on screen. MainActivity re-applies the bar style for the resolved appearance. -->
+    <style name="Theme.Zar" parent="Theme.Zar.Base">
+        <item name="android:windowLightNavigationBar">false</item>
+    </style>
+</resources>

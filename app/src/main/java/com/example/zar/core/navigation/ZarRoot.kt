@@ -2,6 +2,7 @@ package com.example.zar.core.navigation
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -9,6 +10,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.example.zar.core.presentation.components.LocalNavSession
+import com.example.zar.core.presentation.components.rememberNavSession
 import com.example.zar.features.auth.domain.model.SessionState
 import com.example.zar.features.auth.presentation.screen.RegisterScreen
 import com.example.zar.features.auth.presentation.screen.SessionLoadingScreen
@@ -32,10 +35,13 @@ fun ZarRoot(
         SessionState.SignedOut -> AuthNavHost()
         // A different user gets a brand-new graph.
         is SessionState.SignedIn -> key(current.user.id) {
-            Box {
-                ZarNavHost(openCatchUp = openCatchUp, onCatchUpOpened = onCatchUpOpened)
-                // The "Remember this choice" offer floats above every signed-in screen.
-                RuleOfferHost()
+            // Inside the key, so a different user (or signing out and in) starts a new navigation session.
+            CompositionLocalProvider(LocalNavSession provides rememberNavSession()) {
+                Box {
+                    ZarNavHost(openCatchUp = openCatchUp, onCatchUpOpened = onCatchUpOpened)
+                    // The "Remember this choice" offer floats above every signed-in screen.
+                    RuleOfferHost()
+                }
             }
         }
     }
