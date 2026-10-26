@@ -5,15 +5,20 @@ import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.window.DialogProperties
+import androidx.navigation.NavDestination
+import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.dialog
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import com.example.zar.core.presentation.components.AddEntryOption
+import com.example.zar.core.presentation.components.LocalNavSession
 import com.example.zar.core.presentation.components.TopLevelDestination
 import com.example.zar.features.accounts.presentation.screen.AccountDetailScreen
 import com.example.zar.features.accounts.presentation.screen.AccountFormScreen
@@ -69,7 +74,15 @@ fun ZarNavHost(
     LaunchedEffect(hasSharedText) {
         if (hasSharedText) navController.navigate(CaptureRoute) { launchSingleTop = true }
     }
-    val onNavigate: (TopLevelDestination) -> Unit = { navController.navigateToTopLevel(it) }
+    // Whether the full navbar has been revealed belongs to the graph (see ZarRoot), so no screen can reset it by being
+    // created again. Reaching any other tab reveals it, by tap, Back or restoration alike.
+    val navSession = LocalNavSession.current
+    val currentDestination = navController.currentBackStackEntryAsState().value?.destination
+    SideEffect { currentDestination?.topLevelDestination()?.let(navSession::onTopLevelArrived) }
+    val onNavigate: (TopLevelDestination) -> Unit = {
+        navSession.onTopLevelArrived(it)
+        navController.navigateToTopLevel(it)
+    }
     val onAddOption: (AddEntryOption) -> Unit = { option ->
         when (option) {
             AddEntryOption.Manual -> navController.navigate(ManualEntryRoute())
@@ -293,6 +306,15 @@ fun ZarNavHost(
             AccountFormScreen(onDone = { navController.popBackStack() })
         }
     }
+}
+
+/** The top-level tab this destination is, or null for child screens, dialogs and forms. */
+private fun NavDestination.topLevelDestination(): TopLevelDestination? = when {
+    hasRoute<HomeRoute>() -> TopLevelDestination.Home
+    hasRoute<ActivityRoute>() -> TopLevelDestination.Activity
+    hasRoute<PlansRoute>() -> TopLevelDestination.Plans
+    hasRoute<MoreRoute>() -> TopLevelDestination.More
+    else -> null
 }
 
 /** Switches between main areas without stacking copies; Back from any of them returns to Home. */
