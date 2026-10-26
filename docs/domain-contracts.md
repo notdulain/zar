@@ -84,7 +84,7 @@ Two separate files, so money that arrived is never mixed with money that is only
 | Reduce motion (off until chosen) | Same `display_preferences` file as Appearance; combined with Android's animation setting by `MotionPolicy` | Chosen in Settings. **Kept on sign-out**. A failed write keeps the previous choice |
 | Accounts, entries, bills and their reminder choice, everything financial | Firestore under `users/{uid}/` | Synced to the user's Zar account |
 
-Nothing on the Settings or reminder screens is held only in memory. Masking and export settings are not built yet; their stories add their own rows here.
+Nothing on the Settings or reminder screens is held only in memory. Hide amounts is built and device-local (`SharedPreferences` `amount_privacy`); CSV export writes only through the system file picker and stores no setting.
 
 ## Decisions to confirm as a team
 
