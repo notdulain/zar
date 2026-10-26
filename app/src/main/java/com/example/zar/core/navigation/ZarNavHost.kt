@@ -1,9 +1,6 @@
 package com.example.zar.core.navigation
 
 import androidx.compose.animation.AnimatedContentTransitionScope
-import androidx.compose.animation.AnimatedContentTransitionScope.SlideDirection
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
@@ -16,12 +13,8 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.window.DialogProperties
 import androidx.navigation.NavBackStackEntry
-import androidx.navigation.NavDestination
-import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -36,10 +29,6 @@ import com.example.zar.core.presentation.components.LocalNavSession
 import com.example.zar.core.presentation.components.NavCapsuleController
 import com.example.zar.core.presentation.components.TopLevelDestination
 import com.example.zar.core.presentation.components.ZarTopLevelChrome
-import com.example.zar.core.presentation.motion.LocalZarMotion
-import com.example.zar.core.presentation.motion.MotionPolicy
-import com.example.zar.core.presentation.motion.ZarMotion
-import com.example.zar.core.presentation.motion.ZarSprings
 import com.example.zar.features.accounts.presentation.screen.AccountDetailScreen
 import com.example.zar.features.accounts.presentation.screen.AccountFormScreen
 import com.example.zar.features.accounts.presentation.screen.AccountsScreen
@@ -113,59 +102,18 @@ fun ZarNavHost(
     }
     // The one selected-capsule mover for the session, retained across every top-level route composition.
     val capsuleController = LocalNavCapsuleController.current ?: remember { NavCapsuleController() }
-    // Route motion: hierarchy pushes/pops from the logical end, peer tabs a short directional travel, reduced motion a
-    // direct change or a crossfade of at most 100ms. Root Android Back is never intercepted here.
-    val policy = LocalZarMotion.current
-    val spatial = policy.allowsSpatialMotion
-    val routeSpec = policy.spring<IntOffset>(ZarSprings.Route)
-    val reducedFade = policy.fade<Float>(MotionPolicy.REDUCED_FADE_MAX_MILLIS)
-    val tabTravelPx = with(LocalDensity.current) { ZarMotion.TabTravel.roundToPx() }
+    // Route motion (see RouteTransitions): hierarchy pushes/pops from the logical end, peer tabs a short directional travel,
+    // sheet-style routes from below, reduced motion a crossfade of at most 100ms. Root Android Back is never intercepted here.
+    val transitions = rememberZarRouteTransitions()
     Box(modifier = modifier.fillMaxSize()) {
         CompositionLocalProvider(LocalNavChromeHost provides true) {
             NavHost(
                 navController = navController,
                 startDestination = HomeRoute,
-                enterTransition = {
-                    val from = initialState.topLevelDestination()
-                    val to = targetState.topLevelDestination()
-                    when {
-                        !spatial -> fadeIn(reducedFade)
-                        NavRouteMotion.isPeerTab(from, to) ->
-                            slideIntoContainer(peerTowards(from!!, to!!), routeSpec) { tabTravelPx }
-                        else -> slideIntoContainer(SlideDirection.Start, routeSpec)
-                    }
-                },
-                exitTransition = {
-                    val from = initialState.topLevelDestination()
-                    val to = targetState.topLevelDestination()
-                    when {
-                        !spatial -> fadeOut(reducedFade)
-                        NavRouteMotion.isPeerTab(from, to) ->
-                            slideOutOfContainer(peerTowards(from!!, to!!), routeSpec) { tabTravelPx }
-                        // The parent recedes only a little; the child covers the rest.
-                        else -> slideOutOfContainer(SlideDirection.Start, routeSpec) { (it * ZarMotion.ROUTE_PARENT_RECEDE).toInt() }
-                    }
-                },
-                popEnterTransition = {
-                    val from = initialState.topLevelDestination()
-                    val to = targetState.topLevelDestination()
-                    when {
-                        !spatial -> fadeIn(reducedFade)
-                        NavRouteMotion.isPeerTab(from, to) ->
-                            slideIntoContainer(peerTowards(from!!, to!!), routeSpec) { tabTravelPx }
-                        else -> slideIntoContainer(SlideDirection.End, routeSpec)
-                    }
-                },
-                popExitTransition = {
-                    val from = initialState.topLevelDestination()
-                    val to = targetState.topLevelDestination()
-                    when {
-                        !spatial -> fadeOut(reducedFade)
-                        NavRouteMotion.isPeerTab(from, to) ->
-                            slideOutOfContainer(peerTowards(from!!, to!!), routeSpec) { tabTravelPx }
-                        else -> slideOutOfContainer(SlideDirection.End, routeSpec)
-                    }
-                },
+                enterTransition = transitions.enter,
+                exitTransition = transitions.exit,
+                popEnterTransition = transitions.popEnter,
+                popExitTransition = transitions.popExit,
             ) {
         composable<HomeRoute> {
             HomeScreen(
@@ -393,22 +341,6 @@ fun ZarNavHost(
 }
 
 /** The top-level tab this destination is, or null for child screens, dialogs and forms. */
-private fun NavDestination.topLevelDestination(): TopLevelDestination? = when {
-    hasRoute<HomeRoute>() -> TopLevelDestination.Home
-    hasRoute<ActivityRoute>() -> TopLevelDestination.Activity
-    hasRoute<PlansRoute>() -> TopLevelDestination.Plans
-    hasRoute<MoreRoute>() -> TopLevelDestination.More
-    else -> null
-}
-
-private fun NavBackStackEntry.topLevelDestination(): TopLevelDestination? = destination.topLevelDestination()
-
-/** Logical slide direction between two tabs, mirrored in RTL because it uses logical Start/End. */
-private fun AnimatedContentTransitionScope<NavBackStackEntry>.peerTowards(
-    from: TopLevelDestination,
-    to: TopLevelDestination,
-): SlideDirection = if (NavRouteMotion.tabDirection(from, to) > 0) SlideDirection.Start else SlideDirection.End
-
 /** Switches between main areas without stacking copies; Back from any of them returns to Home. */
 private fun NavHostController.navigateToTopLevel(destination: TopLevelDestination) {
     val route: Any = when (destination) {

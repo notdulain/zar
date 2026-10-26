@@ -57,7 +57,16 @@ fun ZarRoot(
 @Composable
 private fun AuthNavHost() {
     val navController = rememberNavController()
-    NavHost(navController = navController, startDestination = SignInRoute) {
+    // Sign in -> Register is a hierarchical push and Back reverses it, by the same policy as the signed-in graph.
+    val transitions = rememberZarRouteTransitions()
+    NavHost(
+        navController = navController,
+        startDestination = SignInRoute,
+        enterTransition = transitions.enter,
+        exitTransition = transitions.exit,
+        popEnterTransition = transitions.popEnter,
+        popExitTransition = transitions.popExit,
+    ) {
         composable<SignInRoute> {
             SignInScreen(onCreateAccount = { navController.navigate(RegisterRoute) })
         }
