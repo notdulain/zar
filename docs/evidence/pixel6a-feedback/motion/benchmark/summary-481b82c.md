@@ -1,0 +1,8 @@
+- routesAndListScrollFrameTiming | frames/iter min 281, med 283, max 285 | frame CPU ms p50 2.6 / p90 3.8 / p95 5.0 / p99 8.7 (n=1415) | overrun ms p50 -11.1 / p90 -9.2 / p95 -8.1 / p99 5.2 (n=1415, 38 late (2.7%))
+- coldStartup | TTID ms min 152, med 211, max 339
+- coldStartupSignedInHome | TTID ms min 183, med 198, max 200
+- navRetargetFrameTiming | frames/iter min 235, med 239, max 254 | frame CPU ms p50 3.0 / p90 4.4 / p95 5.6 / p99 7.5 (n=1215) | overrun ms p50 -10.6 / p90 -8.3 / p95 -7.0 / p99 5.1 (n=1215, 32 late (2.6%))
+- addSheetAndDialReducedMotionFrameTiming | frames/iter min 264, med 268, max 271 | frame CPU ms p50 2.6 / p90 5.1 / p95 7.6 / p99 23.1 (n=1338) | overrun ms p50 -11.0 / p90 -8.2 / p95 -5.7 / p99 12.1 (n=1338, 40 late (3.0%))
+- homeHeroScrollFrameTiming | frames/iter min 161, med 164, max 165 | frame CPU ms p50 2.6 / p90 3.4 / p95 3.9 / p99 6.4 (n=819) | overrun ms p50 -10.7 / p90 -8.1 / p95 -6.7 / p99 -4.0 (n=819, 0 late (0.0%))
+- addSheetAndDialFrameTiming | frames/iter min 297, med 300, max 317 | frame CPU ms p50 2.5 / p90 4.3 / p95 6.3 / p99 13.8 (n=1515) | overrun ms p50 -10.9 / p90 -8.4 / p95 -7.2 / p99 6.0 (n=1515, 18 late (1.2%))
+- navRetargetReducedMotionFrameTiming | frames/iter min 51, med 51, max 52 | frame CPU ms p50 4.0 / p90 7.6 / p95 9.0 / p99 10.4 (n=256) | overrun ms p50 -10.5 / p90 -6.5 / p95 -5.1 / p99 -3.6 (n=256, 1 late (0.4%))
