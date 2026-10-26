@@ -69,6 +69,7 @@ import com.example.zar.core.presentation.theme.ZarDimens
 import com.example.zar.core.presentation.theme.ZarGradients
 import com.example.zar.core.presentation.theme.ZarHighlight
 import com.example.zar.core.presentation.theme.ZarTheme
+import com.example.zar.core.presentation.theme.amountText
 import com.example.zar.core.presentation.theme.ZarType
 import com.example.zar.features.home.domain.model.HomeOverview
 import com.example.zar.features.home.presentation.viewmodel.HomeAllowanceContent
@@ -634,7 +635,7 @@ private fun RecentRow(entry: LedgerEntry) {
         Text(
             "$sign ${tx.amount.formatForRow()}",
             style = ZarType.bodyS,
-            color = if (tx.direction == Direction.IN) ZarTheme.colors.fresh else ZarTheme.colors.textPrimary,
+            color = ZarTheme.colors.amountText(tx.type),
         )
     }
 }
