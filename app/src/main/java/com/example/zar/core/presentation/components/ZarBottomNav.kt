@@ -1,6 +1,6 @@
 package com.example.zar.core.presentation.components
 
-import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.VisibilityThreshold
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -35,6 +35,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -42,13 +43,13 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.example.zar.core.presentation.motion.LocalZarMotion
+import com.example.zar.core.presentation.motion.ZarMotion
 import com.example.zar.core.presentation.motion.ZarSprings
 import com.example.zar.core.presentation.theme.ZarDimens
 import com.example.zar.core.presentation.theme.ZarTheme
 import com.example.zar.core.presentation.theme.ZarType
-import kotlin.math.abs
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.filterNotNull
 
 /**
  * Hi-fi floating pill navbar. Every item keeps its label visible. One retained capsule (owned by [controller], which
@@ -73,22 +74,24 @@ fun ZarBottomNav(
     // Keep the retained capsule's target in step with the real navigation selection.
     LaunchedEffect(controller, selectedIndex) { controller.select(selectedIndex) }
 
-    val capsule = remember(controller) { Animatable(controller.presentationIndex) }
-    // Move from the current presentation to the latest target. A newer selection cancels the old flight and retargets.
+    // Move from the current on-screen rectangle to the latest target. A newer selection (or a remeasured slot) cancels
+    // the old flight and retargets from its position and velocity. Reduced motion and disabled animations resolve at once.
+    val overshootPx = with(LocalDensity.current) { ZarMotion.NavMaxOvershoot.toPx() }
+    LaunchedEffect(controller, overshootPx) { controller.maxOvershootPx = overshootPx }
     LaunchedEffect(controller, policy) {
-        snapshotFlow { controller.targetIndex }.collectLatest { target ->
-            capsule.animateTo(target.toFloat(), policy.spring(ZarSprings.NavSelection))
+        snapshotFlow { controller.targetRect }.filterNotNull().collectLatest { target ->
+            if (policy.allowsSpatialMotion) {
+                controller.moveTo(target, policy.spring(ZarSprings.NavSelection, Rect.VisibilityThreshold))
+            } else {
+                controller.snapTo(target)
+            }
         }
-    }
-    // Publish the moving value for the draw phase; resolve at once when motion is reduced or system animations are off.
-    LaunchedEffect(controller, policy) {
-        if (!policy.allowsSpatialMotion) capsule.snapTo(controller.targetIndex.toFloat())
-        snapshotFlow { capsule.value }.collect { controller.setPresentation(it) }
     }
 
     // Measured tab slots in this navbar's own coordinate space. Position is physical, so RTL mirrors for free.
     var containerOrigin by remember { mutableStateOf(Offset.Zero) }
     val slots = remember { arrayOfNulls<Rect>(TopLevelDestination.entries.size) }
+    var interior by remember { mutableStateOf(Rect.Zero) }
     fun reportSlots() {
         val origin = containerOrigin
         if (slots.any { it == null }) return
@@ -97,8 +100,10 @@ fun ZarBottomNav(
                 val r = rect!!
                 Rect(r.left - origin.x, r.top - origin.y, r.right - origin.x, r.bottom - origin.y)
             },
+            interior.takeIf { it != Rect.Zero },
         )
     }
+    val borderPx = with(LocalDensity.current) { 1.dp.toPx() }
 
     Surface(
         modifier = modifier
@@ -106,6 +111,7 @@ fun ZarBottomNav(
             .height(ZarDimens.NavHeight)
             .onGloballyPositioned {
                 containerOrigin = it.positionInRoot()
+                interior = Rect(borderPx, borderPx, it.size.width - borderPx, it.size.height - borderPx)
                 reportSlots()
             }
             .shadow(
@@ -174,10 +180,10 @@ private fun NavItem(
     val label = stringResource(destination.label)
     val colors = ZarTheme.colors
     val inactive = colors.navInactive
-    // The capsule covers this label when its centre is within half a slot. Then the inverse colour is always on the
+    // The capsule covers this label when its centre is nearest this slot. Then the inverse colour is always on the
     // dark selected pill; otherwise the inactive colour is on the light surface. Never white on white.
     val onCapsule by remember(controller, index) {
-        derivedStateOf { abs(controller.presentationIndex - index) < 0.5f }
+        derivedStateOf { controller.coveredSlot() == index }
     }
     val tint = if (onCapsule) colors.textOnInverse else inactive
     Column(
