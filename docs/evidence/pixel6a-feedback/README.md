@@ -17,7 +17,7 @@ Author of these screenshots: **OpenCode DeepSeek V4.1 Flash** (authorized fallba
 ### `categories/` — three-column all-categories grid and Add category sheet
 
 Source test: `app/src/androidTest/java/com/example/zar/features/transactions/CategoryGridEvidenceTest.kt`
-(`add-expense-categories-grid` tasks 3.1/3.2).
+(`add-expense-categories-grid` 3.1/3.2, `align-income-with-figma` 2.1).
 
 | File | State |
 | --- | --- |
@@ -25,6 +25,8 @@ Source test: `app/src/androidTest/java/com/example/zar/features/transactions/Cat
 | `02-grid-long-name-light.png` | Light, long custom name ("Tuition for my youngest child") wrapping inside its column |
 | `03-add-sheet-light.png` | Light, Add category sheet with a name typed (Name / Cancel / Save) |
 | `04-add-sheet-dark.png` | Dark, same sheet, with the IME up |
+| `income-01-light.png` | Light, Add/Edit income in the shared transaction sheet shell (Income tab, amount, account, date/time, received-from, category, note, Save) |
+| `income-02-dark.png` | Dark, same income sheet |
 
 ## Limits (no claim made)
 

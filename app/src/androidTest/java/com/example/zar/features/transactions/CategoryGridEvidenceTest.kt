@@ -102,4 +102,31 @@ class CategoryGridEvidenceTest {
         compose.waitForIdle()
         capture("04-add-sheet-dark")
     }
+
+    @Test
+    fun incomeSheetLightAndDark() {
+        val dark = mutableStateOf(false)
+        compose.setContent {
+            ZarTheme(darkTheme = dark.value) {
+                com.example.zar.features.transactions.presentation.income.screen.IncomeFormContent(
+                    com.example.zar.features.transactions.presentation.income.viewmodel.IncomeFormUiState(
+                        isLoading = false,
+                        accounts = listOf(bank),
+                        accountId = bank.id,
+                        amount = "12,500",
+                        receivedFrom = "Upwork client",
+                        category = com.example.zar.features.transactions.domain.income.model.IncomeCategory.FREELANCE,
+                    ),
+                    com.example.zar.features.transactions.presentation.income.screen.IncomeFormActions(
+                        {}, {}, {}, {}, {}, {}, {}, {}, {}, {},
+                    ),
+                )
+            }
+        }
+        compose.waitForIdle()
+        capture("income-01-light")
+        compose.runOnIdle { dark.value = true }
+        compose.waitForIdle()
+        capture("income-02-dark")
+    }
 }
