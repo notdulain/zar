@@ -78,6 +78,7 @@ class FirestoreLedgerRepository @Inject constructor(
         write(uid, RejectedLedgerWrite(transfer.id.value, records))
     }
 
+    @OptIn(ExperimentalCoroutinesApi::class)
     override fun observeRejectedWrites(): Flow<List<RejectedLedgerWrite>> = session.observeUserId().flatMapLatest { uid ->
         if (uid == null) flowOf(emptyList()) else rejected.map { it[uid.value].orEmpty() }.distinctUntilChanged()
     }

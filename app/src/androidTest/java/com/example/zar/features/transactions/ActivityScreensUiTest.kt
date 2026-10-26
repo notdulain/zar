@@ -23,6 +23,7 @@ import com.example.zar.core.domain.model.CorrectionId
 import com.example.zar.core.domain.model.LedgerEntry
 import com.example.zar.core.domain.model.OpeningBalance
 import com.example.zar.core.domain.model.RecordSource
+import com.example.zar.core.domain.model.RejectedLedgerWrite
 import com.example.zar.core.domain.model.SpendingClass
 import com.example.zar.core.domain.model.Transaction
 import com.example.zar.core.domain.model.TransactionChanges
@@ -122,6 +123,8 @@ class ActivityScreensUiTest {
         var cleared = 0
         var retried = 0
         var query: String? = null
+        var retriedRejected: String? = null
+        var dismissedRejected: String? = null
     }
 
     private fun listState(
@@ -129,9 +132,10 @@ class ActivityScreensUiTest {
         filter: ActivityFilter = ActivityFilter(),
         online: Boolean = true,
         content: ActivityContent? = null,
+        rejected: List<RejectedLedgerWrite> = emptyList(),
     ): ActivityUiState {
         val list = ActivityQuery.apply(ActivitySnapshot(entries, listOf(bank, cash)), filter, today)
-        return ActivityUiState(filter, content ?: ActivityContent.Ready(list), listOf(bank, cash), online, today)
+        return ActivityUiState(filter, content ?: ActivityContent.Ready(list), listOf(bank, cash), online, today, rejected)
     }
 
     private fun showList(state: ActivityUiState, rec: ListRecorder = ListRecorder()) {
@@ -147,6 +151,8 @@ class ActivityScreensUiTest {
                         onQuery = { rec.query = it },
                         onRetry = { rec.retried++ },
                         previewCount = { 7 },
+                        onRetryRejected = { rec.retriedRejected = it },
+                        onDismissRejected = { rec.dismissedRejected = it },
                     ),
                 )
             }
@@ -222,6 +228,30 @@ class ActivityScreensUiTest {
         compose.onNodeWithText("Try again").performClick()
 
         assertEquals(1, rec.retried)
+    }
+
+    @Test
+    fun aSaveTheServerRefusedIsNamedAndCanBeRetriedOrDismissed() {
+        val rec = ListRecorder()
+        val refused = tx("refused", TransactionType.EXPENSE, 500, cash, "Lunch", "coffee-dining")
+        showList(listState(listOf(keells), rejected = listOf(RejectedLedgerWrite("refused", listOf(refused)))), rec)
+
+        compose.onNodeWithTag("activity-rejected").assertIsDisplayed()
+        compose.onNodeWithText("Couldn't save", substring = true).assertIsDisplayed()
+        compose.onNodeWithText("500", substring = true).assertIsDisplayed()
+        compose.onNodeWithText("Keells Super").assertIsDisplayed() // the rest of the list is untouched
+
+        compose.onNodeWithTag("activity-rejected-retry").performClick()
+        compose.onNodeWithTag("activity-rejected-dismiss").performClick()
+
+        assertEquals("refused", rec.retriedRejected)
+        assertEquals("refused", rec.dismissedRejected)
+    }
+
+    @Test
+    fun withNothingRefusedNoFailureNoticeShows() {
+        showList(listState(listOf(keells)))
+        compose.onNodeWithTag("activity-rejected").assertDoesNotExist()
     }
 
     @Test

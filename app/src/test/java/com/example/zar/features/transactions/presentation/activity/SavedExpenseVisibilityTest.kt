@@ -11,6 +11,9 @@ import com.example.zar.core.domain.model.Account
 import com.example.zar.core.domain.model.TransactionId
 import com.example.zar.core.domain.model.TransactionType
 import com.example.zar.core.domain.model.money.ReportingConversion
+import com.example.zar.core.domain.usecase.DismissRejectedLedgerWriteUseCase
+import com.example.zar.core.domain.usecase.ObserveRejectedLedgerWritesUseCase
+import com.example.zar.core.domain.usecase.RetryRejectedLedgerWriteUseCase
 import com.example.zar.core.domain.usecase.SaveTransactionUseCase
 import com.example.zar.features.home.domain.usecase.ObserveHomeOverviewUseCase
 import com.example.zar.features.transactions.domain.activity.model.ActivityFilter
@@ -78,6 +81,9 @@ class SavedExpenseVisibilityTest {
             val vm = ActivityViewModel(
                 observeActivity = ObserveActivityUseCase(ledger, accounts),
                 observeOnline = ObserveOnlineStatusUseCase(FakeConnectivity()),
+                observeRejected = ObserveRejectedLedgerWritesUseCase(ledger),
+                retryRejected = RetryRejectedLedgerWriteUseCase(ledger),
+                dismissRejected = DismissRejectedLedgerWriteUseCase(ledger),
             )
             backgroundScope.launch { vm.uiState.collect { } }
             block(vm)

@@ -545,6 +545,10 @@
     <string name="activity_error_title">Could not load Activity</string>
     <string name="activity_error_body">Check your connection and try again.</string>
     <string name="activity_retry">Try again</string>
+    <string name="activity_rejected_title">Couldn\'t save %1$s</string>
+    <string name="activity_rejected_body">The server refused it, so it is not in your records or totals. Try again to keep it.</string>
+    <string name="activity_rejected_retry">Try again</string>
+    <string name="activity_rejected_dismiss">Dismiss</string>
     <string name="activity_empty_title">Nothing recorded yet</string>
     <string name="activity_empty_body">Entries you add or capture show up here. Add your first one.</string>
     <string name="activity_empty_action">Add an entry</string>
