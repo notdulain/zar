@@ -93,6 +93,32 @@ class NavCapsuleControllerTest {
     }
 
     @Test
+    fun noFrameCallbackIsLeftOutstandingOnceTheCapsuleSettlesOrIsCancelled() = runTest {
+        // An idle or backgrounded app must not keep asking for frames (and so for a display cadence) on the capsule's behalf.
+        val driver = FrameDriver(this, FrameDriver.HZ_120)
+        val controller = controller()
+        controller.snapTo(ltr[0])
+        controller.select(2)
+        val settled = fly(driver, controller)
+        runCurrent()
+        assertTrue("a flight in progress waits for frames", driver.clock.hasAwaiters)
+
+        repeat(400) { if (settled.isActive) driver.step() }
+        assertFalse(settled.isActive)
+        assertFalse("settled: nothing is waiting for another frame", driver.clock.hasAwaiters)
+
+        controller.select(0)
+        val cancelled = fly(driver, controller)
+        runCurrent()
+        driver.step()
+        driver.step()
+        cancelled.cancel()
+        runCurrent()
+        assertFalse("cancelled: nothing is waiting for another frame", driver.clock.hasAwaiters)
+        assertFalse(controller.isMoving)
+    }
+
+    @Test
     fun aNewSelectionMidFlightRetargetsFromTheOnScreenPositionWithoutTeleporting() = runTest {
         val driver = FrameDriver(this, FrameDriver.HZ_60)
         val controller = controller()
