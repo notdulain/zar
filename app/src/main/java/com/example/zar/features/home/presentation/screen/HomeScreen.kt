@@ -252,14 +252,21 @@ private fun ReceivedHero(
 ) {
     val colors = ZarTheme.colors
     var chartMode by rememberSaveable { mutableIntStateOf(0) }
-    // The gradient is the card itself, so only the interior groups move; each keeps its normal layout bounds.
+    // The gradient is the decorative background layer: it drifts at the background rate behind the text and chart
+    // groups, each of which keeps its normal layout bounds. The card paints the gradient's own top colour so the
+    // strip the drifting layer uncovers stays seamless.
     val heroOffset = scrollState.heroDisplacement()
     Box(
         Modifier.fillMaxWidth().height(507.dp)
             .clip(RoundedCornerShape(bottomStart = 32.dp, bottomEnd = 32.dp))
-            .background(ZarGradients.dusk)
+            .background(Color(0xFF05070B))
             .testTag("received-card"),
     ) {
+        Box(
+            Modifier.fillMaxSize()
+                .heroParallax(heroOffset, ZarMotion.PARALLAX_BACKGROUND, ZarMotion.ParallaxBackgroundCap)
+                .background(ZarGradients.dusk),
+        )
         Column(Modifier.fillMaxSize().padding(horizontal = 30.dp)) {
             Column(
                 Modifier.heroParallax(heroOffset, ZarMotion.PARALLAX_TEXT, ZarMotion.ParallaxTextCap),

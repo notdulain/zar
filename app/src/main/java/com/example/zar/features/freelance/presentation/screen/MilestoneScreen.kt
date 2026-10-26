@@ -40,6 +40,9 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.zar.R
+import com.example.zar.core.presentation.components.heroDisplacement
+import com.example.zar.core.presentation.components.heroParallax
+import com.example.zar.core.presentation.motion.ZarMotion
 import com.example.zar.features.freelance.domain.model.LinkedReceipt
 import com.example.zar.features.freelance.domain.model.ReceiptCandidate
 import com.example.zar.features.freelance.presentation.viewmodel.FreelanceMessage
@@ -73,8 +76,10 @@ fun MilestoneScreen(
             CenteredText(stringResource(R.string.milestone_not_found), Modifier.padding(innerPadding))
             return@Scaffold
         }
+        val scrollState = rememberScrollState()
+        val milestoneHeroOffset = scrollState.heroDisplacement()
         Column(
-            Modifier.fillMaxSize().padding(innerPadding).imePadding().verticalScroll(rememberScrollState()).padding(16.dp),
+            Modifier.fillMaxSize().padding(innerPadding).imePadding().verticalScroll(scrollState).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             uiState.summary?.let { summary ->
@@ -86,6 +91,7 @@ fun MilestoneScreen(
                         append(stringResource(R.string.freelance_received_of, IncomeFormat.amount(progress.matched), summary.milestone.amount.display()))
                         if (progress.overdue.isPositive) append(" · ").append(stringResource(R.string.freelance_overdue, IncomeFormat.amount(progress.overdue)))
                     },
+                    modifier = Modifier.heroParallax(milestoneHeroOffset, ZarMotion.PARALLAX_TEXT, ZarMotion.ParallaxTextCap),
                 )
             }
             if (uiState.isCancelled) Text(stringResource(R.string.milestone_cancelled_note), color = MaterialTheme.colorScheme.error, fontFamily = ZarMono)

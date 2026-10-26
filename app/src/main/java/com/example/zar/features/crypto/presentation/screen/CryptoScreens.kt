@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -51,6 +52,9 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.zar.R
+import com.example.zar.core.presentation.components.heroDisplacement
+import com.example.zar.core.presentation.components.heroParallax
+import com.example.zar.core.presentation.motion.ZarMotion
 import com.example.zar.core.domain.calculation.CurrencyConverter
 import com.example.zar.core.domain.model.Account
 import com.example.zar.core.domain.model.AccountId
@@ -150,7 +154,10 @@ private fun CryptoContent(
     onUndo: (CryptoMovementRow) -> Unit,
     modifier: Modifier,
 ) {
+    val cryptoListState = rememberLazyListState()
+    val cryptoHeroOffset = cryptoListState.heroDisplacement()
     LazyColumn(
+        state = cryptoListState,
         modifier = modifier.fillMaxSize(),
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 96.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -164,6 +171,7 @@ private fun CryptoContent(
                 } else {
                     pluralStringResource(R.plurals.crypto_unknown_results, portfolio.unknownResultCount, portfolio.unknownResultCount)
                 },
+                modifier = Modifier.heroParallax(cryptoHeroOffset, ZarMotion.PARALLAX_TEXT, ZarMotion.ParallaxTextCap),
             )
         }
         uiState.message?.let { item { Text(stringResource(it.textRes()), color = MaterialTheme.colorScheme.error, fontFamily = ZarMono) } }

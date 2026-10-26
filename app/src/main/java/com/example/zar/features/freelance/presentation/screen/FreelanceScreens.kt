@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
@@ -44,6 +45,10 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.zar.R
 import com.example.zar.core.domain.model.MatchState
+import com.example.zar.core.presentation.components.HeroScrollOffset
+import com.example.zar.core.presentation.components.heroDisplacement
+import com.example.zar.core.presentation.components.heroParallax
+import com.example.zar.core.presentation.motion.ZarMotion
 import com.example.zar.features.freelance.domain.FreelanceProblem
 import com.example.zar.features.freelance.domain.model.MilestoneSummary
 import com.example.zar.features.freelance.domain.model.Outstanding
@@ -82,16 +87,21 @@ fun FreelanceScreen(
         when {
             uiState.isLoading -> Loading(Modifier.padding(innerPadding))
             uiState.loadFailed -> CenteredText(stringResource(R.string.freelance_load_failed), Modifier.padding(innerPadding))
-            else -> LazyColumn(
-                modifier = Modifier.fillMaxSize().padding(innerPadding),
-                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 96.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                item { OwedHeader(uiState.outstanding) }
-                item { OverdueAlertsRow(enabled = overdueAlerts, onChange = viewModel::setOverdueAlerts) }
-                if (uiState.projects.isEmpty()) item { CenteredText(stringResource(R.string.freelance_empty), Modifier.padding(top = 48.dp)) }
-                items(uiState.projects, key = { it.project.id.value }) { summary ->
-                    ProjectCard(summary, onClick = { onOpenProject(summary.project.id.value) })
+            else -> {
+                val listState = rememberLazyListState()
+                val heroOffset = listState.heroDisplacement()
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier.fillMaxSize().padding(innerPadding),
+                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 96.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    item { OwedHeader(uiState.outstanding, heroOffset) }
+                    item { OverdueAlertsRow(enabled = overdueAlerts, onChange = viewModel::setOverdueAlerts) }
+                    if (uiState.projects.isEmpty()) item { CenteredText(stringResource(R.string.freelance_empty), Modifier.padding(top = 48.dp)) }
+                    items(uiState.projects, key = { it.project.id.value }) { summary ->
+                        ProjectCard(summary, onClick = { onOpenProject(summary.project.id.value) })
+                    }
                 }
             }
         }
@@ -119,7 +129,7 @@ private fun OverdueAlertsRow(enabled: Boolean, onChange: (Boolean) -> Unit) {
 }
 
 @Composable
-private fun OwedHeader(outstanding: Outstanding?) {
+private fun OwedHeader(outstanding: Outstanding?, heroOffset: HeroScrollOffset) {
     val owed = outstanding?.takeUnless { it.isEmpty }
     SummaryHeaderCard(
         label = stringResource(R.string.freelance_owed_label),
@@ -129,6 +139,7 @@ private fun OwedHeader(outstanding: Outstanding?) {
             owed.overdue.isNotEmpty() -> stringResource(R.string.freelance_overdue, owed.overdue.display())
             else -> pluralStringResource(R.plurals.freelance_owed_caption, owed.projectsWithBalance, owed.projectsWithBalance)
         },
+        modifier = Modifier.heroParallax(heroOffset, ZarMotion.PARALLAX_TEXT, ZarMotion.ParallaxTextCap),
     )
 }
 
@@ -206,30 +217,36 @@ fun ProjectScreen(
             uiState.isLoading -> Loading(Modifier.padding(innerPadding))
             uiState.loadFailed -> CenteredText(stringResource(R.string.freelance_load_failed), Modifier.padding(innerPadding))
             summary == null -> CenteredText(stringResource(R.string.project_not_found), Modifier.padding(innerPadding))
-            else -> LazyColumn(
-                modifier = Modifier.fillMaxSize().padding(innerPadding),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                item {
-                    SummaryHeaderCard(
-                        label = stringResource(R.string.project_still_owed),
-                        amount = summary.remaining.display(),
-                        caption = buildString {
-                            append(stringResource(R.string.freelance_received_of, IncomeFormat.amount(summary.received), summary.expected.display()))
-                            if (summary.overdue.isPositive) append(" · ").append(stringResource(R.string.freelance_overdue, IncomeFormat.amount(summary.overdue)))
-                        },
-                    )
-                }
-                if (summary.project.isArchived) item { Text(stringResource(R.string.project_archived_note), fontFamily = ZarMono, color = MaterialTheme.colorScheme.error) }
-                if (summary.milestones.isEmpty()) item { CenteredText(stringResource(R.string.project_no_milestones)) }
-                items(summary.milestones, key = { it.milestone.id.value }) { milestone ->
-                    MilestoneCard(milestone, onClick = { onOpenMilestone(summary.project.id.value, milestone.milestone.id.value) })
-                }
-                if (!summary.project.isArchived) {
+            else -> {
+                val listState = rememberLazyListState()
+                val heroOffset = listState.heroDisplacement()
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier.fillMaxSize().padding(innerPadding),
+                    contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
                     item {
-                        OutlinedButton(onClick = { onAddMilestone(summary.project.id.value) }, modifier = Modifier.fillMaxWidth()) {
-                            Text(stringResource(R.string.project_add_milestone), fontFamily = ZarMono)
+                        SummaryHeaderCard(
+                            label = stringResource(R.string.project_still_owed),
+                            amount = summary.remaining.display(),
+                            caption = buildString {
+                                append(stringResource(R.string.freelance_received_of, IncomeFormat.amount(summary.received), summary.expected.display()))
+                                if (summary.overdue.isPositive) append(" · ").append(stringResource(R.string.freelance_overdue, IncomeFormat.amount(summary.overdue)))
+                            },
+                            modifier = Modifier.heroParallax(heroOffset, ZarMotion.PARALLAX_TEXT, ZarMotion.ParallaxTextCap),
+                        )
+                    }
+                    if (summary.project.isArchived) item { Text(stringResource(R.string.project_archived_note), fontFamily = ZarMono, color = MaterialTheme.colorScheme.error) }
+                    if (summary.milestones.isEmpty()) item { CenteredText(stringResource(R.string.project_no_milestones)) }
+                    items(summary.milestones, key = { it.milestone.id.value }) { milestone ->
+                        MilestoneCard(milestone, onClick = { onOpenMilestone(summary.project.id.value, milestone.milestone.id.value) })
+                    }
+                    if (!summary.project.isArchived) {
+                        item {
+                            OutlinedButton(onClick = { onAddMilestone(summary.project.id.value) }, modifier = Modifier.fillMaxWidth()) {
+                                Text(stringResource(R.string.project_add_milestone), fontFamily = ZarMono)
+                            }
                         }
                     }
                 }

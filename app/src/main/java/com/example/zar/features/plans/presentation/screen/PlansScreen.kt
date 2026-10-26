@@ -4,6 +4,7 @@ import com.example.zar.core.presentation.privacy.AmountMask
 import com.example.zar.core.presentation.privacy.amountFieldTransformation
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
@@ -59,6 +60,7 @@ import com.example.zar.core.domain.model.OpeningBalance
 import com.example.zar.core.domain.model.money.Currencies
 import com.example.zar.core.domain.model.money.FiatMoney
 import com.example.zar.core.presentation.components.AddEntryOption
+import com.example.zar.core.presentation.components.HeroScrollOffset
 import com.example.zar.core.presentation.components.TopLevelDestination
 import com.example.zar.core.presentation.components.ZarButton
 import com.example.zar.core.presentation.components.ZarButtonSize
@@ -67,7 +69,10 @@ import com.example.zar.core.presentation.components.ZarCard
 import com.example.zar.core.presentation.components.ZarDivider
 import com.example.zar.core.presentation.components.ZarMonoLabel
 import com.example.zar.core.presentation.components.ZarScreenScaffold
+import com.example.zar.core.presentation.components.heroDisplacement
+import com.example.zar.core.presentation.components.heroParallax
 import com.example.zar.core.presentation.format.formatWithCode
+import com.example.zar.core.presentation.motion.ZarMotion
 import com.example.zar.core.presentation.theme.ZarDimens
 import com.example.zar.core.presentation.theme.ZarGradients
 import com.example.zar.core.presentation.theme.ZarShapes
@@ -175,20 +180,23 @@ internal fun PlansScreenContent(
         onNavigate = onNavigate,
         onAddOption = onAddOption,
     ) { padding ->
+        val scrollState = rememberScrollState()
+        val heroOffset = scrollState.heroDisplacement()
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .verticalScroll(rememberScrollState()),
+                .verticalScroll(scrollState),
             verticalArrangement = Arrangement.spacedBy(ZarDimens.SpaceMd),
         ) {
             when {
-                state.isLoading -> LoadingHero()
-                state.loadFailed -> ErrorHero(onRetry)
+                state.isLoading -> LoadingHero(heroOffset)
+                state.loadFailed -> ErrorHero(onRetry, heroOffset)
                 else -> GoalHero(
                     overview = state.overview ?: PlansOverview(null, emptyList()),
                     onEditGoal = onEditGoal,
                     onAllocate = onAllocate,
+                    heroOffset = heroOffset,
                 )
             }
             Column(
@@ -209,11 +217,15 @@ internal fun PlansScreenContent(
 
 /** Uses the same dusk surface, Geist amounts and rounded bottom edge as Home. */
 @Composable
-private fun PlansHero(content: @Composable ColumnScope.() -> Unit) {
+private fun PlansHero(heroOffset: HeroScrollOffset? = null, content: @Composable ColumnScope.() -> Unit) {
     Column(
         Modifier.fillMaxWidth()
             .clip(RoundedCornerShape(bottomStart = ZarDimens.FullHeroRadius, bottomEnd = ZarDimens.FullHeroRadius))
             .background(ZarGradients.dusk)
+            .then(
+                if (heroOffset != null) Modifier.heroParallax(heroOffset, ZarMotion.PARALLAX_TEXT, ZarMotion.ParallaxTextCap)
+                else Modifier,
+            )
             .padding(horizontal = 24.dp, vertical = 24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
         content = content,
@@ -221,17 +233,19 @@ private fun PlansHero(content: @Composable ColumnScope.() -> Unit) {
 }
 
 @Composable
-private fun GoalHero(overview: PlansOverview, onEditGoal: () -> Unit, onAllocate: () -> Unit) {
+private fun GoalHero(overview: PlansOverview, onEditGoal: () -> Unit, onAllocate: () -> Unit, heroOffset: HeroScrollOffset) {
     val goal = overview.goal
     val progress = overview.progress
+    // Text group and progress (chart) group move at their own bounded rates; the dusk surface is the card itself.
+    val textLayer = Modifier.heroParallax(heroOffset, ZarMotion.PARALLAX_TEXT, ZarMotion.ParallaxTextCap)
     PlansHero {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+        Row(textLayer.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             ZarMonoLabel(stringResource(R.string.nav_plans), color = ZarSubtle)
             TextButton(onClick = onEditGoal, modifier = Modifier.testTag("plans-edit-goal")) {
                 Text(stringResource(if (goal == null) R.string.plans_create else R.string.action_edit), style = ZarType.labelAction, color = ZarWhite)
             }
         }
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.testTag("plans-hero")) {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = textLayer.testTag("plans-hero")) {
             Text(goal?.name ?: stringResource(R.string.plans_goal_name), style = ZarType.bodyL, color = ZarWhite)
             ZarMonoLabel(stringResource(R.string.plans_backed_heading), color = ZarSubtle)
             Text(
@@ -244,7 +258,11 @@ private fun GoalHero(overview: PlansOverview, onEditGoal: () -> Unit, onAllocate
                 style = ZarType.bodyS, color = ZarSubtle,
             )
         }
-        if (goal != null && progress != null) GoalProgressBars(goal, progress)
+        if (goal != null && progress != null) {
+            Box(Modifier.heroParallax(heroOffset, ZarMotion.PARALLAX_CHART, ZarMotion.ParallaxChartCap)) {
+                GoalProgressBars(goal, progress)
+            }
+        }
         Text(
             when {
                 goal == null -> stringResource(R.string.plans_create_note)
@@ -253,7 +271,7 @@ private fun GoalHero(overview: PlansOverview, onEditGoal: () -> Unit, onAllocate
                 progress?.isApproximate == true -> stringResource(R.string.plans_estimated_backing)
                 else -> stringResource(R.string.plans_recorded_backing)
             },
-            style = ZarType.bodyCaption, color = ZarSubtle,
+            style = ZarType.bodyCaption, color = ZarSubtle, modifier = textLayer,
         )
         ZarButton(
             text = stringResource(if (goal == null) R.string.plans_create_action else R.string.plans_allocate_action),
@@ -331,13 +349,13 @@ private fun GoalProgressDetails(goal: SavingsGoal, progress: BackedGoalProgress)
 private fun LocalDate.displayDate(): String = format(DateTimeFormatter.ofPattern("d MMM yyyy", Locale.getDefault()))
 
 @Composable
-private fun LoadingHero() = PlansHero {
+private fun LoadingHero(heroOffset: HeroScrollOffset) = PlansHero(heroOffset) {
     ZarMonoLabel(stringResource(R.string.nav_plans), color = ZarSubtle)
     CircularProgressIndicator(color = ZarWhite, modifier = Modifier.align(Alignment.CenterHorizontally))
 }
 
 @Composable
-private fun ErrorHero(onRetry: () -> Unit) = PlansHero {
+private fun ErrorHero(onRetry: () -> Unit, heroOffset: HeroScrollOffset) = PlansHero(heroOffset) {
     ZarMonoLabel(stringResource(R.string.nav_plans), color = ZarSubtle)
     Text(stringResource(R.string.plans_load_failed), style = ZarType.bodyL, color = ZarWhite)
     ZarButton(stringResource(R.string.action_retry), onRetry, style = ZarButtonStyle.Soft)

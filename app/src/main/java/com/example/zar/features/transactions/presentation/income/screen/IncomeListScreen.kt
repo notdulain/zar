@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -38,6 +39,10 @@ import com.example.zar.R
 import com.example.zar.core.domain.calculation.ReportingTotal
 import com.example.zar.core.domain.model.money.Currencies
 import com.example.zar.core.domain.model.money.FiatMoney
+import com.example.zar.core.presentation.components.HeroScrollOffset
+import com.example.zar.core.presentation.components.heroDisplacement
+import com.example.zar.core.presentation.components.heroParallax
+import com.example.zar.core.presentation.motion.ZarMotion
 import com.example.zar.core.presentation.theme.ZarTheme
 import com.example.zar.features.transactions.domain.income.model.IncomeCategory
 import com.example.zar.features.transactions.presentation.income.IncomeFormat
@@ -90,25 +95,30 @@ private fun IncomeListContent(
                 CircularProgressIndicator()
             }
             uiState.loadFailed -> CenteredMessage(stringResource(R.string.income_load_failed), Modifier.padding(innerPadding))
-            else -> LazyColumn(
-                modifier = Modifier.fillMaxSize().padding(innerPadding),
-                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 96.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                item { ReceivedHeader(uiState.receivedThisMonth ?: ReportingTotal.zero()) }
-                if (uiState.months.isEmpty()) {
-                    item { CenteredMessage(stringResource(R.string.income_empty), Modifier.padding(top = 48.dp)) }
-                }
-                uiState.months.forEach { month ->
-                    item(key = month.month.toString()) {
-                        Text(
-                            IncomeFormat.month(month.month),
-                            style = MaterialTheme.typography.labelMedium,
-                            fontFamily = ZarMono,
-                            modifier = Modifier.padding(top = 12.dp, start = 4.dp),
-                        )
+            else -> {
+                val listState = rememberLazyListState()
+                val heroOffset = listState.heroDisplacement()
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier.fillMaxSize().padding(innerPadding),
+                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 96.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    item { ReceivedHeader(uiState.receivedThisMonth ?: ReportingTotal.zero(), heroOffset) }
+                    if (uiState.months.isEmpty()) {
+                        item { CenteredMessage(stringResource(R.string.income_empty), Modifier.padding(top = 48.dp)) }
                     }
-                    items(month.rows, key = { it.id }) { row -> IncomeRowCard(row, onClick = { onOpenIncome(row.id) }) }
+                    uiState.months.forEach { month ->
+                        item(key = month.month.toString()) {
+                            Text(
+                                IncomeFormat.month(month.month),
+                                style = MaterialTheme.typography.labelMedium,
+                                fontFamily = ZarMono,
+                                modifier = Modifier.padding(top = 12.dp, start = 4.dp),
+                            )
+                        }
+                        items(month.rows, key = { it.id }) { row -> IncomeRowCard(row, onClick = { onOpenIncome(row.id) }) }
+                    }
                 }
             }
         }
@@ -116,7 +126,7 @@ private fun IncomeListContent(
 }
 
 @Composable
-private fun ReceivedHeader(total: ReportingTotal) {
+private fun ReceivedHeader(total: ReportingTotal, heroOffset: HeroScrollOffset) {
     SummaryHeaderCard(
         label = stringResource(R.string.income_header_label),
         amount = IncomeFormat.withCode(total.amount),
@@ -125,6 +135,7 @@ private fun ReceivedHeader(total: ReportingTotal) {
         } else {
             pluralStringResource(R.plurals.income_header_unresolved, total.unresolvedCount, total.unresolvedCount)
         },
+        modifier = Modifier.heroParallax(heroOffset, ZarMotion.PARALLAX_TEXT, ZarMotion.ParallaxTextCap),
     )
 }
 

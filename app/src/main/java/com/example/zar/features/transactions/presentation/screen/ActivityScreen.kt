@@ -29,7 +29,9 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -75,6 +77,7 @@ import com.example.zar.R
 import com.example.zar.core.domain.model.Account
 import com.example.zar.core.domain.model.TransactionType
 import com.example.zar.core.presentation.components.AddEntryOption
+import com.example.zar.core.presentation.components.HeroScrollOffset
 import com.example.zar.core.presentation.components.TopLevelDestination
 import com.example.zar.core.presentation.components.ZarButton
 import com.example.zar.core.presentation.components.ZarButtonStyle
@@ -84,6 +87,9 @@ import com.example.zar.core.presentation.components.ZarIcon
 import com.example.zar.core.presentation.components.ZarIconChip
 import com.example.zar.core.presentation.components.ZarScreenScaffold
 import com.example.zar.core.presentation.components.ZarSwitch
+import com.example.zar.core.presentation.components.heroDisplacement
+import com.example.zar.core.presentation.components.heroParallax
+import com.example.zar.core.presentation.motion.ZarMotion
 import com.example.zar.core.presentation.theme.ZarDimens
 import com.example.zar.core.presentation.theme.ZarShapes
 import com.example.zar.core.presentation.theme.ZarTheme
@@ -182,10 +188,13 @@ internal fun ActivityBody(
     val list = (state.content as? ActivityContent.Ready)?.list
     val layoutDirection = LocalLayoutDirection.current
     val gutter = Modifier.padding(horizontal = ListGutter)
+    val listState = rememberLazyListState()
+    val heroOffset = listState.heroDisplacement()
 
     // The hero runs under the status bar and the list scrolls behind the floating nav, so only the sides are
     // inset here; the bottom inset becomes scroll padding that lets the last row clear the nav.
     LazyColumn(
+        state = listState,
         modifier = modifier
             .fillMaxSize()
             .padding(
@@ -203,6 +212,7 @@ internal fun ActivityBody(
                 receivedFraction = ActivityBalance.receivedFraction(summary),
                 rangeLabel = heroRangeLabel(state),
                 onRange = { showFilters = true },
+                heroOffset = heroOffset,
             )
         }
         item {
@@ -364,7 +374,14 @@ private val SpentStops = arrayOf(
 
 /** The color boundary follows Received / (Received + Spent); labels keep a stable, readable layout. */
 @Composable
-private fun ActivityHero(received: String, spent: String, receivedFraction: Float?, rangeLabel: String, onRange: () -> Unit) {
+private fun ActivityHero(
+    received: String,
+    spent: String,
+    receivedFraction: Float?,
+    rangeLabel: String,
+    onRange: () -> Unit,
+    heroOffset: HeroScrollOffset,
+) {
     val tealShare by animateFloatAsState(
         targetValue = receivedFraction ?: 0.5f,
         animationSpec = tween(300),
@@ -385,8 +402,11 @@ private fun ActivityHero(received: String, spent: String, receivedFraction: Floa
                 drawRect(if (receivedFraction == null) neutral else SpentStops.first().second, Offset(split, -reach), Size(size.width - split, reach))
             },
     ) {
+        // The gradient is the decorative background layer: it drifts at the background rate while the text groups move
+        // at the text rate. The solid first-stop colours painted above the hero cover the strip it uncovers.
         Box(
             Modifier.fillMaxSize()
+                .heroParallax(heroOffset, ZarMotion.PARALLAX_BACKGROUND, ZarMotion.ParallaxBackgroundCap)
                 .clip(RoundedCornerShape(bottomStart = HeroRadius, bottomEnd = HeroRadius))
                 .drawBehind {
                     if (receivedFraction == null) {
@@ -404,8 +424,9 @@ private fun ActivityHero(received: String, spent: String, receivedFraction: Floa
                     }
                 },
         )
+        val textLayer = Modifier.heroParallax(heroOffset, ZarMotion.PARALLAX_TEXT, ZarMotion.ParallaxTextCap)
         Row(
-            Modifier
+            textLayer
                 .padding(start = 22.dp, end = 22.dp, top = 62.dp)
                 .fillMaxWidth()
                 .height(42.dp),
@@ -437,6 +458,7 @@ private fun ActivityHero(received: String, spent: String, receivedFraction: Floa
             Modifier
                 .align(Alignment.BottomStart)
                 .fillMaxWidth()
+                .heroParallax(heroOffset, ZarMotion.PARALLAX_TEXT, ZarMotion.ParallaxTextCap)
                 .padding(start = 22.dp, end = 22.dp, bottom = 22.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.Bottom,
