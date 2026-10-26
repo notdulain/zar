@@ -534,9 +534,9 @@ private fun QuickCard(title: String, detail: String, icon: Int, modifier: Modifi
     ZarCard(modifier.height(114.dp), onClick = onClick, contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(30.dp).background(colors.subtle, CircleShape), contentAlignment = Alignment.Center) {
-                Icon(painterResource(icon), contentDescription = null, modifier = Modifier.size(16.dp), tint = Color.Unspecified)
+                Icon(painterResource(icon), contentDescription = null, modifier = Modifier.size(16.dp), tint = colors.textPrimary)
             }
-            Icon(painterResource(R.drawable.ic_ph_arrowupright), contentDescription = null, modifier = Modifier.size(14.dp), tint = Color.Unspecified)
+            Icon(painterResource(R.drawable.ic_ph_arrowupright), contentDescription = null, modifier = Modifier.size(14.dp), tint = colors.textSecondary)
         }
         Spacer(Modifier.weight(1f))
         Text(title, style = ZarType.bodyM, color = colors.textPrimary)

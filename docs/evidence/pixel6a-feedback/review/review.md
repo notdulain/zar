@@ -31,3 +31,11 @@ checks (`wm density`, `font_scale`, `user_rotation`, animator scale) were restor
   Transport share a car). Design decision, left as is.
 - Parallax uses `graphicsLayer` offsets, so hit-testing follows the moved layer (Compose hit-tests transformed layers);
   no separate native-hit test was added.
+
+## Final screenshot correction
+
+The final screenshot review found that Home's Activity/Plans/More shortcut icons retained the dark fill embedded in
+ their vector assets in Dark mode. The icons now use `textPrimary`, and their arrows use `textSecondary`. The parent
+Codex applied this two-line correction after the sequential Sonnet pass. `assembleDebug installDebug
+-Pzar.useEmulators=true` passed; the running Pixel_6a emulator was checked in Light and Dark. Refreshed captures:
+`appearance/05-home-dark-full-nav.png` and `appearance/11-home-light-shortcut-icons.png`. Appearance was restored to Light.
