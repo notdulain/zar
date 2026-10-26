@@ -87,6 +87,7 @@ import com.example.zar.core.presentation.components.ZarMonoLabel
 import com.example.zar.core.presentation.format.formatForRow
 import com.example.zar.core.presentation.format.formatWithCode
 import com.example.zar.core.presentation.theme.ZarShapes
+import com.example.zar.core.presentation.motion.settleSize
 import com.example.zar.core.presentation.theme.ZarTheme
 import com.example.zar.core.presentation.theme.ZarType
 import com.example.zar.features.accounts.presentation.screen.iconRes
@@ -613,7 +614,8 @@ private fun AccountChips(accounts: List<Account>, selected: AccountId?, onSelect
 
 @Composable
 internal fun Section(label: String, action: String? = null, onAction: (() -> Unit)? = null, content: @Composable () -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    // Expanding "All categories" / "All accounts" settles to its new height instead of jumping.
+    Column(Modifier.settleSize(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             ZarMonoLabel(label)
             if (action != null && onAction != null) {

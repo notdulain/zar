@@ -1,5 +1,9 @@
 package com.example.zar.core.presentation.components
 
+import com.example.zar.core.presentation.motion.pressScale
+import androidx.compose.runtime.remember
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.LocalIndication
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -158,14 +162,16 @@ fun ZarButton(
         ZarButtonStyle.Outline -> colors.surface
     }
     val content = contentColor ?: if (style == ZarButtonStyle.Primary) colors.textOnInverse else colors.textPrimary
+    val press = remember { MutableInteractionSource() }
     Box(
         modifier
+            .pressScale(press)
             .height(height)
             .alpha(if (enabled) 1f else 0.4f)
             .clip(shape)
             .background(container)
             .then(if (style == ZarButtonStyle.Outline) Modifier.border(BorderStroke(1.dp, colors.borderDefault), shape) else Modifier)
-            .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
+            .clickable(interactionSource = press, indication = LocalIndication.current, enabled = enabled, role = Role.Button, onClick = onClick)
             .padding(horizontal = horizontalPadding),
         Alignment.Center,
     ) {
@@ -199,13 +205,15 @@ fun ZarChip(
 ) {
     val colors = ZarTheme.colors
     val foreground = if (selected) colors.textOnInverse else colors.textPrimary
+    val press = remember { MutableInteractionSource() }
     Row(
         modifier
+            .pressScale(press)
             .alpha(if (enabled) 1f else 0.45f)
             .clip(ZarShapes.sm)
             .background(if (selected) colors.accentSelected else colors.subtle)
-            .then(if (multiSelect) Modifier.toggleable(value = selected, enabled = enabled, role = Role.Checkbox, onValueChange = { onClick() })
-                else Modifier.selectable(selected = selected, enabled = enabled, role = Role.RadioButton, onClick = onClick))
+            .then(if (multiSelect) Modifier.toggleable(value = selected, interactionSource = press, indication = LocalIndication.current, enabled = enabled, role = Role.Checkbox, onValueChange = { onClick() })
+                else Modifier.selectable(selected = selected, interactionSource = press, indication = LocalIndication.current, enabled = enabled, role = Role.RadioButton, onClick = onClick))
             .padding(start = 12.dp, end = 14.dp, top = 9.dp, bottom = 9.dp),
         horizontalArrangement = Arrangement.spacedBy(7.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -219,14 +227,16 @@ fun ZarChip(
 @Composable
 fun ZarAddPill(text: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val colors = ZarTheme.colors
+    val press = remember { MutableInteractionSource() }
     Row(
         modifier
+            .pressScale(press)
             .height(56.dp)
             .shadow(8.dp, ZarShapes.pill, ambientColor = Color(0x0F0F1A2B), spotColor = Color(0x1F0F1A2B))
             .background(colors.surface, ZarShapes.pill)
             .border(1.dp, colors.borderDefault, ZarShapes.pill)
             .clip(ZarShapes.pill)
-            .clickable(role = Role.Button, onClick = onClick)
+            .clickable(interactionSource = press, indication = LocalIndication.current, role = Role.Button, onClick = onClick)
             .padding(start = 20.dp, end = 24.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,

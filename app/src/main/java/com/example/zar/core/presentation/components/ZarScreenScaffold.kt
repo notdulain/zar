@@ -1,5 +1,7 @@
 package com.example.zar.core.presentation.components
 
+import com.example.zar.core.presentation.motion.pressScale
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
@@ -116,9 +118,12 @@ internal fun Context.findActivity(): Activity? = when (this) {
 @Composable
 internal fun ZarAddButton(description: String, onClick: () -> Unit) {
     val colors = ZarTheme.colors
+    val press = remember { MutableInteractionSource() }
     FloatingActionButton(
         onClick = onClick,
+        interactionSource = press,
         modifier = Modifier
+            .pressScale(press)
             .size(ZarDimens.AddButtonSize)
             .testTag("add-entry")
             .semantics { contentDescription = description },
