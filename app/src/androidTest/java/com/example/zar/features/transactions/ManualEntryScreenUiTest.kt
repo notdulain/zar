@@ -324,14 +324,22 @@ class ManualEntryScreenUiTest {
     }
 
     @Test
-    fun addCategorySheetTakesANameAndReportsSaveAndCancel() {
+    fun addCategorySheetReportsTheTypedName() {
         val rec = Recorder()
         show(state { copy(newCategory = NewCategoryState()) }, rec)
 
         compose.onNodeWithTag("manual-new-category-name").performTextInput("Pets")
-        compose.onNodeWithTag("manual-new-category-save").performClick()
 
         assertEquals("Pets", rec.newCategoryName)
+    }
+
+    @Test
+    fun addCategorySaveIsEnabledWithANameAndReportsTheSave() {
+        val rec = Recorder()
+        show(state { copy(newCategory = NewCategoryState(name = "Pets")) }, rec)
+
+        compose.onNodeWithTag("manual-new-category-save").assertIsEnabled().performClick()
+
         assertEquals(1, rec.addCategorySave)
     }
 }
