@@ -76,7 +76,7 @@ The ongoing Add, Activity, reconciliation, and Plans stories (SCRUM-35–38 and 
 
 The saved Light / Dark / System choice (Settings → Appearance, `DisplayPreferencesRepository`) is resolved once in `MainActivity`, above `ZarRoot`, by `ZarAppearance`. It feeds `ZarTheme`, the system-bar glyphs and the activity window background. Light is used until a choice is saved; Android's own mode is only consulted when System is selected. `MainActivity` declares `configChanges="uiMode"`, so an Android theme change recomposes in place instead of recreating the activity.
 
-The system splash that Android 12+ draws before the app starts reads the manifest theme, which cannot see the saved choice. `Theme.Zar` is therefore Light-only, matching the Light default; everything the app draws itself uses the resolved appearance from the first frame.
+The window, and the Android 12+ splash it draws before the process starts, read the manifest theme and cannot see the saved choice. `Theme.Zar` therefore uses a neutral launch surface — the brand navy `@color/zar_launch_surface` `#0C1625` — that reads the same in Light and Dark, so a saved Dark choice on a Light phone (or the reverse) never flashes the opposite mode. `MainActivity` replaces the window background with the resolved canvas colour as soon as it starts, so everything the app draws itself follows the saved Appearance from the first frame. Bar glyphs on the launch surface are light; `ZarAppearance` re-applies the resolved bar style (and any screen's own hero-bar choice) once Compose is running.
 
 ## Motion policy
 
