@@ -1,0 +1,35 @@
+package com.example.zar.features.transactions.data.category
+
+import com.example.zar.features.transactions.domain.category.CategoryNameRules
+import com.example.zar.features.transactions.domain.manual.model.CustomCategoryIds
+import com.example.zar.features.transactions.domain.manual.model.CustomExpenseCategory
+import java.time.Instant
+
+/**
+ * Converts a custom expense category to and from a Firestore map, using the field names in firestore.rules.
+ * The reader returns null for a malformed document. It recomputes the comparison key from the name, so a document
+ * written with a different normalisation still groups with equal names; the stored `nameKey` is a rules-side guard.
+ */
+object ExpenseCategoryDocumentMapper {
+    const val SOURCE_CUSTOM = "CUSTOM"
+
+    fun toMap(category: CustomExpenseCategory): Map<String, Any> = mapOf(
+        "id" to category.id,
+        "name" to category.name,
+        "nameKey" to category.nameKey,
+        "source" to SOURCE_CUSTOM,
+        "createdAt" to category.createdAt.toEpochMilli(),
+    )
+
+    fun fromMap(map: Map<String, Any?>): CustomExpenseCategory? = runCatching {
+        val id = map["id"] as String
+        val name = (map["name"] as String).trim()
+        require(CustomCategoryIds.isCustom(id) && name.isNotEmpty() && map["source"] == SOURCE_CUSTOM)
+        CustomExpenseCategory(
+            id = id,
+            name = name,
+            nameKey = CategoryNameRules.keyOf(name),
+            createdAt = Instant.ofEpochMilli((map["createdAt"] as Number).toLong()),
+        )
+    }.getOrNull()
+}
