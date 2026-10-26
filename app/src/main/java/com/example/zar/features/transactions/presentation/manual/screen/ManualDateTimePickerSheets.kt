@@ -66,6 +66,7 @@ import com.example.zar.core.presentation.components.ZarButton
 import com.example.zar.core.presentation.components.ZarButtonStyle
 import com.example.zar.core.presentation.components.ZarChip
 import com.example.zar.core.presentation.components.ZarIcon
+import com.example.zar.core.presentation.haptics.rememberSelectionTicker
 import com.example.zar.core.presentation.theme.ZarShapes
 import com.example.zar.core.presentation.theme.ZarTheme
 import com.example.zar.core.presentation.theme.ZarType
@@ -335,7 +336,8 @@ private fun ClockDial(time: LocalTime, hourMode: Boolean, onSelect: (Int) -> Uni
     val latestIndex by rememberUpdatedState(selectedIndex)
     val latestSelect by rememberUpdatedState(onSelect)
     val latestFinished by rememberUpdatedState(onSelectionFinished)
-    val input = remember(density) {
+    val ticks = rememberSelectionTicker()
+    val input = remember(density, ticks) {
         with(density) {
             ClockDialInput(
                 config = ClockDialConfig(armLength = 100.dp.toPx(), centerDeadzone = 24.dp.toPx(), armGrabRadius = 24.dp.toPx()),
@@ -343,6 +345,7 @@ private fun ClockDial(time: LocalTime, hourMode: Boolean, onSelect: (Int) -> Uni
                 currentDetent = { latestIndex },
                 onSelectDetent = { latestSelect(it) },
                 onFinished = { latestFinished() },
+                ticks = ticks,
                 onArmAngle = { dragAngle = it },
             )
         }
@@ -399,13 +402,13 @@ private suspend fun PointerInputScope.detectClockGestures(input: ClockDialInput)
             val up = currentEvent.changes.firstOrNull { it.id == down.id }
             if (up != null && !up.pressed && !up.isConsumed) {
                 up.consume()
-                input.tap(rel(up.position).x, rel(up.position).y)
+                input.tap(rel(up.position).x, rel(up.position).y, up.uptimeMillis)
             }
             return@awaitEachGesture
         }
-        input.dragStart(rel(slop.position).x, rel(slop.position).y)
+        input.dragStart(rel(slop.position).x, rel(slop.position).y, slop.uptimeMillis)
         val completed = drag(slop.id) { change ->
-            input.dragMove(rel(change.position).x, rel(change.position).y)
+            input.dragMove(rel(change.position).x, rel(change.position).y, change.uptimeMillis)
             change.consume()
         }
         if (completed) input.dragEnd() else input.dragCancel()

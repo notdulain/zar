@@ -1,5 +1,6 @@
 package com.example.zar.features.transactions.presentation.manual.screen
 
+import com.example.zar.core.presentation.haptics.SelectionTicker
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.atan2
@@ -59,6 +60,11 @@ internal data class ClockDialConfig(
  *
  * Mode (hour or minute) is not an input here: the caller keeps it fixed for the whole gesture and
  * advances it only from [onFinished], which fires once per completed tap or drag.
+ *
+ * A selection tick is requested only where user input changes the selected detent, in the same call
+ * that reports the change. Duplicate samples, release, cancellation, accessibility clicks and any
+ * programmatic change never tick. [ticks] caps the physical rate; the selection itself is never held back.
+ * Times are input event uptimes in milliseconds.
  */
 internal class ClockDialInput(
     private val config: ClockDialConfig,
@@ -67,6 +73,7 @@ internal class ClockDialInput(
     private val currentDetent: () -> Int,
     private val onSelectDetent: (Int) -> Unit,
     private val onFinished: () -> Unit,
+    private val ticks: SelectionTicker,
     /** Continuous arm angle while dragging, then null so the arm returns to its detent. */
     private val onArmAngle: (Float?) -> Unit,
 ) {
@@ -86,24 +93,27 @@ internal class ClockDialInput(
     }
 
     /** Released without crossing touch slop. Tapping the current detent still applies its exact value. */
-    fun tap(dx: Float, dy: Float) {
+    fun tap(dx: Float, dy: Float, timeMillis: Long) {
         if (hypot(dx, dy) < config.centerDeadzone) return
-        onSelectDetent(ClockGeometry.detentOf(ClockGeometry.angleOf(dx, dy)))
+        val tapped = ClockGeometry.detentOf(ClockGeometry.angleOf(dx, dy))
+        if (tapped != currentDetent()) ticks.tick(timeMillis)
+        onSelectDetent(tapped)
         onFinished()
     }
 
+    /** Accessibility or keyboard activation: selects silently, since the platform gives its own feedback. */
     fun clickDetent(detent: Int) {
         onSelectDetent(detent)
         onFinished()
     }
 
-    fun dragStart(dx: Float, dy: Float) {
+    fun dragStart(dx: Float, dy: Float, timeMillis: Long) {
         dragging = true
         detent = currentDetent()
-        dragMove(dx, dy)
+        dragMove(dx, dy, timeMillis)
     }
 
-    fun dragMove(dx: Float, dy: Float) {
+    fun dragMove(dx: Float, dy: Float, timeMillis: Long) {
         if (!dragging || hypot(dx, dy) < config.centerDeadzone) return
         val arm = ClockGeometry.normalize(ClockGeometry.angleOf(dx, dy) + grabOffset)
         onArmAngle(arm)
@@ -112,6 +122,7 @@ internal class ClockDialInput(
             ClockGeometry.DETENT_DEGREES / 2 + config.hysteresisDegrees
         if (candidate != detent && pastBoundary) {
             detent = candidate
+            ticks.tick(timeMillis)
             onSelectDetent(candidate)
         }
     }
