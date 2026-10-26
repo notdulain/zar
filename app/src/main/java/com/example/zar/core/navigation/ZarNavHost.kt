@@ -1,11 +1,16 @@
 package com.example.zar.core.navigation
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.window.DialogProperties
 import androidx.navigation.NavDestination
@@ -18,8 +23,12 @@ import androidx.navigation.compose.dialog
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import com.example.zar.core.presentation.components.AddEntryOption
+import com.example.zar.core.presentation.components.LocalNavCapsuleController
+import com.example.zar.core.presentation.components.LocalNavChromeHost
 import com.example.zar.core.presentation.components.LocalNavSession
+import com.example.zar.core.presentation.components.NavCapsuleController
 import com.example.zar.core.presentation.components.TopLevelDestination
+import com.example.zar.core.presentation.components.ZarTopLevelChrome
 import com.example.zar.features.accounts.presentation.screen.AccountDetailScreen
 import com.example.zar.features.accounts.presentation.screen.AccountFormScreen
 import com.example.zar.features.accounts.presentation.screen.AccountsScreen
@@ -91,11 +100,14 @@ fun ZarNavHost(
             AddEntryOption.Voice -> Unit
         }
     }
-    NavHost(
-        navController = navController,
-        startDestination = HomeRoute,
-        modifier = modifier,
-    ) {
+    // The one selected-capsule mover for the session, retained across every top-level route composition.
+    val capsuleController = LocalNavCapsuleController.current ?: remember { NavCapsuleController() }
+    Box(modifier = modifier.fillMaxSize()) {
+        CompositionLocalProvider(LocalNavChromeHost provides true) {
+            NavHost(
+                navController = navController,
+                startDestination = HomeRoute,
+            ) {
         composable<HomeRoute> {
             HomeScreen(
                 onNavigate = onNavigate,
@@ -304,6 +316,20 @@ fun ZarNavHost(
         }
         composable<AccountFormRoute> {
             AccountFormScreen(onDone = { navController.popBackStack() })
+        }
+            }
+        }
+        // One shared bottom chrome above the content NavHost: it does not move while peer-tab content travels, and its
+        // selected capsule is retained here for the whole session.
+        currentDestination?.topLevelDestination()?.let { topLevel ->
+            ZarTopLevelChrome(
+                destination = topLevel,
+                chrome = navSession.chromeFor(topLevel),
+                onNavigate = onNavigate,
+                onAddOption = onAddOption,
+                controller = capsuleController,
+                modifier = Modifier.align(Alignment.BottomCenter),
+            )
         }
     }
 }
