@@ -85,4 +85,44 @@ class SharedPreferencesDisplayPreferencesRepositoryTest {
         assertFalse(AppearanceMode.SYSTEM.resolveDark(systemDark = false))
         assertTrue(AppearanceMode.SYSTEM.resolveDark(systemDark = true))
     }
+
+    @Test
+    fun reduceMotionDefaultsOffSavesAndSurvivesARestart() = runTest {
+        val prefs = FakeSharedPreferences()
+        assertFalse(repository(prefs).current().reduceMotion)
+
+        repository(prefs).setReduceMotion(true)
+        assertTrue(repository(prefs).current().reduceMotion)
+
+        repository(prefs).setReduceMotion(false)
+        assertFalse(repository(prefs).current().reduceMotion)
+    }
+
+    @Test
+    fun aWronglyTypedReduceMotionValueReadsAsOff() {
+        assertFalse(repository(FakeSharedPreferences(mapOf("reduce_motion" to "yes"))).current().reduceMotion)
+    }
+
+    @Test
+    fun appearanceAndReduceMotionAreStoredIndependently() = runTest {
+        val prefs = FakeSharedPreferences()
+        repository(prefs).setAppearance(AppearanceMode.DARK)
+        repository(prefs).setReduceMotion(true)
+
+        val restored = repository(prefs).current()
+        assertEquals(AppearanceMode.DARK, restored.appearance)
+        assertTrue(restored.reduceMotion)
+    }
+
+    @Test
+    fun aFailedReduceMotionWriteKeepsThePreviousChoice() = runTest {
+        val prefs = FakeSharedPreferences()
+        val repo = repository(prefs)
+        prefs.failCommits = true
+
+        assertThrows(IOException::class.java) { kotlinx.coroutines.runBlocking { repo.setReduceMotion(true) } }
+
+        assertFalse(repo.current().reduceMotion)
+        assertFalse(repository(prefs).current().reduceMotion)
+    }
 }

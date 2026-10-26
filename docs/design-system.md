@@ -58,3 +58,7 @@ The ongoing Add, Activity, reconciliation, and Plans stories (SCRUM-35–38 and 
 The saved Light / Dark / System choice (Settings → Appearance, `DisplayPreferencesRepository`) is resolved once in `MainActivity`, above `ZarRoot`, by `ZarAppearance`. It feeds `ZarTheme`, the system-bar glyphs and the activity window background. Light is used until a choice is saved; Android's own mode is only consulted when System is selected. `MainActivity` declares `configChanges="uiMode"`, so an Android theme change recomposes in place instead of recreating the activity.
 
 The system splash that Android 12+ draws before the app starts reads the manifest theme, which cannot see the saved choice. `Theme.Zar` is therefore Light-only, matching the Light default; everything the app draws itself uses the resolved appearance from the first frame.
+
+## Motion policy
+
+`MotionPolicy` (`core/presentation/motion`) is the single answer to "may this move?". `ProvideZarMotion` sits under `ZarAppearance` around `ZarRoot`, so both the signed-in and auth graphs read it through `LocalZarMotion`. It combines the saved Reduce motion switch with Android's animator duration scale (0 means system animations are off) into one `MotionLevel`: `Full`, `Reduced` (app switch: no spatial travel, bounce or press scaling; crossfade at most 100 ms) or `Instant` (system animations off: final state at once). Screens never read either setting directly. Spring values live in `ZarSprings`.

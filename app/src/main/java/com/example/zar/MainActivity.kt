@@ -10,6 +10,7 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.zar.core.navigation.LaunchTargets
 import com.example.zar.core.navigation.ZarRoot
+import com.example.zar.core.presentation.motion.ProvideZarMotion
 import com.example.zar.core.presentation.theme.ZarAppearance
 import com.example.zar.core.presentation.theme.applyZarAppearance
 import com.example.zar.core.presentation.theme.isSystemNightMode
@@ -38,7 +39,9 @@ class MainActivity : ComponentActivity() {
         setContent {
             val display by displayPreferences().collectAsStateWithLifecycle(initialValue = displayPreferences.current())
             ZarAppearance(display.appearance) {
-                ZarRoot(openCatchUp = openCatchUp, onCatchUpOpened = { openCatchUp = false })
+                ProvideZarMotion(display.reduceMotion) {
+                    ZarRoot(openCatchUp = openCatchUp, onCatchUpOpened = { openCatchUp = false })
+                }
             }
         }
     }

@@ -6,4 +6,6 @@ package com.example.zar.features.settings.domain.model
  */
 data class DisplayPreferences(
     val appearance: AppearanceMode = AppearanceMode.Default,
+    /** Off by default. The shared motion policy combines this with Android's own animation setting. */
+    val reduceMotion: Boolean = false,
 )

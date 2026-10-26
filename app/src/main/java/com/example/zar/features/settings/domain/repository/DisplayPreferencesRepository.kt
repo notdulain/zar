@@ -19,4 +19,7 @@ interface DisplayPreferencesRepository {
      * effect, so what is shown always matches what is stored.
      */
     suspend fun setAppearance(mode: AppearanceMode)
+
+    /** Same write contract as [setAppearance]. */
+    suspend fun setReduceMotion(enabled: Boolean)
 }

@@ -12,6 +12,7 @@ import com.example.zar.features.settings.domain.model.AppearanceMode
 import com.example.zar.features.settings.domain.usecase.ObserveAppPreferencesUseCase
 import com.example.zar.features.settings.domain.usecase.ObserveDisplayPreferencesUseCase
 import com.example.zar.features.settings.domain.usecase.SetAppearanceUseCase
+import com.example.zar.features.settings.domain.usecase.SetReduceMotionUseCase
 import com.example.zar.features.settings.presentation.viewmodel.SettingsViewModel
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
@@ -69,6 +70,7 @@ class SettingsViewModelTest {
             SignOutUseCase(auth, emptySet()),
             ObserveDisplayPreferencesUseCase(display),
             SetAppearanceUseCase(display),
+            SetReduceMotionUseCase(display),
         )
         backgroundScope.launch { vm.uiState.collect {} }
         vm.uiState.first { !it.isLoading }
@@ -205,5 +207,56 @@ class SettingsViewModelTest {
 
         assertFalse(vm.uiState.value.displayPreferenceError)
         assertEquals(AppearanceMode.LIGHT, vm.uiState.value.appearance)
+    }
+
+    @Test
+    fun reduceMotionStartsOffSavesAndKeepsAppearanceIndependent() = runTest {
+        val vm = signedInViewModel(unsynced = false)
+        assertFalse(vm.uiState.value.reduceMotion)
+
+        vm.onAppearanceSelected(AppearanceMode.DARK)
+        vm.onReduceMotionChange(true)
+        advanceUntilIdle()
+
+        assertTrue(vm.uiState.value.reduceMotion)
+        assertEquals(AppearanceMode.DARK, vm.uiState.value.appearance)
+
+        vm.onReduceMotionChange(false)
+        advanceUntilIdle()
+        assertFalse(vm.uiState.value.reduceMotion)
+        assertEquals(AppearanceMode.DARK, vm.uiState.value.appearance)
+    }
+
+    @Test
+    fun aFailedReduceMotionSaveKeepsItOffAndRetryRepeatsIt() = runTest {
+        val vm = signedInViewModel(unsynced = false)
+        display.failing = true
+
+        vm.onReduceMotionChange(true)
+        advanceUntilIdle()
+        assertFalse(vm.uiState.value.reduceMotion)
+        assertTrue(vm.uiState.value.displayPreferenceError)
+
+        display.failing = false
+        vm.retryDisplayPreference()
+        advanceUntilIdle()
+        assertTrue(vm.uiState.value.reduceMotion)
+        assertFalse(vm.uiState.value.displayPreferenceError)
+    }
+
+    @Test
+    fun aLaterSuccessfulSaveClearsAnEarlierError() = runTest {
+        val vm = signedInViewModel(unsynced = false)
+        display.failing = true
+        vm.onReduceMotionChange(true)
+        advanceUntilIdle()
+
+        display.failing = false
+        vm.onAppearanceSelected(AppearanceMode.SYSTEM)
+        advanceUntilIdle()
+
+        assertFalse(vm.uiState.value.displayPreferenceError)
+        assertEquals(AppearanceMode.SYSTEM, vm.uiState.value.appearance)
+        assertFalse(vm.uiState.value.reduceMotion)
     }
 }

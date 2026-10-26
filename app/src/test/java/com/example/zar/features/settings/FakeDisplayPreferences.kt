@@ -20,4 +20,9 @@ class FakeDisplayPreferences(initial: DisplayPreferences = DisplayPreferences())
         if (failing) throw IOException("cannot save")
         state.value = state.value.copy(appearance = mode)
     }
+
+    override suspend fun setReduceMotion(enabled: Boolean) {
+        if (failing) throw IOException("cannot save")
+        state.value = state.value.copy(reduceMotion = enabled)
+    }
 }

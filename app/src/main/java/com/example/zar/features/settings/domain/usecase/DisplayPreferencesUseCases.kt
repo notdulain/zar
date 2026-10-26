@@ -22,3 +22,10 @@ class SetAppearanceUseCase @Inject constructor(
 ) {
     suspend operator fun invoke(mode: AppearanceMode): Result<Unit> = resultOf { repository.setAppearance(mode) }
 }
+
+/** Turns the app's Reduce motion switch on or off. A failure leaves the previous choice in effect. */
+class SetReduceMotionUseCase @Inject constructor(
+    private val repository: DisplayPreferencesRepository,
+) {
+    suspend operator fun invoke(enabled: Boolean): Result<Unit> = resultOf { repository.setReduceMotion(enabled) }
+}

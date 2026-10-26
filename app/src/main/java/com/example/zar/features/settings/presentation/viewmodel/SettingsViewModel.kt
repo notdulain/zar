@@ -9,6 +9,7 @@ import com.example.zar.features.settings.domain.model.AppearanceMode
 import com.example.zar.features.settings.domain.usecase.ObserveAppPreferencesUseCase
 import com.example.zar.features.settings.domain.usecase.ObserveDisplayPreferencesUseCase
 import com.example.zar.features.settings.domain.usecase.SetAppearanceUseCase
+import com.example.zar.features.settings.domain.usecase.SetReduceMotionUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -27,6 +28,7 @@ data class SettingsUiState(
     val showUnsyncedWarning: Boolean = false,
     /** The saved choice; what the app is actually drawing. A failed write leaves this unchanged. */
     val appearance: AppearanceMode = AppearanceMode.Default,
+    val reduceMotion: Boolean = false,
     /** Set when the last attempt to save a display choice failed; [SettingsViewModel.retryDisplayPreference] repeats it. */
     val displayPreferenceError: Boolean = false,
 )
@@ -38,21 +40,27 @@ class SettingsViewModel @Inject constructor(
     private val signOut: SignOutUseCase,
     observeDisplayPreferences: ObserveDisplayPreferencesUseCase,
     private val setAppearance: SetAppearanceUseCase,
+    private val setReduceMotion: SetReduceMotionUseCase,
 ) : ViewModel() {
+
+    /** A display change that could not be saved, kept so "try again" repeats exactly that. */
+    private sealed interface DisplayChange {
+        data class Appearance(val mode: AppearanceMode) : DisplayChange
+        data class ReduceMotion(val enabled: Boolean) : DisplayChange
+    }
 
     private data class SignOutState(val isSigningOut: Boolean = false, val showUnsyncedWarning: Boolean = false)
 
     private val signOutState = MutableStateFlow(SignOutState())
 
-    /** The display choice whose last save failed, kept so "try again" repeats exactly that. */
-    private val failedAppearance = MutableStateFlow<AppearanceMode?>(null)
+    private val failedDisplayChange = MutableStateFlow<DisplayChange?>(null)
 
     val uiState: StateFlow<SettingsUiState> = combine(
         observeAppPreferences(),
         observeSession(),
         signOutState,
         observeDisplayPreferences(),
-        failedAppearance,
+        failedDisplayChange,
     ) { prefs, session, out, display, failed ->
         SettingsUiState(
             isLoading = false,
@@ -61,22 +69,31 @@ class SettingsViewModel @Inject constructor(
             isSigningOut = out.isSigningOut,
             showUnsyncedWarning = out.showUnsyncedWarning,
             appearance = display.appearance,
+            reduceMotion = display.reduceMotion,
             displayPreferenceError = failed != null,
         )
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsUiState(appearance = observeDisplayPreferences.current().appearance))
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), observeDisplayPreferences.current().let { SettingsUiState(appearance = it.appearance, reduceMotion = it.reduceMotion) })
 
-    fun onAppearanceSelected(mode: AppearanceMode) {
-        viewModelScope.launch {
-            if (setAppearance(mode).isSuccess) failedAppearance.value = null else failedAppearance.value = mode
-        }
-    }
+    fun onAppearanceSelected(mode: AppearanceMode) = save(DisplayChange.Appearance(mode))
+
+    fun onReduceMotionChange(enabled: Boolean) = save(DisplayChange.ReduceMotion(enabled))
 
     fun retryDisplayPreference() {
-        failedAppearance.value?.let(::onAppearanceSelected)
+        failedDisplayChange.value?.let(::save)
     }
 
     fun dismissDisplayPreferenceError() {
-        failedAppearance.value = null
+        failedDisplayChange.value = null
+    }
+
+    private fun save(change: DisplayChange) {
+        viewModelScope.launch {
+            val result = when (change) {
+                is DisplayChange.Appearance -> setAppearance(change.mode)
+                is DisplayChange.ReduceMotion -> setReduceMotion(change.enabled)
+            }
+            failedDisplayChange.value = if (result.isSuccess) null else change
+        }
     }
 
     /** Warns first when local changes would be lost; otherwise signs out straight away. */

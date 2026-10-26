@@ -16,6 +16,7 @@ import com.example.zar.features.settings.FakeDisplayPreferences
 import com.example.zar.features.settings.domain.usecase.ObserveAppPreferencesUseCase
 import com.example.zar.features.settings.domain.usecase.ObserveDisplayPreferencesUseCase
 import com.example.zar.features.settings.domain.usecase.SetAppearanceUseCase
+import com.example.zar.features.settings.domain.usecase.SetReduceMotionUseCase
 import com.example.zar.features.settings.presentation.viewmodel.SettingsViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -130,6 +131,7 @@ class AuthViewModelsTest {
         SignOutUseCase(repo, handlers),
         ObserveDisplayPreferencesUseCase(FakeDisplayPreferences()),
         SetAppearanceUseCase(FakeDisplayPreferences()),
+        SetReduceMotionUseCase(FakeDisplayPreferences()),
     )
 
     @Test

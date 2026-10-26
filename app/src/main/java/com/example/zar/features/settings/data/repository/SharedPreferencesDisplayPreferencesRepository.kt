@@ -48,6 +48,11 @@ class SharedPreferencesDisplayPreferencesRepository internal constructor(
         publish = { it.copy(appearance = mode) },
     )
 
+    override suspend fun setReduceMotion(enabled: Boolean) = write(
+        edit = { putBoolean(KEY_REDUCE_MOTION, enabled) },
+        publish = { it.copy(reduceMotion = enabled) },
+    )
+
     private suspend fun write(edit: SharedPreferences.Editor.() -> Unit, publish: (DisplayPreferences) -> DisplayPreferences) {
         writes.withLock {
             val saved = withContext(io) { preferences.edit().apply(edit).commit() }
@@ -58,6 +63,7 @@ class SharedPreferencesDisplayPreferencesRepository internal constructor(
 
     private fun read(): DisplayPreferences = DisplayPreferences(
         appearance = AppearanceMode.fromStored(string(KEY_APPEARANCE)),
+        reduceMotion = boolean(KEY_REDUCE_MOTION) ?: false,
     )
 
     // A value written with another type by some other version reads as missing rather than crashing start-up.
@@ -67,9 +73,16 @@ class SharedPreferencesDisplayPreferencesRepository internal constructor(
         null
     }
 
+    private fun boolean(key: String): Boolean? = try {
+        if (preferences.contains(key)) preferences.getBoolean(key, false) else null
+    } catch (_: ClassCastException) {
+        null
+    }
+
     companion object {
         /** Listed in backup_rules.xml and data_extraction_rules.xml so it is never backed up. */
         const val FILE_NAME = "display_preferences"
         private const val KEY_APPEARANCE = "appearance"
+        private const val KEY_REDUCE_MOTION = "reduce_motion"
     }
 }
