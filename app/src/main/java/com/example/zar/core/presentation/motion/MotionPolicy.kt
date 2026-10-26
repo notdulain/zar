@@ -41,6 +41,38 @@ object ZarSprings {
 }
 
 /**
+ * The non-spring numbers from `add-fluid-motion` (mirrored by the Figma `Motion` collection). Starting values to tune in
+ * the interactive prototype, not measured shipping values. Offsets and caps are multiplied through [MotionPolicy.travel],
+ * so they collapse to zero when motion is reduced.
+ */
+object ZarMotion {
+    /** Peer-tab content travel between Home / Activity / Plans / More. */
+    val TabTravel = 24.dp
+
+    /** First reveal of the full navbar: a quiet rise, no spring pop. */
+    val NavRevealRise = 8.dp
+    const val NAV_REVEAL_MILLIS = 160
+
+    /** Furthest the selected capsule may overshoot its target when there is room. */
+    val NavMaxOvershoot = 6.dp
+
+    /** Fraction of the hero's scroll displacement each layer is compensated by, and its cap. */
+    const val PARALLAX_BACKGROUND = 0.20f
+    val ParallaxBackgroundCap = 24.dp
+    const val PARALLAX_TEXT = 0.06f
+    val ParallaxTextCap = 8.dp
+    const val PARALLAX_CHART = 0.12f
+    val ParallaxChartCap = 16.dp
+
+    /** A parent screen recedes by at most this fraction of the window width while a child enters. */
+    const val ROUTE_PARENT_RECEDE = 0.2f
+
+    /** Clock dial: one haptic tick per changed detent, no more often than this; hysteresis against boundary flicker. */
+    const val HAPTIC_MIN_TICK_MILLIS = 40
+    const val DIAL_HYSTERESIS_DEGREES = 3f
+}
+
+/**
  * The one answer to "may this move, and how?" for the whole app. Read it from [LocalZarMotion]; never read the
  * Reduce motion setting or Android's animation scale directly in a screen.
  *

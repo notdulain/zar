@@ -88,4 +88,20 @@ class MotionPolicyTest {
         assertEquals(MotionPolicy.from(true, 1f).hashCode(), MotionPolicy.from(true, 2f).hashCode())
         assertFalse(MotionPolicy.from(true, 1f) == MotionPolicy.from(false, 1f))
     }
+
+    @Test
+    fun travelOffsetsFromTheTokensCollapseWhenMotionIsReduced() {
+        assertEquals(24.dp, full.travel(ZarMotion.TabTravel))
+        assertEquals(8.dp, full.travel(ZarMotion.NavRevealRise))
+        listOf(reduced, instant).forEach {
+            assertEquals(0.dp, it.travel(ZarMotion.TabTravel))
+            assertEquals(0.dp, it.travel(ZarMotion.ParallaxBackgroundCap))
+        }
+    }
+
+    @Test
+    fun parallaxCapsAreOrderedBackgroundThenChartThenText() {
+        assertTrue(ZarMotion.PARALLAX_BACKGROUND > ZarMotion.PARALLAX_CHART && ZarMotion.PARALLAX_CHART > ZarMotion.PARALLAX_TEXT)
+        assertTrue(ZarMotion.ParallaxBackgroundCap > ZarMotion.ParallaxChartCap && ZarMotion.ParallaxChartCap > ZarMotion.ParallaxTextCap)
+    }
 }
