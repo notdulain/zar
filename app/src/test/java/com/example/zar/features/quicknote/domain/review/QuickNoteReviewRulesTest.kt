@@ -291,4 +291,19 @@ class QuickNoteReviewRulesTest {
         assertTrue(check(input.copy(received = "3000")).blockers.isEmpty())
         assertTrue(ProposalBlocker.RECEIVED_MISSING in check(input.copy(received = "invalid")).blockers)
     }
+
+    @Test fun aProposedCategoryIsKeptOnlyWhenTheUsersCatalogKnowsIt() {
+        val pets = com.example.zar.features.transactions.domain.manual.model.CustomExpenseCategory(
+            "custom-9f8e7d6c", "Pets", com.example.zar.features.transactions.domain.category.CategoryNameRules.keyOf("Pets"), T0,
+        )
+        val catalog = com.example.zar.features.transactions.domain.category.ExpenseCategoryCatalog(listOf(pets))
+        fun saved(categoryId: String?, c: com.example.zar.features.transactions.domain.category.ExpenseCategoryCatalog) =
+            (QuickNoteReviewRules.check(draft(), 0, expense().copy(categoryId = categoryId), accounts, emptyList(), today, now, c).record as ConfirmableRecord.Ledger).transaction.categoryId
+
+        assertEquals("custom-9f8e7d6c", saved("custom-9f8e7d6c", catalog))
+        assertEquals("groceries", saved("groceries", catalog))
+        // A made-up ID, or a custom one from another account's catalog, is dropped rather than invented.
+        assertNull(saved("custom-ffffffff", catalog))
+        assertNull(saved("custom-9f8e7d6c", com.example.zar.features.transactions.domain.category.ExpenseCategoryCatalog.BUILT_IN_ONLY))
+    }
 }

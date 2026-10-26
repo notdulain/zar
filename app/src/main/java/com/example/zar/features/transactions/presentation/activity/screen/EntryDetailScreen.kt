@@ -1,5 +1,8 @@
 package com.example.zar.features.transactions.presentation.activity.screen
 
+import com.example.zar.features.transactions.presentation.category.ProvideExpenseCategoryCatalog
+import com.example.zar.features.transactions.presentation.category.categoryDisplayName
+import com.example.zar.features.transactions.presentation.category.categoryDisplayNameOrFallback
 import androidx.annotation.PluralsRes
 import androidx.annotation.StringRes
 import androidx.compose.foundation.background
@@ -106,22 +109,24 @@ fun EntryDetailScreen(
     viewModel: EntryDetailViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    EntryDetailBody(
-        state = state,
-        actions = DetailActions(
-            onBack = onBack,
-            onEdit = onEdit,
-            onEditIncome = onEditIncome,
-            onAddAgain = onAddAgain,
-            onRefund = onRefund,
-            onOpenEntry = onOpenEntry,
-            onVoid = viewModel::showVoidSheet,
-            onDismissVoid = viewModel::dismissVoidSheet,
-            onConfirmVoid = viewModel::confirmVoid,
-            onRemember = viewModel::rememberChoice,
-            onOpenRules = onOpenRules,
-        ),
-    )
+    ProvideExpenseCategoryCatalog {
+        EntryDetailBody(
+            state = state,
+            actions = DetailActions(
+                onBack = onBack,
+                onEdit = onEdit,
+                onEditIncome = onEditIncome,
+                onAddAgain = onAddAgain,
+                onRefund = onRefund,
+                onOpenEntry = onOpenEntry,
+                onVoid = viewModel::showVoidSheet,
+                onDismissVoid = viewModel::dismissVoidSheet,
+                onConfirmVoid = viewModel::confirmVoid,
+                onRemember = viewModel::rememberChoice,
+                onOpenRules = onOpenRules,
+            ),
+        )
+    }
 }
 
 internal class DetailActions(
@@ -344,8 +349,8 @@ private fun DetailsCard(state: EntryDetailUiState, detail: EntryDetail, modifier
             add { ValueRow(stringResource(R.string.activity_field_added), stringResource(sourceLabel(entry.original.source))) }
         } else {
             add { ValueRow(stringResource(R.string.manual_field_account), detail.account?.name ?: none) }
-            EntryDisplay.categoryLabel(tx.categoryId)?.let { label ->
-                add { ValueRow(stringResource(R.string.manual_field_category), stringResource(label)) }
+            categoryDisplayName(tx.categoryId)?.let { label ->
+                add { ValueRow(stringResource(R.string.manual_field_category), label) }
             }
             if (tx.type == TransactionType.EXPENSE) {
                 add { ClassRow(tx.spendingClass) }
@@ -530,7 +535,7 @@ private fun RuleCardView(card: RuleCard, actions: DetailActions, modifier: Modif
     when (card) {
         RuleCard.Hidden -> return
         is RuleCard.Offer -> {
-            val category = EntryDisplay.categoryLabel(card.offer.categoryId)?.let { stringResource(it) } ?: card.offer.categoryId
+            val category = categoryDisplayNameOrFallback(card.offer.categoryId)
             title = stringResource(R.string.rules_detail_offer_title, card.offer.displayName, category)
             body = stringResource(R.string.rules_detail_offer_body, card.offer.displayName)
             action = stringResource(R.string.rules_detail_offer_action)
@@ -545,7 +550,7 @@ private fun RuleCardView(card: RuleCard, actions: DetailActions, modifier: Modif
             tag = "detail-rule-general"
         }
         is RuleCard.Applied -> {
-            val category = EntryDisplay.categoryLabel(card.categoryId)?.let { stringResource(it) } ?: card.categoryId
+            val category = categoryDisplayNameOrFallback(card.categoryId)
             title = stringResource(R.string.rules_detail_applied_title)
             body = stringResource(R.string.rules_detail_applied_body, card.name, category, card.version)
             action = stringResource(R.string.rules_detail_applied_action)

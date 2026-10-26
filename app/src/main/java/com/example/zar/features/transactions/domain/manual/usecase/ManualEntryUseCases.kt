@@ -7,6 +7,7 @@ import com.example.zar.core.domain.repository.ConnectivityMonitor
 import com.example.zar.core.domain.repository.LedgerRepository
 import com.example.zar.core.domain.usecase.SaveTransactionUseCase
 import com.example.zar.core.domain.usecase.SaveTransferUseCase
+import com.example.zar.features.transactions.domain.category.usecase.ObserveExpenseCategoryCatalogUseCase
 import com.example.zar.features.transactions.domain.manual.EntrySuggestions
 import com.example.zar.features.transactions.domain.manual.ManualEntryRules
 import com.example.zar.features.transactions.domain.manual.model.EntrySuggestion
@@ -15,7 +16,7 @@ import com.example.zar.features.transactions.domain.manual.model.TransferDetails
 import java.time.Instant
 import javax.inject.Inject
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.combine
 
 /** Saves a manual expense. Reuse the same [id] when retrying so a repeated save can't duplicate. */
 class RecordExpenseUseCase @Inject constructor(
@@ -42,8 +43,10 @@ class RecordTransferUseCase @Inject constructor(
 /** The user's recent expenses, for suggesting a quick note. */
 class ObserveEntrySuggestionsUseCase @Inject constructor(
     private val ledger: LedgerRepository,
+    private val categories: ObserveExpenseCategoryCatalogUseCase,
 ) {
-    operator fun invoke(): Flow<List<EntrySuggestion>> = ledger.observeLedger().map(EntrySuggestions::recent)
+    operator fun invoke(): Flow<List<EntrySuggestion>> =
+        combine(ledger.observeLedger(), categories()) { entries, catalog -> EntrySuggestions.recent(entries, catalog) }
 }
 
 /** Whether the phone is online. Saving still works offline; this only lets the form say so. */

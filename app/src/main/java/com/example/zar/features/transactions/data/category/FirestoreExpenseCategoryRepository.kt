@@ -8,6 +8,7 @@ import com.example.zar.features.transactions.domain.category.repository.ExpenseC
 import com.example.zar.features.transactions.domain.manual.model.CustomExpenseCategory
 import com.google.firebase.firestore.CollectionReference
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.Source
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -56,6 +57,12 @@ class FirestoreExpenseCategoryRepository @Inject constructor(
                 }.onStart { emit(emptyList()) }
             }
         }
+
+    override suspend fun currentCustomCategories(): List<CustomExpenseCategory> {
+        val uid = session.currentUserId() ?: return emptyList()
+        val snapshot = categoriesOf(uid.value).get(Source.CACHE).await()
+        return snapshot.documents.mapNotNull { it.data?.let(ExpenseCategoryDocumentMapper::fromMap) }
+    }
 
     override suspend fun create(category: CustomExpenseCategory) {
         val uid = session.currentUserId() ?: throw LedgerError.NotSignedIn()

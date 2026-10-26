@@ -334,9 +334,9 @@ private fun ExpenseFields(state: ManualEntryUiState, actions: ManualEntryActions
     Section(stringResource(R.string.manual_field_category), stringResource(R.string.manual_all_categories), { allCategories = !allCategories }) {
         if (allCategories) {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                ExpenseCategory.entries.forEach { category ->
+                state.categoryCatalog.choices.forEach { category ->
                     ZarChip(
-                        label = stringResource(category.labelRes()), selected = category == state.category,
+                        label = category.labelText(), selected = category.id == state.category?.id,
                         onClick = { actions.onCategory(category); allCategories = false },
                         icon = category.iconRes(), modifier = Modifier.testTag("manual-category-${category.id}"),
                     )
@@ -344,9 +344,9 @@ private fun ExpenseFields(state: ManualEntryUiState, actions: ManualEntryActions
             }
         } else {
             Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                ExpenseCategory.entries.forEach { category ->
+                state.categoryCatalog.choices.forEach { category ->
                     ZarChip(
-                        label = stringResource(category.labelRes()), selected = category == state.category,
+                        label = category.labelText(), selected = category.id == state.category?.id,
                         onClick = { actions.onCategory(category) }, icon = category.iconRes(),
                         modifier = Modifier.testTag("manual-category-${category.id}"),
                     )
@@ -847,6 +847,9 @@ internal fun ExpenseCategory.labelRes(): Int = when (this) {
     ExpenseCategory.SUBSCRIPTIONS -> R.string.manual_category_subscriptions
     ExpenseCategory.OTHER -> R.string.manual_category_other
 }
+
+/** A custom category has no icon of its own yet; the picker design supplies one generic icon for all of them. */
+private fun ExpenseCategoryChoice.iconRes(): Int = (this as? ExpenseCategory)?.iconRes() ?: R.drawable.ic_ph_receipt
 
 private fun ExpenseCategory.iconRes(): Int = when (this) {
     ExpenseCategory.COFFEE_DINING -> R.drawable.ic_figma_coffee

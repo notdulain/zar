@@ -1,5 +1,7 @@
 package com.example.zar.features.transactions.presentation.activity.screen
 
+import com.example.zar.features.transactions.presentation.category.ProvideExpenseCategoryCatalog
+import com.example.zar.features.transactions.presentation.category.LocalExpenseCategoryCatalog
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -54,7 +56,6 @@ import com.example.zar.core.presentation.theme.ZarShapes
 import com.example.zar.core.presentation.theme.ZarTheme
 import com.example.zar.core.presentation.theme.ZarType
 import com.example.zar.features.transactions.domain.activity.EditProblem
-import com.example.zar.features.transactions.domain.manual.model.ExpenseCategory
 import com.example.zar.features.transactions.presentation.activity.viewmodel.EditEntryUiState
 import com.example.zar.features.transactions.presentation.activity.viewmodel.EditEntryViewModel
 import com.example.zar.features.transactions.presentation.activity.viewmodel.EditMessage
@@ -65,6 +66,7 @@ import com.example.zar.features.transactions.presentation.manual.screen.Section
 import com.example.zar.features.transactions.presentation.manual.screen.Segmented
 import com.example.zar.features.transactions.presentation.manual.screen.TextInput
 import com.example.zar.features.transactions.presentation.manual.screen.labelRes
+import com.example.zar.features.transactions.presentation.manual.screen.labelText
 import com.example.zar.core.presentation.components.TransactionTimeField
 import java.time.LocalTime
 import java.time.LocalDate
@@ -80,21 +82,23 @@ fun EditEntryScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     LaunchedEffect(state.isFinished) { if (state.isFinished) onDone() }
-    EditEntryBody(
-        state = state,
-        actions = EditActions(
-            onClose = onDone,
-            onAmount = viewModel::onAmountChange,
-            onDate = viewModel::onDateSelect,
-            onTime = viewModel::onTimeSelect,
-            onAccount = viewModel::onAccountSelect,
-            onCategory = viewModel::onCategorySelect,
-            onSpendingClass = viewModel::onSpendingClassSelect,
-            onTitle = viewModel::onTitleChange,
-            onDescription = viewModel::onDescriptionChange,
-            onSave = viewModel::save,
-        ),
-    )
+    ProvideExpenseCategoryCatalog {
+        EditEntryBody(
+            state = state,
+            actions = EditActions(
+                onClose = onDone,
+                onAmount = viewModel::onAmountChange,
+                onDate = viewModel::onDateSelect,
+                onTime = viewModel::onTimeSelect,
+                onAccount = viewModel::onAccountSelect,
+                onCategory = viewModel::onCategorySelect,
+                onSpendingClass = viewModel::onSpendingClassSelect,
+                onTitle = viewModel::onTitleChange,
+                onDescription = viewModel::onDescriptionChange,
+                onSave = viewModel::save,
+            ),
+        )
+    }
 }
 
 internal class EditActions(
@@ -239,16 +243,18 @@ private fun EditFields(state: EditEntryUiState, amount: String, actions: EditAct
     }
 
     // The chips scroll sideways, so bring the chosen category into view when the form opens.
-    val chipPositions = remember { ExpenseCategory.entries.associateWith { BringIntoViewRequester() } }
-    LaunchedEffect(entry.id) { ExpenseCategory.fromId(entry.current.categoryId)?.let { chipPositions[it]?.bringIntoView() } }
+    val categories = LocalExpenseCategoryCatalog.current
+    val chipPositions = remember(categories) { categories.choices.associate { it.id to BringIntoViewRequester() } }
+    // An entry under a reconciled duplicate shows the canonical category as selected; its own ID is kept until another is chosen.
+    LaunchedEffect(entry.id, chipPositions) { chipPositions[categories.canonicalId(entry.current.categoryId.orEmpty())]?.bringIntoView() }
     Section(stringResource(R.string.manual_field_category)) {
         Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            ExpenseCategory.entries.forEach { category ->
+            categories.choices.forEach { category ->
                 ZarChip(
-                    label = stringResource(category.labelRes()),
-                    selected = category.id == input.categoryId,
+                    label = category.labelText(),
+                    selected = category.id == categories.canonicalId(input.categoryId.orEmpty()),
                     onClick = { actions.onCategory(category.id) },
-                    modifier = Modifier.bringIntoViewRequester(chipPositions.getValue(category)).testTag("edit-category-${category.id}"),
+                    modifier = Modifier.bringIntoViewRequester(chipPositions.getValue(category.id)).testTag("edit-category-${category.id}"),
                 )
             }
         }

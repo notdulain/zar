@@ -513,6 +513,7 @@
     <string name="manual_category_season_ticket">Season ticket</string>
     <string name="manual_category_subscriptions">Subscriptions</string>
     <string name="manual_category_other">Other</string>
+    <string name="category_unavailable">Unavailable category</string>
 
     <string name="manual_suggestions_header">From your recent entries</string>
     <string name="manual_suggestions_fills">Fills the form</string>

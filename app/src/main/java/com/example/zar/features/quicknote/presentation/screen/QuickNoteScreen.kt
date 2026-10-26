@@ -1,5 +1,9 @@
 package com.example.zar.features.quicknote.presentation.screen
 
+import com.example.zar.features.transactions.presentation.category.LocalExpenseCategoryCatalog
+import com.example.zar.features.transactions.presentation.category.ProvideExpenseCategoryCatalog
+import com.example.zar.features.transactions.presentation.category.categoryDisplayName
+import com.example.zar.features.transactions.presentation.manual.screen.labelText
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -92,7 +96,6 @@ import com.example.zar.features.quicknote.presentation.viewmodel.QuickNoteFailur
 import com.example.zar.features.quicknote.presentation.viewmodel.QuickNoteStage
 import com.example.zar.features.quicknote.presentation.viewmodel.QuickNoteUiState
 import com.example.zar.features.quicknote.presentation.viewmodel.QuickNoteViewModel
-import com.example.zar.features.transactions.domain.manual.model.ExpenseCategory
 import com.example.zar.features.transactions.presentation.income.IncomeFormat
 import com.example.zar.features.transactions.presentation.manual.screen.Segmented
 import com.example.zar.features.transactions.presentation.manual.screen.TextInput
@@ -116,23 +119,25 @@ fun QuickNoteScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     LaunchedEffect(state.isFinished) { if (state.isFinished) onDone() }
-    QuickNoteContent(
-        state = state,
-        actions = QuickNoteActions(
-            onClose = onDone,
-            onNote = viewModel::onNoteChange,
-            onInterpret = viewModel::interpret,
-            onCancelReading = viewModel::cancelReading,
-            onFillForm = onFillForm,
-            onEditNote = viewModel::editNote,
-            onOpenEditor = viewModel::openEditor,
-            onCloseEditor = viewModel::closeEditor,
-            onUpdate = viewModel::update,
-            onConfirm = viewModel::confirm,
-            onDiscard = viewModel::discard,
-            onDiscardAll = viewModel::discardAll,
-        ),
-    )
+    ProvideExpenseCategoryCatalog {
+        QuickNoteContent(
+            state = state,
+            actions = QuickNoteActions(
+                onClose = onDone,
+                onNote = viewModel::onNoteChange,
+                onInterpret = viewModel::interpret,
+                onCancelReading = viewModel::cancelReading,
+                onFillForm = onFillForm,
+                onEditNote = viewModel::editNote,
+                onOpenEditor = viewModel::openEditor,
+                onCloseEditor = viewModel::closeEditor,
+                onUpdate = viewModel::update,
+                onConfirm = viewModel::confirm,
+                onDiscard = viewModel::discard,
+                onDiscardAll = viewModel::discardAll,
+            ),
+        )
+    }
 }
 
 internal class QuickNoteActions(
@@ -466,8 +471,8 @@ private fun rowsFor(item: ProposalState, accounts: List<Account>): List<RowSpec>
                 add(RowSpec("account", stringResource(R.string.quicknote_field_account), account?.name ?: stringResource(R.string.quicknote_pick_account),
                     blockers.hit(ProposalBlocker.ACCOUNT_MISSING, ProposalBlocker.CURRENCY_MISMATCH), DraftField.ACCOUNT in input.uncertain))
                 if (input.type == TransactionType.EXPENSE) {
-                    add(RowSpec("category", stringResource(R.string.quicknote_field_category), ExpenseCategory.fromId(input.categoryId)?.let { stringResource(it.labelRes()) } ?: none,
-                        false, DraftField.CATEGORY in input.uncertain && ExpenseCategory.fromId(input.categoryId) != null))
+                    add(RowSpec("category", stringResource(R.string.quicknote_field_category), categoryDisplayName(input.categoryId) ?: none,
+                        false, DraftField.CATEGORY in input.uncertain && categoryDisplayName(input.categoryId) != null))
                 }
                 add(RowSpec("date", stringResource(R.string.quicknote_field_date), input.date?.let { IncomeFormat.fullDate(it) } ?: stringResource(R.string.quicknote_pick_date),
                     blockers.hit(ProposalBlocker.DATE_MISSING, ProposalBlocker.DATE_IN_FUTURE), DraftField.DATE in input.uncertain))
@@ -568,7 +573,7 @@ private fun ProposalCard(item: ProposalState, accounts: List<Account>, actions: 
     }
     val meta = listOfNotNull(
         account?.name,
-        (input as? ProposalInput.Actual)?.categoryId?.let { ExpenseCategory.fromId(it) }?.let { stringResource(it.labelRes()) },
+        (input as? ProposalInput.Actual)?.categoryId?.let { categoryDisplayName(it) },
         when_?.let { (if (input is ProposalInput.Expected) stringResource(R.string.quicknote_field_due) + " " else "") + IncomeFormat.fullDate(it) },
     ).joinToString(" · ")
     Column(
@@ -726,9 +731,9 @@ private fun ActualFields(index: Int, input: ProposalInput.Actual, item: Proposal
     if (input.type == TransactionType.EXPENSE) {
         FieldGroup(stringResource(R.string.quicknote_field_category), input.uncertain.contains(DraftField.CATEGORY)) {
             Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                ExpenseCategory.entries.forEach { category ->
+                LocalExpenseCategoryCatalog.current.choices.forEach { category ->
                     ZarChip(
-                        label = stringResource(category.labelRes()),
+                        label = category.labelText(),
                         selected = input.categoryId == category.id,
                         onClick = { actions.onUpdate(index) { (it as ProposalInput.Actual).copy(categoryId = category.id) } },
                         modifier = Modifier.testTag("quicknote-category-${category.id}"),

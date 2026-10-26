@@ -83,15 +83,15 @@ data class ExpenseCategoryCatalog(val stored: List<CustomExpenseCategory> = empt
     }
 
     /**
-     * What Activity search matches for an entry's category: the built-in's name or the custom name, never an opaque
-     * `custom-…` ID. Legacy IDs still match by their words ("transfer-fee" as "transfer fee"). Null when nothing
-     * readable is known, so an unresolved custom ID never matches a search.
+     * What Activity search matches for an entry's category: the built-in's name (and its ID words, as before) or the
+     * custom name, never an opaque `custom-…` ID. Legacy IDs still match by their words ("transfer-fee" as
+     * "transfer fee"). Empty when nothing readable is known, so an unresolved custom ID never matches a search.
      */
-    fun searchText(id: String?): String? = when (val label = label(id)) {
-        null -> null
-        is CategoryLabel.BuiltIn -> label.category.defaultName
-        is CategoryLabel.Custom -> label.name
-        is CategoryLabel.Unavailable -> label.id.takeUnless { CustomCategoryIds.isCustom(it) }?.replace('-', ' ')
+    fun searchTerms(id: String?): List<String> = when (val label = label(id)) {
+        null -> emptyList()
+        is CategoryLabel.BuiltIn -> listOf(label.category.defaultName, label.category.id.replace('-', ' '))
+        is CategoryLabel.Custom -> listOf(label.name)
+        is CategoryLabel.Unavailable -> listOfNotNull(label.id.takeUnless { CustomCategoryIds.isCustom(it) }?.replace('-', ' '))
     }
 
     companion object {

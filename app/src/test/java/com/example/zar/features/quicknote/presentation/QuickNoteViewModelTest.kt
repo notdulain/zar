@@ -1,5 +1,6 @@
 package com.example.zar.features.quicknote.presentation
 
+import com.example.zar.features.transactions.domain.category.FakeExpenseCategoryRepository
 import com.example.zar.core.domain.FakeLedgerRepository
 import com.example.zar.core.domain.TestLedger.T0
 import com.example.zar.core.domain.TestLedger.bank
@@ -90,7 +91,7 @@ class QuickNoteViewModelTest {
 
     private fun viewModel(drafts: CountingDrafts, saves: LedgerRepository = ledger) = QuickNoteViewModel(
         generate = GenerateQuickNoteDraftUseCase(drafts, accounts, Session(), { today }),
-        confirmProposal = ConfirmQuickNoteProposalUseCase(accounts, saves, expected, SaveTransactionUseCase(saves), SaveTransferUseCase(saves)),
+        confirmProposal = ConfirmQuickNoteProposalUseCase(accounts, saves, expected, SaveTransactionUseCase(saves), SaveTransferUseCase(saves), FakeExpenseCategoryRepository()),
         observeAccounts = ObserveActiveAccountsUseCase(accounts),
         observeLedger = ObserveLedgerUseCase(ledger),
         observeOnline = ObserveOnlineStatusUseCase(connectivity),

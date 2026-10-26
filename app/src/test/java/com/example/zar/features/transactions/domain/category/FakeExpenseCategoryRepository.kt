@@ -26,6 +26,9 @@ class FakeExpenseCategoryRepository(user: String? = "alice") : ExpenseCategoryRe
         stored.map { all -> uid?.let { all[it.value].orEmpty().values.toList() }.orEmpty() }
     }
 
+    override suspend fun currentCustomCategories(): List<CustomExpenseCategory> =
+        signedIn.value?.let { stored.value[it.value].orEmpty().values.toList() }.orEmpty()
+
     override suspend fun create(category: CustomExpenseCategory) {
         val uid = signedIn.value ?: throw LedgerError.NotSignedIn()
         failNextWith?.let { failNextWith = null; throw it }

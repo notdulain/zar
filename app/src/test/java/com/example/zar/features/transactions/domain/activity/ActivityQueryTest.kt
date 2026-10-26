@@ -1,5 +1,7 @@
 package com.example.zar.features.transactions.domain.activity
 
+import com.example.zar.features.transactions.domain.category.ExpenseCategoryCatalog
+import com.example.zar.features.transactions.domain.category.CategoryNameRules
 import com.example.zar.core.domain.TestLedger.T0
 import com.example.zar.core.domain.TestLedger.bank
 import com.example.zar.core.domain.TestLedger.cash
@@ -165,5 +167,29 @@ class ActivityQueryTest {
         val late = LedgerEntry(lateTx, lateTx, emptyList(), null, emptyList())
         val rows = ActivityQuery.apply(ActivitySnapshot(listOf(early, late), listOf(cash)), ActivityFilter(), today).rows
         assertEquals(listOf("b", "a"), rows.map { it.entry.id.value })
+    }
+
+    @Test
+    fun searchFindsACustomCategoryByItsNameAndNeverByItsOpaqueId() {
+        val pets = com.example.zar.features.transactions.domain.manual.model.CustomExpenseCategory(
+            "custom-9f8e7d6c", "Pets", CategoryNameRules.keyOf("Pets"), T0,
+        )
+        fun inCategory(id: String, categoryId: String) = withText(entry(tx(id, TransactionType.EXPENSE, lkr(900), cash, day(10, 22))), "Vet").let {
+            val t = it.original.copy(categoryId = categoryId)
+            LedgerEntry(t, t, emptyList(), null, emptyList())
+        }
+        val known = inCategory("known", "custom-9f8e7d6c")
+        val orphan = inCategory("orphan", "custom-00000000")
+        val catalog = ExpenseCategoryCatalog(listOf(pets))
+
+        fun found(q: String, c: ExpenseCategoryCatalog) =
+            ActivityQuery.apply(ActivitySnapshot(listOf(known, orphan), listOf(cash), c), ActivityFilter(query = q), today).rows.map { it.entry.id.value }
+
+        assertEquals(listOf("known"), found("pets", catalog))
+        assertEquals("opaque id is not searchable", emptyList<String>(), found("9f8e7d6c", catalog))
+        assertEquals("opaque id is not searchable", emptyList<String>(), found("custom", catalog))
+        // Before the catalog arrives nothing disappears; the entries just have no readable category to match.
+        assertEquals(emptyList<String>(), found("pets", ExpenseCategoryCatalog.BUILT_IN_ONLY))
+        assertEquals(listOf("known", "orphan"), ActivityQuery.apply(ActivitySnapshot(listOf(known, orphan), listOf(cash)), ActivityFilter(), today).rows.map { it.entry.id.value })
     }
 }

@@ -60,7 +60,7 @@ class ManualEntryScreenUiTest {
         var kind: ManualEntryKind? = null
         var income = 0
         var addAccount = 0
-        var category: ExpenseCategory? = null
+        var category: com.example.zar.features.transactions.domain.manual.model.ExpenseCategoryChoice? = null
         var time: java.time.LocalTime? = null
         var suggestion: EntrySuggestion? = null
         var closed = 0

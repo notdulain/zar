@@ -54,11 +54,12 @@ class ExpenseCategoryCatalogTest {
     @Test
     fun searchUsesTheResolvedNameNeverAnOpaqueCustomId() {
         val catalog = ExpenseCategoryCatalog(listOf(custom("custom-1234abcd", "Pets")))
-        assertEquals("Pets", catalog.searchText("custom-1234abcd"))
-        assertEquals("Groceries", catalog.searchText("groceries"))
-        assertNull(catalog.searchText("custom-ffff0000"))
+        assertEquals(listOf("Pets"), catalog.searchTerms("custom-1234abcd"))
+        assertEquals(listOf("Coffee & dining", "coffee dining"), catalog.searchTerms("coffee-dining"))
+        assertEquals(emptyList<String>(), catalog.searchTerms("custom-ffff0000"))
+        assertEquals(emptyList<String>(), catalog.searchTerms(null))
         // Legacy words stay searchable like before.
-        assertEquals("transfer fee", catalog.searchText("transfer-fee"))
+        assertEquals(listOf("transfer fee"), catalog.searchTerms("transfer-fee"))
     }
 
     @Test

@@ -89,4 +89,20 @@ class EntrySuggestionsTest {
         assertTrue(EntrySuggestions.matching(all, "  ").isEmpty())
         assertEquals(EntrySuggestions.MAX_SHOWN, EntrySuggestions.matching(all, "Bus").size)
     }
+
+    @Test
+    fun suggestsACustomCategoryOnlyWhenTheUsersCatalogKnowsIt() {
+        val pets = com.example.zar.features.transactions.domain.manual.model.CustomExpenseCategory(
+            "custom-9f8e7d6c", "Pets", com.example.zar.features.transactions.domain.category.CategoryNameRules.keyOf("Pets"), T0,
+        )
+        val entries = listOf(
+            entry(expense("vet", "Vet", category = "custom-9f8e7d6c")),
+            entry(expense("legacy", "Old thing", category = "fuel-2019")),
+        )
+        val withCatalog = EntrySuggestions.recent(entries, com.example.zar.features.transactions.domain.category.ExpenseCategoryCatalog(listOf(pets)))
+        assertEquals(pets, withCatalog.first { it.title == "Vet" }.category)
+        // A legacy or not-yet-synced ID is never replaced by Other: no category is suggested.
+        assertEquals(null, withCatalog.first { it.title == "Old thing" }.category)
+        assertEquals(null, EntrySuggestions.recent(entries).first { it.title == "Vet" }.category)
+    }
 }

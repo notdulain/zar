@@ -72,7 +72,8 @@ An expense stores its category as a plain string, `Transaction.categoryId`. That
 - **Duplicate names** are refused by `CategoryNameRules` against built-in names and the user's customs (case, width and spacing ignored). The check is local, so two devices that create the same name offline can both succeed. `ExpenseCategoryCatalog` reconciles that on read, deterministically and without rewriting anything: a built-in beats a custom with its name, otherwise the earliest `(createdAt, id)` is canonical. The other documents stay stored and keep resolving to the canonical name, so no expense loses its label. They are left out of the picker and listed in `catalog.conflicts`.
 - **Unknown IDs** (legacy, imported, or a custom category that has not synced yet) resolve to `CategoryLabel.Unavailable`. The entry stays visible and keeps its ID; nothing rewrites it to Other.
 - **Offline order.** The category write and the expense write go through the same local Firestore queue, so they reach the server in the order they were made and the label is available the moment the category is accepted locally. Ledger rules do not look up the category document, so a transaction never waits on it.
-- **Search** uses the resolved name (`ExpenseCategoryCatalog.searchText`), never a `custom-` ID.
+- **Search** uses the resolved name (`ExpenseCategoryCatalog.searchTerms`), never a `custom-` ID.
+- **Using it.** Domain and ViewModels take `ObserveExpenseCategoryCatalogUseCase` (built-ins first, then the user's, never empty). Resolve a stored ID with `catalog.find(id)` or `catalog.label(id)`; create with `CreateExpenseCategoryUseCase(id, name, catalog, now)` using one `CustomCategoryIds.newId()` per attempt. A reading screen that owns a ViewModel wraps itself in `ProvideExpenseCategoryCatalog` and reads names with `categoryDisplayName(id)`; stateless bodies fall back to the built-ins.
 
 ## Storage
 

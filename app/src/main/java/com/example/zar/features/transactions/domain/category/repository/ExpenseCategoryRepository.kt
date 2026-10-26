@@ -13,6 +13,12 @@ interface ExpenseCategoryRepository {
     fun observeCustomCategories(): Flow<List<CustomExpenseCategory>>
 
     /**
+     * The categories as last known on this device (the local cache), read once and never waiting for the network.
+     * For one-off checks such as confirming a quick-note proposal. Empty for a signed-out user.
+     */
+    suspend fun currentCustomCategories(): List<CustomExpenseCategory>
+
+    /**
      * Stores [category] under its own ID. Saving the same ID again (a retry or an offline replay) changes nothing.
      * Returns once the write is accepted locally; throws if the server rejects it quickly or nobody is signed in
      * (LedgerError.NotSignedIn).

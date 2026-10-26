@@ -1,5 +1,6 @@
 package com.example.zar.features.transactions.presentation.activity
 
+import com.example.zar.features.transactions.presentation.category.categoryDisplayName
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import androidx.compose.runtime.Composable
@@ -108,7 +109,7 @@ internal fun entryTitle(tx: Transaction, accountType: AccountType? = null): Stri
 /** "Groceries · Oct 24 · Cash": the category (when known) or kind of entry, the day and the account. */
 @Composable
 internal fun entrySubtitle(tx: Transaction, accountName: String?): String {
-    val category = EntryDisplay.categoryLabel(tx.categoryId)?.let { stringResource(it) }
+    val category = categoryDisplayName(tx.categoryId)
     val kind = when (tx.type) {
         TransactionType.TRANSFER_IN, TransactionType.TRANSFER_OUT -> stringResource(R.string.activity_kind_transfer)
         TransactionType.REFUND -> stringResource(R.string.activity_kind_refund)
