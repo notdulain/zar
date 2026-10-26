@@ -43,12 +43,24 @@ android {
     //   ./gradlew connectedDebugAndroidTest -Pzar.useEmulators=true
     val useEmulators = providers.gradleProperty("zar.useEmulators").orNull == "true"
 
+    // Where the emulated Auth/Firestore are reached from the device. The default, 10.0.2.2, is the Android emulator's
+    // route to the host. A physical phone cannot use it: run `adb reverse tcp:9099 tcp:9099` and `tcp:8080 tcp:8080`
+    // and build with `-Pzar.emulatorHost=127.0.0.1`. Only these three hosts are accepted, because they are the ones
+    // the debug and benchmark network-security configs allow cleartext to; release builds ignore it and never use
+    // the emulators.
+    val emulatorHost = providers.gradleProperty("zar.emulatorHost").orElse("10.0.2.2").get()
+    require(emulatorHost in setOf("10.0.2.2", "127.0.0.1", "localhost")) {
+        "zar.emulatorHost must be 10.0.2.2, 127.0.0.1 or localhost (got '$emulatorHost')"
+    }
+
     buildTypes {
         debug {
             buildConfigField("boolean", "USE_FIREBASE_EMULATORS", useEmulators.toString())
+            buildConfigField("String", "EMULATOR_HOST", "\"$emulatorHost\"")
         }
         release {
             buildConfigField("boolean", "USE_FIREBASE_EMULATORS", "false")
+            buildConfigField("String", "EMULATOR_HOST", "\"10.0.2.2\"")
             optimization {
                 enable = false
             }
@@ -61,6 +73,7 @@ android {
             matchingFallbacks += listOf("release")
             isDebuggable = false
             buildConfigField("boolean", "USE_FIREBASE_EMULATORS", useEmulators.toString())
+            buildConfigField("String", "EMULATOR_HOST", "\"$emulatorHost\"")
         }
     }
     compileOptions {

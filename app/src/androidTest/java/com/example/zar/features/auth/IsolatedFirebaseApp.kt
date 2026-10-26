@@ -1,6 +1,7 @@
 package com.example.zar.features.auth
 
 import androidx.test.platform.app.InstrumentationRegistry
+import com.example.zar.BuildConfig
 import com.google.android.gms.tasks.Tasks
 import com.google.firebase.FirebaseApp
 import com.google.firebase.FirebaseOptions
@@ -46,8 +47,8 @@ class IsolatedFirebaseApp private constructor(
     }
 
     companion object {
-        /** The Android emulator's route to the host machine, where the Firebase emulators listen. */
-        const val EMULATOR_HOST = "10.0.2.2"
+        /** Where the Firebase emulators are reached from the device: the same host the app was built with. */
+        val EMULATOR_HOST: String = BuildConfig.EMULATOR_HOST
         const val FIRESTORE_PORT = 8080
         const val AUTH_PORT = 9099
         /** Nothing listens here, so a client pointed at it stays offline. */

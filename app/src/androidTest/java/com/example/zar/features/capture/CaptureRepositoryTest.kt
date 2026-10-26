@@ -142,7 +142,7 @@ class CaptureRepositoryTest {
             // Another device discarded this draft while this device was offline. The emulator's admin REST
             // endpoint simulates that server state without touching the device's queued write.
             withContext(Dispatchers.IO) {
-                val url = java.net.URL("http://10.0.2.2:8080/v1/projects/demo-zar/databases/(default)/documents/users/${uid.value}/drafts/${d.id.value}?updateMask.fieldPaths=status")
+                val url = java.net.URL("http://${IsolatedFirebaseApp.EMULATOR_HOST}:8080/v1/projects/demo-zar/databases/(default)/documents/users/${uid.value}/drafts/${d.id.value}?updateMask.fieldPaths=status")
                 val connection = url.openConnection() as java.net.HttpURLConnection
                 try {
                     connection.requestMethod = "PATCH"
