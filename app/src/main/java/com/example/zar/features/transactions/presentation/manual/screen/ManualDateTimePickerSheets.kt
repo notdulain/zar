@@ -4,6 +4,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.awaitTouchSlopOrCancellation
@@ -27,9 +28,11 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberUpdatedState
@@ -43,6 +46,12 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.PointerInputScope
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.graphics.Color
@@ -67,6 +76,8 @@ import com.example.zar.core.presentation.components.ZarButtonStyle
 import com.example.zar.core.presentation.components.ZarChip
 import com.example.zar.core.presentation.components.ZarIcon
 import com.example.zar.core.presentation.haptics.rememberSelectionTicker
+import com.example.zar.core.presentation.motion.LocalZarMotion
+import com.example.zar.core.presentation.motion.ZarSprings
 import com.example.zar.core.presentation.theme.ZarShapes
 import com.example.zar.core.presentation.theme.ZarTheme
 import com.example.zar.core.presentation.theme.ZarType
@@ -329,8 +340,25 @@ private fun ClockDial(time: LocalTime, hourMode: Boolean, onSelect: (Int) -> Uni
     // Typed minutes keep their exact arm angle; hours rest on their detent.
     val restingAngle = if (hourMode) ClockGeometry.angleOfDetent(time.hour % 12) else time.minute * 6f
     val selectedIndex = ClockGeometry.detentOf(restingAngle)
+    val policy = LocalZarMotion.current
     var dragAngle by remember { mutableStateOf<Float?>(null) }
-    val armAngle = dragAngle ?: restingAngle
+    // The arm tracks the finger directly; only the release settles, along the shortest path to the resting detent,
+    // with the shared settle spring. Reduced motion and disabled system animations resolve immediately.
+    val settle = remember { Animatable(restingAngle) }
+    LaunchedEffect(dragAngle, restingAngle, policy) {
+        val current = dragAngle
+        if (current != null) {
+            settle.snapTo(current)
+        } else {
+            val delta = ClockGeometry.signedDelta(settle.value, restingAngle)
+            if (delta != 0f && policy.allowsSpatialMotion) {
+                settle.animateTo(settle.value + delta, policy.spring(ZarSprings.Settle))
+            } else {
+                settle.snapTo(restingAngle)
+            }
+        }
+    }
+    val armAngle = dragAngle ?: settle.value
     val theta = armAngle * PI / 180 - PI / 2
     val latestAngle by rememberUpdatedState(restingAngle)
     val latestIndex by rememberUpdatedState(selectedIndex)
@@ -371,15 +399,31 @@ private fun ClockDial(time: LocalTime, hourMode: Boolean, onSelect: (Int) -> Uni
                 val x = (100 * cos(angle)).dp
                 val y = (100 * sin(angle)).dp
                 // Touches are resolved by sector on the dial itself; this node is the TalkBack/keyboard alternative.
+                var focused by remember { mutableStateOf(false) }
                 Box(Modifier.align(Alignment.Center)
                     .offset(x = x, y = y)
                     .size(48.dp)
+                    .onFocusChanged { focused = it.isFocused }
+                    .onKeyEvent { event ->
+                        // Real keyboard activation: Enter/Space/centre-Dpad select this detent exactly like a tap.
+                        if (event.type == KeyEventType.KeyUp &&
+                            (event.key == Key.Enter || event.key == Key.NumPadEnter ||
+                                event.key == Key.Spacebar || event.key == Key.DirectionCenter)
+                        ) {
+                            input.clickDetent(index)
+                            true
+                        } else {
+                            false
+                        }
+                    }
+                    .focusable()
                     .semantics(mergeDescendants = true) {
                         role = Role.Button
                         selected = selectedIndex == index
                         onClick(label = "Select $label") { input.clickDetent(index); true }
                     }, Alignment.Center) {
                     Box(Modifier.size(44.dp).clip(CircleShape)
+                        .then(if (focused) Modifier.border(2.dp, colors.accentPrimary, CircleShape) else Modifier)
                         .background(if (selectedIndex == index) colors.accentPrimary else Color.Transparent), Alignment.Center) {
                         Text(label, style = ZarType.bodyL.copy(fontWeight = if (selectedIndex == index) FontWeight.Medium else FontWeight.Normal),
                             color = if (selectedIndex == index) colors.textOnInverse else colors.textPrimary)
@@ -391,7 +435,7 @@ private fun ClockDial(time: LocalTime, hourMode: Boolean, onSelect: (Int) -> Uni
 }
 
 /** Tap selects the sector under the finger; a drag past touch slop moves the arm, then ends once on release. */
-private suspend fun PointerInputScope.detectClockGestures(input: ClockDialInput) {
+internal suspend fun PointerInputScope.detectClockGestures(input: ClockDialInput) {
     awaitEachGesture {
         val down = awaitFirstDown()
         val centre = Offset(size.width / 2f, size.height / 2f)
@@ -407,10 +451,15 @@ private suspend fun PointerInputScope.detectClockGestures(input: ClockDialInput)
             return@awaitEachGesture
         }
         input.dragStart(rel(slop.position).x, rel(slop.position).y, slop.uptimeMillis)
-        val completed = drag(slop.id) { change ->
-            input.dragMove(rel(change.position).x, rel(change.position).y, change.uptimeMillis)
-            change.consume()
+        var completed = false
+        try {
+            completed = drag(slop.id) { change ->
+                input.dragMove(rel(change.position).x, rel(change.position).y, change.uptimeMillis)
+                change.consume()
+            }
+        } finally {
+            // A cancelled coroutine (re-created pointerInput, taken-over gesture) must still end dragging and clear the arm.
+            if (completed) input.dragEnd() else input.dragCancel()
         }
-        if (completed) input.dragEnd() else input.dragCancel()
     }
 }
