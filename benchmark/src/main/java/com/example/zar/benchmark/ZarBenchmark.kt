@@ -110,6 +110,9 @@ class ZarBenchmark {
         setup = { device.executeShellCommand("settings put global animator_duration_scale 0"); openHome() },
     ) { addSheetJourney() }
 
+    /** One unmeasured pass of the journey has run for this test, so the measured iterations start warm. */
+    private var warmedUp = false
+
     private fun frameJourney(
         setup: MacrobenchmarkScope.() -> Unit,
         measure: MacrobenchmarkScope.() -> Unit,
@@ -120,9 +123,29 @@ class ZarBenchmark {
         startupMode = StartupMode.WARM,
         // Full AOT approximates the installed app's steady state; CompilationMode.None() would time interpreted code.
         compilationMode = CompilationMode.Full(),
-        setupBlock = setup,
-        measureBlock = measure,
+        setupBlock = {
+            setup()
+            if (!warmedUp) {
+                // The same journey once, unmeasured and on the same fixture and compilation, then a clean setup again:
+                // first-use class loading, JIT-free AOT page-in and first composition are not part of the five.
+                warmedUp = true
+                measure()
+                setup()
+            }
+        },
+        measureBlock = {
+            measure()
+            logDisplayCadence()
+        },
     )
+
+    /** The display's reported modes while a journey ran. Capability only: the produced cadence comes from the trace. */
+    private fun logDisplayCadence() {
+        val context = androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().targetContext
+        val display = context.getSystemService(android.hardware.display.DisplayManager::class.java).getDisplay(android.view.Display.DEFAULT_DISPLAY)
+        val modes = display.supportedModes.joinToString { "%.1f".format(it.refreshRate) }
+        android.util.Log.i("ZarCadence", "journey display activeHz=%.1f supportedHz=[%s]".format(display.mode.refreshRate, modes))
+    }
 
     // --- Journeys ----------------------------------------------------------------------------
 
