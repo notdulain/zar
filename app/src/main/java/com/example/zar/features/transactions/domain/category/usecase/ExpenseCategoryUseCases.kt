@@ -12,24 +12,35 @@ import java.time.Instant
 import javax.inject.Inject
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.catch
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.onStart
+import kotlinx.coroutines.flow.flow
 
 /** The name was refused before anything was written. */
 class CategoryNameRejected(val problem: CategoryNameProblem) : Exception("Category name rejected: $problem")
 
 /**
- * The built-in categories plus the user's own. It starts with the built-ins so a screen is never empty, and falls
- * back to them if the stored categories cannot be read, so entries stay visible with a safe label.
+ * The built-in categories plus the user's own. It starts with the built-ins so a screen is never empty, and keeps
+ * the last known catalog if the live read fails: the repository retries in the background and marks the catalog
+ * [ExpenseCategoryCatalog.degraded], so the user's own names stay on screen instead of being replaced by built-ins.
  */
 class ObserveExpenseCategoryCatalogUseCase @Inject constructor(
     private val categories: ExpenseCategoryRepository,
 ) {
-    operator fun invoke(): Flow<ExpenseCategoryCatalog> = categories.observeCustomCategories()
-        .map(::ExpenseCategoryCatalog)
-        .onStart { emit(ExpenseCategoryCatalog.BUILT_IN_ONLY) }
-        .catch { emit(ExpenseCategoryCatalog.BUILT_IN_ONLY) }
+    operator fun invoke(): Flow<ExpenseCategoryCatalog> = flow {
+        var last = ExpenseCategoryCatalog.BUILT_IN_ONLY
+        emit(last)
+        try {
+            categories.observeCustomCategories().collect { snapshot ->
+                last = ExpenseCategoryCatalog(snapshot.categories, degraded = snapshot.isDegraded)
+                emit(last)
+            }
+        } catch (error: CancellationException) {
+            throw error
+        } catch (_: Exception) {
+            // The repository retries transient failures, so this is a fatal read failure: keep the last known
+            // catalog rather than falling back to built-ins and losing the user's own category names.
+            emit(last)
+        }
+    }
 }
 
 /**

@@ -2,13 +2,14 @@ package com.example.zar.features.transactions.domain.category
 
 import com.example.zar.core.domain.model.LedgerError
 import com.example.zar.core.domain.model.UserId
+import com.example.zar.features.transactions.domain.category.repository.CustomCategorySnapshot
 import com.example.zar.features.transactions.domain.category.repository.ExpenseCategoryRepository
 import com.example.zar.features.transactions.domain.manual.model.CustomExpenseCategory
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.map
 
 /**
  * Categories kept per user, like users/{uid}/expenseCategories. Like the firestore.rules, creating an ID that
@@ -17,13 +18,19 @@ import kotlinx.coroutines.flow.map
 class FakeExpenseCategoryRepository(user: String? = "alice") : ExpenseCategoryRepository {
     val signedIn = MutableStateFlow(user?.let(::UserId))
     private val stored = MutableStateFlow<Map<String, Map<String, CustomExpenseCategory>>>(emptyMap())
+    private val degraded = MutableStateFlow(false)
     var failNextWith: Throwable? = null
     var writes = 0
         private set
 
+    /** Marks the next emissions as a stale-but-usable read, as a listener failure would. */
+    fun setDegraded(value: Boolean) { degraded.value = value }
+
     @OptIn(ExperimentalCoroutinesApi::class)
-    override fun observeCustomCategories(): Flow<List<CustomExpenseCategory>> = signedIn.flatMapLatest { uid ->
-        stored.map { all -> uid?.let { all[it.value].orEmpty().values.toList() }.orEmpty() }
+    override fun observeCustomCategories(): Flow<CustomCategorySnapshot> = signedIn.flatMapLatest { uid ->
+        combine(stored, degraded) { all, isDegraded ->
+            CustomCategorySnapshot(uid?.let { all[it.value].orEmpty().values.toList() }.orEmpty(), isDegraded)
+        }
     }
 
     override suspend fun currentCustomCategories(): List<CustomExpenseCategory> =

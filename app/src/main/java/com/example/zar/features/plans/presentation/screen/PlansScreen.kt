@@ -79,6 +79,7 @@ import com.example.zar.core.presentation.theme.ZarWhite
 import com.example.zar.features.allowance.presentation.screen.AllowanceCard
 import com.example.zar.features.allowance.presentation.screen.AllowanceEditorDialog
 import com.example.zar.features.allowance.presentation.viewmodel.AllowanceViewModel
+import com.example.zar.features.transactions.presentation.category.ProvideExpenseCategoryCatalog
 import com.example.zar.features.plans.domain.model.BackedGoalProgress
 import com.example.zar.features.plans.domain.model.GoalBackingCalculator
 import com.example.zar.features.plans.domain.model.GoalId
@@ -117,17 +118,19 @@ fun PlansScreen(
         },
     )
     allowance.editor?.let { editor ->
-        AllowanceEditorDialog(
-            editor = editor,
-            isSaving = allowance.isSaving,
-            message = allowance.message,
-            onEnabledChange = allowanceViewModel::setEnabled,
-            onAmountChange = allowanceViewModel::updateAmount,
-            onToggleCategory = allowanceViewModel::toggleCategory,
-            onWeekStartChange = allowanceViewModel::setWeekStart,
-            onDismiss = allowanceViewModel::closeEditor,
-            onSave = allowanceViewModel::submit,
-        )
+        ProvideExpenseCategoryCatalog {
+            AllowanceEditorDialog(
+                editor = editor,
+                isSaving = allowance.isSaving,
+                message = allowance.message,
+                onEnabledChange = allowanceViewModel::setEnabled,
+                onAmountChange = allowanceViewModel::updateAmount,
+                onToggleCategory = allowanceViewModel::toggleCategory,
+                onWeekStartChange = allowanceViewModel::setWeekStart,
+                onDismiss = allowanceViewModel::closeEditor,
+                onSave = allowanceViewModel::submit,
+            )
+        }
     }
     state.goalEditor?.let { editor ->
         GoalEditorDialog(

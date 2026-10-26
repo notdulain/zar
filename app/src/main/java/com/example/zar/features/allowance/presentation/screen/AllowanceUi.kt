@@ -45,8 +45,9 @@ import com.example.zar.features.allowance.presentation.viewmodel.AllowanceEditor
 import com.example.zar.features.allowance.presentation.viewmodel.AllowanceMessage
 import com.example.zar.features.allowance.presentation.viewmodel.AllowanceUiState
 import com.example.zar.features.plans.presentation.screen.PlanEditor
-import com.example.zar.features.transactions.domain.manual.model.ExpenseCategory
-import com.example.zar.features.transactions.presentation.manual.screen.labelRes
+import com.example.zar.features.transactions.domain.category.ExpenseCategoryCatalog
+import com.example.zar.features.transactions.presentation.category.LocalExpenseCategoryCatalog
+import com.example.zar.features.transactions.presentation.manual.screen.labelText
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -211,6 +212,7 @@ fun AllowanceEditorDialog(
     onWeekStartChange: (DayOfWeek) -> Unit,
     onDismiss: () -> Unit,
     onSave: () -> Unit,
+    categories: ExpenseCategoryCatalog = LocalExpenseCategoryCatalog.current,
 ) {
     val colors = ZarTheme.colors
     PlanEditor(stringResource(R.string.allowance_editor_title), isSaving, onDismiss, onSave) {
@@ -237,9 +239,9 @@ fun AllowanceEditorDialog(
         )
         ZarMonoLabel(stringResource(R.string.allowance_categories_heading))
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            ExpenseCategory.entries.forEach { category ->
+            categories.choices.forEach { category ->
                 ZarChip(
-                    label = stringResource(category.labelRes()),
+                    label = category.labelText(),
                     selected = category.id in editor.categoryIds,
                     onClick = { onToggleCategory(category.id) },
                     modifier = Modifier.testTag("allowance-category-${category.id}"),

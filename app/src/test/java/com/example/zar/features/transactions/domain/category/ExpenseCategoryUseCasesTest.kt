@@ -118,4 +118,15 @@ class ExpenseCategoryUseCasesTest {
         make(id, "Pets")
         assertEquals(CategoryLabel.Custom("Pets"), catalog().label(id))
     }
+
+    @Test
+    fun aDegradedReadKeepsTheLastKnownNamesAndSaysSo() {
+        make("custom-pets-1", "Pets")
+        repo.setDegraded(true)
+        val degraded = runBlocking { observe().drop(1).first { it.degraded } }
+        // The custom name is not replaced by the built-ins, and the state says the read is stale.
+        assertEquals(CategoryLabel.Custom("Pets"), degraded.label("custom-pets-1"))
+        assertEquals(listOf("custom-pets-1"), degraded.customs.map { it.id })
+        assertTrue(degraded.degraded)
+    }
 }

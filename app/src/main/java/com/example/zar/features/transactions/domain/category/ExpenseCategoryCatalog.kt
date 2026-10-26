@@ -33,7 +33,14 @@ data class CategoryConflict(val canonical: ExpenseCategoryChoice, val duplicateI
  * (to the canonical category's name), so an expense that references one still shows a label; they are left out of
  * [choices] and reported in [conflicts] so the app can offer a recoverable merge later.
  */
-data class ExpenseCategoryCatalog(val stored: List<CustomExpenseCategory> = emptyList()) {
+data class ExpenseCategoryCatalog(
+    val stored: List<CustomExpenseCategory> = emptyList(),
+    /**
+     * True when the live read failed and [stored] is the last list read successfully. The repository keeps retrying,
+     * so the names stay usable; a screen can offer a recovery notice instead of dropping the user's own categories.
+     */
+    val degraded: Boolean = false,
+) {
 
     private val builtInKeys: Map<String, ExpenseCategory> =
         ExpenseCategory.entries.associateBy { CategoryNameRules.keyOf(it.defaultName) }

@@ -99,6 +99,14 @@ class ExpenseCategoryCatalogTest {
     }
 
     @Test
+    fun aDegradedCatalogStillResolvesEveryStoredName() {
+        val catalog = ExpenseCategoryCatalog(listOf(custom("custom-pets", "Pets")), degraded = true)
+        assertEquals(CategoryLabel.Custom("Pets"), catalog.label("custom-pets"))
+        assertEquals(listOf("Pets"), catalog.searchTerms("custom-pets"))
+        assertTrue(catalog.degraded)
+    }
+
+    @Test
     fun generatedIdsAreStableCustomIds() {
         val id = CustomCategoryIds.newId()
         assertTrue(CustomCategoryIds.isCustom(id))

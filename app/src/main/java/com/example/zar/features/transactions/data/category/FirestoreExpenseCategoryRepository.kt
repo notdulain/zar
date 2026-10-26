@@ -4,6 +4,7 @@ import android.util.Log
 import com.example.zar.core.data.remote.firestore.FirestoreCollections
 import com.example.zar.core.domain.model.LedgerError
 import com.example.zar.core.domain.repository.UserSessionProvider
+import com.example.zar.features.transactions.domain.category.repository.CustomCategorySnapshot
 import com.example.zar.features.transactions.domain.category.repository.ExpenseCategoryRepository
 import com.example.zar.features.transactions.domain.manual.model.CustomExpenseCategory
 import com.google.firebase.firestore.CollectionReference
@@ -15,9 +16,10 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withTimeoutOrNull
 
@@ -28,6 +30,10 @@ import kotlinx.coroutines.withTimeoutOrNull
  *
  * Account isolation: every user's listener starts from an empty list, so while another account's snapshot loads
  * nothing of the previous account is visible.
+ *
+ * Resilience: a listener error (a transient permission or network failure) does not end the flow. The last known
+ * list is emitted with [CustomCategorySnapshot.isDegraded] set and the listener is re-registered, so the user's own
+ * category names stay on screen and recover on their own.
  */
 @Singleton
 class FirestoreExpenseCategoryRepository @Inject constructor(
@@ -36,27 +42,42 @@ class FirestoreExpenseCategoryRepository @Inject constructor(
 ) : ExpenseCategoryRepository {
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    override fun observeCustomCategories(): Flow<List<CustomExpenseCategory>> =
+    override fun observeCustomCategories(): Flow<CustomCategorySnapshot> =
         session.observeUserId().flatMapLatest { uid ->
             if (uid == null) {
-                flowOf(emptyList())
+                flowOf(CustomCategorySnapshot(emptyList()))
             } else {
-                callbackFlow {
-                    val registration = categoriesOf(uid.value).addSnapshotListener { snapshot, error ->
-                        if (error != null) {
-                            close(error)
-                            return@addSnapshotListener
-                        }
-                        val categories = snapshot?.documents.orEmpty().mapNotNull { doc ->
-                            doc.data?.let(ExpenseCategoryDocumentMapper::fromMap)
-                                .also { if (it == null) Log.w(TAG, "Skipping malformed category ${doc.id}") }
-                        }
-                        trySend(categories)
-                    }
-                    awaitClose { registration.remove() }
-                }.onStart { emit(emptyList()) }
+                flow {
+                    // Start empty so another account's categories are never shown while this one loads.
+                    emit(CustomCategorySnapshot(emptyList()))
+                    emitAll(
+                        retrying(
+                            retryDelayMillis = RETRY_DELAY_MS,
+                            source = { listener(uid.value) },
+                            degraded = { last ->
+                                (last ?: CustomCategorySnapshot(emptyList())).copy(isDegraded = true)
+                            },
+                        ),
+                    )
+                }
             }
         }
+
+    /** One listener registration. It emits on each snapshot and fails (so [retrying] re-subscribes) on an error. */
+    private fun listener(uid: String): Flow<CustomCategorySnapshot> = callbackFlow {
+        val registration = categoriesOf(uid).addSnapshotListener { snapshot, error ->
+            if (error != null) {
+                close(error)
+                return@addSnapshotListener
+            }
+            val categories = snapshot?.documents.orEmpty().mapNotNull { doc ->
+                doc.data?.let(ExpenseCategoryDocumentMapper::fromMap)
+                    .also { if (it == null) Log.w(TAG, "Skipping malformed category ${doc.id}") }
+            }
+            trySend(CustomCategorySnapshot(categories))
+        }
+        awaitClose { registration.remove() }
+    }
 
     override suspend fun currentCustomCategories(): List<CustomExpenseCategory> {
         val uid = session.currentUserId() ?: return emptyList()
@@ -80,5 +101,6 @@ class FirestoreExpenseCategoryRepository @Inject constructor(
     private companion object {
         const val TAG = "FirestoreExpenseCategories"
         const val WAIT_FOR_SERVER_MS = 4_000L
+        const val RETRY_DELAY_MS = 3_000L
     }
 }

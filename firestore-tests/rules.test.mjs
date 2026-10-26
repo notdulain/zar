@@ -273,6 +273,9 @@ test('expense categories: owner-only, custom ids, safe names, never changed or d
   await bad('linesep', { name: 'Pet\u2028food', nameKey: 'pet food' });
   await bad('upperkey', { nameKey: 'Pets' });
   await bad('keyspace', { nameKey: 'pets ' });
+  await bad('keynewline', { nameKey: 'pet\nfood' });
+  await bad('keytab', { nameKey: 'pet\tfood' });
+  await bad('keydouble', { nameKey: 'pet  food' });
   await bad('source', { source: 'BUILT_IN' });
   const noSource = cat('custom-bad-nosource'); delete noSource.source;
   await assertFails(setDoc(at('custom-bad-nosource'), noSource));

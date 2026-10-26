@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -63,11 +64,14 @@ import com.example.zar.core.presentation.components.TopLevelDestination
 import com.example.zar.core.presentation.components.ZarCard
 import com.example.zar.core.presentation.components.ZarScreenScaffold
 import com.example.zar.core.presentation.components.ZarSplitBar
+import com.example.zar.core.presentation.components.heroDisplacement
+import com.example.zar.core.presentation.components.heroParallax
 import com.example.zar.core.presentation.format.formatForRow
 import com.example.zar.core.presentation.format.formatWithCode
 import com.example.zar.core.presentation.theme.ZarDimens
 import com.example.zar.core.presentation.theme.ZarGradients
 import com.example.zar.core.presentation.theme.ZarHighlight
+import com.example.zar.core.presentation.motion.ZarMotion
 import com.example.zar.core.presentation.theme.ZarTheme
 import com.example.zar.core.presentation.theme.amountText
 import com.example.zar.core.presentation.theme.ZarType
@@ -131,8 +135,10 @@ internal fun HomeScreenContent(
         onNavigate = onNavigate,
         onAddOption = onAddOption,
     ) { padding ->
+        // The hero reads this same state for its bounded parallax; nothing else about the scroll changes.
+        val scrollState = rememberScrollState()
         Column(
-            Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()),
+            Modifier.fillMaxSize().padding(padding).verticalScroll(scrollState),
             verticalArrangement = Arrangement.spacedBy(0.dp),
         ) {
             when (val content = state.content) {
@@ -162,6 +168,7 @@ internal fun HomeScreenContent(
                     onOpenBills = onOpenBills,
                     onOpenBill = onOpenBill,
                     onToggleAmounts = onToggleAmounts,
+                    scrollState = scrollState,
                 )
             }
         }
@@ -200,8 +207,9 @@ private fun OverviewBlock(
     onOpenBills: () -> Unit,
     onOpenBill: (String) -> Unit,
     onToggleAmounts: () -> Unit,
+    scrollState: ScrollState,
 ) {
-    ReceivedHero(overview, canGoForward, onPreviousMonth, onNextMonth, onToggleAmounts)
+    ReceivedHero(overview, canGoForward, onPreviousMonth, onNextMonth, onToggleAmounts, scrollState)
 
     Column(
         Modifier.fillMaxWidth().padding(horizontal = 9.dp).padding(top = 12.dp, bottom = 28.dp),
@@ -240,9 +248,12 @@ private fun ReceivedHero(
     onPreviousMonth: () -> Unit,
     onNextMonth: () -> Unit,
     onToggleAmounts: () -> Unit,
+    scrollState: ScrollState,
 ) {
     val colors = ZarTheme.colors
     var chartMode by rememberSaveable { mutableIntStateOf(0) }
+    // The gradient is the card itself, so only the interior groups move; each keeps its normal layout bounds.
+    val heroOffset = scrollState.heroDisplacement()
     Box(
         Modifier.fillMaxWidth().height(507.dp)
             .clip(RoundedCornerShape(bottomStart = 32.dp, bottomEnd = 32.dp))
@@ -250,47 +261,55 @@ private fun ReceivedHero(
             .testTag("received-card"),
     ) {
         Column(Modifier.fillMaxSize().padding(horizontal = 30.dp)) {
-            Spacer(Modifier.height(54.dp))
-            ChartModeTabs(selected = chartMode, onSelect = { chartMode = it })
-            Spacer(Modifier.height(4.dp))
-            MonthPicker(
-                month = overview.month,
-                canGoForward = canGoForward,
-                onPrevious = onPreviousMonth,
-                onNext = onNextMonth,
-                onDark = true,
-            )
-            Spacer(Modifier.height(2.dp))
-            Text(
-                stringResource(R.string.home_received_this_month).uppercase(),
-                style = ZarType.monoLabel,
-                color = colors.textOnInverse,
-            )
-            Spacer(Modifier.height(2.dp))
-            Text(
-                overview.summary.received.amount.formatWithCode(),
-                style = ZarType.amountL,
-                color = colors.textOnInverse,
-                modifier = Modifier.testTag("received-amount"),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Spacer(Modifier.height(8.dp))
-            HeroStatus(overview)
+            Column(
+                Modifier.heroParallax(heroOffset, ZarMotion.PARALLAX_TEXT, ZarMotion.ParallaxTextCap),
+            ) {
+                Spacer(Modifier.height(54.dp))
+                ChartModeTabs(selected = chartMode, onSelect = { chartMode = it })
+                Spacer(Modifier.height(4.dp))
+                MonthPicker(
+                    month = overview.month,
+                    canGoForward = canGoForward,
+                    onPrevious = onPreviousMonth,
+                    onNext = onNextMonth,
+                    onDark = true,
+                )
+                Spacer(Modifier.height(2.dp))
+                Text(
+                    stringResource(R.string.home_received_this_month).uppercase(),
+                    style = ZarType.monoLabel,
+                    color = colors.textOnInverse,
+                )
+                Spacer(Modifier.height(2.dp))
+                Text(
+                    overview.summary.received.amount.formatWithCode(),
+                    style = ZarType.amountL,
+                    color = colors.textOnInverse,
+                    modifier = Modifier.testTag("received-amount"),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Spacer(Modifier.height(8.dp))
+                HeroStatus(overview)
+            }
             Spacer(Modifier.weight(1f))
-            val chartModifier = Modifier.fillMaxWidth().height(165.dp).padding(horizontal = 18.dp)
-            when {
-                AmountMask.isHidden -> HiddenChart(chartModifier)
-                chartMode == 0 -> ReceivedBarChart(overview, chartModifier)
-                chartMode == 1 -> SpendingDonutChart(overview, chartModifier)
-                else -> ReceivedLineChart(overview, chartModifier)
+            Column(
+                Modifier.heroParallax(heroOffset, ZarMotion.PARALLAX_CHART, ZarMotion.ParallaxChartCap),
+            ) {
+                val chartModifier = Modifier.fillMaxWidth().height(165.dp).padding(horizontal = 18.dp)
+                when {
+                    AmountMask.isHidden -> HiddenChart(chartModifier)
+                    chartMode == 0 -> ReceivedBarChart(overview, chartModifier)
+                    chartMode == 1 -> SpendingDonutChart(overview, chartModifier)
+                    else -> ReceivedLineChart(overview, chartModifier)
+                }
+                Spacer(Modifier.height(7.dp))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text(overview.month.atDay(1).format(AxisFormat).uppercase(), style = ZarType.monoLabel, color = colors.textOnInverse)
+                    Text(overview.month.atEndOfMonth().format(AxisFormat).uppercase(), style = ZarType.monoLabel, color = colors.textOnInverse)
+                }
+                Spacer(Modifier.height(22.dp))
             }
-            Spacer(Modifier.height(7.dp))
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(overview.month.atDay(1).format(AxisFormat).uppercase(), style = ZarType.monoLabel, color = colors.textOnInverse)
-                Text(overview.month.atEndOfMonth().format(AxisFormat).uppercase(), style = ZarType.monoLabel, color = colors.textOnInverse)
-            }
-            Spacer(Modifier.height(22.dp))
         }
         HideAmountsToggle(onToggleAmounts, Modifier.align(Alignment.TopEnd).padding(top = 48.dp, end = 14.dp))
     }
