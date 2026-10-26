@@ -86,21 +86,29 @@ class CategoryGridEvidenceTest {
                 ManualEntryContent(state(sheet.value), focusNote = false, actions = actions())
             }
         }
-        compose.onNodeWithText("All categories →").performScrollTo().performClick()
+        // 01: the form's inline category row, before the grid is opened.
+        compose.onNodeWithText("All categories →").performScrollTo()
+        capture("01-category-row-light")
+        compose.onNodeWithText("All categories →").performClick()
+        // 02: the grid at the built-ins (top of the list).
         compose.onNodeWithTag("manual-category-groceries").performScrollTo()
-        capture("01-grid-light")
-        // A custom long name must wrap inside its column rather than shrinking.
-        compose.onNodeWithTag("manual-category-custom-b").performScrollTo().assertExists()
-        capture("02-grid-long-name-light")
+        capture("02-grid-built-ins-light")
+        // 03: scrolled to the user's own categories; the long name must wrap inside its column, not shrink.
+        compose.onNodeWithTag("manual-category-custom-c").performScrollTo().assertExists()
+        compose.onNodeWithTag("manual-category-custom-b").assertExists()
+        capture("03-grid-custom-long-name-light")
+        // 04: the same grid scrolled in dark.
+        compose.runOnIdle { dark.value = true }
+        compose.waitForIdle()
+        capture("04-grid-custom-long-name-dark")
 
         compose.runOnIdle { sheet.value = NewCategoryState(name = "Pet care") }
         compose.waitForIdle()
         compose.onNodeWithTag("manual-new-category-name").assertExists()
-        capture("03-add-sheet-light")
-
-        compose.runOnIdle { dark.value = true }
+        capture("05-add-sheet-dark")
+        compose.runOnIdle { dark.value = false }
         compose.waitForIdle()
-        capture("04-add-sheet-dark")
+        capture("06-add-sheet-light")
     }
 
     @Test

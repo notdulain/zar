@@ -27,7 +27,7 @@ Catch-up/reminders, Settings, and the Add/category/Income sheet chrome (grabber,
 stable saturated offset once the hero has left (`LazyListState.heroDisplacement()`), so reverse scroll re-enters
 continuously; `HeroParallaxTest` covers rest, fractional, saturated and terminal cases. Motion is gated by
 `MotionPolicy`; unit tests `MotionPolicyTest`, `NavCapsuleControllerTest`, `NavSessionTest`, `NavRouteMotionTest`,
-`SelectionHapticsTest`, `HeroParallaxTest` pass in `:app:testDebugUnitTest` (1200 tests, 0 failures).
+`SelectionHapticsTest`, `HeroParallaxTest` pass in `:app:testDebugUnitTest` (1202 tests, 0 failures).
 
 ## High-refresh audit (source)
 
@@ -38,25 +38,48 @@ continuously; `HeroParallaxTest` covers rest, fractional, saturated and terminal
   show the OS policy starving frames, so none were added, and the app never holds a high-refresh request while
   idle/background.
 
-## Macrobenchmark module and emulator run (26 Oct 2026)
+## Macrobenchmark module and emulator run (sequential Sonnet 5.5 pass, 26 Oct 2026)
 
-A `:benchmark` module now exists (`benchmark/build.gradle.kts`, `com.android.test`, `androidx.benchmark:benchmark-macro-junit4:1.5.0`)
-targeting a new release-like, non-debuggable, profileable `benchmark` build type in `:app` (debug-signed; never shipped).
-Journeys: `coldStartup` (StartupTimingMetric, 5 iterations), `firstScreenScrollFrameTiming` (FrameTimingMetric, 5
-iterations), and signed-in `homeHeroScrollFrameTiming` / `navRetargetFrameTiming` (FrameTimingMetric) which `assumeTrue`
-a seeded signed-in session and are **skipped** without the local Firebase emulators + a seeded user.
+`:benchmark` (`com.android.test`, `androidx.benchmark:benchmark-macro-junit4:1.5.0`) targets the release-like
+`benchmark` build type of `:app` (debug-signed, profileable, never shipped; cleartext limited to the host emulators).
 
-Run: `./gradlew :benchmark:connectedBenchmarkAndroidTest` on **emulator Pixel_6a (sdk_gphone16k_arm64, API 37)**,
-`CompilationMode.None()` (run-from-apk). Raw JSON: `benchmark/pixel6a-emulator-benchmarkData.json`; 10 Perfetto traces
-were written to `benchmark/build/outputs/connected_android_test_additional_output/...` (build output, not committed).
+**Signed-in journeys are real now.** `tools/benchmark-seed.mjs` creates one demo account on the **local** Auth emulator
+and writes 2 accounts and 54 transactions to the **local** Firestore emulator (it refuses any non-loopback host and uses
+the emulator's own admin token for Firestore). The benchmark types the demo credentials into the **real sign-in screen**
+once; Firebase Auth keeps the session across the benchmark's process restarts. There is no production auth bypass and no
+live call. Selectors were verified against the real UI (`By.desc("Add an entry")`, `By.text("RECEIVED THIS MONTH")`,
+nav labels picked by lowest on-screen position because Home's tiles reuse the same words).
 
-- `coldStartup` TTID: median 3377.6 ms, max 4352.2 ms over 5 runs (min 3136.2 ms). This is an **emulator, interpreted
-  (no AOT) cold start** — not a device number and not a smoothness result.
-- `firstScreenScrollFrameTiming`: only 5–6 frames per iteration, because the first screen without a seeded account is
-  the sign-in screen, which is not scrollable; `frameDurationCpuMs`/`frameOverrunMs` were therefore not produced. This
-  journey needs the signed-in Home to be meaningful and is **pending** a seeded session.
+Setup: **emulator Pixel_6a (sdk_gphone16k_arm64, API 37), host GPU (Apple M4 / Metal), 60 Hz emulated display**,
+5 iterations per journey, `CompilationMode.Full()` for frame journeys, `None()` for cold start. Raw data:
+`motion/benchmark/pixel6a-emulator-benchmarkData.json`; table: `motion/benchmark/summary.md`
+(`tools/summarize-benchmark.py`); 40 Perfetto traces kept outside git in
+`openspec/evidence/pixel6a-feedback/perfetto/`. Frame budget at 60 Hz is 16.7 ms.
 
-Emulator timings are labelled as such and are **not** a physical 60/120 Hz result. No refresh-rate hint was added.
+| Journey | Frames/iter (med) | Frame CPU p50 / p95 / p99 ms | Overrun p50 / p95 / p99 ms | Late frames |
+| --- | --- | --- | --- | --- |
+| Home hero scroll (parallax) | 164 | 2.9 / 5.2 / 16.7 | -10.4 / -7.4 / 3.0 | 1.3% |
+| Nav retargeting (capsule) | 232 | 3.0 / 7.3 / 18.0 | -10.5 / 1.6 / 4.7 | 5.8% |
+| Nav retargeting, animations off | 52 | 4.2 / 9.7 / 13.5 | -9.8 / -4.0 / -1.1 | 0.4% |
+| Routes + list scroll (Activity, Plans, More) | 279 | 2.5 / 4.8 / 7.3 | -11.4 / -8.4 / 4.3 | 1.7% |
+| Add sheet + tab switch + time dial drag | 304 | 2.7 / 8.6 / 21.1 | -10.9 / -3.5 / 15.1 | 3.7% |
+| Add sheet + dial, animations off | 266 | 2.7 / 7.6 / 22.9 | -11.0 / -4.3 / 16.6 | 3.4% |
+
+Cold start TTID (None): sign-in screen median 236 ms (197–245); signed-in Home median 181 ms (174–298).
+
+Reading it honestly: most frames finish ~10 ms early; the late tail is the first frames of a sheet opening and the
+capsule's rapid retargeting (p99 overrun ≤ 17 ms, i.e. at most about one dropped 60 Hz frame). An emulator host
+GPU is not a Pixel 6a GPU, so this is evidence the journeys run and the distribution is healthy, **not** a physical
+60 Hz or 120 Hz result. The earlier software-rendered run (swiftshader, p50 frame CPU 40-58 ms) is kept as
+`pixel6a-emulator-swiftshader-superseded-benchmarkData.json`: those numbers were the renderer, not the app, and are not used.
+No refresh-rate hint was added: nothing in the traces shows the OS policy starving frames, and none is held while idle.
+
+## Screen recordings (emulator, scripted `adb input`, 540x1200)
+
+`motion/recordings/`: `hero-parallax.mp4` (Home fling both ways), `nav-capsule-retarget.mp4` (tile into Activity then
+eight rapid tab taps), `add-sheet-and-time-dial.mp4` (sheet, Expense/Income/Transfer, time dial drag),
+`nav-capsule-reduced-motion.mp4` (the same taps with Android animations off). Predictive-Back gesture was not recorded
+(`adb input` cannot perform the edge gesture).
 
 ## What was verified (real, emulator only)
 
@@ -71,10 +94,7 @@ Emulator timings are labelled as such and are **not** a physical 60/120 Hz resul
 
 ## Not measured (pending, not passed)
 
-- **Physical 120 Hz**: no capable physical device is available. Emulators cannot prove 120 Hz; **unverified**.
-- **Physical haptics**: clock detent softness/latency is a physical check; the fake haptic sink only proves the
-  changed-detent ticks, duplicate suppression and the 40 ms fast-scrub cap. **Physical haptics unverified**.
-- **Signed-in frame timing / p95 frameOverrunMs / missed deadlines**: the signed-in journeys are skipped without a
-  seeded Firebase-emulator session, and the emulator produced no `frameOverrunMs` for the non-scrollable first screen.
-  The Macrobenchmark module and Perfetto capture path now exist and run; the signed-in numbers remain **pending**.
-- Screen recordings of scroll/parallax/capsule/predictive Back: not captured in this session.
+- **Physical Pixel 6a 60 Hz feel and physical 120 Hz**: no physical device is available. **Unverified.**
+- **Physical haptics** (clock detent softness/latency): the fake haptic sink only proves the changed-detent ticks,
+  duplicate suppression and the 40 ms fast-scrub cap. **Unverified.**
+- Predictive-Back recording (needs a real edge gesture).

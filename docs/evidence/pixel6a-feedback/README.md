@@ -1,8 +1,10 @@
 # Pixel 6a feedback — implementation evidence
 
-Branch: `t3/resume-pixel6a-implementation` (consolidated recovery worker).
+Branch: `t3/complete-pixel6a-gaps-1` (sequential Sonnet 5.5 pass, continuing `t3/complete-pixel6a-gaps` @ `ee588b6`).
 Base: `8717c518d7f1f110157977c7673e6164cf58b55f`.
-Author of these screenshots: **OpenCode DeepSeek V4.1 Flash** (authorized fallback), not Opus/Sonnet.
+Authorship: the earlier screenshots (`add-session/`, `income-*`) were produced by **OpenCode DeepSeek V4.1 Flash** (authorized
+fallback); the design tokens and Appearance/Reduce-motion frames they follow were authored by **Opus**. Everything added
+from `ca85e6d` onward (`categories/` 01-06, `appearance/`, `review/`, `motion/`) is **Sonnet 5.5**.
 
 ## What is real here
 
@@ -21,12 +23,27 @@ Source test: `app/src/androidTest/java/com/example/zar/features/transactions/Cat
 
 | File | State |
 | --- | --- |
-| `01-grid-light.png` | Light, all-categories grid: built-ins then customs, three equal columns, wrapping long label, partial last row, Add category action above |
-| `02-grid-long-name-light.png` | Light, long custom name ("Tuition for my youngest child") wrapping inside its column |
-| `03-add-sheet-light.png` | Light, Add category sheet with a name typed (Name / Cancel / Save) |
-| `04-add-sheet-dark.png` | Dark, same sheet, with the IME up |
-| `income-01-light.png` | Light, Add/Edit income in the shared transaction sheet shell (Income tab, amount, account, date/time, received-from, category, note, Save) |
-| `income-02-dark.png` | Dark, same income sheet |
+| `01-category-row-light.png` | Light, the form's inline category row with "All categories →" (grid not yet open) |
+| `02-grid-built-ins-light.png` | Light, grid open at the built-ins |
+| `03-grid-custom-long-name-light.png` | Light, grid scrolled to the user's own categories; "Tuition for my youngest child" wraps inside its column |
+| `04-grid-custom-long-name-dark.png` | Dark, same scrolled grid |
+| `05-add-sheet-dark.png` | Dark, Add category sheet with a name typed |
+| `06-add-sheet-light.png` | Light, same sheet |
+| `income-01-light.png` / `income-02-dark.png` | Add/Edit income in the shared transaction sheet shell |
+
+(The earlier `01-grid-light`/`02-grid-long-name-light` were byte-identical: both captured the same scroll state. They are
+replaced by the distinct captures above.)
+
+### `appearance/` — real app, signed in on the seeded local demo account (emulator)
+
+`01-settings-light`, `02-appearance-options-light` (Light/Dark/System), `03-settings-dark`,
+`04-settings-dark-reduce-motion-on`, `05-home-dark-full-nav`, `06-activity-dark-nav`, `07-settings-light-restored`,
+`08-activity-light-nav`, `09-time-dial-light` (hour mode) and `10-time-dial-dragged-light` (after a drag, minute mode).
+Appearance and Reduce motion were restored to Light / off afterwards.
+
+### `review/` — real-device-size checks that led to fixes (see `review/review.md`)
+
+### `motion/` — benchmark tables, Perfetto-derived metrics, screen recordings (see `motion/evidence.md`)
 
 ## Limits (no claim made)
 
