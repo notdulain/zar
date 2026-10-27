@@ -51,7 +51,9 @@ class NavCapsuleController {
 
     /** The rectangle drawn right now. A snapshot state, so only the navbar's draw phase reads it. */
     private var presentation by mutableStateOf(Rect.Zero)
-    private var placed = false
+    // A first draw can happen before moveTo places the capsule. Observing this flag lets snapTo invalidate that
+    // initially empty draw even when the navbar's layout and selected destination do not change again.
+    private var placed by mutableStateOf(false)
 
     /** Capsule velocity in px/s per edge, and the display time of the frame that last moved it while it is in flight. */
     private var velocity = AnimationVector4D(0f, 0f, 0f, 0f)

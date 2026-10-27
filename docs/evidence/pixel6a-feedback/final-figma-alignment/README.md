@@ -40,8 +40,12 @@ Figma: file `bBBJuQz1Cg8N34FcisKBs9`, page Screens `1:2`. Local PNG exports used
 - Z197 shows the hero message with no title line, so the Freelance screen has no heading text.
 - Z186 to Z189, Z192 to Z194, Z196 were not part of the single follow-up (handoff section 10 item 5 lists only Z190, Z191, Z195). Only the Z188/Z189 button and error colours are covered.
 
-## Defect found and left alone
-`light/06b-more-from-home-tile-capsule-missing.png`: opening **More** from the Home tile on a fresh launch shows the navbar with no selected capsule under More. It reproduces with the NavCapsuleController from PR #35 (`a49f748`), so it is not from this branch. The controller state is correct at draw time (placed, More slot), so the cause is somewhere in how the revealed navbar is drawn. Tapping Home then More in the navbar draws the capsule normally (`light/06`, `dark/06`).
+## First-reveal regression: fixed in the parent integration
+`light/06b-more-from-home-tile-capsule-missing.png` preserves the before-fix capture. Opening More from the Home tile could leave its capsule blank because the first draw observed a non-snapshot `placed = false`; placing the capsule did not invalidate that draw. The parent integration makes first placement observable. The draw-invalidation regression failed before the fix and passed afterward. Fresh running-app captures `light/06c-more-from-home-tile-capsule-fixed.png` and `dark/06c-more-from-home-tile-capsule-fixed.png` show the first reveal after a fresh launch.
+
+Verification of this small parent-authored fix: 15 `NavCapsuleControllerTest` unit tests and 12 `ZarBottomNavMotionTest` emulator tests pass, with no failures or skips. This includes the regression, LTR/RTL end stops, interruption and reduced motion. The earlier Sonnet run counted 1,228 unit tests; its full instrumentation run counted 351 tests, no failures, nine skips. The seven Firebase-backed skips passed in a separate emulator-enabled run; the other two restart-phase skips remain intentional (last separately verified in the prior suite handoff). These are separate runs, not a new combined full-suite result.
+
+The Add Income layout differences above remain scheduled for a separate sequential Sonnet pass; field order alone does not establish visual parity.
 
 ## Restored device state
 Light appearance, Reduce motion off, Hide amounts off, density 420, font scale 1.0, night mode off, animator scale 1.

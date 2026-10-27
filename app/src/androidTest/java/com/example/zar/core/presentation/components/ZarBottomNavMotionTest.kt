@@ -1,6 +1,8 @@
 package com.example.zar.core.presentation.components
 
 import android.util.Log
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -13,9 +15,13 @@ import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.height
 import androidx.compose.ui.unit.width
 import com.example.zar.core.presentation.motion.LocalZarMotion
@@ -26,6 +32,8 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
+import kotlinx.coroutines.runBlocking
+import java.util.concurrent.atomic.AtomicReference
 
 /**
  * The navbar capsule on a controlled Compose clock: nothing advances until the test says so, so a flight, an
@@ -61,6 +69,24 @@ class ZarBottomNavMotionTest {
     private val full = MotionPolicy(reduceMotionSetting = false, systemAnimationsEnabled = true)
     private val reduced = MotionPolicy(reduceMotionSetting = true, systemAnimationsEnabled = true)
     private val instant = MotionPolicy(reduceMotionSetting = false, systemAnimationsEnabled = false)
+
+    @Test
+    fun firstPlacementInvalidatesTheDrawThatObservedNoCapsule() {
+        val slot = Rect(0f, 0f, 100f, 50f)
+        controller.onSlotsMeasured(listOf(slot))
+        val drawn = AtomicReference<Rect?>(null)
+        compose.setContent {
+            Box(Modifier.size(100.dp).drawBehind { drawn.set(controller.capsuleBounds()) })
+        }
+        compose.waitForIdle()
+        assertEquals(null, drawn.get())
+
+        // No route, layout or selection changes follow: first placement itself must request a draw.
+        compose.runOnIdle { runBlocking { controller.snapTo(slot) } }
+        compose.waitForIdle()
+
+        assertEquals(slot, drawn.get())
+    }
 
     @Test
     fun firstRevealPlacesTheCapsuleOnHomeWithoutAFlight() {
