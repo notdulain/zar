@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -114,7 +115,7 @@ fun ZarTitleBlock(title: String, subtitle: String?, modifier: Modifier = Modifie
 @Composable
 fun ZarSectionHeader(label: String, modifier: Modifier = Modifier, action: String? = null, onAction: (() -> Unit)? = null) {
     Row(
-        modifier.fillMaxWidth().padding(horizontal = 22.dp).height(16.dp),
+        modifier.fillMaxWidth().padding(horizontal = 22.dp).heightIn(min = 16.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {

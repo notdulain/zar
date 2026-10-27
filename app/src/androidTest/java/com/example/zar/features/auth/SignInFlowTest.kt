@@ -109,9 +109,10 @@ class SignInFlowTest {
         compose.waitUntilAtLeastOneExists(hasTestTag("nav-more"), timeout)
         compose.onNodeWithTag("nav-more").performClick()
 
-        for ((tag, title) in listOf("open-accounts" to "Accounts", "open-income" to "Received", "open-freelance" to "Freelance")) {
+        for ((tag, title) in listOf("open-accounts" to "Accounts", "open-income" to "Received", "open-freelance" to "No client projects yet")) {
             compose.onNodeWithTag(tag).performScrollTo().performClick()
-            compose.waitUntilAtLeastOneExists(hasText(title), timeout)
+            // Freelance with no projects opens on the Figma Z197 hero, which has no title line.
+            compose.waitUntilAtLeastOneExists(hasText(title, substring = true), timeout)
             pressBack()
             compose.waitUntilAtLeastOneExists(hasTestTag("nav-activity"), timeout)
         }

@@ -25,6 +25,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -184,10 +185,13 @@ private fun MonthGroup(month: IncomeMonth, onOpenIncome: (String) -> Unit) {
 @Composable
 private fun IncomeRowItem(row: IncomeRow, onClick: () -> Unit) {
     val colors = ZarTheme.colors
+    // Figma section 25: from 1.3x text the amount drops under the title and nothing is cut, so "Edited" and the
+    // account name stay readable. Below that the amount sits on the right.
+    val stacked = LocalDensity.current.fontScale >= 1.3f
     Row(
         Modifier.fillMaxWidth().clickable(role = Role.Button, onClick = onClick).padding(vertical = 12.dp).testTag("income-row-${row.id}"),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalAlignment = Alignment.CenterVertically,
+        verticalAlignment = if (stacked) Alignment.Top else Alignment.CenterVertically,
     ) {
         ZarIconChip(row.category.iconRes())
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -195,7 +199,7 @@ private fun IncomeRowItem(row: IncomeRow, onClick: () -> Unit) {
                 row.receivedFrom ?: row.category?.let { stringResource(it.labelRes()) } ?: stringResource(R.string.income_default_title),
                 style = ZarType.labelButton,
                 color = colors.textPrimary,
-                maxLines = 1,
+                maxLines = if (stacked) Int.MAX_VALUE else 1,
                 overflow = TextOverflow.Ellipsis,
             )
             val details = listOfNotNull(
@@ -204,13 +208,26 @@ private fun IncomeRowItem(row: IncomeRow, onClick: () -> Unit) {
                 row.accountName,
                 if (row.isEdited) stringResource(R.string.income_edited) else null,
             )
-            Text(details.joinToString(" · "), style = ZarType.bodyCaption, color = colors.textSecondary, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text(
+                details.joinToString(" · "),
+                style = ZarType.bodyCaption,
+                color = colors.textSecondary,
+                maxLines = if (stacked) Int.MAX_VALUE else 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+            if (stacked) IncomeAmount(row, Alignment.Start)
         }
-        Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(IncomeFormat.received(row.amount), style = ZarType.bodyM, color = colors.textIncome, maxLines = 1)
-            if (row.missingRate) {
-                Text(stringResource(R.string.income_missing_rate), style = ZarType.bodyCaption, color = colors.textAttentionStrong, maxLines = 1)
-            }
+        if (!stacked) IncomeAmount(row, Alignment.End)
+    }
+}
+
+@Composable
+private fun IncomeAmount(row: IncomeRow, alignment: Alignment.Horizontal) {
+    val colors = ZarTheme.colors
+    Column(horizontalAlignment = alignment, verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Text(IncomeFormat.received(row.amount), style = ZarType.bodyM, color = colors.textIncome)
+        if (row.missingRate) {
+            Text(stringResource(R.string.income_missing_rate), style = ZarType.bodyCaption, color = colors.textAttentionStrong)
         }
     }
 }
