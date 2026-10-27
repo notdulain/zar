@@ -20,12 +20,15 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalDensity
@@ -39,6 +42,7 @@ import com.example.zar.core.presentation.motion.ZarMotion
 import com.example.zar.core.presentation.motion.ZarSprings
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -184,9 +188,11 @@ fun TabPagerHost(
     controller: TabPagerController,
     userScrollEnabled: Boolean,
     modifier: Modifier = Modifier,
+    warmUpPages: Boolean = true,
     page: @Composable (TopLevelDestination) -> Unit,
 ) {
     val policy = LocalZarMotion.current
+    val warm = rememberPageWarmUp(enabled = warmUpPages) { userScrollEnabled && !controller.pagerState.isScrollInProgress }
     val tabTravelPx = with(LocalDensity.current) { ZarMotion.TabTravel.toPx() }
     val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
     val snapSpec = if (policy.allowsSpatialMotion) {
@@ -202,8 +208,8 @@ fun TabPagerHost(
     )
     HorizontalPager(
         state = controller.pagerState,
-        modifier = modifier.fillMaxSize(),
-        beyondViewportPageCount = 0,
+        modifier = modifier.fillMaxSize().then(warm.touchObserver),
+        beyondViewportPageCount = warm.pageCount,
         userScrollEnabled = userScrollEnabled,
         key = { it },
         flingBehavior = fling,
@@ -231,6 +237,61 @@ fun TabPagerHost(
         }
     }
 }
+
+/**
+ * Idle-time warm-up of the pages beside the current one. A pager composes the incoming page inside the frame in which a
+ * drag first moves it (measured on the Pixel 6a: one 55-130 ms frame at the start of every swipe, even in a release-like
+ * build, from composing and laying out one page of text). Composing the neighbours before the finger arrives moves that
+ * work to a moment nobody is interacting. [pageCount] grows by one at a time, only while no finger is down, nothing is
+ * scrolling and no sheet or keyboard has the screen, until every tab is composed; each step is one idle-time composition,
+ * not a hitch under a gesture. Pages keep their own scroll state either way.
+ */
+@Stable
+internal class PageWarmUp(val touchObserver: Modifier) {
+    var pageCount by mutableIntStateOf(0)
+        internal set
+}
+
+private class TouchClock {
+    var pressed by mutableStateOf(false)
+
+    /** Counts pointer events, so a tap that comes and goes between two looks still counts as a disturbance. */
+    var events by mutableIntStateOf(0)
+}
+
+@Composable
+internal fun rememberPageWarmUp(enabled: Boolean, idleGate: () -> Boolean): PageWarmUp {
+    val clock = remember { TouchClock() }
+    val gate = rememberUpdatedState(idleGate)
+    val observer = remember(clock) {
+        Modifier.pointerInput(clock) {
+            awaitPointerEventScope {
+                while (true) {
+                    val event = awaitPointerEvent(PointerEventPass.Initial)
+                    clock.pressed = event.changes.any { it.pressed }
+                    clock.events += 1
+                }
+            }
+        }
+    }
+    val warm = remember(observer) { PageWarmUp(observer) }
+    LaunchedEffect(enabled) {
+        if (!enabled) return@LaunchedEffect
+        val calm = { gate.value() && !clock.pressed }
+        while (warm.pageCount < TopLevelDestination.entries.size - 1) {
+            // Wait (without asking for frames) until nothing has the screen, then for a quiet stretch with no touch.
+            snapshotFlow { calm() }.first { it }
+            val seen = clock.events
+            val disturbed = withTimeoutOrNull(WARM_IDLE_MILLIS) {
+                snapshotFlow { calm() to clock.events }.first { (isCalm, count) -> !isCalm || count != seen }
+            }
+            if (disturbed == null) warm.pageCount += 1
+        }
+    }
+    return warm
+}
+
+private const val WARM_IDLE_MILLIS = 600L
 
 /**
  * Back from Activity, Plans or More goes to Home with a pager scroll, so the current page leaves toward the end and Home

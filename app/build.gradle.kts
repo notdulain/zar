@@ -53,8 +53,17 @@ android {
         "zar.emulatorHost must be 10.0.2.2, 127.0.0.1 or localhost (got '$emulatorHost')"
     }
 
+    // Optional id suffix (for example ".perf") so a measurement build installs beside the real app on a phone and never
+    // replaces it or shares its data. Debug and benchmark builds only; release always keeps com.example.zar. The suffix
+    // needs a matching client in a local google-services.json (the real file is not touched).
+    val appIdSuffix = providers.gradleProperty("zar.appIdSuffix").orNull
+    require(appIdSuffix == null || appIdSuffix.matches(Regex("\\.[a-z][a-z0-9_]*"))) {
+        "zar.appIdSuffix must look like .perf"
+    }
+
     buildTypes {
         debug {
+            appIdSuffix?.let { applicationIdSuffix = it }
             buildConfigField("boolean", "USE_FIREBASE_EMULATORS", useEmulators.toString())
             buildConfigField("String", "EMULATOR_HOST", "\"$emulatorHost\"")
         }
@@ -72,6 +81,7 @@ android {
             signingConfig = signingConfigs.getByName("debug")
             matchingFallbacks += listOf("release")
             isDebuggable = false
+            appIdSuffix?.let { applicationIdSuffix = it }
             buildConfigField("boolean", "USE_FIREBASE_EMULATORS", useEmulators.toString())
             buildConfigField("String", "EMULATOR_HOST", "\"$emulatorHost\"")
         }

@@ -56,13 +56,13 @@ class TabPagerTest {
     private val full = MotionPolicy(reduceMotionSetting = false, systemAnimationsEnabled = true)
     private val reduced = MotionPolicy(reduceMotionSetting = true, systemAnimationsEnabled = true)
 
-    private fun show(policy: MotionPolicy = full) {
+    private fun show(policy: MotionPolicy = full, warmUp: Boolean = false) {
         compose.setContent {
             ZarTheme {
                 CompositionLocalProvider(LocalZarMotion provides policy) {
                     tabs = rememberTabPagerController()
                     Box(Modifier.fillMaxSize()) {
-                        TabPagerHost(tabs, userScrollEnabled = scrollEnabled) { destination ->
+                        TabPagerHost(tabs, userScrollEnabled = scrollEnabled, warmUpPages = warmUp) { destination ->
                             LaunchedEffect(destination) { composedPages += destination.ordinal }
                             Box(Modifier.fillMaxSize().testTag("page-${destination.ordinal}")) {
                                 Text("Page ${destination.name}")
@@ -152,6 +152,34 @@ class TabPagerTest {
         assertEquals(1, tabs.pagerState.currentPage)
         compose.onNodeWithTag("nav-activity").assertIsSelected()
         assertEquals(1f, capsule.position, 0.01f)
+    }
+
+    @Test
+    fun idleWarmUpComposesEveryTabSoASwipeComposesNothingNew() {
+        show(warmUp = true)
+        compose.mainClock.advanceTimeBy(5_000)
+        compose.waitForIdle()
+        assertEquals("every tab is composed once the screen has been idle", setOf(0, 1, 2, 3), composedPages)
+
+        composedPages.clear()
+        compose.onNodeWithTag("page-0").performTouchInput { swipeLeft() }
+        compose.waitForIdle()
+        assertEquals(1, tabs.pagerState.currentPage)
+        assertTrue("a swipe after warm-up composed $composedPages", composedPages.isEmpty())
+    }
+
+    @Test
+    fun warmUpWaitsWhileASheetOrKeyboardHasTheScreen() {
+        scrollEnabled = false
+        show(warmUp = true)
+        compose.mainClock.advanceTimeBy(5_000)
+        compose.waitForIdle()
+        assertEquals("nothing is warmed while scrolling is locked", setOf(0), composedPages)
+
+        scrollEnabled = true
+        compose.mainClock.advanceTimeBy(5_000)
+        compose.waitForIdle()
+        assertEquals(setOf(0, 1, 2, 3), composedPages)
     }
 
     @Test
