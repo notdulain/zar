@@ -77,6 +77,28 @@ In Firebase for `zar-app-35602`:
 Auth/Firestore emulator builds remain useful for other features, but their unsigned Auth tokens cannot call
 the deployed Worker. Unit tests inject verified identities; production verification is never relaxed for tests.
 
+### Diagnosing "This app could not be verified"
+
+That message has several causes with different fixes. Debug builds log one line under Logcat tag `ZarQuickNote`
+naming the category (never a token, secret or response body):
+
+| Category | Meaning | Fix |
+| --- | --- | --- |
+| `EXCHANGE_REFUSED` | Firebase answered 401/403 to the App Check token exchange. With the debug provider and the body "App attestation failed." this install's debug secret is not registered. | Firebase console > App Check > Apps > Zar > Manage debug tokens: add this install's secret (Logcat tag `DebugAppCheckProvider`, printed once on first run). Keep it private. |
+| `THROTTLED` | The SDK is backing off after earlier failures ("Too many attempts."). | Fix the cause, then force-stop and reopen the app. |
+| `CONFIG_REJECTED` | HTTP 400: API key, project or app ID not accepted. | Compare `app/google-services.json` with the Firebase project. |
+| `WORKER_REFUSED` | A fresh token was refused by the Worker. | `FIREBASE_PROJECT_NUMBER` and `FIREBASE_APP_ID` in `worker/wrangler.jsonc` must match the app (`588119468948`, `1:588119468948:android:61ae9f5e46dc9cf09bbd81`). |
+| `SESSION_REFUSED` | A fresh Firebase ID token was refused. | Sign out and back in (`INVALID_REFRESH_TOKEN`). |
+| `NO_PROVIDER` | The build had no Firebase configuration. | Build with `google-services.json`. |
+
+Before reporting a refusal the app asks Firebase for new tokens once and resends the request, because a cached token can
+be stale; a second refusal is believed. Release builds use Play Integrity and have no debug secret.
+
+On 27 Oct 2026 a probe on the `emulator-5554` debug install returned `EXCHANGE_REFUSED` with "App attestation failed."
+(the App Check API and app registration respond; that install's secret was simply not registered). The Worker's `/health`
+answered 200 and an unauthenticated POST answered 401, so the deployed Worker is up and enforcing. The physical phone
+was not attached for that check, so its registration state is unconfirmed.
+
 ## Model and privacy
 
 `worker/wrangler.jsonc` pins `google/gemini-3.5-flash-lite`, the OpenRouter ID for Zar's evaluated Gemini model.

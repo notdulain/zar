@@ -24,8 +24,10 @@ class HttpQuickNoteDraftTransportTest {
         .retryOnConnectionFailure(false).callTimeout(2, TimeUnit.SECONDS).build()
     private val payload: Map<String, Any> = mapOf("note" to "lunch 850", "today" to "2026-10-24", "accounts" to emptyList<Any>())
 
+    private val diagnostics = mutableListOf<String>()
+
     private fun transport(credentials: QuickNoteCredentials = QuickNoteCredentials { QuickNoteTokens("id-token", "app-token") }) =
-        HttpQuickNoteDraftTransport(server.url("/v1/quick-note").toString(), credentials, client)
+        HttpQuickNoteDraftTransport(server.url("/v1/quick-note").toString(), credentials, client) { diagnostics += it }
 
     @After fun close() { server.shutdown(); client.connectionPool.evictAll(); client.dispatcher.executorService.shutdown() }
 
@@ -52,7 +54,10 @@ class HttpQuickNoteDraftTransportTest {
             Triple(502, "BAD_RESPONSE", QuickNoteDraftError.InvalidResponse::class.java),
             Triple(503, "PROVIDER_UNAVAILABLE", QuickNoteDraftError.ServiceUnavailable::class.java),
         )) {
-            server.enqueue(MockResponse().setResponseCode(status).setBody("""{"error":{"reason":"$reason","message":"private provider text"}}"""))
+            // A 401 or 403 is sent once more with fresh tokens before it is believed, so it needs two answers.
+            repeat(if (status == 401 || status == 403) 2 else 1) {
+                server.enqueue(MockResponse().setResponseCode(status).setBody("""{"error":{"reason":"$reason","message":"private provider text"}}"""))
+            }
             val error = runCatching { transport().createDraft(payload) }.exceptionOrNull()
             assertTrue("$status should map to $expected", expected.isInstance(error))
             assertFalse(error?.message.orEmpty().contains("private provider text"))
@@ -87,5 +92,53 @@ class HttpQuickNoteDraftTransportTest {
         assertNotNull(sent)
         result.cancel()
         assertTrue(runCatching { result.await() }.exceptionOrNull() is CancellationException)
+    }
+
+    @Test fun aStaleAppCheckTokenIsRefreshedOnceAndTheSameRequestSucceeds() = runBlocking {
+        server.enqueue(MockResponse().setResponseCode(403).setBody("""{"error":{"reason":"APP_CHECK"}}"""))
+        server.enqueue(MockResponse().setBody("""{"version":1,"proposals":[]}"""))
+        val forced = mutableListOf<Boolean>()
+        val credentials = QuickNoteCredentials { force -> forced += force; QuickNoteTokens("id-$force", "app-$force") }
+
+        val result = transport(credentials).createDraft(payload) as Map<*, *>
+
+        assertEquals(1L, result["version"])
+        assertEquals(listOf(false, true), forced)
+        assertEquals("app-false", server.takeRequest().getHeader("X-Firebase-AppCheck"))
+        assertEquals("app-true", server.takeRequest().getHeader("X-Firebase-AppCheck"))
+        assertTrue("a recovered request logs nothing", diagnostics.isEmpty())
+    }
+
+    @Test fun aFreshTokenThatIsStillRefusedIsReportedAsAWorkerConfigurationProblemWithoutLoopingOrLeakingTokens() = runBlocking {
+        repeat(2) { server.enqueue(MockResponse().setResponseCode(403).setBody("""{"error":{"reason":"APP_CHECK"}}""")) }
+
+        val error = runCatching { transport().createDraft(payload) }.exceptionOrNull()
+
+        assertTrue(error is QuickNoteDraftError.AppNotVerified)
+        assertEquals("exactly one retry", 2, server.requestCount)
+        assertEquals(1, diagnostics.size)
+        assertTrue(diagnostics.single().startsWith("WORKER_REFUSED"))
+        assertFalse("no token appears in the diagnostic", diagnostics.single().contains("app-token") || diagnostics.single().contains("id-token"))
+    }
+
+    @Test fun anExpiredSignInTokenIsRefreshedOnceToo() = runBlocking {
+        server.enqueue(MockResponse().setResponseCode(401).setBody("""{"error":{"reason":"UNAUTHENTICATED"}}"""))
+        server.enqueue(MockResponse().setBody("""{"version":1,"proposals":[]}"""))
+        val forced = mutableListOf<Boolean>()
+
+        transport(QuickNoteCredentials { force -> forced += force; QuickNoteTokens("id", "app") }).createDraft(payload)
+
+        assertEquals(listOf(false, true), forced)
+    }
+
+    @Test fun anAttestationFailureIsLoggedAsACategoryOnlyAndNeverSendsARequest() = runBlocking {
+        val credentials = QuickNoteCredentials { throw com.example.zar.features.quicknote.data.remote.AttestationUnavailable(com.example.zar.features.quicknote.data.remote.AttestationFailure.EXCHANGE_REFUSED) }
+
+        val error = runCatching { transport(credentials).createDraft(payload) }.exceptionOrNull()
+
+        assertTrue(error is QuickNoteDraftError.AppNotVerified)
+        assertEquals(0, server.requestCount)
+        assertTrue(diagnostics.single().startsWith("EXCHANGE_REFUSED"))
+        assertTrue("the action names the console step", diagnostics.single().contains("debug secret"))
     }
 }

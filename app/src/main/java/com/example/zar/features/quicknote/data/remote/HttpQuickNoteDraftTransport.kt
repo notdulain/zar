@@ -6,6 +6,7 @@ import com.example.zar.features.quicknote.domain.model.QuickNoteLimits
 import com.google.firebase.FirebaseNetworkException
 import com.google.firebase.appcheck.FirebaseAppCheck
 import com.google.firebase.auth.FirebaseAuth
+import android.util.Log
 import java.io.IOException
 import java.io.InterruptedIOException
 import java.util.concurrent.TimeUnit
@@ -22,9 +23,13 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
 
+/** Carries why an App Check token could not be had, from the credential lookup to the transport's one diagnostic line. */
+internal class AttestationUnavailable(val failure: AttestationFailure) : Exception(failure.name)
+
 internal data class QuickNoteTokens(val idToken: String, val appCheckToken: String)
 internal fun interface QuickNoteCredentials {
-    suspend fun tokens(): QuickNoteTokens
+    /** [forceRefresh] asks Firebase for a new ID token and a new App Check token instead of the cached ones. */
+    suspend fun tokens(forceRefresh: Boolean): QuickNoteTokens
 }
 
 /** The app sends short-lived Firebase tokens. The OpenRouter key never leaves the Worker. */
@@ -33,22 +38,28 @@ class HttpQuickNoteDraftTransport internal constructor(
     private val endpoint: String,
     private val credentials: QuickNoteCredentials,
     private val client: OkHttpClient,
+    private val diagnose: (String) -> Unit = { Log.w(TAG, it) },
 ) : QuickNoteDraftTransport {
     @Inject
     constructor(auth: FirebaseAuth, appCheck: FirebaseAppCheck) : this(
         BuildConfig.QUICK_NOTE_ENDPOINT,
-        QuickNoteCredentials {
+        QuickNoteCredentials { forceRefresh ->
             val user = auth.currentUser ?: throw QuickNoteDraftError.NotSignedIn()
             val idToken = try {
-                user.getIdToken(false).await().token ?: throw QuickNoteDraftError.NotSignedIn()
+                user.getIdToken(forceRefresh).await().token ?: throw QuickNoteDraftError.NotSignedIn()
             } catch (e: CancellationException) { throw e }
             catch (_: FirebaseNetworkException) { throw QuickNoteDraftError.Offline() }
             catch (_: Exception) { throw QuickNoteDraftError.NotSignedIn() }
             val appToken = try {
-                appCheck.getAppCheckToken(false).await().token
+                appCheck.getAppCheckToken(forceRefresh).await().token
             } catch (e: CancellationException) { throw e }
-            catch (_: FirebaseNetworkException) { throw QuickNoteDraftError.Offline() }
-            catch (_: Exception) { throw QuickNoteDraftError.AppNotVerified() }
+            catch (e: FirebaseNetworkException) { throw QuickNoteDraftError.Offline() }
+            catch (e: Exception) {
+                // The reason is classified and logged as a category only (see AttestationDiagnostics); the SDK text is not.
+                val failure = AttestationDiagnostics.classify(e)
+                if (failure == AttestationFailure.NETWORK) throw QuickNoteDraftError.Offline()
+                throw AttestationUnavailable(failure)
+            }
             if (auth.currentUser?.uid != user.uid) throw QuickNoteDraftError.NotSignedIn()
             QuickNoteTokens(idToken, appToken)
         },
@@ -63,7 +74,36 @@ class HttpQuickNoteDraftTransport internal constructor(
         if (endpoint.isBlank() || (!BuildConfig.DEBUG && !endpoint.startsWith("https://"))) {
             throw QuickNoteDraftError.ServiceUnavailable()
         }
-        val tokens = credentials.tokens()
+        val tokens = obtain(forceRefresh = false)
+        return try {
+            post(payload, tokens)
+        } catch (rejected: QuickNoteDraftError) {
+            // A cached token can be stale: an expired ID token (401) or an App Check token Firebase has since invalidated (403).
+            // Ask for fresh ones once and send the same request again. A second refusal is real and is reported as such.
+            val second = when (rejected) {
+                is QuickNoteDraftError.AppNotVerified -> AttestationFailure.WORKER_REFUSED
+                is QuickNoteDraftError.NotSignedIn -> AttestationFailure.SESSION_REFUSED
+                else -> throw rejected
+            }
+            val fresh = obtain(forceRefresh = true)
+            try {
+                post(payload, fresh)
+            } catch (again: QuickNoteDraftError) {
+                if (again is QuickNoteDraftError.AppNotVerified || again is QuickNoteDraftError.NotSignedIn) diagnose("${second.name}: ${second.action}")
+                throw again
+            }
+        }
+    }
+
+    /** The tokens, or the typed error for why there are none. An attestation failure is logged here as a category. */
+    private suspend fun obtain(forceRefresh: Boolean): QuickNoteTokens = try {
+        credentials.tokens(forceRefresh)
+    } catch (unavailable: AttestationUnavailable) {
+        diagnose("${unavailable.failure.name}: ${unavailable.failure.action}")
+        throw QuickNoteDraftError.AppNotVerified()
+    }
+
+    private suspend fun post(payload: Map<String, Any>, tokens: QuickNoteTokens): Any? {
         val request = Request.Builder().url(endpoint)
             .header("Authorization", "Bearer ${tokens.idToken}")
             .header("X-Firebase-AppCheck", tokens.appCheckToken)
@@ -101,5 +141,8 @@ class HttpQuickNoteDraftTransport internal constructor(
         }
     }
 
-    private companion object { const val MAX_RESPONSE_BYTES = 64L * 1024 }
+    private companion object {
+        const val MAX_RESPONSE_BYTES = 64L * 1024
+        const val TAG = "ZarQuickNote"
+    }
 }
