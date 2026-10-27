@@ -215,13 +215,13 @@ internal fun PlansScreenContent(
     }
 }
 
-/** Uses the same dusk surface, Geist amounts and rounded bottom edge as Home. */
+/** Navy-to-coral goal surface (Figma Plans/Goal), Geist amounts and the rounded bottom edge Home has. */
 @Composable
 private fun PlansHero(heroOffset: HeroScrollOffset? = null, content: @Composable ColumnScope.() -> Unit) {
     Column(
         Modifier.fillMaxWidth()
             .clip(RoundedCornerShape(bottomStart = ZarDimens.FullHeroRadius, bottomEnd = ZarDimens.FullHeroRadius))
-            .background(ZarGradients.dusk)
+            .background(ZarGradients.goal)
             .then(
                 if (heroOffset != null) Modifier.heroParallax(heroOffset, ZarMotion.PARALLAX_TEXT, ZarMotion.ParallaxTextCap)
                 else Modifier,
@@ -271,7 +271,8 @@ private fun GoalHero(overview: PlansOverview, onEditGoal: () -> Unit, onAllocate
                 progress?.isApproximate == true -> stringResource(R.string.plans_estimated_backing)
                 else -> stringResource(R.string.plans_recorded_backing)
             },
-            style = ZarType.bodyCaption, color = ZarSubtle, modifier = textLayer,
+            // 90% white on the gradient, as in the Figma goal status line.
+            style = ZarType.bodyCaption, color = ZarWhite.copy(alpha = 0.9f), modifier = textLayer,
         )
         ZarButton(
             text = stringResource(if (goal == null) R.string.plans_create_action else R.string.plans_allocate_action),

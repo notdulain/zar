@@ -42,8 +42,19 @@ object ZarGradients {
         1.1453f,
         0.023333f to Color(0xFF05070B),
         0.093471f to Color(0xFF0B1524),
-        0.55433f to Color(0xFF14304A),
+        // Final Figma handoff: the navy mid-stop moves from 49.4% to 70% of the gradient (0.70 * 1.1453) so the
+        // text near the coral edge keeps its contrast; the colours are unchanged.
+        0.8017f to Color(0xFF14304A),
         1.1453f to Color(0xFFF3A78F),
+    )
+
+    /** Crypto hero "realized result": near-black to gold, with the gold mid-stop at 90% so the status line reads (4.79:1). */
+    val crypto: Brush = vertical(
+        1f,
+        0f to Color(0xFF05070B),
+        0.439f to Color(0xFF2A1F08),
+        0.90f to Color(0xFF6E520C),
+        1f to Color(0xFFF0B90B),
     )
 
     val statusBarScrim: Brush = vertical(

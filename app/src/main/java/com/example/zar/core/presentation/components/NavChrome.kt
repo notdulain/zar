@@ -18,6 +18,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.compositionLocalOf
@@ -67,8 +69,11 @@ fun ZarTopLevelChrome(
     val density = LocalDensity.current
     val addDescription = stringResource(R.string.add_entry)
     var showAddSheet by rememberSaveable { mutableStateOf(false) }
+    // Figma Z190: with the keyboard open the navbar and Add button step out of the way, so the field being typed in and
+    // the results above it keep the room. The capsule controller outlives this, so the navbar returns where it was.
+    val keyboardOpen = rememberKeyboardOpen()
 
-    Box(
+    if (!keyboardOpen) Box(
         modifier = modifier
             .fillMaxWidth()
             .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom))
@@ -130,6 +135,11 @@ fun ZarTopLevelChrome(
  */
 @Composable
 fun ZarBottomChromeSpace(modifier: Modifier = Modifier) {
+    // The chrome is hidden while the keyboard is open (Z190), so nothing is reserved for it either.
+    if (rememberKeyboardOpen()) {
+        Spacer(modifier.fillMaxWidth().windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom)))
+        return
+    }
     Box(
         modifier = modifier
             .fillMaxWidth()
@@ -144,3 +154,8 @@ fun ZarBottomChromeSpace(modifier: Modifier = Modifier) {
         Spacer(Modifier.height(ZarDimens.NavHeight))
     }
 }
+
+/** True while the soft keyboard is showing. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+internal fun rememberKeyboardOpen(): Boolean = WindowInsets.isImeVisible

@@ -76,6 +76,7 @@ import com.example.zar.features.freelance.presentation.screen.Loading
 import com.example.zar.features.freelance.presentation.screen.SectionLabel
 import com.example.zar.features.freelance.presentation.screen.display
 import com.example.zar.features.transactions.presentation.income.IncomeFormat
+import com.example.zar.core.presentation.theme.ZarGradients
 import com.example.zar.features.transactions.presentation.income.screen.SummaryHeaderCard
 import com.example.zar.features.transactions.presentation.income.screen.ZarMono
 
@@ -173,6 +174,7 @@ private fun CryptoContent(
                     pluralStringResource(R.plurals.crypto_unknown_results, portfolio.unknownResultCount, portfolio.unknownResultCount)
                 },
                 modifier = Modifier.heroParallax(cryptoHeroOffset, ZarMotion.PARALLAX_TEXT, ZarMotion.ParallaxTextCap),
+                brush = ZarGradients.crypto,
             )
         }
         uiState.message?.let { item { Text(stringResource(it.textRes()), color = MaterialTheme.colorScheme.error, fontFamily = ZarMono) } }

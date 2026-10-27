@@ -67,6 +67,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.zar.R
@@ -242,9 +243,14 @@ fun ManualTimePickerSheet(time: LocalTime, onCancel: () -> Unit, onSetTime: (Loc
                 }
             }, onSelectionFinished = { if (activeHour) activeHour = false })
         } else {
-            Box(Modifier.fillMaxWidth().height(256.dp), Alignment.Center) {
-                Text("Enter hour and minute above", style = ZarType.bodyS, color = colors.textSecondary)
-            }
+            // Figma Z191: the 256dp dial box collapses to one hint line, so the sheet shrinks and the actions stay above
+            // the number pad instead of being pushed off the screen.
+            Text(
+                "Enter hour and minute above. AM / PM stays as selected.",
+                style = ZarType.bodyS,
+                color = colors.textSecondary,
+                modifier = Modifier.fillMaxWidth().testTag("time-typing-hint"),
+            )
         }
 
         Box(Modifier.fillMaxWidth(), Alignment.Center) {

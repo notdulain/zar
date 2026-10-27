@@ -1,6 +1,26 @@
 package com.example.zar.features.freelance.presentation.screen
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.Role
+import com.example.zar.core.presentation.components.ZarButton
+import com.example.zar.core.presentation.components.ZarButtonStyle
+import com.example.zar.core.presentation.components.ZarChip
+import com.example.zar.core.presentation.components.ZarDivider
+import com.example.zar.core.presentation.components.ZarFormRow
+import com.example.zar.core.presentation.components.ZarIcon
+import com.example.zar.core.presentation.components.ZarMonoLabel
+import com.example.zar.core.presentation.theme.ZarTheme
+import com.example.zar.core.presentation.theme.ZarType
+import com.example.zar.features.transactions.presentation.manual.screen.TextInput
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -291,7 +311,8 @@ private fun MilestoneCard(summary: MilestoneSummary, onClick: () -> Unit) {
 
 // --- Project form --------------------------------------------------------------------------
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+/** Figma Z195: Zar header with close, mono-labelled rows, currency chips and the Cancel / Save pair, like the account form. */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ProjectFormScreen(
     onBack: () -> Unit,
@@ -300,71 +321,102 @@ fun ProjectFormScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     LaunchedEffect(uiState.savedProjectId) { uiState.savedProjectId?.let { onSaved(it, !uiState.isEditing) } }
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(stringResource(if (uiState.isEditing) R.string.project_edit else R.string.project_add)) },
-                navigationIcon = { TextButton(onClick = onBack) { Text(stringResource(R.string.action_back)) } },
-            )
-        },
-    ) { innerPadding ->
-        if (uiState.isLoading) {
-            Loading(Modifier.padding(innerPadding))
-            return@Scaffold
-        }
-        if (uiState.message == FreelanceMessage.NOT_FOUND) {
-            CenteredText(stringResource(R.string.project_not_found), Modifier.padding(innerPadding))
-            return@Scaffold
-        }
-        Column(
-            Modifier.fillMaxSize().padding(innerPadding).imePadding().verticalScroll(rememberScrollState()).padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+    val colors = ZarTheme.colors
+    val notFound = uiState.message == FreelanceMessage.NOT_FOUND
+    Column(Modifier.fillMaxSize().background(colors.surface).statusBarsPadding().imePadding()) {
+        Row(
+            Modifier.fillMaxWidth().padding(start = 24.dp, end = 24.dp, top = 18.dp, bottom = 4.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            OutlinedTextField(
-                value = uiState.name,
-                onValueChange = viewModel::onNameChange,
-                label = { Text(stringResource(R.string.project_name)) },
-                isError = uiState.problems.nameErrorRes() != null,
-                supportingText = uiState.problems.nameErrorRes()?.let { { Text(stringResource(it)) } },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
+            Text(
+                stringResource(if (uiState.isEditing) R.string.project_edit else R.string.project_add),
+                style = ZarType.headingSheet,
+                color = colors.textPrimary,
             )
-            OutlinedTextField(
-                value = uiState.client,
-                onValueChange = viewModel::onClientChange,
-                label = { Text(stringResource(R.string.project_client)) },
-                isError = FreelanceProblem.CLIENT_TOO_LONG in uiState.problems,
-                supportingText = if (FreelanceProblem.CLIENT_TOO_LONG in uiState.problems) {
-                    { Text(stringResource(R.string.income_error_too_long)) }
-                } else null,
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
-            )
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                SectionLabel(stringResource(R.string.project_currency))
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    uiState.currencyChoices.forEach { currency ->
-                        FilterChip(
-                            selected = currency == uiState.currency,
-                            onClick = { viewModel.onCurrencySelect(currency) },
-                            enabled = !uiState.isEditing,
-                            label = { Text(currency.code, fontFamily = ZarMono) },
-                        )
+            Box(
+                Modifier.size(40.dp).clip(CircleShape)
+                    .clickable(role = Role.Button, onClickLabel = stringResource(R.string.account_form_close), onClick = onBack)
+                    .testTag("project-form-close"),
+                Alignment.Center,
+            ) { ZarIcon(R.drawable.ic_ph_x, size = 20.dp) }
+        }
+        when {
+            uiState.isLoading -> Box(Modifier.weight(1f).fillMaxWidth(), Alignment.Center) { CircularProgressIndicator(color = colors.accentSelected) }
+            notFound -> Box(Modifier.weight(1f).fillMaxWidth().padding(24.dp), Alignment.Center) {
+                Text(stringResource(R.string.project_not_found), style = ZarType.bodyS, color = colors.textSecondary)
+            }
+            else -> Column(
+                Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 24.dp, vertical = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+            ) {
+                ZarFormRow(stringResource(R.string.project_form_name)) {
+                    TextInput(
+                        value = uiState.name,
+                        onValueChange = viewModel::onNameChange,
+                        placeholder = stringResource(R.string.project_form_name_hint),
+                        modifier = Modifier.weight(1f).testTag("project-name"),
+                    )
+                }
+                uiState.problems.nameErrorRes()?.let { ProjectFieldError(it) }
+                ZarDivider()
+                ZarFormRow(stringResource(R.string.project_form_client)) {
+                    TextInput(
+                        value = uiState.client,
+                        onValueChange = viewModel::onClientChange,
+                        placeholder = stringResource(R.string.project_form_client_hint),
+                        modifier = Modifier.weight(1f).testTag("project-client"),
+                    )
+                }
+                if (FreelanceProblem.CLIENT_TOO_LONG in uiState.problems) ProjectFieldError(R.string.income_error_too_long)
+                ZarDivider()
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    ZarMonoLabel(stringResource(R.string.project_currency))
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        uiState.currencyChoices.forEach { currency ->
+                            ZarChip(
+                                label = currency.code,
+                                selected = currency == uiState.currency,
+                                onClick = { viewModel.onCurrencySelect(currency) },
+                                enabled = !uiState.isEditing || currency == uiState.currency,
+                                modifier = Modifier.testTag("project-currency-${currency.code}"),
+                            )
+                        }
                     }
+                    Text(
+                        stringResource(if (uiState.isEditing) R.string.project_currency_locked else R.string.project_form_note),
+                        style = ZarType.bodyS,
+                        color = colors.textSecondary,
+                    )
                 }
-                if (uiState.isEditing) {
-                    Text(stringResource(R.string.project_currency_locked), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                uiState.message?.let { ProjectFieldError(it.textRes()) }
+                uiState.project?.let { project ->
+                    ZarButton(
+                        text = stringResource(if (project.isArchived) R.string.project_unarchive else R.string.project_archive),
+                        onClick = { viewModel.setArchived(!project.isArchived) },
+                        modifier = Modifier.fillMaxWidth().testTag("project-archive"),
+                        style = ZarButtonStyle.Soft,
+                        enabled = !uiState.isSaving,
+                    )
                 }
             }
-            uiState.message?.let { Text(stringResource(it.textRes()), color = MaterialTheme.colorScheme.error, fontFamily = ZarMono) }
-            Button(onClick = viewModel::save, enabled = !uiState.isSaving, modifier = Modifier.fillMaxWidth().height(52.dp)) {
-                Text(stringResource(R.string.income_save))
-            }
-            uiState.project?.let { project ->
-                TextButton(onClick = { viewModel.setArchived(!project.isArchived) }, enabled = !uiState.isSaving, modifier = Modifier.fillMaxWidth()) {
-                    Text(stringResource(if (project.isArchived) R.string.project_unarchive else R.string.project_archive))
-                }
-            }
+        }
+        Row(
+            Modifier.fillMaxWidth().navigationBarsPadding().padding(start = 24.dp, end = 24.dp, top = 12.dp, bottom = 22.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            ZarButton(stringResource(R.string.account_form_cancel), onBack, Modifier.weight(1f).testTag("project-cancel"), ZarButtonStyle.Soft)
+            ZarButton(
+                text = stringResource(R.string.income_save),
+                onClick = viewModel::save,
+                modifier = Modifier.weight(1f).testTag("project-save"),
+                enabled = !uiState.isSaving && !uiState.isLoading && !notFound,
+            )
         }
     }
+}
+
+@Composable
+private fun ProjectFieldError(@androidx.annotation.StringRes res: Int) {
+    Text(stringResource(res), style = ZarType.bodyCaption, color = ZarTheme.colors.danger)
 }

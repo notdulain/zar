@@ -140,6 +140,11 @@
     <string name="project_add">New project</string>
     <string name="project_edit">Edit project</string>
     <string name="project_name">Project name</string>
+    <string name="project_form_name">Name</string>
+    <string name="project_form_name_hint">e.g. Café website</string>
+    <string name="project_form_client">Client</string>
+    <string name="project_form_client_hint">Optional</string>
+    <string name="project_form_note">Client is optional. Pick the currency the client pays in; it can\'t change after the first save.</string>
     <string name="project_client">Client (optional)</string>
     <string name="project_currency">Currency</string>
     <string name="project_currency_locked">The currency can\'t change once a project exists.</string>
