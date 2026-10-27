@@ -14,6 +14,8 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.height
 import androidx.compose.ui.unit.width
 import com.example.zar.core.presentation.motion.LocalZarMotion
@@ -37,11 +39,11 @@ class ZarBottomNavMotionTest {
     private val controller = NavCapsuleController()
     private var selected by mutableStateOf(TopLevelDestination.Home)
 
-    private fun show(policy: MotionPolicy) {
+    private fun show(policy: MotionPolicy, direction: LayoutDirection = LayoutDirection.Ltr) {
         compose.mainClock.autoAdvance = false
         compose.setContent {
             ZarTheme {
-                CompositionLocalProvider(LocalZarMotion provides policy) {
+                CompositionLocalProvider(LocalZarMotion provides policy, LocalLayoutDirection provides direction) {
                     ZarBottomNav(selected, onNavigate = { selected = it }, controller = controller)
                 }
             }
@@ -97,9 +99,66 @@ class ZarBottomNavMotionTest {
         val rest = controller.targetRect!!
         assertFalse(controller.isMoving)
         assertEquals(rest.left, left(), 0.7f)
-        assertTrue("More (last tab) should bounce a little past its slot: peak $peak vs ${rest.right}", peak > rest.right + 0.5f)
+        // Figma M2: the capsule never goes past More. The outer slots are hard stops.
+        assertTrue("capsule went past More: peak $peak vs ${rest.right}", peak <= rest.right + 0.5f)
         // Touch bounds are stable once the selection has been laid out: they do not follow the moving capsule.
         assertEquals(1, bounds.drop(1).distinct().size)
+    }
+
+    /** Flies through every end-to-end and interior journey and returns the widest extent the capsule was drawn at. */
+    private fun extentOfAllJourneys(): Pair<Float, Float> {
+        var minLeft = Float.MAX_VALUE
+        var maxRight = -Float.MAX_VALUE
+        val journeys = listOf("nav-more", "nav-home", "nav-more", "nav-plans", "nav-home", "nav-activity", "nav-more", "nav-activity", "nav-home")
+        journeys.forEach { tag ->
+            tap(tag)
+            repeat(50) {
+                frame()
+                minLeft = minOf(minLeft, left())
+                maxRight = maxOf(maxRight, right())
+            }
+        }
+        return minLeft to maxRight
+    }
+
+    @Test
+    fun noJourneyEverDrawsTheCapsuleOutsideHomeAndMore() {
+        show(full)
+        val homeLeft = left()
+        tap("nav-more"); frame(60)
+        val moreRight = right()
+        tap("nav-home"); frame(60)
+
+        val (minLeft, maxRight) = extentOfAllJourneys()
+
+        assertTrue("capsule left $minLeft went past Home at $homeLeft", minLeft >= homeLeft - 0.5f)
+        assertTrue("capsule right $maxRight went past More at $moreRight", maxRight <= moreRight + 0.5f)
+    }
+
+    @Test
+    fun theSameEndStopsHoldWhenTheLayoutIsMirroredForRtl() {
+        show(full, LayoutDirection.Rtl)
+        // In RTL Home is the rightmost slot and More the leftmost.
+        val homeRight = right()
+        tap("nav-more"); frame(60)
+        val moreLeft = left()
+        tap("nav-home"); frame(60)
+
+        val (minLeft, maxRight) = extentOfAllJourneys()
+
+        assertTrue("RTL: capsule left $minLeft went past More at $moreLeft", minLeft >= moreLeft - 0.5f)
+        assertTrue("RTL: capsule right $maxRight went past Home at $homeRight", maxRight <= homeRight + 0.5f)
+    }
+
+    @Test
+    fun anInteriorTabMayStillBounceAPastItsSlotWhileTravellingTowardIt() {
+        show(full)
+        tap("nav-plans")
+        var peak = right()
+        repeat(50) { frame(); peak = maxOf(peak, right()) }
+        val rest = controller.targetRect!!
+        Log.i("ZarNavTravel", "Home->Plans peak right $peak vs slot ${rest.right}")
+        assertTrue("overshoot beyond the allowed 6dp-equivalent: $peak vs ${rest.right + controller.maxOvershootPx}", peak <= rest.right + controller.maxOvershootPx + 0.5f)
     }
 
     @Test
