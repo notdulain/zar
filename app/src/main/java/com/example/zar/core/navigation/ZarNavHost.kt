@@ -33,6 +33,7 @@ import com.example.zar.core.presentation.components.DriveCapsule
 import com.example.zar.core.presentation.components.LocalPagerGestureLock
 import com.example.zar.core.presentation.components.PagerGestureLock
 import com.example.zar.core.presentation.components.TabPagerBackHandler
+import com.example.zar.core.presentation.components.SheetBackHost
 import com.example.zar.core.presentation.components.TabPagerHost
 import com.example.zar.core.presentation.components.rememberTabPagerController
 import com.example.zar.core.presentation.motion.LocalZarMotion
@@ -221,24 +222,27 @@ fun ZarNavHost(
         dialog<IncomeFormRoute>(
             dialogProperties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
         ) {
-            IncomeFormScreen(onDone = { navController.popBackStack() })
+            SheetBackHost(onPop = { navController.popBackStack() }) { dismiss -> IncomeFormScreen(onDone = dismiss) }
         }
         dialog<ManualEntryRoute>(
             dialogProperties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
         ) { entry ->
             val route = entry.toRoute<ManualEntryRoute>()
-            AddTransactionScreen(
-                focusNote = route.focusNote,
-                initialKind = route.initialKind,
-                onDone = { navController.popBackStack() },
-                onAddAccount = { navController.navigate(AccountFormRoute()) },
-            )
+            SheetBackHost(onPop = { navController.popBackStack() }) { dismiss ->
+                AddTransactionScreen(
+                    focusNote = route.focusNote,
+                    initialKind = route.initialKind,
+                    onDone = dismiss,
+                    onAddAccount = { navController.navigate(AccountFormRoute()) },
+                )
+            }
         }
         dialog<QuickNoteRoute>(
             dialogProperties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
         ) {
+            SheetBackHost(onPop = { navController.popBackStack() }) { dismiss ->
             QuickNoteScreen(
-                onDone = { navController.popBackStack() },
+                onDone = dismiss,
                 // The note comes along as the title, so nothing typed is lost when reading is not wanted or not possible.
                 onFillForm = { note ->
                     navController.navigate(ManualEntryRoute(focusNote = true, prefillTitle = note.trim().take(120).ifEmpty { null })) {
@@ -246,6 +250,7 @@ fun ZarNavHost(
                     }
                 },
             )
+            }
         }
         composable<EntryDetailRoute> {
             EntryDetailScreen(

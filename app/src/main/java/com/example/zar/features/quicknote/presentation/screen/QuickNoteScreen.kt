@@ -1,5 +1,7 @@
 package com.example.zar.features.quicknote.presentation.screen
 
+import com.example.zar.core.presentation.components.sheetBackScrim
+import com.example.zar.core.presentation.components.sheetBackSlide
 import com.example.zar.features.transactions.presentation.category.LocalExpenseCategoryCatalog
 import com.example.zar.features.transactions.presentation.category.ProvideExpenseCategoryCatalog
 import com.example.zar.features.transactions.presentation.category.categoryDisplayName
@@ -163,9 +165,9 @@ internal fun QuickNoteContent(state: QuickNoteUiState, actions: QuickNoteActions
     BackHandler(enabled = editing != null || state.isSaving) { if (!state.isSaving) actions.onCloseEditor() }
 
     BoxWithConstraints(Modifier.fillMaxSize().imePadding()) {
-        Box(Modifier.fillMaxSize().background(colors.scrim.copy(alpha = 0.64f)).clickable(enabled = !state.isSaving, onClick = actions.onClose))
+        Box(Modifier.fillMaxSize().sheetBackScrim().background(colors.scrim.copy(alpha = 0.64f)).clickable(enabled = !state.isSaving, onClick = actions.onClose))
         Column(
-            Modifier.align(Alignment.BottomCenter).fillMaxWidth().heightIn(max = maxHeight - 48.dp)
+            Modifier.align(Alignment.BottomCenter).sheetBackSlide().fillMaxWidth().heightIn(max = maxHeight - 48.dp)
                 .clip(ZarShapes.sheet).background(colors.surface).pointerInput(Unit) { detectTapGestures {} }.padding(top = 10.dp),
         ) {
             Box(Modifier.fillMaxWidth(), Alignment.Center) {

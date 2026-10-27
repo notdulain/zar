@@ -70,6 +70,9 @@ object ZarMotion {
     const val PARALLAX_CHART = 0.12f
     val ParallaxChartCap = 16.dp
 
+    /** Length of a Back transition. A tween, because the predictive gesture scrubs it and a spring has no fixed length. */
+    const val POP_MILLIS = 300
+
     /** A parent screen recedes by at most this fraction of the window width while a child enters. */
     const val ROUTE_PARENT_RECEDE = 0.2f
 

@@ -20,6 +20,7 @@ import androidx.navigation.compose.rememberNavController
 import com.example.zar.core.presentation.motion.LocalZarMotion
 import com.example.zar.core.presentation.motion.MotionPolicy
 import com.example.zar.core.presentation.theme.ZarTheme
+import androidx.compose.ui.unit.width
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -142,23 +143,56 @@ class RouteMotionNavTest {
     }
 
     @Test
-    fun dismissingASheetLeavesDownwardWhileTheParentStaysPut() {
+    fun dismissingASheetRouteLeavesToTheRightNotDownwardAndTheParentStaysPut() {
         show(full)
         compose.runOnIdle { nav.navigate(IncomeFormRoute()) }
         frame(60)
 
         compose.runOnIdle { nav.popBackStack() }
         frame()
+        val sheetLeft = ArrayList<Float>()
         val sheetTop = ArrayList<Float>()
+        val sheetWidth = ArrayList<Float>()
         val parentLeft = ArrayList<Float>()
         repeat(30) {
             frame()
-            if (exists("sheet")) sheetTop += top("sheet")
+            if (exists("sheet")) {
+                val bounds = compose.onNodeWithTag("sheet").getUnclippedBoundsInRoot()
+                sheetLeft += bounds.left.value
+                sheetTop += bounds.top.value
+                sheetWidth += bounds.width.value
+            }
             if (exists("parent")) parentLeft += left("parent")
         }
 
-        assertTrue("sheet leaves downward: $sheetTop", sheetTop.isEmpty() || (sheetTop.zipWithNext().all { (a, b) -> b >= a - 0.01f } && sheetTop.last() > 0f))
+        assertTrue("sheet leaves toward the end: $sheetLeft", sheetLeft.isEmpty() || (sheetLeft.zipWithNext().all { (a, b) -> b >= a - 0.01f } && sheetLeft.last() > 0f))
+        assertTrue("it never drops: $sheetTop", sheetTop.all { kotlin.math.abs(it) < 0.5f })
+        assertTrue("it is never scaled: $sheetWidth", sheetWidth.all { kotlin.math.abs(it - windowWidthDp) < 0.6f })
         assertTrue("parent never moved: $parentLeft", parentLeft.all { kotlin.math.abs(it) < 0.5f })
+    }
+
+    @Test
+    fun theParentReturnsFromBehindItsStartEdgeWithoutScalingOrFading() {
+        show(full)
+        compose.runOnIdle { nav.navigate(RegisterRoute) }
+        frame(60)
+
+        compose.runOnIdle { nav.popBackStack() }
+        frame()
+        val parentLeft = ArrayList<Float>()
+        val parentWidth = ArrayList<Float>()
+        repeat(30) {
+            frame()
+            if (exists("parent")) {
+                val bounds = compose.onNodeWithTag("parent").getUnclippedBoundsInRoot()
+                parentLeft += bounds.left.value
+                parentWidth += bounds.width.value
+            }
+        }
+
+        assertTrue("the parent starts no further back than 20% of the width: $parentLeft", parentLeft.all { it >= -windowWidthDp * 0.2f - 1f && it <= 0.5f })
+        assertTrue("it travels toward rest: $parentLeft", parentLeft.zipWithNext().all { (a, b) -> b >= a - 0.01f })
+        assertTrue("it is never scaled: $parentWidth", parentWidth.all { kotlin.math.abs(it - windowWidthDp) < 0.6f })
     }
 
     @Test

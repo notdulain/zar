@@ -1,5 +1,7 @@
 package com.example.zar.features.transactions.presentation.manual.screen
 
+import com.example.zar.core.presentation.components.sheetBackScrim
+import com.example.zar.core.presentation.components.sheetBackSlide
 import androidx.compose.ui.text.input.VisualTransformation
 import com.example.zar.core.presentation.privacy.amountFieldTransformation
 import androidx.activity.compose.BackHandler
@@ -163,24 +165,24 @@ internal fun ManualEntryContent(uiState: ManualEntryUiState, focusNote: Boolean,
     }
 
     BoxWithConstraints(Modifier.fillMaxSize().imePadding()) {
-        Box(Modifier.fillMaxSize().background(colors.scrim.copy(alpha = 0.64f)).clickable(onClick = actions.onClose))
+        Box(Modifier.fillMaxSize().sheetBackScrim().background(colors.scrim.copy(alpha = 0.64f)).clickable(onClick = actions.onClose))
         if (openPicker == "date") {
             ManualDatePickerSheet(
                 date = uiState.date,
                 onCancel = { openPicker = null },
                 onSetDate = { actions.onDate(it); openPicker = null },
-                modifier = Modifier.align(Alignment.BottomCenter),
+                modifier = Modifier.align(Alignment.BottomCenter).sheetBackSlide(),
             )
         } else if (openPicker == "time") {
             ManualTimePickerSheet(
                 time = uiState.time,
                 onCancel = { openPicker = null },
                 onSetTime = { actions.onTime(it); openPicker = null },
-                modifier = Modifier.align(Alignment.BottomCenter),
+                modifier = Modifier.align(Alignment.BottomCenter).sheetBackSlide(),
             )
         } else {
         Column(
-            Modifier.align(Alignment.BottomCenter).fillMaxWidth().heightIn(max = maxHeight - 48.dp)
+            Modifier.align(Alignment.BottomCenter).sheetBackSlide().fillMaxWidth().heightIn(max = maxHeight - 48.dp)
                 .clip(ZarShapes.sheet).background(colors.surface).pointerInput(Unit) { detectTapGestures {} }.padding(top = 10.dp),
         ) {
             Box(Modifier.fillMaxWidth(), Alignment.Center) {

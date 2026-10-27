@@ -15,4 +15,10 @@
     </style>
 
     <style name="Theme.Zar" parent="Theme.Zar.Base" />
+
+    <!-- Sheet dialog windows: the platform enter animation as before, no exit animation (Back slides the sheet instead). -->
+    <style name="ZarSheetWindowAnimation">
+        <item name="android:windowEnterAnimation">@anim/zar_sheet_enter</item>
+        <item name="android:windowExitAnimation">@anim/zar_sheet_exit_none</item>
+    </style>
 </resources>
