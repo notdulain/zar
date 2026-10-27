@@ -75,9 +75,6 @@ private fun buildRouteTransitions(policy: MotionPolicy, tabTravelPx: Int): ZarRo
 
 internal fun NavDestination.topLevelDestination(): TopLevelDestination? = when {
     hasRoute<HomeRoute>() -> TopLevelDestination.Home
-    hasRoute<ActivityRoute>() -> TopLevelDestination.Activity
-    hasRoute<PlansRoute>() -> TopLevelDestination.Plans
-    hasRoute<MoreRoute>() -> TopLevelDestination.More
     else -> null
 }
 

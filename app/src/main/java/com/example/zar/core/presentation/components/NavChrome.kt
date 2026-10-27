@@ -40,9 +40,10 @@ import com.example.zar.core.presentation.motion.ZarMotion
 import com.example.zar.core.presentation.theme.ZarDimens
 
 /**
- * True while a shared chrome host (see `ZarNavHost`) is drawing the bottom navbar outside the content NavHost. A
- * screen's [ZarScreenScaffold] then only reserves the same height, so the one navbar stays stationary while content
- * travels between tabs. Outside the host (previews, component tests) the scaffold draws the chrome itself.
+ * True while a shared chrome host (see `ZarNavHost`) is drawing the bottom navbar outside the content NavHost and its
+ * pager. The chrome floats over the page content: a screen's [ZarScreenScaffold] reserves nothing for it and only pads the
+ * end of its content so the last item can scroll clear. Outside the host (previews, component tests) the scaffold overlays
+ * the chrome itself.
  */
 val LocalNavChromeHost = compositionLocalOf { false }
 
@@ -64,6 +65,7 @@ fun ZarTopLevelChrome(
     onAddOption: (AddEntryOption) -> Unit,
     controller: NavCapsuleController,
     modifier: Modifier = Modifier,
+    driveCapsule: Boolean = true,
 ) {
     val policy = LocalZarMotion.current
     val density = LocalDensity.current
@@ -109,6 +111,7 @@ fun ZarTopLevelChrome(
                             selected = destination,
                             onNavigate = onNavigate,
                             controller = controller,
+                            driveCapsule = driveCapsule,
                             modifier = Modifier.width(navWidth),
                         )
                         ZarAddButton(addDescription) { showAddSheet = true }
@@ -126,32 +129,6 @@ fun ZarTopLevelChrome(
                 onAddOption(option)
             },
         )
-    }
-}
-
-/**
- * Reserves exactly the height [ZarTopLevelChrome] occupies, so a screen's content still clears the shared chrome
- * without drawing a second navbar.
- */
-@Composable
-fun ZarBottomChromeSpace(modifier: Modifier = Modifier) {
-    // The chrome is hidden while the keyboard is open (Z190), so nothing is reserved for it either.
-    if (rememberKeyboardOpen()) {
-        Spacer(modifier.fillMaxWidth().windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom)))
-        return
-    }
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom))
-            .padding(
-                start = ZarDimens.ScreenGutter,
-                end = ZarDimens.ScreenGutter,
-                top = ZarDimens.SpaceMd,
-                bottom = ZarDimens.NavBottomGap,
-            ),
-    ) {
-        Spacer(Modifier.height(ZarDimens.NavHeight))
     }
 }
 

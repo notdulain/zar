@@ -53,6 +53,9 @@ object ZarMotion {
     val NavRevealRise = 8.dp
     const val NAV_REVEAL_MILLIS = 160
 
+    /** The incoming page of a tab jump over one or more pages: TabTravel slide and this fade. */
+    const val TAB_ARRIVAL_MILLIS = 160
+
     /** Every navbar slot has the same weight: selecting a tab never reshapes the row. */
     const val NAV_SLOT_WEIGHT = 1f
 

@@ -11,18 +11,9 @@ data object SignInRoute
 @Serializable
 data object RegisterRoute
 
-// Signed-in
+// Signed-in. The four tabs (Home, Activity, Plans, More) are the pages of one pager inside this one destination.
 @Serializable
 data object HomeRoute
-
-@Serializable
-data object ActivityRoute
-
-@Serializable
-data object PlansRoute
-
-@Serializable
-data object MoreRoute
 
 @Serializable
 data object SettingsRoute

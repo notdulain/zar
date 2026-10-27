@@ -5,7 +5,10 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.Alignment
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.calculateEndPadding
@@ -43,12 +46,12 @@ import androidx.compose.foundation.layout.size
  * - [NavChrome.Full]: pill navbar and Add button share one floating row. Every other top-level screen, and Home once
  *   another tab has been visited, uses this; [chrome] comes from the session in [LocalNavSession].
  *
- * [content] receives padding that already clears the navbar and the Add button, so lists can
- * scroll fully into view.
+ * The chrome floats over the content: nothing is reserved or painted behind it. [content] receives bottom padding that
+ * is only an end clearance (system inset + gap + chrome height + 24dp), so the last item can scroll fully into view above
+ * the pill while earlier items scroll behind it. The padding belongs inside the scrolling content, never outside it.
  *
- * The chrome itself is drawn once for the whole signed-in graph by `ZarNavHost` (see [LocalNavChromeHost]); here the
- * scaffold only reserves the same height, so the one navbar stays stationary while content travels between tabs.
- * Outside that host (previews, component tests) the scaffold draws the chrome itself.
+ * The chrome itself is drawn once for the whole signed-in graph by `ZarNavHost` (see [LocalNavChromeHost]), outside the
+ * tab pager. Outside that host (previews, component tests) the scaffold overlays the chrome itself.
  */
 @Composable
 fun ZarScreenScaffold(
@@ -69,43 +72,49 @@ fun ZarScreenScaffold(
     // A hero that extends under the status bar (Home, Activity) needs white system glyphs and no top inset.
     // Nothing is restored on exit: the screen opened next sets what it needs, and putting the old value back
     // after the transition left white glyphs on the light screens opened from Activity and More.
-    DisposableEffect(activity, view, heroUnderStatusBar, isLightTheme) {
-        val controller = activity?.let { WindowCompat.getInsetsController(it.window, view) }
-        controller?.isAppearanceLightStatusBars = !heroUnderStatusBar && isLightTheme
+    // Inside the tab pager the host sets this once for all four tabs, because two pages are on screen mid-swipe.
+    DisposableEffect(activity, view, heroUnderStatusBar, isLightTheme, sharedChromeHost) {
+        if (!sharedChromeHost) {
+            val controller = activity?.let { WindowCompat.getInsetsController(it.window, view) }
+            controller?.isAppearanceLightStatusBars = !heroUnderStatusBar && isLightTheme
+        }
         onDispose { }
     }
 
+    val keyboardOpen = rememberKeyboardOpen()
+
+    Box(modifier) {
     Scaffold(
-        modifier = modifier,
+        modifier = Modifier.fillMaxSize(),
         containerColor = MaterialTheme.colorScheme.background,
         contentWindowInsets = if (heroUnderStatusBar) {
             WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom)
         } else {
             WindowInsets.safeDrawing
         },
-        bottomBar = {
-            if (sharedChromeHost) {
-                ZarBottomChromeSpace()
-            } else {
-                ZarTopLevelChrome(
-                    destination = destination,
-                    chrome = chrome,
-                    onNavigate = onNavigate,
-                    onAddOption = onAddOption,
-                    controller = LocalNavCapsuleController.current ?: remember { NavCapsuleController() },
-                )
-            }
-        },
     ) { inner ->
-        // Preserve side insets as well, so landscape content clears display cutouts.
+        // Preserve side insets as well, so landscape content clears display cutouts. The chrome floats over the content, so
+        // the only bottom padding is the end clearance that lets the last item scroll 24dp above the pill (nothing is
+        // painted or reserved there); with the keyboard open the chrome is hidden and the clearance is the usual gap.
         content(
             PaddingValues(
                 start = inner.calculateStartPadding(layoutDirection),
                 end = inner.calculateEndPadding(layoutDirection),
                 top = inner.calculateTopPadding(),
-                bottom = inner.calculateBottomPadding() + ZarDimens.NavBottomGap,
+                bottom = inner.calculateBottomPadding() + if (keyboardOpen) ZarDimens.NavBottomGap else ZarDimens.ChromeClearance,
             ),
         )
+    }
+    if (!sharedChromeHost) {
+        ZarTopLevelChrome(
+            destination = destination,
+            chrome = chrome,
+            onNavigate = onNavigate,
+            onAddOption = onAddOption,
+            controller = LocalNavCapsuleController.current ?: remember { NavCapsuleController() },
+            modifier = Modifier.align(Alignment.BottomCenter),
+        )
+    }
     }
 }
 

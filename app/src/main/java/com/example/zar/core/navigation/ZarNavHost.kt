@@ -29,6 +29,23 @@ import com.example.zar.core.presentation.components.LocalNavSession
 import com.example.zar.core.presentation.components.NavCapsuleController
 import com.example.zar.core.presentation.components.TopLevelDestination
 import com.example.zar.core.presentation.components.ZarTopLevelChrome
+import com.example.zar.core.presentation.components.DriveCapsule
+import com.example.zar.core.presentation.components.LocalPagerGestureLock
+import com.example.zar.core.presentation.components.PagerGestureLock
+import com.example.zar.core.presentation.components.TabPagerBackHandler
+import com.example.zar.core.presentation.components.TabPagerHost
+import com.example.zar.core.presentation.components.rememberTabPagerController
+import com.example.zar.core.presentation.motion.LocalZarMotion
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.isImeVisible
+import androidx.compose.runtime.snapshotFlow
+import androidx.navigation.NavDestination.Companion.hasRoute
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
+import androidx.core.view.WindowCompat
+import com.example.zar.core.presentation.components.findActivity
 import com.example.zar.features.accounts.presentation.screen.AccountDetailScreen
 import com.example.zar.features.accounts.presentation.screen.AccountFormScreen
 import com.example.zar.features.accounts.presentation.screen.AccountsScreen
@@ -86,11 +103,23 @@ fun ZarNavHost(
     // Whether the full navbar has been revealed belongs to the graph (see ZarRoot), so no screen can reset it by being
     // created again. Reaching any other tab reveals it, by tap, Back or restoration alike.
     val navSession = LocalNavSession.current
-    val currentDestination = navController.currentBackStackEntryAsState().value?.destination
-    SideEffect { currentDestination?.topLevelDestination()?.let(navSession::onTopLevelArrived) }
-    val onNavigate: (TopLevelDestination) -> Unit = {
-        navSession.onTopLevelArrived(it)
-        navController.navigateToTopLevel(it)
+    // The tabs are "on top" only when they are the one thing visible: not while a child screen or a sheet is arriving or leaving.
+    val visibleEntries by navController.visibleEntries.collectAsStateWithLifecycle()
+    val tabsOnTop = visibleEntries.size == 1 && visibleEntries.single().destination.hasRoute<HomeRoute>()
+    val policy = LocalZarMotion.current
+    // The four tabs are the pages of one pager that lives in the single tabs destination. Its state is owned here, above
+    // the NavHost, so the chrome (which sits outside the pager) can follow it and a child route popping back finds
+    // the same page.
+    val tabs = rememberTabPagerController()
+    // Reaching any other tab reveals the full navbar, by tap, swipe, Back or restoration alike.
+    LaunchedEffect(tabs) {
+        snapshotFlow { tabs.pagerState.currentPage }.collect { navSession.onTopLevelArrived(TopLevelDestination.entries[it]) }
+    }
+    val onNavigate: (TopLevelDestination) -> Unit = { destination ->
+        navSession.onTopLevelArrived(destination)
+        // From a child screen, return to the tabs first; on the tabs, scroll the pager.
+        if (navController.currentBackStackEntry?.destination?.hasRoute<HomeRoute>() != true) navController.popBackStack(HomeRoute, inclusive = false)
+        tabs.select(destination, policy)
     }
     val onAddOption: (AddEntryOption) -> Unit = { option ->
         when (option) {
@@ -116,39 +145,41 @@ fun ZarNavHost(
                 popExitTransition = transitions.popExit,
             ) {
         composable<HomeRoute> {
-            HomeScreen(
-                onNavigate = onNavigate,
-                onAddOption = onAddOption,
-                onOpenReview = { navController.navigate(NeedsReviewRoute) },
-                onOpenFreelance = { navController.navigate(FreelanceRoute) },
-                onOpenBills = { navController.navigate(BillsRoute) },
-                onOpenBill = { id -> navController.navigate(BillRoute(id)) },
-            )
-        }
-        composable<ActivityRoute> {
-            ActivityScreen(
-                onNavigate = onNavigate,
-                onAddOption = onAddOption,
-                onOpenEntry = { id -> navController.navigate(EntryDetailRoute(id)) },
-            )
-        }
-        composable<PlansRoute> {
-            PlansScreen(onNavigate = onNavigate, onAddOption = onAddOption)
-        }
-        composable<MoreRoute> {
-            MoreScreen(
-                onNavigate = onNavigate,
-                onAddOption = onAddOption,
-                onOpenSettings = { navController.navigate(SettingsRoute) },
-                onOpenAccounts = { navController.navigate(AccountsRoute) },
-                onOpenIncome = { navController.navigate(IncomeRoute) },
-                onOpenFreelance = { navController.navigate(FreelanceRoute) },
-                onOpenCrypto = { navController.navigate(CryptoRoute) },
-                onOpenCapture = { navController.navigate(CaptureRoute) },
-                onOpenBills = { navController.navigate(BillsRoute) },
-                onOpenReminder = { navController.navigate(ReminderSettingsRoute) },
-                onOpenExport = { navController.navigate(ExportRoute) },
-                onOpenRules = { navController.navigate(CategoryRulesRoute) },
+            TabsDestination(
+                tabs = tabs,
+                scrollLocked = !tabsOnTop,
+                page = { destination ->
+                    when (destination) {
+                        TopLevelDestination.Home -> HomeScreen(
+                            onNavigate = onNavigate,
+                            onAddOption = onAddOption,
+                            onOpenReview = { navController.navigate(NeedsReviewRoute) },
+                            onOpenFreelance = { navController.navigate(FreelanceRoute) },
+                            onOpenBills = { navController.navigate(BillsRoute) },
+                            onOpenBill = { id -> navController.navigate(BillRoute(id)) },
+                        )
+                        TopLevelDestination.Activity -> ActivityScreen(
+                            onNavigate = onNavigate,
+                            onAddOption = onAddOption,
+                            onOpenEntry = { id -> navController.navigate(EntryDetailRoute(id)) },
+                        )
+                        TopLevelDestination.Plans -> PlansScreen(onNavigate = onNavigate, onAddOption = onAddOption)
+                        TopLevelDestination.More -> MoreScreen(
+                            onNavigate = onNavigate,
+                            onAddOption = onAddOption,
+                            onOpenSettings = { navController.navigate(SettingsRoute) },
+                            onOpenAccounts = { navController.navigate(AccountsRoute) },
+                            onOpenIncome = { navController.navigate(IncomeRoute) },
+                            onOpenFreelance = { navController.navigate(FreelanceRoute) },
+                            onOpenCrypto = { navController.navigate(CryptoRoute) },
+                            onOpenCapture = { navController.navigate(CaptureRoute) },
+                            onOpenBills = { navController.navigate(BillsRoute) },
+                            onOpenReminder = { navController.navigate(ReminderSettingsRoute) },
+                            onOpenExport = { navController.navigate(ExportRoute) },
+                            onOpenRules = { navController.navigate(CategoryRulesRoute) },
+                        )
+                    }
+                },
             )
         }
         composable<NeedsReviewRoute> {
@@ -328,32 +359,47 @@ fun ZarNavHost(
         }
             }
         }
-        // One shared bottom chrome above the content NavHost: it does not move while peer-tab content travels, and its
-        // selected capsule is retained here for the whole session.
-        currentDestination?.topLevelDestination()?.let { topLevel ->
+        // One shared bottom chrome above the content NavHost: it does not move while the pager swipes, and its selected
+        // capsule is retained here for the whole session. It is shown only when the tabs are the one thing on screen, so it
+        // never draws over a child screen that is still leaving.
+        if (tabsOnTop) {
+            tabs.DriveCapsule(capsuleController)
             ZarTopLevelChrome(
-                destination = topLevel,
-                chrome = navSession.chromeFor(topLevel),
+                destination = tabs.selected,
+                chrome = navSession.chromeFor(tabs.selected),
                 onNavigate = onNavigate,
                 onAddOption = onAddOption,
                 controller = capsuleController,
+                driveCapsule = false,
                 modifier = Modifier.align(Alignment.BottomCenter),
             )
         }
     }
 }
 
-/** The top-level tab this destination is, or null for child screens, dialogs and forms. */
-/** Switches between main areas without stacking copies; Back from any of them returns to Home. */
-private fun NavHostController.navigateToTopLevel(destination: TopLevelDestination) {
-    val route: Any = when (destination) {
-        TopLevelDestination.Home -> HomeRoute
-        TopLevelDestination.Activity -> ActivityRoute
-        TopLevelDestination.Plans -> PlansRoute
-        TopLevelDestination.More -> MoreRoute
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun TabsDestination(
+    tabs: com.example.zar.core.presentation.components.TabPagerController,
+    scrollLocked: Boolean,
+    page: @Composable (TopLevelDestination) -> Unit,
+) {
+    val lock = remember { PagerGestureLock() }
+    val keyboardOpen = WindowInsets.isImeVisible
+    // All four tabs open on a dark hero under the status bar, so the glyphs are light on every page of the pager.
+    val activity = LocalContext.current.findActivity()
+    val view = LocalView.current
+    DisposableEffect(activity, view) {
+        activity?.let { WindowCompat.getInsetsController(it.window, view).isAppearanceLightStatusBars = false }
+        onDispose { }
     }
-    navigate(route) {
-        popUpTo<HomeRoute>()
-        launchSingleTop = true
+    CompositionLocalProvider(LocalPagerGestureLock provides lock) {
+        TabPagerBackHandler(tabs, enabled = !scrollLocked)
+        TabPagerHost(
+            controller = tabs,
+            userScrollEnabled = !scrollLocked && !keyboardOpen && !lock.locked,
+            page = page,
+        )
     }
 }
+

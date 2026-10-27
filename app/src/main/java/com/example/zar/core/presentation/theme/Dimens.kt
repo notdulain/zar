@@ -43,4 +43,8 @@ object ZarDimens {
     val NavCapsuleHeight = 59.dp
     /** Figma floats the nav 36dp above the screen edge: this gap plus the 24dp gesture inset. */
     val NavBottomGap = 12.dp
+    /** The last item of a scrolling tab ends this far above the floating chrome (Figma R2-H4). */
+    val NavContentGap = 24.dp
+    /** Bottom padding that lets the last item clear the floating chrome: gap + chrome height + 24dp, above the system inset. */
+    val ChromeClearance = NavBottomGap + NavHeight + NavContentGap
 }

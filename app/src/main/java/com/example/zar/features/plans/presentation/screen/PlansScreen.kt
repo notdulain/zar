@@ -10,6 +10,9 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
@@ -182,10 +185,15 @@ internal fun PlansScreenContent(
     ) { padding ->
         val scrollState = rememberScrollState()
         val heroOffset = scrollState.heroDisplacement()
+        val layoutDirection = androidx.compose.ui.platform.LocalLayoutDirection.current
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
+                .padding(
+                    start = padding.calculateStartPadding(layoutDirection),
+                    end = padding.calculateEndPadding(layoutDirection),
+                    top = padding.calculateTopPadding(),
+                )
                 .verticalScroll(scrollState),
             verticalArrangement = Arrangement.spacedBy(ZarDimens.SpaceMd),
         ) {
@@ -211,6 +219,7 @@ internal fun PlansScreenContent(
                 allowanceSection()
                 PlanShellCard(R.string.home_bills, R.string.plans_bills_empty)
             }
+            Spacer(Modifier.height(padding.calculateBottomPadding()))
         }
     }
 }

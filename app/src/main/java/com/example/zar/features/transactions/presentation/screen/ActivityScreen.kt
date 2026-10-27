@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
+import com.example.zar.core.presentation.components.ownHorizontalDrags
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -193,7 +194,7 @@ internal fun ActivityBody(
     val heroOffset = listState.heroDisplacement()
 
     // The hero runs under the status bar and the list scrolls behind the floating nav, so only the sides are
-    // inset here; the bottom inset becomes scroll padding that lets the last row clear the nav.
+    // inset here; the bottom clearance becomes scroll padding that lets the last row end 24dp above the nav.
     LazyColumn(
         state = listState,
         modifier = modifier
@@ -202,7 +203,7 @@ internal fun ActivityBody(
                 start = contentPadding.calculateStartPadding(layoutDirection),
                 end = contentPadding.calculateEndPadding(layoutDirection),
             ),
-        contentPadding = PaddingValues(bottom = contentPadding.calculateBottomPadding() + ZarDimens.SpaceXl),
+        contentPadding = PaddingValues(bottom = contentPadding.calculateBottomPadding()),
         verticalArrangement = Arrangement.spacedBy(ZarDimens.SpaceXs),
     ) {
         item(key = ZarHeroItemKey) {
@@ -504,7 +505,7 @@ private fun FilterRow(
     val accountName = state.accounts.firstOrNull { it.id == filter.accountId }?.name
     val remove = stringResource(R.string.activity_remove_filter)
     Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-        Row(Modifier.weight(1f).horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(Modifier.weight(1f).ownHorizontalDrags().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             val chipsActive = filter.accountId != null || filter.preset != DatePreset.THIS_MONTH || filter.showVoided
             if (!chipsActive) {
                 FilterPill(stringResource(R.string.activity_filter_all), selected = true, modifier = Modifier.testTag("activity-chip-all"))

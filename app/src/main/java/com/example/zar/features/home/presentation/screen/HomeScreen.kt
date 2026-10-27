@@ -15,6 +15,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.ScrollState
@@ -137,8 +139,17 @@ internal fun HomeScreenContent(
     ) { padding ->
         // The hero reads this same state for its bounded parallax; nothing else about the scroll changes.
         val scrollState = rememberScrollState()
+        val layoutDirection = androidx.compose.ui.platform.LocalLayoutDirection.current
         Column(
-            Modifier.fillMaxSize().padding(padding).verticalScroll(scrollState),
+            // Only the sides and top are outer padding. The bottom clearance is scroll content, so the list passes behind the
+            // floating nav and its last row ends 24dp above it.
+            Modifier.fillMaxSize()
+                .padding(
+                    start = padding.calculateStartPadding(layoutDirection),
+                    end = padding.calculateEndPadding(layoutDirection),
+                    top = padding.calculateTopPadding(),
+                )
+                .verticalScroll(scrollState),
             verticalArrangement = Arrangement.spacedBy(0.dp),
         ) {
             when (val content = state.content) {
@@ -171,6 +182,7 @@ internal fun HomeScreenContent(
                     scrollState = scrollState,
                 )
             }
+            Spacer(Modifier.height(padding.calculateBottomPadding()))
         }
     }
 }
