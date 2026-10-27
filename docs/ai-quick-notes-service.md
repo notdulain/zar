@@ -86,6 +86,22 @@ Not done by this change. Nothing was deployed.
 4. Debug builds: run the app once and copy the debug token printed in Logcat (`DebugAppCheckProvider`) into App Check, Manage debug tokens. Never commit it. Release builds do not contain the debug provider.
 5. `cd functions && npm ci`, then `npx firebase deploy --only functions:createQuickNoteDraft`.
 
+### "This app could not be verified" on a debug install
+
+Every debug install makes its own App Check debug secret (the SDK stores it in the app's private `shared_prefs`), and the Worker
+accepts it only after that secret is registered under App Check > Zar Android app > Manage debug tokens. A new install, a cleared
+app or a second device therefore starts out unregistered: the App Check exchange answers HTTP 403 "App attestation failed." and Quick
+note shows this message. Nothing about the Worker, the JWT checks or Play Integrity needs to change.
+
+To check and fix one owned install without printing the secret:
+
+1. Read it privately (a debuggable install only): `adb -s <serial> shell run-as com.example.zar cat shared_prefs/com.google.firebase.appcheck.debug.store.*.xml`, taking the `DEBUG_SECRET` string. Keep it in a variable, not in a file, a commit or a chat.
+2. `POST https://firebaseappcheck.googleapis.com/v1/projects/<project number>:exchangeDebugToken`-style check: call `apps/<app id>:exchangeDebugToken?key=<web api key>` with `{"debugToken": "<secret>"}`. 403 means unregistered, 200 with a token means registered.
+3. Register it: `POST .../apps/<app id>/debugTokens` with `{"displayName": "<device name>", "token": "<secret>"}` and an OAuth token from an owner of the Firebase project (the Firebase CLI's login is enough), or paste it in the console. Revoke tokens of devices you no longer use.
+4. Force-stop and reopen the app: the SDK backs off for a while after a refused exchange.
+
+Release builds use Play Integrity and have no debug secret. The app logs only a category (tag `ZarQuickNote`, see `AttestationDiagnostics`), never a token.
+
 ### Local development
 
 ```bash
