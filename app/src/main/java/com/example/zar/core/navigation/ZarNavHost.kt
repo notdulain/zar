@@ -186,7 +186,10 @@ fun ZarNavHost(
                 onOpenIncome = { id -> navController.navigate(IncomeFormRoute(incomeId = id)) },
             )
         }
-        composable<IncomeFormRoute> {
+        // A dialog like the Add session, so the list (or Activity row) it was opened from stays visible behind the scrim.
+        dialog<IncomeFormRoute>(
+            dialogProperties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
+        ) {
             IncomeFormScreen(onDone = { navController.popBackStack() })
         }
         dialog<ManualEntryRoute>(

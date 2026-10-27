@@ -190,7 +190,7 @@ private fun IncomeSheet(
         // The close target is 48dp; the padding is trimmed by the same amount so the header keeps Figma's 60dp height
         // and the X stays where Figma draws it.
         Row(
-            Modifier.fillMaxWidth().padding(start = 24.dp, end = 12.dp, top = 2.dp, bottom = 10.dp),
+            Modifier.fillMaxWidth().padding(start = 24.dp, end = 12.dp, top = 2.dp, bottom = if (uiState.isEditing) 4.dp else 10.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -234,7 +234,7 @@ private fun IncomeSheet(
         } else {
             // Figma Z162 rhythm: 48dp rows pitched by hairlines, 17dp above a block, 16dp between its label and chips.
             Column(
-                Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState()).padding(start = 24.dp, end = 24.dp, top = 18.dp, bottom = 10.dp),
+                Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState()).padding(start = 24.dp, end = 24.dp, top = if (uiState.isEditing) 0.dp else 18.dp, bottom = 10.dp),
             ) {
                 AmountRow(uiState, actions.onAmountChange, actions.onAccountSelect)
                 FieldError(amountError(uiState.problems), "income-amount-error")
