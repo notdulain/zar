@@ -13,7 +13,9 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
@@ -230,21 +232,24 @@ private fun IncomeSheet(
                 Text(stringResource(R.string.income_message_not_found), style = ZarType.bodyM, color = colors.textSecondary)
             }
         } else {
+            // Figma Z162 rhythm: 48dp rows pitched by hairlines, 17dp above a block, 16dp between its label and chips.
             Column(
-                Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState()).padding(horizontal = 24.dp, vertical = 22.dp),
-                verticalArrangement = Arrangement.spacedBy(18.dp),
+                Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState()).padding(start = 24.dp, end = 24.dp, top = 18.dp, bottom = 10.dp),
             ) {
-                // Figma Z162: amount and currency, the LKR rate when a conversion is needed, account, category,
-                // date and time, then the optional from and note rows.
                 AmountRow(uiState, actions.onAmountChange, actions.onAccountSelect)
                 FieldError(amountError(uiState.problems), "income-amount-error")
+                if (uiState.needsRate) {
+                    Spacer(Modifier.height(10.dp))
+                    RateField(uiState, actions.onRateChange)
+                }
+                Spacer(Modifier.height(10.dp))
                 ZarDivider()
-
-                if (uiState.needsRate) RateField(uiState, actions.onRateChange)
+                Spacer(Modifier.height(17.dp))
 
                 AccountSection(uiState, actions.onAccountSelect)
-
+                Spacer(Modifier.height(16.dp))
                 CategorySection(uiState.category, actions.onCategorySelect)
+                Spacer(Modifier.height(18.dp))
                 ZarDivider()
 
                 DateTimeRow(
@@ -279,7 +284,7 @@ private fun IncomeSheet(
                 )
 
                 uiState.message?.let { message ->
-                    Text(stringResource(message.textRes()), style = ZarType.bodyCaption, color = colors.danger, modifier = Modifier.testTag("income-message"))
+                    Text(stringResource(message.textRes()), style = ZarType.bodyCaption, color = colors.danger, modifier = Modifier.padding(top = 8.dp).testTag("income-message"))
                 }
             }
 
@@ -311,12 +316,12 @@ private fun IncomeSheet(
 @Composable
 private fun FormRow(label: String, content: @Composable RowScope.() -> Unit) {
     if (LocalDensity.current.fontScale >= LARGE_TEXT) {
-        Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Column(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             ZarMonoLabel(label)
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, content = content)
         }
     } else {
-        ZarFormRow(label, content = content)
+        ZarFormRow(label, Modifier.heightIn(min = 48.dp), content = content)
     }
 }
 
