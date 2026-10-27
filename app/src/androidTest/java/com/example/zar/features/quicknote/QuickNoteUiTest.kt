@@ -1,9 +1,11 @@
 package com.example.zar.features.quicknote
 
+import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
@@ -41,6 +43,7 @@ import org.junit.Rule
 import org.junit.Test
 
 /** Production composables with fixed state. They do not claim backend integration. */
+@OptIn(ExperimentalTestApi::class)
 class QuickNoteUiTest {
     @get:Rule val compose = createComposeRule()
 
@@ -299,7 +302,9 @@ class QuickNoteUiTest {
         compose.onNodeWithText("AM").performClick()
         compose.onNodeWithTag("quicknote-time-confirm").performClick()
         compose.runOnIdle { assertEquals(java.time.LocalTime.of(6, 30), (current.value.proposals.single().input as ProposalInput.Actual).time) }
+        compose.waitUntilDoesNotExist(hasTestTag("quicknote-time-picker"), 5_000)
         compose.onNodeWithTag("quicknote-time").performClick()
+        compose.waitUntilAtLeastOneExists(hasTestTag("quicknote-time-clear"), 5_000)
         compose.onNodeWithTag("quicknote-time-clear").performClick()
         compose.runOnIdle { assertEquals(null, (current.value.proposals.single().input as ProposalInput.Actual).time) }
     }
