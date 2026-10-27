@@ -36,7 +36,7 @@ Figma: file `bBBJuQz1Cg8N34FcisKBs9`, page Screens `1:2`. Local PNG exports used
 
 ## Comparisons and known differences
 - Received list matches Z169: back, title, summary card, month group card, trailing amount, Add income pill. Row text wraps differently at 2.0 font (amount drops under the title from 1.3x, per section 25).
-- Add income keeps the app's existing sheet layout (amount on its own line, account and category chips wrap). Only the **field order** of Z162 was applied, as the handoff says. Figma's one-row amount + currency dropdown and the "Today" date shortcut were not built.
+- Add income was restyled to Z162/Z171 in a later pass (compact sheet, inline amount and currency, account and category strips, date/time row): see `income-parity/README.md`. The captures `light/02*` and `dark/02*` in this folder predate it and show the old layout.
 - Z197 shows the hero message with no title line, so the Freelance screen has no heading text.
 - Z186 to Z189, Z192 to Z194, Z196 were not part of the single follow-up (handoff section 10 item 5 lists only Z190, Z191, Z195). Only the Z188/Z189 button and error colours are covered.
 
@@ -45,7 +45,7 @@ Figma: file `bBBJuQz1Cg8N34FcisKBs9`, page Screens `1:2`. Local PNG exports used
 
 Verification of this small parent-authored fix: 15 `NavCapsuleControllerTest` unit tests and 12 `ZarBottomNavMotionTest` emulator tests pass, with no failures or skips. This includes the regression, LTR/RTL end stops, interruption and reduced motion. The earlier Sonnet run counted 1,228 unit tests; its full instrumentation run counted 351 tests, no failures, nine skips. The seven Firebase-backed skips passed in a separate emulator-enabled run; the other two restart-phase skips remain intentional (last separately verified in the prior suite handoff). These are separate runs, not a new combined full-suite result.
 
-The Add Income layout differences above remain scheduled for a separate sequential Sonnet pass; field order alone does not establish visual parity.
+The Add Income layout differences were closed in the later `income-parity/` pass; field order alone had not established visual parity.
 
 ## Restored device state
 Light appearance, Reduce motion off, Hide amounts off, density 420, font scale 1.0, night mode off, animator scale 1.
