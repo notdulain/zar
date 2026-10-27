@@ -205,7 +205,7 @@ class TabPagerTest {
         val home = compose.onNodeWithTag("page-0").getUnclippedBoundsInRoot()
         assertTrue("Plans did not move right: ${leaving.left}", leaving.left > 4.dp)
         assertTrue("Home is not receding in from behind: ${home.left}", home.left < 0.dp && home.left.value > -(width.value * 0.2f) - 1f)
-        
+
         compose.mainClock.autoAdvance = true
         compose.waitForIdle()
         assertEquals(0, tabs.pagerState.currentPage)

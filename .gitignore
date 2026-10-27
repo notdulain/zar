@@ -50,3 +50,7 @@ node_modules/
 openspec/
 spec/
 specs/
+
+# Python helper output
+__pycache__/
+*.py[cod]
