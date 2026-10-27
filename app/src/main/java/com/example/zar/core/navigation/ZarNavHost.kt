@@ -1,6 +1,26 @@
 package com.example.zar.core.navigation
 
 import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.State
+import androidx.compose.animation.AnimatedContentScope
+import androidx.compose.animation.EnterExitState
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.Transition
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.LayoutDirection
+import com.example.zar.core.presentation.motion.ZarMotion
+import com.example.zar.core.presentation.motion.ZarSprings
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
@@ -135,21 +155,12 @@ fun ZarNavHost(
     // Route motion (see RouteTransitions): hierarchy pushes/pops from the logical end, peer tabs a short directional travel,
     // sheet-style routes from below, reduced motion a crossfade of at most 100ms. Root Android Back is never intercepted here.
     val transitions = rememberZarRouteTransitions()
-    Box(modifier = modifier.fillMaxSize()) {
-        CompositionLocalProvider(LocalNavChromeHost provides true) {
-            NavHost(
-                navController = navController,
-                startDestination = HomeRoute,
-                enterTransition = transitions.enter,
-                exitTransition = transitions.exit,
-                popEnterTransition = transitions.popEnter,
-                popExitTransition = transitions.popExit,
-            ) {
-        composable<HomeRoute> {
-            TabsDestination(
-                tabs = tabs,
-                scrollLocked = !tabsOnTop,
-                page = { destination ->
+    val tabsRecede = remember { mutableStateOf<State<Float>?>(null) }
+    // A child that fills the screen covers the tabs (they stay composed beneath it); a dialog route does not.
+    val childCovers = visibleEntries.any { !it.destination.hasRoute<HomeRoute>() && it.destination.navigatorName != "dialog" }
+    val tabsHidden = visibleEntries.isNotEmpty() && visibleEntries.none { it.destination.hasRoute<HomeRoute>() }
+    val onHomeTop = navController.currentBackStackEntryAsState().value?.destination?.hasRoute<HomeRoute>() != false
+    val tabPage: @Composable (TopLevelDestination) -> Unit = { destination ->
                     when (destination) {
                         TopLevelDestination.Home -> HomeScreen(
                             onNavigate = onNavigate,
@@ -187,8 +198,43 @@ fun ZarNavHost(
                             onOpenRules = { navController.navigate(CategoryRulesRoute) },
                         )
                     }
-                },
-            )
+                }
+    CompositionLocalProvider(LocalNavChromeHost provides true) {
+    Box(modifier = modifier.fillMaxSize()) {
+        TabsLayer(
+            tabs = tabs,
+            scrollLocked = !tabsOnTop,
+            blocked = childCovers,
+            hidden = tabsHidden,
+            onHomeTop = onHomeTop,
+            recede = { tabsRecede.value?.value ?: 0f },
+            chrome = {
+                tabs.DriveCapsule(capsuleController)
+                ZarTopLevelChrome(
+                    destination = tabs.selected,
+                    chrome = navSession.chromeFor(tabs.selected),
+                    onNavigate = onNavigate,
+                    onAddOption = onAddOption,
+                    controller = capsuleController,
+                    driveCapsule = false,
+                    modifier = Modifier.align(Alignment.BottomCenter),
+                )
+            },
+            page = tabPage,
+        )
+        run {
+            NavHost(
+                navController = navController,
+                startDestination = HomeRoute,
+                enterTransition = transitions.enter,
+                exitTransition = transitions.exit,
+                popEnterTransition = transitions.popEnter,
+                popExitTransition = transitions.popExit,
+            ) {
+        composable<HomeRoute> {
+            // The tabs are not drawn here: they live under the NavHost so they stay composed while a child covers them
+            // (see TabsLayer). This destination only reports how far the NavHost has receded it.
+            TabsAnchor(transition, tabsRecede)
         }
         composable<NeedsReviewRoute> {
             NeedsReviewScreen(
@@ -371,47 +417,83 @@ fun ZarNavHost(
         }
             }
         }
-        // One shared bottom chrome above the content NavHost: it does not move while the pager swipes, and its selected
-        // capsule is retained here for the whole session. It is shown only when the tabs are the one thing on screen, so it
-        // never draws over a child screen that is still leaving.
-        if (tabsOnTop) {
-            tabs.DriveCapsule(capsuleController)
-            ZarTopLevelChrome(
-                destination = tabs.selected,
-                chrome = navSession.chromeFor(tabs.selected),
-                onNavigate = onNavigate,
-                onAddOption = onAddOption,
-                controller = capsuleController,
-                driveCapsule = false,
-                modifier = Modifier.align(Alignment.BottomCenter),
-            )
-        }
+    }
     }
 }
 
+/**
+ * The tabs and their chrome, drawn beneath the NavHost. They are composed once and stay composed while a child route covers
+ * them, so Back to the tabs reveals a page that is already there instead of composing the whole pager inside the first frame
+ * of the slide (measured on the Pixel 6a: 200 ms in the debug build). A child's own surface covers them; while one does, the
+ * tabs take no touches and no accessibility focus, and once nothing of them shows they are not drawn.
+ */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun TabsDestination(
+private fun TabsLayer(
     tabs: com.example.zar.core.presentation.components.TabPagerController,
     scrollLocked: Boolean,
+    blocked: Boolean,
+    hidden: Boolean,
+    onHomeTop: Boolean,
+    recede: () -> Float,
+    chrome: @Composable BoxScope.() -> Unit,
     page: @Composable (TopLevelDestination) -> Unit,
 ) {
     val lock = remember { PagerGestureLock() }
     val keyboardOpen = WindowInsets.isImeVisible
-    // All four tabs open on a dark hero under the status bar, so the glyphs are light on every page of the pager.
+    // All four tabs open on a dark hero under the status bar, so the glyphs are light whenever the tabs are the screen.
     val activity = LocalContext.current.findActivity()
     val view = LocalView.current
-    DisposableEffect(activity, view) {
-        activity?.let { WindowCompat.getInsetsController(it.window, view).isAppearanceLightStatusBars = false }
+    DisposableEffect(activity, view, onHomeTop) {
+        if (onHomeTop) activity?.let { WindowCompat.getInsetsController(it.window, view).isAppearanceLightStatusBars = false }
         onDispose { }
     }
+    val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
+    val spatial = LocalZarMotion.current.allowsSpatialMotion
     CompositionLocalProvider(LocalPagerGestureLock provides lock) {
         TabPagerBackHandler(tabs, enabled = !scrollLocked)
-        TabPagerHost(
-            controller = tabs,
-            userScrollEnabled = !scrollLocked && !keyboardOpen && !lock.locked,
-            page = page,
-        )
+        Box(
+            Modifier
+                .fillMaxSize()
+                .graphicsLayer { alpha = if (hidden) 0f else 1f }
+                .then(if (blocked) Modifier.blockInput() else Modifier),
+        ) {
+            // The NavHost slides the child over the tabs and, as it arrives, recedes the tabs 0.2 of the width toward the
+            // logical start (and back as it leaves). The pages follow that; the chrome stays put and is covered or uncovered
+            // by the child's edge.
+            Box(
+                Modifier.fillMaxSize().graphicsLayer {
+                    translationX = if (!spatial) 0f else -recede() * ZarMotion.ROUTE_PARENT_RECEDE * size.width * if (rtl) -1f else 1f
+                },
+            ) {
+                TabPagerHost(
+                    controller = tabs,
+                    userScrollEnabled = !scrollLocked && !keyboardOpen && !lock.locked,
+                    page = page,
+                )
+            }
+            chrome()
+        }
     }
 }
 
+/** Lets no touch and no accessibility focus reach what is beneath a covering child. */
+private fun Modifier.blockInput(): Modifier = this
+    .pointerInput(Unit) {
+        awaitPointerEventScope {
+            while (true) awaitPointerEvent(PointerEventPass.Initial).changes.forEach { it.consume() }
+        }
+    }
+    .clearAndSetSemantics { }
+
+/** The tabs destination itself is empty; it reports the NavHost's recede of the tabs (0 in place, 1 fully receded). */
+@Composable
+private fun AnimatedContentScope.TabsAnchor(transition: Transition<EnterExitState>, holder: MutableState<State<Float>?>) {
+    // The same two specs the NavHost uses for this destination: a spring as a child arrives, a seekable tween as it leaves.
+    val receded = transition.animateFloat(label = "tabsRecede", transitionSpec = {
+        if (targetState == EnterExitState.Visible) tween(ZarMotion.POP_MILLIS, easing = FastOutSlowInEasing)
+        else spring(ZarSprings.Route.dampingRatio, ZarSprings.Route.stiffness)
+    }) { if (it == EnterExitState.Visible) 0f else 1f }
+    SideEffect { holder.value = receded }
+    Box(Modifier.fillMaxSize())
+}

@@ -97,7 +97,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("serial"); ap.add_argument("out")
     ap.add_argument("--package", default="com.example.zar.perf")
-    ap.add_argument("--only", default="cold,warm,home-scroll,taps")
+    ap.add_argument("--only", default="cold,warm,home-scroll,taps,child")
     ap.add_argument("--repeat", type=int, default=1)
     ap.add_argument("--settle", type=float, default=1.5, help="seconds idle on Home after launch before the first gesture")
     a = ap.parse_args()
@@ -131,6 +131,18 @@ def main():
                 d.tab_burst(spots, ["Plans", "More", "Activity", "Home"] * 2, gap=.15); time.sleep(1.0)
                 d.tab_burst(spots, ["Plans", "Home", "More", "Activity"], gap=.6); time.sleep(1.0)
             run(d, f"nav-taps{tab}", taps, ms=12000)
+        if "child" in want:
+            # Open Settings from More and press Back: push and pop of a child route over the warmed tabs.
+            d.launch(); time.sleep(a.settle)
+            d.swipe_h(1); time.sleep(1.2)
+            d.tab("More") if False else d.tap(desc="More"); time.sleep(1.2)
+            if not d.find(text="Settings"):
+                d.drag_y(.8, .3, 500); time.sleep(.6)
+            settings = d.find(text="Settings")
+            def push():
+                d.tap_node(settings); time.sleep(1.6)
+            run(d, f"child-push{tab}", push, ms=7000)
+            run(d, f"child-pop{tab}", lambda: (d.sh("shell", "input", "keyevent", "KEYCODE_BACK"), time.sleep(1.6)), ms=7000)
     print("traces in", a.out)
 
 
