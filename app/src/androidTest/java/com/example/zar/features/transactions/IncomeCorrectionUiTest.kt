@@ -41,10 +41,11 @@ class IncomeCorrectionUiTest {
             }
         }
         compose.onAllNodesWithText("USD bank · USD").assertCountEquals(0)
-        compose.onNodeWithText("Bank · LKR").performScrollTo().performClick()
+        compose.onNodeWithTag("income-account-usd").assertDoesNotExist()
+        compose.onNodeWithTag("income-account-bank").performScrollTo().performClick()
         compose.onNodeWithTag("income-time").performScrollTo().assertIsDisplayed().performClick()
         compose.onNodeWithText("AM").performClick()
-        compose.onNodeWithTag("income-time-confirm").performClick()
+        compose.onNodeWithText("Set time").performClick()
         compose.runOnIdle {
             assertEquals(bank.id, state.value.accountId)
             assertEquals(LocalTime.of(6, 30), state.value.time)

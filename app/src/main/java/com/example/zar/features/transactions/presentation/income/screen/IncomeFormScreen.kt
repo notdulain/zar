@@ -372,11 +372,12 @@ private fun CurrencySelect(uiState: IncomeFormUiState, current: Currency, onAcco
             Modifier.minimumInteractiveComponentSize()
                 .then(if (interactive) Modifier.clickable(role = Role.DropdownList, onClick = { open = true }) else Modifier)
                 .clip(ZarShapes.sm).background(colors.subtle)
-                .padding(start = 14.dp, end = if (interactive) 12.dp else 14.dp, top = 11.dp, bottom = 11.dp),
+                .padding(start = 14.dp, end = if (interactive) 12.dp else 14.dp, top = 11.dp, bottom = 11.dp)
+                .testTag("income-currency"),
             horizontalArrangement = Arrangement.spacedBy(6.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(current.code, style = ZarType.monoLabel, color = colors.textPrimary, modifier = Modifier.testTag("income-currency"))
+            Text(current.code, style = ZarType.monoLabel, color = colors.textPrimary)
             if (interactive) ZarIcon(R.drawable.ic_ph_caret_down, size = 12.dp, tint = colors.iconMuted)
         }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }, containerColor = colors.surface) {
