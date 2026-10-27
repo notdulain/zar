@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Back-behaviour recordings on an ISOLATED `.perf` install of the running app (one explicit adb serial, synthetic emulator data).
 
-    python3 tools/back-check.py <adb-serial> <out-dir> [--package com.example.zar.perf] [--only name,name]
+    python3 tools/back-check.py <adb-serial> <out-dir> [--package com.example.zar.perf] [--only name,name] [--theme light|dark|both]
 
 Refuses any package that does not end in `.perf`, so the user's real com.example.zar install is never launched, force-stopped or
 written. Each scenario records the screen (screenrecord) and writes a contact sheet of frames (ffmpeg) next to it. A recording
@@ -21,6 +21,7 @@ class B(rm.Dev):
     def __init__(self, serial, pkg, out):
         super().__init__(serial)
         self.pkg, self.out = pkg, Path(out)
+        self.theme = None
         rm.PKG = pkg
         self.out.mkdir(parents=True, exist_ok=True)
 
@@ -58,6 +59,7 @@ class B(rm.Dev):
                         "fps=12,scale=180:-1,tile=8x3", "-frames:v", "1", str(sheet)], check=False)
 
     def record(self, name, body):
+        if self.theme: name = f"{name}-{self.theme}"
         with rm.Recording(self, self.out / f"{name}.mp4"):
             time.sleep(.5)
             body()
@@ -136,13 +138,18 @@ def main():
     ap.add_argument("serial"); ap.add_argument("out")
     ap.add_argument("--package", default="com.example.zar.perf")
     ap.add_argument("--only", default=",".join(SCENARIOS))
+    ap.add_argument("--theme", default="", choices=["", "light", "dark", "both"],
+                    help="write the app's display-preferences file first and suffix every clip with the theme")
     a = ap.parse_args()
     if not a.package.endswith(".perf"):
         sys.exit("refusing: use an isolated .perf install, never the real com.example.zar")
     d = B(a.serial, a.package, a.out)
-    for name in a.only.split(","):
-        print("scenario", name, flush=True)
-        SCENARIOS[name](d)
+    for theme in (["light", "dark"] if a.theme == "both" else [a.theme]):
+        d.theme = theme or None
+        if theme: d.set_theme(theme)
+        for name in a.only.split(","):
+            print("scenario", name, theme, flush=True)
+            SCENARIOS[name](d)
     print("recordings in", a.out)
 
 
