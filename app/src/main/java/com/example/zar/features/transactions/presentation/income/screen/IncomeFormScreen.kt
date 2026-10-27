@@ -288,25 +288,35 @@ private fun IncomeSheet(
                 }
             }
 
-            Row(
-                Modifier.fillMaxWidth().navigationBarsPadding().padding(start = 24.dp, end = 24.dp, top = 4.dp, bottom = 14.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                if (uiState.isEditing) {
-                    ZarButton(
-                        text = stringResource(R.string.income_undo),
-                        onClick = actions.onUndo,
-                        modifier = Modifier.weight(1f).testTag("income-undo"),
-                        style = ZarButtonStyle.Soft,
-                        enabled = !uiState.isSaving,
-                    )
-                }
+            val save: @Composable (Modifier) -> Unit = { modifier ->
                 ZarButton(
                     text = stringResource(R.string.income_save),
                     onClick = actions.onSave,
-                    modifier = Modifier.weight(1f).testTag("income-save"),
+                    modifier = modifier.testTag("income-save"),
                     enabled = !uiState.isSaving,
                 )
+            }
+            val undo: @Composable (Modifier) -> Unit = { modifier ->
+                ZarButton(
+                    text = stringResource(R.string.income_undo),
+                    onClick = actions.onUndo,
+                    modifier = modifier.testTag("income-undo"),
+                    style = ZarButtonStyle.Soft,
+                    enabled = !uiState.isSaving,
+                )
+            }
+            val actionsModifier = Modifier.fillMaxWidth().navigationBarsPadding().padding(start = 24.dp, end = 24.dp, top = 4.dp, bottom = 14.dp)
+            if (uiState.isEditing && LocalDensity.current.fontScale >= STACK_ACTIONS) {
+                // Figma size rules: from 1.5 the two actions stack with Save first (Figma stacks at 2.0; "Undo this income" already clips at 1.5).
+                Column(actionsModifier, verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    save(Modifier.fillMaxWidth())
+                    undo(Modifier.fillMaxWidth())
+                }
+            } else {
+                Row(actionsModifier, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    if (uiState.isEditing) undo(Modifier.weight(1f))
+                    save(Modifier.weight(1f))
+                }
             }
         }
     }
@@ -326,6 +336,7 @@ private fun FormRow(label: String, content: @Composable RowScope.() -> Unit) {
 }
 
 private const val LARGE_TEXT = 1.3f
+private const val STACK_ACTIONS = 1.5f
 
 /** Figma AMOUNT row: the amount, then a currency dropdown that chooses between the currencies of the usable accounts. */
 @Composable
