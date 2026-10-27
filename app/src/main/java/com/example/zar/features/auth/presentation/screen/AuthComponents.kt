@@ -187,7 +187,7 @@ internal fun AuthErrorText(error: AuthError?) {
 }
 
 @Composable
-private fun problemText(problem: CredentialProblem): String = when (problem) {
+internal fun problemText(problem: CredentialProblem): String = when (problem) {
     CredentialProblem.EMAIL_BLANK -> stringResource(R.string.auth_problem_email_blank)
     CredentialProblem.EMAIL_INVALID -> stringResource(R.string.auth_problem_email_invalid)
     CredentialProblem.PASSWORD_BLANK -> stringResource(R.string.auth_problem_password_blank)
@@ -197,7 +197,7 @@ private fun problemText(problem: CredentialProblem): String = when (problem) {
 }
 
 @Composable
-private fun errorText(error: AuthError): String = stringResource(
+internal fun errorText(error: AuthError): String = stringResource(
     when (error) {
         is AuthError.WrongCredentials -> R.string.auth_error_wrong_credentials
         is AuthError.EmailAlreadyInUse -> R.string.auth_error_email_in_use

@@ -68,6 +68,11 @@
     <string name="auth_show">Show</string>
     <string name="auth_hide">Hide</string>
     <string name="auth_sign_in_action">Sign in</string>
+    <string name="auth_signing_in">Signing in…</string>
+    <string name="auth_forgot_short">Forgot?</string>
+    <string name="auth_new_here">New here?  </string>
+    <string name="auth_create_account_link">Create an account</string>
+    <string name="auth_sign_in_headline">Sign in to\nyour account</string>
     <string name="auth_register_action">Create account</string>
     <string name="auth_forgot_password">Forgot password?</string>
     <string name="auth_to_register">New here? Create an account</string>
