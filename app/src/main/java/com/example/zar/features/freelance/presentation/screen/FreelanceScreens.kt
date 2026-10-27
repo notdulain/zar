@@ -1,6 +1,20 @@
 package com.example.zar.features.freelance.presentation.screen
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
+import com.example.zar.core.presentation.components.ZarAddPill
+import com.example.zar.core.presentation.components.ZarBackButton
+import com.example.zar.core.presentation.components.ZarCard
+import com.example.zar.core.presentation.components.ZarSwitch
+import com.example.zar.core.presentation.theme.ZarDimens
+import com.example.zar.core.presentation.theme.ZarGradients
+import com.example.zar.core.presentation.theme.ZarShapes
+import com.example.zar.core.presentation.theme.ZarSubtle
+import com.example.zar.core.presentation.theme.ZarWhite
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -70,6 +84,7 @@ import com.example.zar.core.presentation.components.ZarHeroItemKey
 import com.example.zar.core.presentation.components.heroDisplacement
 import com.example.zar.core.presentation.components.heroParallax
 import com.example.zar.core.presentation.motion.ZarMotion
+import com.example.zar.features.bills.presentation.screen.StatusBarGlyphs
 import com.example.zar.features.freelance.domain.FreelanceProblem
 import com.example.zar.features.freelance.domain.model.MilestoneSummary
 import com.example.zar.features.freelance.domain.model.Outstanding
@@ -80,13 +95,14 @@ import com.example.zar.features.freelance.presentation.viewmodel.ProjectFormView
 import com.example.zar.features.freelance.presentation.viewmodel.ProjectViewModel
 import com.example.zar.features.reminders.presentation.NotificationsOffNote
 import com.example.zar.features.reminders.presentation.rememberNotificationAccess
+import com.example.zar.features.transactions.presentation.activity.screen.DarkStatusBarIcons
 import com.example.zar.features.transactions.presentation.income.IncomeFormat
 import com.example.zar.features.transactions.presentation.income.screen.SummaryHeaderCard
 import com.example.zar.features.transactions.presentation.income.screen.ZarMono
 
 // --- Projects list -------------------------------------------------------------------------
 
-@OptIn(ExperimentalMaterial3Api::class)
+/** Figma Z197: a full-width gradient hero with Back, the owed summary, grouped project cards and a "New project" pill. */
 @Composable
 fun FreelanceScreen(
     onBack: () -> Unit,
@@ -96,118 +112,139 @@ fun FreelanceScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val overdueAlerts by viewModel.overdueAlerts.collectAsStateWithLifecycle()
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.freelance_title)) },
-                navigationIcon = { TextButton(onClick = onBack) { Text(stringResource(R.string.action_back)) } },
-            )
-        },
-        floatingActionButton = { AddButton(onAddProject) },
-    ) { innerPadding ->
-        when {
-            uiState.isLoading -> Loading(Modifier.padding(innerPadding))
-            uiState.loadFailed -> CenteredText(stringResource(R.string.freelance_load_failed), Modifier.padding(innerPadding))
-            else -> {
-                val listState = rememberLazyListState()
-                val heroOffset = listState.heroDisplacement()
-                LazyColumn(
-                    state = listState,
-                    modifier = Modifier.fillMaxSize().padding(innerPadding),
-                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 96.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    item(key = ZarHeroItemKey) { OwedHeader(uiState.outstanding, heroOffset) }
+    val colors = ZarTheme.colors
+    StatusBarGlyphs(onDarkHero = true)
+    val listState = rememberLazyListState()
+    val heroOffset = listState.heroDisplacement()
+    val topInset = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+    Box(Modifier.fillMaxSize().background(colors.canvas)) {
+        LazyColumn(
+            state = listState,
+            modifier = Modifier.fillMaxSize().testTag("freelance-list"),
+            contentPadding = PaddingValues(bottom = 120.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            item(key = ZarHeroItemKey) {
+                OwedHero(uiState.outstanding, uiState.projects.isEmpty(), topInset, onBack, heroOffset)
+            }
+            when {
+                uiState.isLoading -> item {
+                    Box(Modifier.fillMaxWidth().padding(top = 72.dp), Alignment.Center) { CircularProgressIndicator(color = colors.accentSelected) }
+                }
+                uiState.loadFailed -> item { FreelanceNote(stringResource(R.string.freelance_load_failed)) }
+                else -> {
                     item { OverdueAlertsRow(enabled = overdueAlerts, onChange = viewModel::setOverdueAlerts) }
-                    if (uiState.projects.isEmpty()) item { CenteredText(stringResource(R.string.freelance_empty), Modifier.padding(top = 48.dp)) }
+                    if (uiState.projects.isEmpty()) {
+                        item { FreelanceNote(stringResource(R.string.freelance_empty), Modifier.testTag("freelance-empty")) }
+                    }
                     items(uiState.projects, key = { it.project.id.value }) { summary ->
                         ProjectCard(summary, onClick = { onOpenProject(summary.project.id.value) })
                     }
                 }
             }
         }
+        ZarAddPill(
+            text = stringResource(R.string.project_add),
+            onClick = onAddProject,
+            modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 20.dp).testTag("freelance-add"),
+        )
     }
+}
+
+@Composable
+private fun FreelanceNote(text: String, modifier: Modifier = Modifier) {
+    Text(text, style = ZarType.bodyS, color = ZarTheme.colors.textSecondary, modifier = modifier.padding(horizontal = 22.dp, vertical = 4.dp))
 }
 
 @Composable
 private fun OverdueAlertsRow(enabled: Boolean, onChange: (Boolean) -> Unit) {
+    val colors = ZarTheme.colors
     val notifications = rememberNotificationAccess()
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    Column(Modifier.padding(horizontal = 22.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                stringResource(R.string.freelance_overdue_alerts),
-                style = MaterialTheme.typography.bodyMedium,
-                fontFamily = ZarMono,
-                modifier = Modifier.weight(1f),
-            )
-            Switch(checked = enabled, onCheckedChange = { checked ->
+            Text(stringResource(R.string.freelance_overdue_alerts), style = ZarType.bodyS, color = colors.textPrimary, modifier = Modifier.weight(1f).padding(end = 12.dp))
+            ZarSwitch(checked = enabled, onCheckedChange = { checked ->
                 onChange(checked)
                 if (checked) notifications.request()
             })
         }
-        if (enabled && !notifications.enabled) NotificationsOffNote()
+        if (enabled && !notifications.enabled) {
+            Text(stringResource(R.string.reminders_notifications_off), style = ZarType.bodyCaption, color = colors.textAttentionStrong)
+        }
     }
 }
 
 @Composable
-private fun OwedHeader(outstanding: Outstanding?, heroOffset: HeroScrollOffset) {
+private fun OwedHero(outstanding: Outstanding?, noProjects: Boolean, topInset: Dp, onBack: () -> Unit, heroOffset: HeroScrollOffset) {
     val owed = outstanding?.takeUnless { it.isEmpty }
-    SummaryHeaderCard(
-        label = stringResource(R.string.freelance_owed_label),
-        amount = owed?.owed?.display() ?: stringResource(R.string.freelance_owed_none),
-        caption = when {
-            owed == null -> stringResource(R.string.income_header_caption)
-            owed.overdue.isNotEmpty() -> stringResource(R.string.freelance_overdue, owed.overdue.display())
-            else -> pluralStringResource(R.plurals.freelance_owed_caption, owed.projectsWithBalance, owed.projectsWithBalance)
-        },
-        modifier = Modifier.heroParallax(heroOffset, ZarMotion.PARALLAX_TEXT, ZarMotion.ParallaxTextCap),
-    )
+    val textLayer = Modifier.heroParallax(heroOffset, ZarMotion.PARALLAX_TEXT, ZarMotion.ParallaxTextCap)
+    Column(
+        Modifier.fillMaxWidth().clip(ZarShapes.hero).background(ZarGradients.received).padding(top = topInset),
+    ) {
+        ZarBackButton(onBack, stringResource(R.string.action_back), Modifier.padding(start = 10.dp, top = 4.dp), tint = ZarWhite)
+        if (noProjects && owed == null) {
+            // Z197: nothing to summarise, so the hero says so in two plain lines.
+            Text(
+                stringResource(R.string.freelance_hero_empty),
+                style = ZarType.displayTitle.copy(fontSize = 24.sp, lineHeight = 30.sp),
+                color = ZarWhite,
+                textAlign = TextAlign.Center,
+                modifier = textLayer.fillMaxWidth().padding(horizontal = 24.dp, vertical = 36.dp).testTag("freelance-hero"),
+            )
+        } else {
+            Column(textLayer.padding(horizontal = 24.dp).padding(top = 12.dp, bottom = 32.dp).testTag("freelance-hero"), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                ZarMonoLabel(stringResource(R.string.freelance_owed_label), color = ZarSubtle)
+                Text(
+                    owed?.owed?.display() ?: stringResource(R.string.freelance_owed_none),
+                    style = ZarType.amountL,
+                    color = ZarWhite,
+                )
+                Text(
+                    when {
+                        owed == null -> stringResource(R.string.income_header_caption)
+                        owed.overdue.isNotEmpty() -> stringResource(R.string.freelance_overdue, owed.overdue.display())
+                        else -> pluralStringResource(R.plurals.freelance_owed_caption, owed.projectsWithBalance, owed.projectsWithBalance)
+                    },
+                    style = ZarType.bodyS,
+                    color = ZarWhite.copy(alpha = 0.9f),
+                )
+            }
+        }
+    }
 }
 
 @Composable
 private fun ProjectCard(summary: ProjectSummary, onClick: () -> Unit) {
+    val colors = ZarTheme.colors
     val project = summary.project
-    OutlinedCard(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
-        Row(Modifier.padding(horizontal = 16.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                Text(project.name, style = MaterialTheme.typography.bodyLarge, fontFamily = ZarMono)
+    ZarCard(Modifier.padding(horizontal = 10.dp).fillMaxWidth(), onClick = onClick, radius = ZarDimens.RowCardRadius, contentPadding = PaddingValues(horizontal = 16.dp, vertical = 14.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(project.name, style = ZarType.labelButton, color = colors.textPrimary)
                 val details = listOfNotNull(
                     project.client,
                     pluralStringResource(R.plurals.freelance_milestone_count, summary.milestones.size, summary.milestones.size),
                     if (project.isArchived) stringResource(R.string.freelance_archived) else null,
                 )
-                Text(details.joinToString(" · "), style = MaterialTheme.typography.bodySmall, fontFamily = ZarMono, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(details.joinToString(" · "), style = ZarType.bodyCaption, color = colors.textSecondary)
                 Text(
                     stringResource(R.string.freelance_received_of, IncomeFormat.amount(summary.received), summary.expected.display()),
-                    style = MaterialTheme.typography.bodySmall,
-                    fontFamily = ZarMono,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = ZarType.bodyCaption,
+                    color = colors.textSecondary,
                 )
             }
-            Spacer(Modifier.width(12.dp))
-            Column(horizontalAlignment = Alignment.End) {
-                Text(stringResource(R.string.freelance_left, summary.remaining.display()), style = MaterialTheme.typography.bodyMedium, fontFamily = ZarMono)
+            Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(stringResource(R.string.freelance_left, summary.remaining.display()), style = ZarType.bodyM, color = colors.textPrimary)
                 if (summary.overdue.isPositive) {
                     Text(
                         stringResource(R.string.freelance_overdue, IncomeFormat.amount(summary.overdue)),
-                        style = MaterialTheme.typography.labelSmall,
-                        fontFamily = ZarMono,
-                        color = MaterialTheme.colorScheme.error,
+                        style = ZarType.bodyCaption,
+                        color = colors.textAttentionStrong,
                     )
                 }
             }
         }
     }
-}
-
-@Composable
-private fun AddButton(onClick: () -> Unit) {
-    FloatingActionButton(
-        onClick = onClick,
-        shape = CircleShape,
-        containerColor = MaterialTheme.colorScheme.inverseSurface,
-        contentColor = MaterialTheme.colorScheme.inverseOnSurface,
-    ) { Text("+", fontSize = 28.sp) }
 }
 
 // --- Project detail ------------------------------------------------------------------------
@@ -321,6 +358,7 @@ fun ProjectFormScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     LaunchedEffect(uiState.savedProjectId) { uiState.savedProjectId?.let { onSaved(it, !uiState.isEditing) } }
+    DarkStatusBarIcons()
     val colors = ZarTheme.colors
     val notFound = uiState.message == FreelanceMessage.NOT_FOUND
     Column(Modifier.fillMaxSize().background(colors.surface).statusBarsPadding().imePadding()) {

@@ -127,7 +127,8 @@
         <item quantity="other">Across %d projects. Only money not yet received.</item>
     </plurals>
     <string name="freelance_overdue">%1$s overdue</string>
-    <string name="freelance_empty">No projects yet. Tap + to add a client project and its milestones.</string>
+    <string name="freelance_empty">No projects yet. Tap New project to add a client project and its milestones.</string>
+    <string name="freelance_hero_empty">No client projects yet.\nNothing owed right now.</string>
     <string name="freelance_load_failed">Could not load your projects. Check your connection and try again.</string>
     <string name="freelance_left">%1$s left</string>
     <string name="freelance_received_of">Received %1$s of %2$s</string>

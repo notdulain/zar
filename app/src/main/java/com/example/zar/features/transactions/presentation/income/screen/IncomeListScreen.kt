@@ -56,6 +56,7 @@ import com.example.zar.core.presentation.theme.ZarShapes
 import com.example.zar.core.presentation.theme.ZarTheme
 import com.example.zar.core.presentation.theme.ZarType
 import com.example.zar.features.transactions.domain.income.model.IncomeCategory
+import com.example.zar.features.transactions.presentation.activity.screen.DarkStatusBarIcons
 import com.example.zar.features.transactions.presentation.income.IncomeFormat
 import com.example.zar.features.transactions.presentation.income.viewmodel.IncomeListUiState
 import com.example.zar.features.transactions.presentation.income.viewmodel.IncomeListViewModel
@@ -85,6 +86,8 @@ internal fun IncomeListContent(
     onRetry: () -> Unit,
 ) {
     val colors = ZarTheme.colors
+    // A plain light or dark screen with no hero: the clock and icons must contrast with the canvas.
+    DarkStatusBarIcons()
     val backTop = maxOf(4.dp, 54.dp - WindowInsets.statusBars.asPaddingValues().calculateTopPadding())
     Box(Modifier.fillMaxSize().background(colors.canvas)) {
         val listState = rememberLazyListState()

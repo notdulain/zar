@@ -84,7 +84,7 @@ fun ZarIconChip(
 
 /** 44dp back button with the 22dp arrow, at the top-left of a screen. */
 @Composable
-fun ZarBackButton(onClick: () -> Unit, contentDescription: String, modifier: Modifier = Modifier) {
+fun ZarBackButton(onClick: () -> Unit, contentDescription: String, modifier: Modifier = Modifier, tint: Color = ZarTheme.colors.iconStrong) {
     Box(
         modifier
             .size(44.dp)
@@ -96,7 +96,7 @@ fun ZarBackButton(onClick: () -> Unit, contentDescription: String, modifier: Mod
             painterResource(com.example.zar.R.drawable.ic_ph_arrow_left),
             contentDescription = contentDescription,
             modifier = Modifier.size(22.dp),
-            tint = ZarTheme.colors.iconStrong,
+            tint = tint,
         )
     }
 }

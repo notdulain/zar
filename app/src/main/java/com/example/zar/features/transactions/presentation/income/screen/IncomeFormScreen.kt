@@ -197,7 +197,6 @@ internal fun IncomeFormContent(uiState: IncomeFormUiState, actions: IncomeFormAc
                     // Figma Z162 order: amount and currency, the LKR rate when a conversion is needed, account,
                     // category, date and time, then the optional received-from and note.
                     AmountField(uiState, actions.onAmountChange)
-                    ZarDivider()
 
                     if (uiState.needsRate) RateField(uiState, actions.onRateChange)
 
