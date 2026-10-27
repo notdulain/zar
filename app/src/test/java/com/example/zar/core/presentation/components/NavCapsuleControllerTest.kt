@@ -149,7 +149,7 @@ class NavCapsuleControllerTest {
     }
 
     @Test
-    fun theLastTabBouncesPastItsSlotButNeverPastTheOvershootBoundOrThePill() = runTest {
+    fun theCapsuleNeverGoesPastMoreAndLandsOnItsSlot() = runTest {
         val driver = FrameDriver(this, FrameDriver.HZ_120)
         val controller = controller()
         controller.snapTo(ltr[0])
@@ -165,17 +165,14 @@ class NavCapsuleControllerTest {
             peakRight = maxOf(peakRight, bounds.right)
             narrowest = minOf(narrowest, bounds.width)
         }
-        assertTrue("the bounce squashed the capsule to $narrowest", narrowest >= ltr[3].width - 0.01f)
-
-        val end = ltr[3].right
-        assertTrue("no visible overshoot at the end: peak $peakRight vs $end", peakRight > end + 1f)
-        assertTrue("overshoot $peakRight exceeded the ${overshoot}px bound", peakRight <= end + overshoot + 0.001f)
-        assertTrue("left the pill: $peakRight", peakRight <= interior.right)
+        assertTrue("the end stop squashed the capsule to $narrowest", narrowest >= ltr[3].width - 0.01f)
+        assertTrue("overshot More: peak $peakRight vs ${ltr[3].right}", peakRight <= ltr[3].right + 0.001f)
+        assertEquals(ltr[3].right, controller.capsuleBounds()!!.right, 0.6f)
         assertFalse(job.isActive)
     }
 
     @Test
-    fun theFirstTabBouncesPastItsSlotWithinTheSameBound() = runTest {
+    fun theCapsuleNeverGoesPastHome() = runTest {
         val driver = FrameDriver(this, FrameDriver.HZ_60)
         val controller = controller()
         controller.snapTo(ltr[3])
@@ -189,9 +186,39 @@ class NavCapsuleControllerTest {
             peakLeft = minOf(peakLeft, controller.capsuleBounds()!!.left)
         }
 
-        assertTrue("no visible overshoot at the start: $peakLeft", peakLeft < ltr[0].left - 1f)
-        assertTrue("past the overshoot bound: $peakLeft", peakLeft >= ltr[0].left - overshoot - 0.001f)
-        assertTrue("left the pill: $peakLeft", peakLeft >= interior.left)
+        assertTrue("overshot Home: $peakLeft vs ${ltr[0].left}", peakLeft >= ltr[0].left - 0.001f)
+        assertEquals(ltr[0].left, controller.capsuleBounds()!!.left, 0.6f)
+    }
+
+    @Test
+    fun anInteriorTabStillBouncesButOnlyWithinTheOvershootBoundInTheDirectionOfTravel() = runTest {
+        val driver = FrameDriver(this, FrameDriver.HZ_120)
+        val controller = controller()
+        controller.snapTo(ltr[0])
+        controller.select(2)
+
+        fly(driver, controller)
+        runCurrent()
+        var peakRight = 0f
+        repeat(400) {
+            driver.step()
+            peakRight = maxOf(peakRight, controller.capsuleBounds()!!.right)
+        }
+        assertTrue("no bounce on an interior tab: $peakRight", peakRight > ltr[2].right + 0.5f)
+        assertTrue("bounce $peakRight past ${ltr[2].right} exceeded the ${overshoot}px bound", peakRight <= ltr[2].right + overshoot + 0.001f)
+        assertTrue("the bounce left the pill: $peakRight", peakRight <= interior.right)
+
+        // And back to the left, towards an interior tab.
+        controller.select(1)
+        fly(driver, controller)
+        runCurrent()
+        var peakLeft = Float.MAX_VALUE
+        repeat(400) {
+            driver.step()
+            peakLeft = minOf(peakLeft, controller.capsuleBounds()!!.left)
+        }
+        assertTrue("no bounce to the left: $peakLeft", peakLeft < ltr[1].left - 0.5f)
+        assertTrue("left bounce $peakLeft past ${ltr[1].left} exceeded the ${overshoot}px bound", peakLeft >= ltr[1].left - overshoot - 0.001f)
     }
 
     @Test
@@ -230,8 +257,19 @@ class NavCapsuleControllerTest {
             driver.step()
             peakLeft = minOf(peakLeft, controller.capsuleBounds()!!.left)
         }
-        assertTrue("RTL overshoot toward the left edge: $peakLeft", peakLeft < rtl[3].left - 1f && peakLeft >= rtl[3].left - overshoot - 0.001f)
+        assertTrue("RTL overshot the physical left end (More): $peakLeft", peakLeft >= rtl[3].left - 0.001f)
         assertEquals(rtl[3].left, controller.capsuleBounds()!!.left, 0.6f)
+
+        // Back towards the physically rightmost slot (Home in RTL): no overshoot past that end either.
+        controller.select(0)
+        fly(driver, controller)
+        runCurrent()
+        var peakRight = 0f
+        repeat(300) {
+            driver.step()
+            peakRight = maxOf(peakRight, controller.capsuleBounds()!!.right)
+        }
+        assertTrue("RTL overshot the physical right end (Home): $peakRight", peakRight <= rtl[0].right + 0.001f)
     }
 
     @Test

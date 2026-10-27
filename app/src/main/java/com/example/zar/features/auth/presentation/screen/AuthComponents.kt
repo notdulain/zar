@@ -16,6 +16,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -40,6 +41,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import com.example.zar.R
+import com.example.zar.core.presentation.theme.ZarTheme
 import com.example.zar.features.auth.domain.model.AuthError
 import com.example.zar.features.auth.domain.model.CredentialProblem
 import com.example.zar.features.auth.domain.model.CredentialsValidator
@@ -152,6 +154,12 @@ internal fun PrimaryAuthButton(text: String, isLoading: Boolean, onClick: () -> 
     Button(
         onClick = onClick,
         enabled = !isLoading,
+        colors = ButtonDefaults.buttonColors(
+            containerColor = ZarTheme.colors.accentPrimary,
+            contentColor = ZarTheme.colors.textOnInverse,
+            disabledContainerColor = ZarTheme.colors.accentPrimary,
+            disabledContentColor = ZarTheme.colors.textOnInverse,
+        ),
         modifier = Modifier
             .fillMaxWidth()
             .height(52.dp)
@@ -159,7 +167,7 @@ internal fun PrimaryAuthButton(text: String, isLoading: Boolean, onClick: () -> 
     ) {
         Box(contentAlignment = Alignment.Center) {
             if (isLoading) {
-                CircularProgressIndicator(strokeWidth = 2.dp, modifier = Modifier.size(20.dp))
+                CircularProgressIndicator(strokeWidth = 2.dp, color = ZarTheme.colors.textOnInverse, modifier = Modifier.size(20.dp))
             } else {
                 Text(text)
             }
@@ -172,7 +180,7 @@ internal fun AuthErrorText(error: AuthError?) {
     if (error == null) return
     Text(
         text = errorText(error),
-        color = MaterialTheme.colorScheme.error,
+        color = ZarTheme.colors.textAttentionStrong,
         style = MaterialTheme.typography.bodyMedium,
         modifier = Modifier.testTag("auth-error"),
     )

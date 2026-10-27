@@ -290,7 +290,7 @@ private fun PickerShell(title: String, onCancel: () -> Unit, action: String, onA
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Box(Modifier.fillMaxWidth(), Alignment.Center) {
-                Box(Modifier.size(36.dp, 4.dp).background(colors.trackOff, RoundedCornerShape(2.dp)))
+                Box(Modifier.size(36.dp, 4.dp).background(colors.handle, RoundedCornerShape(2.dp)))
             }
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Box(Modifier.size(20.dp).clickable(role = Role.Button, onClickLabel = "Back") { onCancel() }, Alignment.Center) {

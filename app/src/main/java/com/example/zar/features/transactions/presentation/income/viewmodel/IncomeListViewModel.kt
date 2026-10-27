@@ -13,11 +13,15 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import java.time.LocalDate
 import java.time.YearMonth
 import javax.inject.Inject
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 
 data class IncomeRow(
     val id: String,
@@ -46,7 +50,18 @@ class IncomeListViewModel @Inject constructor(
     observeAccounts: ObserveIncomeAccountsUseCase,
 ) : ViewModel() {
 
-    val uiState: StateFlow<IncomeListUiState> = combine(
+    /** Bumped by [retry]; each value starts a fresh observation of the ledger after a load failure. */
+    private val attempt = MutableStateFlow(0)
+
+    val uiState: StateFlow<IncomeListUiState> = attempt.flatMapLatest { observe(observeIncome, observeAccounts) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), IncomeListUiState())
+
+    /** Re-subscribes after "Could not load your income"; shows the loader again until the ledger answers. */
+    fun retry() {
+        attempt.update { it + 1 }
+    }
+
+    private fun observe(observeIncome: ObserveIncomeUseCase, observeAccounts: ObserveIncomeAccountsUseCase) = combine(
         observeIncome(YearMonth.now(ZarTime.ZONE)),
         observeAccounts(),
     ) { overview, accounts ->
@@ -70,6 +85,6 @@ class IncomeListViewModel @Inject constructor(
             months = rows.groupBy { YearMonth.from(it.date) }.map { (month, list) -> IncomeMonth(month, list) },
         )
     }
+        .onStart { emit(IncomeListUiState()) }
         .catch { emit(IncomeListUiState(isLoading = false, loadFailed = true)) }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), IncomeListUiState())
 }

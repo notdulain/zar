@@ -21,8 +21,8 @@ import kotlin.coroutines.coroutineContext
  *
  * The capsule is a measured rectangle (x and width) that springs toward [targetRect], the slot of [targetIndex] in the
  * latest measured layout. Springing the rectangle rather than a slot index keeps it continuous when the selected tab's
- * slot widens at selection time, retargets from the on-screen position and velocity, and lets the ends overshoot a
- * little. Because the value is snapshot state read in the navbar's draw phase, a moving capsule invalidates drawing
+ * slot widens at selection time, retargets from the on-screen position and velocity, and bounces a little when it
+ * lands on an interior tab. It never goes past Home or More: the outer slots are the capsule's hard stops. Because the value is snapshot state read in the navbar's draw phase, a moving capsule invalidates drawing
  * only, never the screen. The first placement snaps, so a reveal never flies in from Home or x = 0, and RTL mirrors
  * because the slots are measured, not computed.
  */
@@ -39,7 +39,10 @@ class NavCapsuleController {
     /** The pill's interior: the capsule is never drawn outside it. */
     private var bounds by mutableStateOf(Rect.Zero)
 
-    /** How far past an end slot the capsule may be drawn while it bounces, in pixels. Set from `ZarMotion.NavMaxOvershoot`. */
+    /**
+     * How far past an interior target the spring may carry the capsule, in pixels (`ZarMotion.NavMaxOvershoot`). The
+     * outer edges of the first and last slots are hard stops, so this never lets the capsule leave Home or More.
+     */
     var maxOvershootPx by mutableStateOf(0f)
 
     /** False until the tab slots have been measured once, so the first reveal can snap instead of flying. */
@@ -56,6 +59,9 @@ class NavCapsuleController {
 
     private var moving by mutableStateOf(false)
 
+    /** Where the flight in progress started, so the bounce past the target is only allowed in the direction of travel. */
+    private var flightOrigin: Rect? = null
+
     val slotCount: Int get() = slots.size
 
     /** True while the capsule is moving. */
@@ -66,11 +72,11 @@ class NavCapsuleController {
 
     /**
      * Reports the measured tab slots, and the pill interior they sit in, in the navbar's own coordinate space.
-     * Without [interior] the capsule may only be drawn inside the slots plus [maxOvershootPx].
+     * Without [interior] the capsule may only be drawn inside the slots.
      */
     fun onSlotsMeasured(measured: List<Rect>, interior: Rect? = null) {
         if (measured.isEmpty()) return
-        val limit = interior ?: Rect(measured.minOf { it.left } - maxOvershootPx, measured.minOf { it.top }, measured.maxOf { it.right } + maxOvershootPx, measured.maxOf { it.bottom })
+        val limit = interior ?: Rect(measured.minOf { it.left }, measured.minOf { it.top }, measured.maxOf { it.right }, measured.maxOf { it.bottom })
         if (measured != slots) slots = measured
         if (limit != bounds) bounds = limit
         revealed = true
@@ -107,6 +113,7 @@ class NavCapsuleController {
         val duration = vectorized.getDurationNanos(from, to, initialVelocity)
         var start = lastFrameNanos
         moving = true
+        flightOrigin = presentation
         try {
             while (true) {
                 val frame = withFrameNanos { it }
@@ -125,6 +132,7 @@ class NavCapsuleController {
             }
         } finally {
             moving = false
+            flightOrigin = null
         }
     }
 
@@ -141,10 +149,17 @@ class NavCapsuleController {
     fun capsuleBounds(): Rect? {
         if (!placed || slots.isEmpty()) return null
         val r = presentation
-        val first = slots.first()
-        val last = slots.last()
-        val minLeft = maxOf(bounds.left, minOf(first.left, last.left) - maxOvershootPx)
-        val maxRight = minOf(bounds.right, maxOf(first.right, last.right) + maxOvershootPx)
+        // Home and More are hard stops: the slots are in physical order, so the leftmost and rightmost slot are the
+        // ends in both LTR and RTL, and the pill interior (which has room for an overshoot) is never used to pass them.
+        var minLeft = maxOf(bounds.left, slots.minOf { it.left })
+        var maxRight = minOf(bounds.right, slots.maxOf { it.right })
+        // Between interior tabs the spring may carry the capsule a little past its target in the direction of travel.
+        val target = targetRect
+        val origin = flightOrigin
+        if (target != null && origin != null) {
+            if (target.left >= origin.left) maxRight = minOf(maxRight, target.right + maxOvershootPx)
+            if (target.left <= origin.left) minLeft = maxOf(minLeft, target.left - maxOvershootPx)
+        }
         // Slide the whole capsule back rather than clipping one edge, so the bounce never squashes its width.
         val shift = when {
             r.right > maxRight -> maxRight - r.right

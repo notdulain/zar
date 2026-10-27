@@ -870,7 +870,7 @@ private fun VoidSheet(state: EntryDetailUiState, detail: EntryDetail, actions: D
                     Text(
                         stringResource(voidLabel(detail)),
                         style = ZarType.labelButton,
-                        color = colors.textOnInverse,
+                        color = colors.textOnAttention,
                     )
                 }
             }

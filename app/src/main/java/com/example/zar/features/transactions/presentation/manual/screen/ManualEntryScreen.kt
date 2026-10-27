@@ -183,7 +183,7 @@ internal fun ManualEntryContent(uiState: ManualEntryUiState, focusNote: Boolean,
                 .clip(ZarShapes.sheet).background(colors.surface).pointerInput(Unit) { detectTapGestures {} }.padding(top = 10.dp),
         ) {
             Box(Modifier.fillMaxWidth(), Alignment.Center) {
-                Box(Modifier.size(width = 36.dp, height = 4.dp).clip(CircleShape).background(colors.trackOff))
+                Box(Modifier.size(width = 36.dp, height = 4.dp).clip(CircleShape).background(colors.handle))
             }
             Row(
                 Modifier.fillMaxWidth().padding(start = 24.dp, end = 24.dp, top = 14.dp, bottom = 22.dp),
@@ -729,7 +729,7 @@ private fun AddCategorySheet(
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Box(Modifier.fillMaxWidth(), Alignment.Center) {
-                Box(Modifier.size(36.dp, 4.dp).background(colors.trackOff, RoundedCornerShape(2.dp)))
+                Box(Modifier.size(36.dp, 4.dp).background(colors.handle, RoundedCornerShape(2.dp)))
             }
             Text(stringResource(R.string.manual_new_category_title), style = ZarType.headingSheet, color = colors.textPrimary)
         }

@@ -13,7 +13,9 @@
         <item quantity="one">%d record has no LKR rate and is not included</item>
         <item quantity="other">%d records have no LKR rate and are not included</item>
     </plurals>
-    <string name="income_empty">No income yet. Tap + to add money you received.</string>
+    <string name="income_subtitle">Money that actually arrived · LKR</string>
+    <string name="income_empty">No income yet. Tap Add income to record money you received.</string>
+    <string name="income_retry">Try again</string>
     <string name="income_load_failed">Could not load your income. Check your connection and try again.</string>
     <string name="income_add">Add income</string>
     <string name="income_edit">Edit income</string>

@@ -169,7 +169,7 @@ internal fun QuickNoteContent(state: QuickNoteUiState, actions: QuickNoteActions
                 .clip(ZarShapes.sheet).background(colors.surface).pointerInput(Unit) { detectTapGestures {} }.padding(top = 10.dp),
         ) {
             Box(Modifier.fillMaxWidth(), Alignment.Center) {
-                Box(Modifier.size(width = 36.dp, height = 4.dp).clip(CircleShape).background(colors.trackOff))
+                Box(Modifier.size(width = 36.dp, height = 4.dp).clip(CircleShape).background(colors.handle))
             }
             Row(
                 Modifier.fillMaxWidth().padding(start = 24.dp, end = 24.dp, top = 14.dp, bottom = 18.dp),
@@ -267,7 +267,7 @@ private fun ColumnScope.ReadingStage(state: QuickNoteUiState, actions: QuickNote
     SheetBody(Modifier.weight(1f, fill = false)) {
         NoteBox(state.note, {}, enabled = false, dim = true, focus = null)
         Column(Modifier.fillMaxWidth().testTag("quicknote-reading"), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            LinearProgressIndicator(Modifier.fillMaxWidth(), color = colors.accentSelected, trackColor = colors.trackOff)
+            LinearProgressIndicator(Modifier.fillMaxWidth(), color = colors.accentSelected, trackColor = colors.handle)
             Text(stringResource(R.string.quicknote_reading), style = ZarType.bodyM, color = colors.textPrimary)
             Text(stringResource(R.string.quicknote_reading_hint), style = ZarType.bodyCaption, color = colors.textSecondary)
         }

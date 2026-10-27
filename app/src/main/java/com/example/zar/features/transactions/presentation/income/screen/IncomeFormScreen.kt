@@ -84,8 +84,8 @@ import java.time.ZoneOffset
 
 /**
  * Add or edit received income in the same bottom-sheet shell as the Add transaction sheet (Figma Z11): grabber,
- * "Add transaction" header and close, Expense/Income/Transfer switch with Income selected, amount and currency, account
- * and category chips, date and time, rate when a conversion is needed, received-from and note, and the pinned actions.
+ * "Add transaction" header and close, Expense/Income/Transfer switch with Income selected, amount and currency, the rate
+ * when a conversion is needed, account and category chips, date and time, received-from and note, and the pinned actions.
  * The standalone Material form is replaced by Zar components; the domain behaviour (validation, conversion, edit/undo,
  * offline save) is unchanged.
  */
@@ -145,7 +145,7 @@ internal fun IncomeFormContent(uiState: IncomeFormUiState, actions: IncomeFormAc
                 .padding(top = 10.dp),
         ) {
             Box(Modifier.fillMaxWidth(), Alignment.Center) {
-                Box(Modifier.size(width = 36.dp, height = 4.dp).clip(CircleShape).background(colors.trackOff))
+                Box(Modifier.size(width = 36.dp, height = 4.dp).clip(CircleShape).background(colors.handle))
             }
             Row(
                 Modifier.fillMaxWidth().padding(start = 24.dp, end = 24.dp, top = 14.dp, bottom = 22.dp),
@@ -194,14 +194,18 @@ internal fun IncomeFormContent(uiState: IncomeFormUiState, actions: IncomeFormAc
                     Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState()).padding(horizontal = 24.dp, vertical = 22.dp),
                     verticalArrangement = Arrangement.spacedBy(18.dp),
                 ) {
+                    // Figma Z162 order: amount and currency, the LKR rate when a conversion is needed, account,
+                    // category, date and time, then the optional received-from and note.
                     AmountField(uiState, actions.onAmountChange)
                     ZarDivider()
 
+                    if (uiState.needsRate) RateField(uiState, actions.onRateChange)
+
                     AccountChips(uiState, actions.onAccountSelect)
 
-                    DateAndTime(uiState, actions.onDateSelect, actions.onTimeSelect)
+                    CategoryChips(uiState.category, actions.onCategorySelect)
 
-                    if (uiState.needsRate) RateField(uiState, actions.onRateChange)
+                    DateAndTime(uiState, actions.onDateSelect, actions.onTimeSelect)
 
                     ZarDivider()
                     LabeledField(
@@ -211,8 +215,6 @@ internal fun IncomeFormContent(uiState: IncomeFormUiState, actions: IncomeFormAc
                         error = IncomeProblem.RECEIVED_FROM_TOO_LONG in uiState.problems,
                         tag = "income-received-from",
                     )
-
-                    CategoryChips(uiState.category, actions.onCategorySelect)
 
                     LabeledField(
                         label = stringResource(R.string.income_field_note),

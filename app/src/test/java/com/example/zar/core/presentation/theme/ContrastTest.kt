@@ -101,10 +101,75 @@ class ContrastTest {
     }
 
     @Test
-    fun darkPlaceholderTextIsLiftedToNormalTextContrast() {
-        // Light keeps gray/500 as the lighter placeholder role; dark was 2.92:1 and the handoff lifts it to gray/600.
-        assertTrue(contrast(dark.textPlaceholder, dark.canvas) >= 4.5)
-        assertTrue(contrast(dark.textPlaceholder, dark.surface) >= 4.5)
+    fun placeholderTextMeetsNormalTextContrastInBothThemes() {
+        // Light gray/500 #B4B5BB measured 2.05:1 on white; the final Figma handoff moves it to gray/680 #696A71 (5.38:1).
+        assertEquals(ZarPrimitives.gray680, light.textPlaceholder)
+        assertEquals(5.38, contrast(light.textPlaceholder, light.surface), 0.01)
+        listOf(light, dark).forEach { colors ->
+            assertTrue(contrast(colors.textPlaceholder, colors.canvas) >= 4.5)
+            assertTrue(contrast(colors.textPlaceholder, colors.surface) >= 4.5)
+        }
+    }
+
+    @Test
+    fun inactiveNavLabelsMeetNormalTextContrastOnTheNavSurface() {
+        // The 8sp label measured 4.21:1 in Light with #7A7B82; #696A71 reaches 5.38:1. Dark keeps #8B8C93.
+        assertEquals(ZarPrimitives.gray680, light.navInactive)
+        listOf(light, dark).forEach { assertTrue("${it.navInactive}", contrast(it.navInactive, it.surface) >= 4.5) }
+    }
+
+    @Test
+    fun theSwitchOffTrackIsAVisibleControlAgainstItsCardInBothThemes() {
+        assertEquals(ZarPrimitives.gray650, light.trackOff)
+        assertEquals(ZarPrimitives.gray650, dark.trackOff)
+        listOf(light, dark).forEach { colors ->
+            assertTrue("off track on surface", contrast(colors.trackOff, colors.surface) >= 3.0)
+            assertTrue("off track on subtle", contrast(colors.trackOff, colors.subtle) >= 3.0)
+            // The white thumb sits on the track.
+            assertTrue("thumb on off track", contrast(Color.White, colors.trackOff) >= 3.0)
+        }
+    }
+
+    @Test
+    fun grabbersAndProgressTracksUseTheHandleNotTheSwitchTrack() {
+        // control/handle keeps the old, faint trackOff values: decorative, and never a switch track.
+        assertEquals(Color(0xFFD9DADE), light.handle)
+        assertEquals(Color(0xFF343944), dark.handle)
+        assertNotEquals(light.trackOff, light.handle)
+        assertNotEquals(dark.trackOff, dark.handle)
+        // Keyboard modifier keys carry text on the handle colour.
+        assertTrue(contrast(light.textPrimary, light.handle) >= 4.5)
+        assertTrue(contrast(dark.textPrimary, dark.handle) >= 4.5)
+    }
+
+    @Test
+    fun labelsOnACoralFillUseTheNearBlackTextOnAttentionNotWhite() {
+        listOf(light, dark).forEach { colors ->
+            assertEquals(ZarPrimitives.gray950, colors.textOnAttention)
+            assertEquals(7.27, contrast(colors.textOnAttention, colors.textAttention), 0.01)
+            assertTrue(contrast(colors.textOnAttention, colors.textAttention) >= 4.5)
+            // White on the same coral is the failing pair the Void confirm button used to ship.
+            assertTrue(contrast(colors.textOnInverse, colors.textAttention) < 4.5)
+        }
+    }
+
+    @Test
+    fun validationTextUsesTheStrongAttentionColourAndReadsOnEverySurface() {
+        listOf(light, dark).forEach { colors ->
+            assertEquals(colors.textAttentionStrong, colors.danger)
+            assertTrue(contrast(colors.danger, colors.surface) >= 4.5)
+            assertTrue(contrast(colors.danger, colors.canvas) >= 4.5)
+            assertTrue(contrast(colors.danger, colors.subtle) >= 4.5)
+        }
+        // coral/700, the old danger value, was 3.74:1 on white.
+        assertTrue(contrast(ZarPrimitives.coral700, light.surface) < 4.5)
+    }
+
+    @Test
+    fun authButtonsReadOnTheirAccentFillInBothThemes() {
+        // PrimaryAuthButton draws textOnInverse on accentPrimary: 18.15:1 Light, 4.73:1 Dark.
+        assertEquals(18.15, contrast(light.textOnInverse, light.accentPrimary), 0.01)
+        assertEquals(4.73, contrast(dark.textOnInverse, dark.accentPrimary), 0.01)
     }
 
     @Test
