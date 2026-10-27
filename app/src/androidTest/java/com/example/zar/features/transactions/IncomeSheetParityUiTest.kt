@@ -87,6 +87,12 @@ class IncomeSheetParityUiTest {
         assertTrue(currency.left > amount.left)
     }
 
+    @Test fun categoryStripStartsWithFreelanceAsInFigma() {
+        show(add())
+        val lefts = listOf("freelance", "salary", "allowance").map { bounds("income-category-$it").left }
+        assertTrue("order: $lefts", lefts[0] < lefts[1] && lefts[1] < lefts[2])
+    }
+
     @Test fun allAccountsStacksTheChipsAndTheStripReturnsOnPick() {
         show(add())
         val strip = listOf("sampath", "cash", "usd").map { bounds("income-account-$it") }

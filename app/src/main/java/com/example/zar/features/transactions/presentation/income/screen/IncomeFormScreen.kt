@@ -455,11 +455,16 @@ private fun AccountSection(uiState: IncomeFormUiState, onSelect: (AccountId) -> 
 /** Accounts are named plainly; only a foreign currency is spelled out, since the dropdown already shows the rest. */
 private fun Account.chipLabel(): String = if (currency == Currencies.REPORTING) name else "$name · ${currency.code}"
 
+/** Figma lists Freelance first; only the form's order changes, not the domain enum. */
+private val FORM_CATEGORY_ORDER = listOf(
+    IncomeCategory.FREELANCE, IncomeCategory.SALARY, IncomeCategory.ALLOWANCE, IncomeCategory.GIFT, IncomeCategory.OTHER,
+)
+
 @Composable
 private fun CategorySection(selected: IncomeCategory?, onSelect: (IncomeCategory) -> Unit) {
     Section(stringResource(R.string.manual_field_category)) {
         ChipStrip {
-            IncomeCategory.entries.forEach { category ->
+            FORM_CATEGORY_ORDER.forEach { category ->
                 ZarChip(
                     label = stringResource(category.labelRes()),
                     selected = category == selected,
