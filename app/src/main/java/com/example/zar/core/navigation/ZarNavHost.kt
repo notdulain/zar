@@ -164,7 +164,14 @@ fun ZarNavHost(
                             onAddOption = onAddOption,
                             onOpenEntry = { id -> navController.navigate(EntryDetailRoute(id)) },
                         )
-                        TopLevelDestination.Plans -> PlansScreen(onNavigate = onNavigate, onAddOption = onAddOption)
+                        TopLevelDestination.Plans -> PlansScreen(
+                            onNavigate = onNavigate,
+                            onAddOption = onAddOption,
+                            onOpenBills = { navController.navigate(BillsRoute) },
+                            onOpenFreelance = { navController.navigate(FreelanceRoute) },
+                            onNewBill = { navController.navigate(BillFormRoute()) },
+                            onNewProject = { navController.navigate(ProjectFormRoute()) },
+                        )
                         TopLevelDestination.More -> MoreScreen(
                             onNavigate = onNavigate,
                             onAddOption = onAddOption,

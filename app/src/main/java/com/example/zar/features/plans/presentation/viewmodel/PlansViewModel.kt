@@ -41,6 +41,8 @@ data class PlansUiState(
     val allocationEditor: AllocationEditorState? = null,
     val isSaving: Boolean = false,
     val message: PlansMessage? = null,
+    /** Counts goals created from the New plan sheet, so the sheet can close once, after the save. */
+    val goalCreatedCount: Int = 0,
 )
 
 @HiltViewModel
@@ -98,6 +100,25 @@ class PlansViewModel @Inject constructor(
                 .onSuccess { _uiState.update { it.copy(goalEditor = null) } }
         }
     }
+
+    /**
+     * Creates the one savings goal from the New plan sheet. Zar keeps a single goal, so when one exists this does nothing:
+     * the sheet offers Edit instead and nothing is ever replaced by a "new" plan.
+     */
+    fun createGoal(name: String, target: String, date: LocalDate?) {
+        if (_uiState.value.overview?.goal != null) return
+        val amount = Money.parse(target, Currencies.LKR)
+        if (name.isBlank() || name.length > 80 || amount == null || !amount.isPositive) {
+            _uiState.update { it.copy(message = PlansMessage.INVALID_GOAL) }
+            return
+        }
+        launchSave {
+            saveGoal(GoalId(MACBOOK_GOAL_ID), name.trim(), amount, date)
+                .onSuccess { _uiState.update { it.copy(goalCreatedCount = it.goalCreatedCount + 1, message = null) } }
+        }
+    }
+
+    fun clearMessage() = _uiState.update { it.copy(message = null) }
 
     fun openAllocationEditor() {
         val overview = _uiState.value.overview ?: return
