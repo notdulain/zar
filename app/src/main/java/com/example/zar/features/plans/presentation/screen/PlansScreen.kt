@@ -37,6 +37,12 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.ui.unit.sp
+import com.example.zar.core.presentation.components.ZarIcon
+import com.example.zar.core.presentation.components.ZarIconChip
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.window.DialogProperties
@@ -140,9 +146,15 @@ fun PlansScreen(
         counts = counts,
         onOpenBills = onOpenBills,
         onOpenFreelance = onOpenFreelance,
-        allowanceSection = {
-            AllowanceCard(allowance, onEdit = allowanceViewModel::openEditor, onRetry = allowanceViewModel::retry)
+        allowanceSection = if (allowance.overview?.settings?.isEnabled == true) {
+            { AllowanceCard(allowance, onEdit = allowanceViewModel::openEditor, onRetry = allowanceViewModel::retry) }
+        } else {
+            null
         },
+        weeklyLimitSummary = allowance.overview?.settings?.takeIf { it.isEnabled }?.amount?.let {
+            stringResource(R.string.plans_weekly_limit_per_week, it.formatWithCode())
+        },
+        onEditWeeklyLimit = allowanceViewModel::openEditor,
     )
     if (showNewPlan) {
         Dialog(
@@ -213,9 +225,9 @@ internal fun PlansScreenContent(
     onRetry: () -> Unit,
     onEditGoal: () -> Unit,
     onAllocate: () -> Unit,
-    allowanceSection: @Composable () -> Unit = {
-        PlanShellCard(R.string.plans_allowance, R.string.plans_allowance_empty)
-    },
+    allowanceSection: (@Composable () -> Unit)? = null,
+    weeklyLimitSummary: String? = null,
+    onEditWeeklyLimit: () -> Unit = {},
     onNewPlan: () -> Unit = {},
     counts: PlansCounts = PlansCounts(),
     onOpenBills: () -> Unit = {},
@@ -256,23 +268,34 @@ internal fun PlansScreenContent(
                 verticalArrangement = Arrangement.spacedBy(ZarDimens.SpaceMd),
             ) {
                 ZarMonoLabel(stringResource(R.string.plans_other_plans).uppercase(), Modifier.padding(start = 12.dp))
-                allowanceSection()
-                PlanCountCard(
-                    title = R.string.plans_bills_title,
-                    count = counts.bills,
-                    plural = R.plurals.plans_bills_count,
-                    empty = R.string.plans_bills_empty,
-                    onClick = onOpenBills,
-                    tag = "plans-bills-card",
-                )
-                PlanCountCard(
-                    title = R.string.plans_freelance_title,
-                    count = counts.projects,
-                    plural = R.plurals.plans_projects_count,
-                    empty = R.string.plans_freelance_empty,
-                    onClick = onOpenFreelance,
-                    tag = "plans-freelance-card",
-                )
+                // One grouped card, a row per plan kind (Figma Z04): each opens its real screen or editor.
+                ZarCard(Modifier.fillMaxWidth(), contentPadding = PaddingValues(vertical = 4.dp)) {
+                    PlanRow(
+                        icon = R.drawable.ic_ph_wallet,
+                        title = stringResource(R.string.plans_weekly_limit_title),
+                        subtitle = weeklyLimitSummary ?: stringResource(R.string.plans_weekly_limit_unset),
+                        onClick = onEditWeeklyLimit,
+                        tag = "plans-weekly-limit-row",
+                    )
+                    ZarDivider(Modifier.padding(start = 70.dp))
+                    PlanRow(
+                        icon = R.drawable.ic_ph_receipt,
+                        title = stringResource(R.string.plans_bills_title),
+                        subtitle = countText(counts.bills, R.plurals.plans_bills_count, R.string.plans_bills_empty),
+                        onClick = onOpenBills,
+                        tag = "plans-bills-card",
+                    )
+                    ZarDivider(Modifier.padding(start = 70.dp))
+                    PlanRow(
+                        icon = R.drawable.ic_ph_briefcase,
+                        title = stringResource(R.string.plans_freelance_title),
+                        subtitle = countText(counts.projects, R.plurals.plans_projects_count, R.string.plans_freelance_empty),
+                        onClick = onOpenFreelance,
+                        tag = "plans-freelance-card",
+                    )
+                }
+                // The weekly limit's status and coverage notes, once one is set (or when a caller supplies the section).
+                allowanceSection?.invoke()
                 state.overview?.takeIf { !state.isLoading && !state.loadFailed }?.let { overview ->
                     val goal = overview.goal
                     val progress = overview.progress
@@ -291,17 +314,27 @@ internal fun PlansScreenContent(
 }
 
 @Composable
-private fun PlanCountCard(title: Int, count: Int?, plural: Int, empty: Int, onClick: () -> Unit, tag: String) {
-    ZarCard(Modifier.fillMaxWidth().testTag(tag), onClick = onClick) {
-        ZarMonoLabel(stringResource(title))
-        Text(
-            when {
-                count == null -> "…"
-                count == 0 -> stringResource(empty)
-                else -> pluralStringResource(plural, count, count)
-            },
-            style = ZarType.bodyL, color = ZarTheme.colors.textPrimary, modifier = Modifier.padding(top = 12.dp),
-        )
+private fun countText(count: Int?, plural: Int, empty: Int): String = when {
+    count == null -> "…"
+    count == 0 -> stringResource(empty)
+    else -> pluralStringResource(plural, count, count)
+}
+
+@Composable
+private fun PlanRow(icon: Int, title: String, subtitle: String, onClick: () -> Unit, tag: String) {
+    val colors = ZarTheme.colors
+    Row(
+        Modifier.fillMaxWidth().heightIn(min = 64.dp).clickable(role = androidx.compose.ui.semantics.Role.Button, onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 10.dp).testTag(tag),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+        ZarIconChip(icon, size = 40.dp, iconSize = 19.dp)
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(title, style = ZarType.bodyL.copy(lineHeight = 20.sp), color = colors.textPrimary)
+            Text(subtitle, style = ZarType.bodyS.copy(lineHeight = 18.sp), color = colors.textSecondary)
+        }
+        ZarIcon(R.drawable.ic_ph_caret_right, size = 16.dp, tint = colors.textTertiary)
     }
 }
 

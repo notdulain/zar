@@ -129,7 +129,7 @@ class SignInFlowTest {
     fun invalidInputIsCaughtBeforeFirebase() {
         compose.onNodeWithTag("email").performTextInput("not-an-email")
         compose.onNodeWithTag("submit").performClick()
-        compose.onNodeWithText("That doesn’t look like an email address").assertExists()
-        compose.onNodeWithText("Enter your password").assertExists()
+        compose.onNodeWithText("That doesn’t look like an email address", substring = true).assertExists()
+        compose.onNodeWithText("Enter your password", substring = true).assertExists()
     }
 }

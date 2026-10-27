@@ -112,5 +112,6 @@ class PlansNewPlanUiTest {
         assertEquals(1, opened)
         compose.onNodeWithText("3 bills").assertIsDisplayed()
         compose.onNodeWithText("No projects added").assertIsDisplayed()
+        compose.onNodeWithText("Not set · choose an amount").assertIsDisplayed()
     }
 }

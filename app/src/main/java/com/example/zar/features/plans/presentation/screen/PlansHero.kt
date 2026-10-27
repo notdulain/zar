@@ -153,7 +153,7 @@ internal fun GoalHero(
                             }
                         }
                     } else {
-                        Text(stringResource(R.string.plans_goal_not_created), style = HeroBody14, color = ZarWhite.copy(alpha = 0.75f))
+                        Text(stringResource(R.string.plans_not_created_yet), style = HeroBody14, color = ZarWhite.copy(alpha = 0.75f))
                     }
                 }
             }
@@ -164,19 +164,20 @@ internal fun GoalHero(
             )
             Spacer(Modifier.height(8.dp))
             Text(
-                goal?.let { goalTarget(it) } ?: stringResource(R.string.plans_create_note),
+                goal?.let { goalTarget(it) } ?: stringResource(R.string.plans_goal_not_created),
                 style = HeroBody15, color = ZarWhite.copy(alpha = 0.8f),
             )
             Spacer(Modifier.height(22.dp))
-            if (goal != null && progress != null && !AmountMask.isHidden) {
-                HeroTrack(progress.backedFraction(goal.target))
+            if (!AmountMask.isHidden) {
+                // With no goal the track is drawn empty, as Figma Z196 does.
+                HeroTrack(if (goal != null && progress != null) progress.backedFraction(goal.target) else 0f)
             } else {
                 Spacer(Modifier.height(8.dp))
             }
             Spacer(Modifier.height(12.dp))
             Text(
                 when {
-                    goal == null -> stringResource(R.string.plans_nothing_allocated)
+                    goal == null -> stringResource(R.string.plans_create_note)
                     goal.allocations.isEmpty() -> stringResource(R.string.plans_nothing_allocated)
                     progress?.hasUnknownBalance == true -> stringResource(R.string.plans_unknown_backing)
                     progress?.isApproximate == true -> stringResource(R.string.plans_estimated_backing)

@@ -70,7 +70,7 @@
     <string name="auth_sign_in_action">Sign in</string>
     <string name="auth_signing_in">Signing in…</string>
     <string name="auth_forgot_short">Forgot?</string>
-    <string name="auth_new_here">New here?  </string>
+    <string name="auth_new_here">New here?</string>
     <string name="auth_create_account_link">Create an account</string>
     <string name="auth_sign_in_headline">Sign in to\nyour account</string>
     <string name="auth_register_action">Create account</string>
@@ -377,6 +377,9 @@
     <string name="allowance_save_failed">Couldn\'t save. Try again.</string>
     <string name="home_view_allowance">View allowance →</string>
     <string name="home_allowance_check">Check: some spending is left out</string>
+    <string name="plans_not_created_yet">Not created yet</string>
+    <string name="plans_weekly_limit_unset">Not set · choose an amount</string>
+    <string name="plans_weekly_limit_per_week">%1$s per week</string>
     <string name="plans_new_plan">New plan</string>
     <string name="plans_main_goal">Main goal</string>
     <string name="plans_change">Change</string>

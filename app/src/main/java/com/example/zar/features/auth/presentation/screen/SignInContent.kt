@@ -94,8 +94,9 @@ internal fun SignInContent(
     val isLight = colors.canvas == ZarLightColors.canvas
     val message: Pair<String, Color>? = when {
         state.error != null -> errorText(state.error) to ErrorDot
-        state.emailProblem != null -> problemText(state.emailProblem) to ErrorDot
-        state.passwordProblem != null -> problemText(state.passwordProblem) to ErrorDot
+        // Both field problems are named, one per line, so nothing the old per-field messages said is lost.
+        state.emailProblem != null || state.passwordProblem != null ->
+            listOfNotNull(state.emailProblem, state.passwordProblem).map { problemText(it) }.joinToString("\n") to ErrorDot
         state.resetSentTo != null -> stringResource(R.string.auth_reset_sent, state.resetSentTo) to colors.fresh
         else -> null
     }
@@ -184,6 +185,8 @@ internal fun SignInContent(
                 .heightIn(min = 48.dp).clickable(enabled = !busy, role = Role.Button, onClick = onCreateAccount)
                 .testTag("to-register"),
             verticalAlignment = Alignment.CenterVertically,
+            // Figma sets two spaces between the sentence and the link; XML resources collapse trailing spaces.
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             Text(
                 stringResource(R.string.auth_new_here),
