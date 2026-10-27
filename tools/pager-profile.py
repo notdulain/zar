@@ -97,7 +97,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("serial"); ap.add_argument("out")
     ap.add_argument("--package", default="com.example.zar.perf")
-    ap.add_argument("--only", default="cold,warm,home-scroll")
+    ap.add_argument("--only", default="cold,warm,home-scroll,taps")
     ap.add_argument("--repeat", type=int, default=1)
     ap.add_argument("--settle", type=float, default=1.5, help="seconds idle on Home after launch before the first gesture")
     a = ap.parse_args()
@@ -106,7 +106,7 @@ def main():
     d = Prof(a.serial, a.package, a.out)
     want = a.only.split(",")
     for i in range(a.repeat):
-        tag = f"-{i + 1}" if a.repeat > 1 else ""
+        tag = f"-{i + 1}" if a.repeat > 1 else ""; tab = tag
         if "cold" in want:
             d.launch(); time.sleep(a.settle)
             run(d, f"cold-first-swipe{tag}", lambda: (d.swipe_h(1), time.sleep(1.2)), ms=9000)
@@ -123,6 +123,14 @@ def main():
                 for _ in range(3): d.drag_y(.8, .3, 500); time.sleep(.4)
                 for _ in range(3): d.drag_y(.3, .8, 500); time.sleep(.4)
             run(d, f"home-scroll{tag}", scroll, ms=14000)
+        if "taps" in want:
+            d.launch(); time.sleep(a.settle)
+            d.swipe_h(1); time.sleep(1.2)  # reveals the full navbar
+            spots = d.tab_spots(rm.TABS)
+            def taps():
+                d.tab_burst(spots, ["Plans", "More", "Activity", "Home"] * 2, gap=.15); time.sleep(1.0)
+                d.tab_burst(spots, ["Plans", "Home", "More", "Activity"], gap=.6); time.sleep(1.0)
+            run(d, f"nav-taps{tab}", taps, ms=12000)
     print("traces in", a.out)
 
 

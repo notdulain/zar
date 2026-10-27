@@ -18,7 +18,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.activity.ComponentActivity
+import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
@@ -45,7 +46,7 @@ import org.junit.Test
  */
 class TabPagerTest {
     @get:Rule
-    val compose = createComposeRule()
+    val compose = createAndroidComposeRule<ComponentActivity>()
 
     private val capsule = NavCapsuleController()
     private lateinit var tabs: TabPagerController
@@ -74,6 +75,7 @@ class TabPagerTest {
                                 }
                             }
                         }
+                        TabPagerBackHandler(tabs, enabled = true)
                         tabs.DriveCapsule(capsule)
                         ZarBottomNav(
                             selected = tabs.selected,
@@ -180,6 +182,35 @@ class TabPagerTest {
         compose.mainClock.advanceTimeBy(5_000)
         compose.waitForIdle()
         assertEquals(setOf(0, 1, 2, 3), composedPages)
+    }
+
+    private fun pressBack() = compose.runOnUiThread {
+        compose.activity.onBackPressedDispatcher.onBackPressed()
+    }
+
+    @Test
+    fun backFromAnOuterTabSlidesThePageRightOverHomeComingInFromBehind() {
+        show(warmUp = true)
+        compose.mainClock.advanceTimeBy(5_000)
+        compose.waitForIdle()
+        compose.onNodeWithTag("nav-plans").performClick()
+        compose.waitForIdle()
+        assertEquals(2, tabs.pagerState.currentPage)
+        val width = compose.onNodeWithTag("page-2").getUnclippedBoundsInRoot().let { it.right - it.left }
+
+        compose.mainClock.autoAdvance = false
+        pressBack()
+        compose.mainClock.advanceTimeBy(120)
+        val leaving = compose.onNodeWithTag("page-2").getUnclippedBoundsInRoot()
+        val home = compose.onNodeWithTag("page-0").getUnclippedBoundsInRoot()
+        assertTrue("Plans did not move right: ${leaving.left}", leaving.left > 4.dp)
+        assertTrue("Home is not receding in from behind: ${home.left}", home.left < 0.dp && home.left.value > -(width.value * 0.2f) - 1f)
+        
+        compose.mainClock.autoAdvance = true
+        compose.waitForIdle()
+        assertEquals(0, tabs.pagerState.currentPage)
+        assertEquals(0.dp, compose.onNodeWithTag("page-0").getUnclippedBoundsInRoot().left)
+        compose.onNodeWithTag("nav-home").assertIsSelected()
     }
 
     @Test

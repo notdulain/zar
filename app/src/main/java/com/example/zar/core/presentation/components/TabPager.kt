@@ -1,6 +1,6 @@
 package com.example.zar.core.presentation.components
 
-import androidx.activity.compose.BackHandler
+import androidx.activity.compose.PredictiveBackHandler
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
@@ -14,6 +14,7 @@ import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -40,6 +41,7 @@ import com.example.zar.core.presentation.motion.MotionLevel
 import com.example.zar.core.presentation.motion.MotionPolicy
 import com.example.zar.core.presentation.motion.ZarMotion
 import com.example.zar.core.presentation.motion.ZarSprings
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.withTimeoutOrNull
@@ -67,7 +69,7 @@ class TabPagerController internal constructor(
         internal set
 
     /** The tab whose page and capsule have both arrived after the latest tap. */
-    private var arrived by mutableStateOf<Int?>(null)
+    internal var arrived by mutableStateOf<Int?>(null)
 
     /** Incremented for each long jump or reduced/instant tap, so the incoming page can play its arrival effect once. */
     var arrivalNonce by mutableIntStateOf(0)
@@ -83,7 +85,66 @@ class TabPagerController internal constructor(
 
     private var job: Job? = null
 
+    /**
+     * Back to Home as a slide: the departing page's travel as a fraction of the width, and which page is departing (-1
+     * when no Back is in progress). Home is drawn under it, coming in from 0.2 of the width behind. Read in the layer phase.
+     */
+    internal val backSlide = Animatable(0f)
+    var backFrom by mutableIntStateOf(-1)
+        internal set
+
+    /** How many pages beside the current one the host has composed. A Back slide needs Home composed, so it checks this. */
+    internal var warmedReach by mutableIntStateOf(0)
+
     val currentIndex: Int get() = pagerState.currentPage
+
+    /** True when Home is composed and nothing is mid-flight, so Back can slide the page right over it. */
+    internal fun canSlideBack(): Boolean =
+        pagerState.currentPage > 0 && pagerState.currentPageOffsetFraction == 0f && warmedReach >= pagerState.currentPage
+
+    internal suspend fun beginBack() {
+        job?.cancel()
+        backSlide.snapTo(0f)
+        backFrom = pagerState.currentPage
+    }
+
+    internal fun cancelBack() {
+        scope.launch {
+            backSlide.animateTo(0f, spring(ZarSprings.Route.dampingRatio, ZarSprings.Route.stiffness))
+            backFrom = -1
+        }
+    }
+
+    /**
+     * Completes Back to Home. With Home composed and full motion, the current page slides right over Home (which comes in
+     * from 0.2 of the width behind) and the pager then switches pages unseen; the capsule springs home meanwhile. Reduced
+     * motion switches at once with the short crossfade, and a Home that is not composed yet falls back to a pager scroll.
+     */
+    internal fun commitBack(policy: MotionPolicy) {
+        val from = pagerState.currentPage
+        if (from == 0) return
+        tapTarget = 0
+        arrived = null
+        job?.cancel()
+        job = scope.launch {
+            if (policy.level == MotionLevel.Full && (backFrom == from || canSlideBack())) {
+                if (backFrom != from) { backSlide.snapTo(0f); backFrom = from }
+                backSlide.animateTo(1f, spring(ZarSprings.Route.dampingRatio, ZarSprings.Route.stiffness))
+                pagerState.scrollToPage(0)
+                backFrom = -1
+            } else {
+                backFrom = -1
+                pagerState.scrollToPage(0)
+                if (policy.level != MotionLevel.Instant) {
+                    arrivalDirection = -1
+                    arrivalFadeOnly = policy.level == MotionLevel.Reduced
+                    arrivalTarget = 0
+                    arrivalNonce += 1
+                }
+            }
+            arrived = 0
+        }
+    }
 
     /** The destination that should read as selected: the tap's target, otherwise the page that has settled. */
     val selectedIndex: Int get() = tapTarget ?: pagerState.settledPage
@@ -104,6 +165,7 @@ class TabPagerController internal constructor(
         tapTarget = target
         arrived = null
         job?.cancel()
+        backFrom = -1
         job = scope.launch {
             val distance = abs(target - from)
             when {
@@ -193,6 +255,7 @@ fun TabPagerHost(
 ) {
     val policy = LocalZarMotion.current
     val warm = rememberPageWarmUp(enabled = warmUpPages) { userScrollEnabled && !controller.pagerState.isScrollInProgress }
+    SideEffect { controller.warmedReach = warm.pageCount }
     val tabTravelPx = with(LocalDensity.current) { ZarMotion.TabTravel.toPx() }
     val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
     val snapSpec = if (policy.allowsSpatialMotion) {
@@ -210,11 +273,12 @@ fun TabPagerHost(
         state = controller.pagerState,
         modifier = modifier.fillMaxSize().then(warm.touchObserver),
         beyondViewportPageCount = warm.pageCount,
-        userScrollEnabled = userScrollEnabled,
+        userScrollEnabled = userScrollEnabled && controller.backFrom < 0,
         key = { it },
         flingBehavior = fling,
     ) { index ->
         val arrival = remember { Animatable(1f) }
+        val pageIndex = index
         LaunchedEffect(controller.arrivalNonce) {
             if (controller.arrivalNonce > 0 && controller.arrivalTarget == index) {
                 arrival.snapTo(0f)
@@ -223,12 +287,28 @@ fun TabPagerHost(
         }
         Box(
             Modifier.fillMaxSize().graphicsLayer {
+                val departing = controller.backFrom
+                if (departing >= 0) {
+                    // Back to Home: the departing page slides right over Home, which comes in from 0.2 of the width behind.
+                    // Positions are stated as where the page should be, minus where the pager laid it out, so the same
+                    // numbers hold before, during and after the pager switches its page under the slide.
+                    val f = controller.backSlide.value
+                    val w = size.width
+                    val dir = if (rtl) -1f else 1f
+                    val laidOutAt = (pageIndex - controller.pagerState.currentPage) * w * dir
+                    val wantedAt = when (pageIndex) {
+                        departing -> f * w * dir
+                        0 -> -ZarMotion.ROUTE_PARENT_RECEDE * (1f - f) * w * dir
+                        else -> laidOutAt
+                    }
+                    translationX = wantedAt - laidOutAt
+                }
                 val remaining = 1f - arrival.value
                 if (remaining > 0f) {
                     alpha = arrival.value
                     if (!controller.arrivalFadeOnly) {
                         // The page arrives from the logical end of the tab order for a jump toward the end (mirrored in RTL).
-                        translationX = remaining * tabTravelPx * controller.arrivalDirection * if (rtl) -1f else 1f
+                        translationX += remaining * tabTravelPx * controller.arrivalDirection * if (rtl) -1f else 1f
                     }
                 }
             },
@@ -294,14 +374,27 @@ internal fun rememberPageWarmUp(enabled: Boolean, idleGate: () -> Boolean): Page
 private const val WARM_IDLE_MILLIS = 600L
 
 /**
- * Back from Activity, Plans or More goes to Home with a pager scroll, so the current page leaves toward the end and Home
- * returns. At Home Back is not handled here, so Android's own exit animation is preserved.
+ * Back from Activity, Plans or More goes to Home the way every other Back goes: the page leaves to the right (a predictive
+ * gesture drags it at half its progress, a button or a committed gesture springs it out) while Home comes in from 0.2 of the
+ * width behind. At Home Back is not handled here, so Android's own exit animation is preserved.
  */
 @Composable
 fun TabPagerBackHandler(controller: TabPagerController, enabled: Boolean) {
     val policy = LocalZarMotion.current
-    BackHandler(enabled = enabled && controller.selectedIndex != TopLevelDestination.Home.ordinal) {
-        controller.select(TopLevelDestination.Home, policy)
+    PredictiveBackHandler(enabled = enabled && controller.selectedIndex != TopLevelDestination.Home.ordinal) { events ->
+        val slide = policy.allowsSpatialMotion && controller.canSlideBack()
+        try {
+            if (slide) {
+                controller.beginBack()
+                events.collect { controller.backSlide.snapTo(PREVIEW_FACTOR * it.progress) }
+            } else {
+                events.collect { }
+            }
+            controller.commitBack(policy)
+        } catch (cancelled: CancellationException) {
+            if (slide) controller.cancelBack()
+            throw cancelled
+        }
     }
 }
 
