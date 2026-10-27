@@ -1,7 +1,6 @@
 package com.example.zar.core.presentation.components
 
 import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.VisibilityThreshold
 import androidx.compose.ui.geometry.Rect
 import com.example.zar.core.presentation.motion.FrameDriver
 import com.example.zar.core.presentation.motion.ZarSprings
@@ -26,7 +25,7 @@ import org.junit.Test
 @OptIn(ExperimentalCoroutinesApi::class)
 class NavCapsuleControllerTest {
 
-    private fun slots(vararg lefts: Float, width: Float = 72f, top: Float = 4f, height: Float = 59f) =
+    private fun slots(vararg lefts: Float, width: Float = 72f, top: Float = 5f, height: Float = 56f) =
         lefts.map { Rect(it, top, it + width, top + height) }
 
     private val ltr = slots(6f, 80f, 154f, 228f)
@@ -35,16 +34,20 @@ class NavCapsuleControllerTest {
     private val interior = Rect(1f, 1f, 307f, 66f)
     private val overshoot = 6f
 
-    private val navSpring = spring<Rect>(ZarSprings.NavSelection.dampingRatio, ZarSprings.NavSelection.stiffness, Rect.VisibilityThreshold)
+    private val navSpring = spring<Float>(ZarSprings.NavSelection.dampingRatio, ZarSprings.NavSelection.stiffness, 0.0005f)
 
     private fun controller(measured: List<Rect> = ltr) = NavCapsuleController().apply {
         maxOvershootPx = overshoot
+        capsuleHeightPx = 59f
         onSlotsMeasured(measured, interior)
     }
 
     /** Starts a flight to the controller's target in the background of [scope] and returns the job. */
     private fun TestScope.fly(driver: FrameDriver, controller: NavCapsuleController): Job =
-        launch(driver.clock) { controller.moveTo(controller.targetRect!!, navSpring) }
+        launch(driver.clock) { controller.moveTo(controller.targetIndex, navSpring) }
+
+    private fun NavCapsuleController.left() = capsuleBounds()!!.left
+    private fun NavCapsuleController.right() = capsuleBounds()!!.right
 
     @Test
     fun beforeMeasurementThereIsNoCapsule() {
@@ -61,35 +64,61 @@ class NavCapsuleControllerTest {
         val controller = controller()
         controller.select(2)
 
-        controller.moveTo(controller.targetRect!!, navSpring)
+        controller.moveTo(controller.targetIndex, navSpring)
 
         assertTrue(controller.revealed)
         assertEquals(2, controller.targetIndex)
-        assertEquals(ltr[2], controller.capsuleBounds())
+        assertEquals(ltr[2].left, controller.left(), 0.001f)
+        assertEquals(ltr[2].right, controller.right(), 0.001f)
         assertFalse(controller.isMoving)
+    }
+
+    @Test
+    fun theCapsuleIsAsTallAsItsOwnHeightAndCentredOnTheSlots() = runTest {
+        val controller = controller()
+        controller.snapTo(0f)
+
+        val bounds = controller.capsuleBounds()!!
+
+        assertEquals(59f, bounds.height, 0.001f)
+        assertEquals(ltr[0].center.y, bounds.center.y, 0.001f)
+    }
+
+    @Test
+    fun dragToFollowsThePagerOneForOneBetweenTwoSlots() = runTest {
+        val controller = controller()
+        controller.snapTo(0f)
+
+        listOf(0f, 0.25f, 0.5f, 0.9f, 1f, 1.5f, 2.99f).forEach { position ->
+            controller.dragTo(position)
+            val lower = position.toInt().coerceAtMost(2)
+            val fraction = position - lower
+            val expected = ltr[lower].left + (ltr[lower + 1].left - ltr[lower].left) * fraction
+            assertEquals("capsule left at slot position $position", expected, controller.left(), 0.001f)
+            assertEquals("the capsule never changes width while it is dragged", ltr[0].width, controller.capsuleBounds()!!.width, 0.001f)
+        }
     }
 
     @Test
     fun theCapsuleSpringsFromSlotToSlotAndComesToRest() = runTest {
         val driver = FrameDriver(this, FrameDriver.HZ_60)
         val controller = controller()
-        controller.snapTo(ltr[0])
+        controller.snapTo(0f)
         controller.select(1)
 
         val job = fly(driver, controller)
         runCurrent()
         driver.step()
         driver.stepFor(60.0)
-        val mid = controller.capsuleBounds()!!
-        assertTrue("mid-flight left ${mid.left}", mid.left > ltr[0].left && mid.left < ltr[2].left)
+        val mid = controller.left()
+        assertTrue("mid-flight left $mid", mid > ltr[0].left && mid < ltr[2].left)
         assertTrue(controller.isMoving)
 
         repeat(120) { if (job.isActive) driver.step() }
 
         assertFalse(job.isActive)
-        val settled = controller.capsuleBounds()!!
-        assertEquals(ltr[1].left, settled.left, 0.6f)
-        assertEquals(ltr[1].right, settled.right, 0.6f)
+        assertEquals(ltr[1].left, controller.left(), 0.6f)
+        assertEquals(ltr[1].right, controller.right(), 0.6f)
     }
 
     @Test
@@ -97,7 +126,7 @@ class NavCapsuleControllerTest {
         // An idle or backgrounded app must not keep asking for frames (and so for a display cadence) on the capsule's behalf.
         val driver = FrameDriver(this, FrameDriver.HZ_120)
         val controller = controller()
-        controller.snapTo(ltr[0])
+        controller.snapTo(0f)
         controller.select(2)
         val settled = fly(driver, controller)
         runCurrent()
@@ -122,15 +151,14 @@ class NavCapsuleControllerTest {
     fun aNewSelectionMidFlightRetargetsFromTheOnScreenPositionWithoutTeleporting() = runTest {
         val driver = FrameDriver(this, FrameDriver.HZ_60)
         val controller = controller()
-        controller.snapTo(ltr[0])
+        controller.snapTo(0f)
         controller.select(3)
         val first = fly(driver, controller)
         runCurrent()
         driver.step()
         driver.stepFor(80.0)
-        val before = controller.capsuleBounds()!!
-        val travelVelocity = controller.velocityLeftEdge
-        assertTrue("moving toward More", travelVelocity > 0f)
+        val before = controller.left()
+        assertTrue("moving toward More", controller.velocitySlots > 0f)
 
         // The user taps Home. The old flight is cancelled, never queued, and the new one starts here.
         first.cancel()
@@ -138,21 +166,21 @@ class NavCapsuleControllerTest {
         val second = fly(driver, controller)
         runCurrent()
         driver.step()
-        val after = controller.capsuleBounds()!!
+        val after = controller.left()
 
-        assertTrue("jumped ${abs(after.left - before.left)}px", abs(after.left - before.left) < 14f)
-        assertTrue("momentum carries on, it does not stop dead", after.left >= before.left - 1f)
-        assertTrue("the first frame after a retarget moves (no one-frame hitch): ${after.left - before.left}", abs(after.left - before.left) > 0.5f)
+        assertTrue("jumped ${abs(after - before)}px", abs(after - before) < 14f)
+        assertTrue("momentum carries on, it does not stop dead", after >= before - 1f)
+        assertTrue("the first frame after a retarget moves (no one-frame hitch): ${after - before}", abs(after - before) > 0.5f)
         repeat(240) { if (second.isActive) driver.step() }
         assertFalse(second.isActive)
-        assertEquals(ltr[0].left, controller.capsuleBounds()!!.left, 0.6f)
+        assertEquals(ltr[0].left, controller.left(), 0.6f)
     }
 
     @Test
     fun theCapsuleNeverGoesPastMoreAndLandsOnItsSlot() = runTest {
         val driver = FrameDriver(this, FrameDriver.HZ_120)
         val controller = controller()
-        controller.snapTo(ltr[0])
+        controller.snapTo(0f)
         controller.select(3)
 
         val job = fly(driver, controller)
@@ -167,7 +195,7 @@ class NavCapsuleControllerTest {
         }
         assertTrue("the end stop squashed the capsule to $narrowest", narrowest >= ltr[3].width - 0.01f)
         assertTrue("overshot More: peak $peakRight vs ${ltr[3].right}", peakRight <= ltr[3].right + 0.001f)
-        assertEquals(ltr[3].right, controller.capsuleBounds()!!.right, 0.6f)
+        assertEquals(ltr[3].right, controller.right(), 0.6f)
         assertFalse(job.isActive)
     }
 
@@ -175,7 +203,7 @@ class NavCapsuleControllerTest {
     fun theCapsuleNeverGoesPastHome() = runTest {
         val driver = FrameDriver(this, FrameDriver.HZ_60)
         val controller = controller()
-        controller.snapTo(ltr[3])
+        controller.snapTo(3f)
         controller.select(0)
 
         fly(driver, controller)
@@ -183,18 +211,28 @@ class NavCapsuleControllerTest {
         var peakLeft = Float.MAX_VALUE
         repeat(240) {
             driver.step()
-            peakLeft = minOf(peakLeft, controller.capsuleBounds()!!.left)
+            peakLeft = minOf(peakLeft, controller.left())
         }
 
         assertTrue("overshot Home: $peakLeft vs ${ltr[0].left}", peakLeft >= ltr[0].left - 0.001f)
-        assertEquals(ltr[0].left, controller.capsuleBounds()!!.left, 0.6f)
+        assertEquals(ltr[0].left, controller.left(), 0.6f)
+    }
+
+    @Test
+    fun aDragPastEitherEndStillStopsAtHomeAndMore() = runTest {
+        val controller = controller()
+
+        controller.dragTo(-0.4f)
+        assertEquals(ltr[0].left, controller.left(), 0.001f)
+        controller.dragTo(3.6f)
+        assertEquals(ltr[3].right, controller.right(), 0.001f)
     }
 
     @Test
     fun anInteriorTabStillBouncesButOnlyWithinTheOvershootBoundInTheDirectionOfTravel() = runTest {
         val driver = FrameDriver(this, FrameDriver.HZ_120)
         val controller = controller()
-        controller.snapTo(ltr[0])
+        controller.snapTo(0f)
         controller.select(2)
 
         fly(driver, controller)
@@ -202,7 +240,7 @@ class NavCapsuleControllerTest {
         var peakRight = 0f
         repeat(400) {
             driver.step()
-            peakRight = maxOf(peakRight, controller.capsuleBounds()!!.right)
+            peakRight = maxOf(peakRight, controller.right())
         }
         assertTrue("no bounce on an interior tab: $peakRight", peakRight > ltr[2].right + 0.5f)
         assertTrue("bounce $peakRight past ${ltr[2].right} exceeded the ${overshoot}px bound", peakRight <= ltr[2].right + overshoot + 0.001f)
@@ -215,7 +253,7 @@ class NavCapsuleControllerTest {
         var peakLeft = Float.MAX_VALUE
         repeat(400) {
             driver.step()
-            peakLeft = minOf(peakLeft, controller.capsuleBounds()!!.left)
+            peakLeft = minOf(peakLeft, controller.left())
         }
         assertTrue("no bounce to the left: $peakLeft", peakLeft < ltr[1].left - 0.5f)
         assertTrue("left bounce $peakLeft past ${ltr[1].left} exceeded the ${overshoot}px bound", peakLeft >= ltr[1].left - overshoot - 0.001f)
@@ -225,7 +263,7 @@ class NavCapsuleControllerTest {
     fun aShortHopBouncesOnlyAFewPixels() = runTest {
         val driver = FrameDriver(this, FrameDriver.HZ_60)
         val controller = controller()
-        controller.snapTo(ltr[0])
+        controller.snapTo(0f)
         controller.select(1)
 
         fly(driver, controller)
@@ -233,7 +271,7 @@ class NavCapsuleControllerTest {
         var peak = 0f
         repeat(120) {
             driver.step()
-            peak = maxOf(peak, controller.capsuleBounds()!!.right - ltr[1].right)
+            peak = maxOf(peak, controller.right() - ltr[1].right)
         }
 
         assertTrue("short hop overshoot $peak", peak in 0f..4f)
@@ -245,20 +283,20 @@ class NavCapsuleControllerTest {
         val driver = FrameDriver(this, FrameDriver.HZ_60)
         val controller = controller(rtl)
         controller.select(0)
-        controller.moveTo(controller.targetRect!!, navSpring)
+        controller.moveTo(controller.targetIndex, navSpring)
 
         // Index 0 is still the first logical tab, but it is physically on the right in RTL.
-        assertEquals(rtl[0], controller.capsuleBounds())
+        assertEquals(rtl[0].left, controller.left(), 0.001f)
         controller.select(3)
         fly(driver, controller)
         runCurrent()
         var peakLeft = Float.MAX_VALUE
         repeat(300) {
             driver.step()
-            peakLeft = minOf(peakLeft, controller.capsuleBounds()!!.left)
+            peakLeft = minOf(peakLeft, controller.left())
         }
         assertTrue("RTL overshot the physical left end (More): $peakLeft", peakLeft >= rtl[3].left - 0.001f)
-        assertEquals(rtl[3].left, controller.capsuleBounds()!!.left, 0.6f)
+        assertEquals(rtl[3].left, controller.left(), 0.6f)
 
         // Back towards the physically rightmost slot (Home in RTL): no overshoot past that end either.
         controller.select(0)
@@ -267,38 +305,9 @@ class NavCapsuleControllerTest {
         var peakRight = 0f
         repeat(300) {
             driver.step()
-            peakRight = maxOf(peakRight, controller.capsuleBounds()!!.right)
+            peakRight = maxOf(peakRight, controller.right())
         }
         assertTrue("RTL overshot the physical right end (Home): $peakRight", peakRight <= rtl[0].right + 0.001f)
-    }
-
-    @Test
-    fun theCapsuleWidthSpringsWithItWhenTheSelectedSlotWidens() = runTest {
-        // Selecting a tab widens its slot (66 -> 75 in the layout) and narrows the old one, in the same frame.
-        val before = slots(6f, 80f, 154f, 228f)
-        val after = listOf(
-            Rect(6f, 4f, 66f, 63f),
-            Rect(68f, 4f, 143f, 63f), // newly selected: wider
-            Rect(145f, 4f, 211f, 63f),
-            Rect(213f, 4f, 279f, 63f),
-        )
-        val driver = FrameDriver(this, FrameDriver.HZ_60)
-        val controller = controller(before)
-        controller.snapTo(before[0])
-        controller.select(1)
-        controller.onSlotsMeasured(after, interior)
-
-        fly(driver, controller)
-        runCurrent()
-        driver.step()
-        driver.step()
-        val first = controller.capsuleBounds()!!
-
-        // No pop on the frame the layout changes: the capsule still looks like the old Home capsule.
-        assertEquals(before[0].width, first.width, 8f)
-        assertEquals(before[0].left, first.left, 8f)
-        repeat(240) { driver.step() }
-        assertEquals(after[1].width, controller.capsuleBounds()!!.width, 0.8f)
     }
 
     @Test
@@ -315,9 +324,9 @@ class NavCapsuleControllerTest {
         val controller = controller()
         controller.select(3)
 
-        controller.snapTo(controller.targetRect!!)
+        controller.snapTo(3f)
 
-        assertEquals(ltr[3], controller.capsuleBounds())
+        assertEquals(ltr[3].left, controller.left(), 0.001f)
         assertFalse(controller.isMoving)
     }
 
@@ -325,20 +334,21 @@ class NavCapsuleControllerTest {
     fun remeasurementKeepsTheSelectionAndTheCapsuleFollowsItsNewSlot() = runTest {
         val controller = controller()
         controller.select(3)
-        controller.snapTo(controller.targetRect!!)
+        controller.snapTo(3f)
 
         // A font-size or rotation change moves the slots; the same destination stays selected.
         val moved = ltr.map { Rect(it.left + 10f, it.top, it.right + 10f, it.bottom) }
-        controller.onSlotsMeasured(moved, interior)
+        controller.onSlotsMeasured(moved, interior.translate(10f, 0f))
 
         assertEquals(3, controller.targetIndex)
         assertEquals(moved[3], controller.targetRect)
+        assertEquals(moved[3].left, controller.left(), 0.001f)
     }
 
     @Test
     fun theCapsuleNeverDrawsOutsideTheMeasuredBounds() = runTest {
         val controller = controller()
-        controller.snapTo(Rect(-50f, 4f, 20f, 63f))
+        controller.snapTo(-8f)
 
         val bounds = controller.capsuleBounds()!!
 

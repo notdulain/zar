@@ -82,7 +82,7 @@ class ZarBottomNavMotionTest {
         assertEquals(null, drawn.get())
 
         // No route, layout or selection changes follow: first placement itself must request a draw.
-        compose.runOnIdle { runBlocking { controller.snapTo(slot) } }
+        compose.runOnIdle { runBlocking { controller.snapTo(0f) } }
         compose.waitForIdle()
 
         assertEquals(slot, drawn.get())
@@ -199,7 +199,7 @@ class ZarBottomNavMotionTest {
             last = left()
         }
         Log.i("ZarNavTravel", "retarget approach per-frame dx px: $steps")
-        assertTrue("travelling toward More", controller.velocityLeftEdge > 0f)
+        assertTrue("travelling toward More", controller.velocitySlots > 0f)
 
         // performClick itself lets one frame through, so measure steps from the position right after the tap.
         tap("nav-activity")
@@ -261,17 +261,48 @@ class ZarBottomNavMotionTest {
         assertEquals(controller.targetRect!!.left, left(), 0.7f)
     }
 
-    @Test
-    fun theTabBarKeepsItsRestingSizeWhateverTheCapsuleIsDoing() {
-        show(full)
-        val rest = compose.onNodeWithTag("nav-home").getUnclippedBoundsInRoot().height
-        tap("nav-more")
-        frame(3)
-        assertEquals(59f, rest.value, 0.2f)
+    private val tags = listOf("nav-home", "nav-activity", "nav-plans", "nav-more")
 
-        // Home is no longer selected: its resting height is the unselected 56dp, the selected one 59dp.
-        assertEquals(56f, compose.onNodeWithTag("nav-home").getUnclippedBoundsInRoot().height.value, 0.2f)
-        assertEquals(59f, compose.onNodeWithTag("nav-more").getUnclippedBoundsInRoot().height.value, 0.2f)
+    private fun slotBounds() = tags.map { compose.onNodeWithTag(it).getUnclippedBoundsInRoot() }
+
+    @Test
+    fun everySlotKeepsItsBoundsWhateverIsSelectedOrMoving() {
+        show(full)
+        frame(4)
+        val rest = slotBounds()
+
+        // Four equal columns that tile the row: same width (to a pixel of rounding), same height, same top.
+        rest.forEach {
+            assertEquals(rest[0].width.value, it.width.value, 0.6f)
+            assertEquals(rest[0].height.value, it.height.value, 0.05f)
+            assertEquals(rest[0].top.value, it.top.value, 0.05f)
+        }
+
+        // Every selection, mid-flight and settled, leaves every slot exactly where it was.
+        listOf("nav-more", "nav-plans", "nav-activity", "nav-home", "nav-activity", "nav-more").forEach { tag ->
+            tap(tag)
+            repeat(8) {
+                frame()
+                assertEquals("a slot moved while $tag was selected or moving", rest, slotBounds())
+            }
+            frame(60)
+            assertEquals("a slot moved after $tag settled", rest, slotBounds())
+            compose.onNodeWithTag(tag).assertIsSelected()
+        }
+    }
+
+    @Test
+    fun theCapsuleIsTheOnlyThingThatMovesOnSelection() {
+        show(full)
+        val before = left()
+
+        tap("nav-activity")
+        frame(60)
+
+        assertTrue("capsule moved ${left() - before}", left() > before + 10f)
+        assertEquals(59f, controller.capsuleBounds()!!.height / compose.density.density, 0.3f)
+        // The capsule is one slot wide: a touch column less the 1dp either side that is the gap between slots.
+        assertEquals(slotBounds()[0].width.value - 2f, controller.capsuleBounds()!!.width / compose.density.density, 0.6f)
     }
 
     /** Real frames of a Home -> More flight, written for the evidence record (adb pull from the app's files dir). */

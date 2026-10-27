@@ -1,14 +1,15 @@
 package com.example.zar.core.presentation.components
 
-import androidx.compose.animation.core.VisibilityThreshold
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
@@ -52,15 +53,17 @@ import com.example.zar.core.presentation.theme.ZarDimens
 import com.example.zar.core.presentation.theme.ZarTheme
 import com.example.zar.core.presentation.theme.ZarType
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.filter
 
 /**
- * Hi-fi floating pill navbar. Every item keeps its label visible. One retained capsule (owned by [controller], which
- * lives with the navigation session) is drawn behind the labels and moves between the measured slots with the shared
- * `navSelection` spring. The labels themselves do not own the capsule, so a screen being created again cannot reset it.
+ * Hi-fi floating pill navbar: four equal, stationary slots. Selecting a tab changes nothing in the layout: every slot,
+ * icon, label and hit area keeps its bounds and its text style, and only the one retained capsule moves. The capsule
+ * (owned by [controller], which lives with the navigation session) is drawn behind the labels. With [driveCapsule] the
+ * navbar springs it to [selected] with the shared `navSelection` spring; a host whose pager owns the capsule's position
+ * (see `ZarNavHost`) passes `false` and calls [NavCapsuleController.dragTo] / [NavCapsuleController.moveTo] itself.
  *
  * Labels and icons are drawn in the resting colour on the pill and again, clipped to the capsule, in the inverse colour,
- * so they stay readable wherever the capsule is mid-move. Selection semantics always follow the real route, not the
+ * so they stay readable wherever the capsule is mid-move. Selection semantics follow the settled destination, never the
  * capsule's position.
  */
 @Composable
@@ -69,25 +72,32 @@ fun ZarBottomNav(
     onNavigate: (TopLevelDestination) -> Unit,
     controller: NavCapsuleController,
     modifier: Modifier = Modifier,
+    driveCapsule: Boolean = true,
 ) {
     val colors = ZarTheme.colors
     val policy = LocalZarMotion.current
     val shape = RoundedCornerShape(ZarDimens.NavRadius)
     val selectedIndex = TopLevelDestination.entries.indexOf(selected)
 
-    // Keep the retained capsule's target in step with the real navigation selection.
-    LaunchedEffect(controller, selectedIndex) { controller.select(selectedIndex) }
-
-    // Move from the current on-screen rectangle to the latest target. A newer selection (or a remeasured slot) cancels
-    // the old flight and retargets from its position and velocity. Reduced motion and disabled animations resolve at once.
-    val overshootPx = with(LocalDensity.current) { ZarMotion.NavMaxOvershoot.toPx() }
-    LaunchedEffect(controller, overshootPx) { controller.maxOvershootPx = overshootPx }
-    LaunchedEffect(controller, policy) {
-        snapshotFlow { controller.targetRect }.filterNotNull().collectLatest { target ->
-            if (policy.allowsSpatialMotion) {
-                controller.moveTo(target, policy.spring(ZarSprings.NavSelection, Rect.VisibilityThreshold))
-            } else {
-                controller.snapTo(target)
+    val density = LocalDensity.current
+    val overshootPx = with(density) { ZarMotion.NavMaxOvershoot.toPx() }
+    val capsuleHeightPx = with(density) { ZarDimens.NavCapsuleHeight.toPx() }
+    LaunchedEffect(controller, overshootPx, capsuleHeightPx) {
+        controller.maxOvershootPx = overshootPx
+        controller.capsuleHeightPx = capsuleHeightPx
+    }
+    if (driveCapsule) {
+        // Keep the retained capsule's target in step with the real navigation selection.
+        LaunchedEffect(controller, selectedIndex) { controller.select(selectedIndex) }
+        // Move from the current on-screen position to the latest target. A newer selection (or a remeasured slot) cancels
+        // the old flight and retargets from its position and velocity. Reduced motion and disabled animations resolve at once.
+        LaunchedEffect(controller, policy) {
+            snapshotFlow { controller.targetIndex to controller.revealed }.filter { it.second }.collectLatest { (target, _) ->
+                if (policy.allowsSpatialMotion) {
+                    controller.moveTo(target, policy.spring(ZarSprings.NavSelection, SLOT_THRESHOLD))
+                } else {
+                    controller.snapTo(target.toFloat())
+                }
             }
         }
     }
@@ -184,9 +194,10 @@ private fun NavRow(
     onNavigate: ((TopLevelDestination) -> Unit)?,
     onSlot: ((Int, LayoutCoordinates) -> Unit)?,
 ) {
+    // 6dp padding and a 2dp gap in Figma. Each slot's touch column is its 68.75dp visual slot plus half of each gap, so
+    // the columns tile the row exactly: padding 5dp, no gap, 1dp either side of every visual slot.
     Row(
-        modifier.fillMaxWidth().height(ZarDimens.NavHeight).padding(horizontal = 6.dp, vertical = 3.dp),
-        horizontalArrangement = Arrangement.spacedBy(2.dp),
+        modifier.fillMaxWidth().height(ZarDimens.NavHeight).padding(horizontal = 5.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         TopLevelDestination.entries.forEachIndexed { index, destination ->
@@ -196,14 +207,17 @@ private fun NavRow(
                 tint = tint,
                 glyphSelected = glyphSelected,
                 onClick = onNavigate?.let { navigate -> { navigate(destination) } },
-                modifier = Modifier
-                    .weight(if (destination == selected) 75f else 66f)
-                    .then(if (onSlot != null) Modifier.onGloballyPositioned { onSlot(index, it) } else Modifier),
+                modifier = Modifier.weight(ZarMotion.NAV_SLOT_WEIGHT),
+                onSlot = onSlot?.let { report -> { coords -> report(index, coords) } },
             )
         }
     }
 }
 
+/**
+ * One tab. Nothing here depends on [isSelected] except the semantics: weight, height, spacing, label style and clip
+ * are identical for every tab in every state, so selecting never reflows a neighbour.
+ */
 @Composable
 private fun NavItem(
     destination: TopLevelDestination,
@@ -212,24 +226,33 @@ private fun NavItem(
     glyphSelected: Boolean,
     onClick: (() -> Unit)?,
     modifier: Modifier = Modifier,
+    onSlot: ((LayoutCoordinates) -> Unit)? = null,
 ) {
     val label = stringResource(destination.label)
     val interactive = if (onClick != null) {
         Modifier
-            .clip(RoundedCornerShape(if (isSelected) 46.dp else 28.dp))
+            .clip(RoundedCornerShape(28.dp))
             .selectable(selected = isSelected, role = Role.Tab, onClick = onClick)
             .semantics { contentDescription = label }
             .testTag("nav-${destination.name.lowercase()}")
     } else {
         Modifier
     }
-    Column(
-        modifier = modifier.height(if (isSelected) 59.dp else 56.dp).then(interactive),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-    ) {
-        TopLevelIcon(destination, tint = tint, selected = glyphSelected)
-        Spacer(Modifier.height(if (isSelected) 1.dp else 2.dp))
-        Text(label, style = ZarType.labelTab, color = tint)
+    Box(modifier.fillMaxHeight().then(interactive), contentAlignment = Alignment.Center) {
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 1.dp)
+                .height(ZarDimens.NavSlotHeight)
+                .then(if (onSlot != null) Modifier.onGloballyPositioned { onSlot(it) } else Modifier),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+        ) {
+            TopLevelIcon(destination, tint = tint, selected = glyphSelected)
+            Spacer(Modifier.height(4.dp))
+            Text(label, style = ZarType.labelTab, color = tint)
+        }
     }
 }
+
+private const val SLOT_THRESHOLD = 0.0005f

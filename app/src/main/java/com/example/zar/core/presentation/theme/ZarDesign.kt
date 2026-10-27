@@ -260,7 +260,7 @@ object ZarType {
     val labelButton = TextStyle(fontFamily = GeistFamily, fontWeight = FontWeight.Medium, fontSize = 15.sp, lineHeight = 15.sp)
     val labelChip = TextStyle(fontFamily = GeistFamily, fontWeight = FontWeight.Medium, fontSize = 13.sp, lineHeight = 13.sp)
     val labelAction = labelChip
-    val labelTab = TextStyle(fontFamily = GeistFamily, fontWeight = FontWeight.Normal, fontSize = 8.sp, lineHeight = 8.sp, letterSpacing = 0.08.sp)
+    val labelTab = TextStyle(fontFamily = GeistFamily, fontWeight = FontWeight.Medium, fontSize = 10.sp, lineHeight = 12.sp, letterSpacing = 0.sp)
     val monoLabel = TextStyle(fontFamily = GeistMonoFamily, fontWeight = FontWeight.Normal, fontSize = 11.sp, lineHeight = 11.sp, letterSpacing = 0.44.sp)
     val monoCaption = TextStyle(fontFamily = GeistMonoFamily, fontWeight = FontWeight.Normal, fontSize = 10.sp, lineHeight = 10.sp)
     val monoAxis = TextStyle(fontFamily = GeistMonoFamily, fontWeight = FontWeight.Normal, fontSize = 10.sp, lineHeight = 10.sp, letterSpacing = 0.2.sp)
