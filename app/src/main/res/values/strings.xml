@@ -31,6 +31,7 @@
     <string name="income_field_received_from">Received from (optional)</string>
     <string name="income_field_category">Category (optional)</string>
     <string name="income_field_note">Note (optional)</string>
+    <string name="income_field_optional">Optional</string>
     <string name="income_no_accounts">Add an account first.</string>
 
     <string name="income_error_amount_missing">Enter the amount you received</string>

@@ -176,7 +176,14 @@ fun ManualDatePickerSheet(
 
 /** Figma Z09 picker: 12-hour hour/minute dial, AM/PM switch and keyboard mode. */
 @Composable
-fun ManualTimePickerSheet(time: LocalTime, onCancel: () -> Unit, onSetTime: (LocalTime) -> Unit, modifier: Modifier = Modifier) {
+fun ManualTimePickerSheet(
+    time: LocalTime,
+    onCancel: () -> Unit,
+    onSetTime: (LocalTime) -> Unit,
+    modifier: Modifier = Modifier,
+    /** Optional times (Income) offer "Remove time"; Expense and Transfer always have a time and pass null. */
+    onClear: (() -> Unit)? = null,
+) {
     var selected by remember(time) { mutableStateOf(time.withSecond(0).withNano(0)) }
     var activeHour by remember { mutableStateOf(true) }
     var typing by remember { mutableStateOf(false) }
@@ -276,6 +283,14 @@ fun ManualTimePickerSheet(time: LocalTime, onCancel: () -> Unit, onSetTime: (Loc
                         }
                     }
                     Text(if (typing) "Use the dial" else "Type the time", style = ZarType.labelAction, color = colors.textPrimary)
+                }
+            }
+        }
+        if (onClear != null) {
+            Box(Modifier.fillMaxWidth(), Alignment.Center) {
+                Box(Modifier.heightIn(min = 48.dp).clip(RoundedCornerShape(16.dp))
+                    .clickable(role = Role.Button, onClick = onClear).padding(horizontal = 16.dp).testTag("time-clear"), Alignment.Center) {
+                    Text("Remove time", style = ZarType.labelAction, color = colors.textSelected)
                 }
             }
         }

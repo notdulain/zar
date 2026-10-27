@@ -61,6 +61,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -882,33 +883,59 @@ internal fun FieldError(@androidx.annotation.StringRes res: Int?, modifier: Modi
     if (res != null) Text(stringResource(res), style = ZarType.bodyCaption, color = ZarTheme.colors.danger, modifier = modifier)
 }
 
+/**
+ * Figma date and time row. Expense passes a real time; Income may have none ("Not set"), shows "Today, 15 Oct" through
+ * [dateText], and stacks the two values under the label once text is enlarged ([stackAtLargeText]).
+ */
 @Composable
-private fun DateTimeRow(date: LocalDate, time: LocalTime, onOpenDate: () -> Unit, onOpenTime: () -> Unit) {
+internal fun DateTimeRow(
+    date: LocalDate,
+    time: LocalTime?,
+    onOpenDate: () -> Unit,
+    onOpenTime: () -> Unit,
+    dateText: String = IncomeFormat.fullDate(date),
+    dateTag: String = "manual-date",
+    timeTag: String = "manual-time",
+    stackAtLargeText: Boolean = false,
+    minTouchHeight: androidx.compose.ui.unit.Dp = 0.dp,
+) {
     val colors = ZarTheme.colors
-    Row(
-        Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        ZarMonoLabel(stringResource(R.string.manual_field_date), modifier = Modifier.size(width = 96.dp, height = 16.dp))
-        Row(Modifier.weight(1f), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+    val stacked = stackAtLargeText && LocalDensity.current.fontScale >= 1.3f
+    val values: @Composable (Modifier) -> Unit = { modifier ->
+        Row(modifier, horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Row(
-                Modifier.clip(ZarShapes.xs).clickable(role = Role.Button, onClick = onOpenDate)
-                    .padding(vertical = 8.dp).testTag("manual-date"),
+                Modifier.heightIn(min = minTouchHeight).clip(ZarShapes.xs).clickable(role = Role.Button, onClick = onOpenDate)
+                    .padding(vertical = 8.dp).testTag(dateTag),
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(IncomeFormat.fullDate(date), style = ZarType.bodyM, color = colors.textPrimary)
+                Text(dateText, style = ZarType.bodyM, color = colors.textPrimary)
                 ZarIcon(R.drawable.ic_ph_caret_down, size = 14.dp, tint = colors.iconMuted)
             }
             Row(
-                Modifier.clip(ZarShapes.xs).clickable(role = Role.Button, onClick = onOpenTime)
-                    .padding(vertical = 8.dp).testTag("manual-time"),
+                Modifier.heightIn(min = minTouchHeight).clip(ZarShapes.xs).clickable(role = Role.Button, onClick = onOpenTime)
+                    .padding(vertical = 8.dp).testTag(timeTag),
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(time.format(DateTimeFormatter.ofPattern("h:mm a", Locale.ENGLISH)), style = ZarType.bodyM, color = colors.textPrimary)
+                Text(
+                    time?.format(DateTimeFormatter.ofPattern("h:mm a", Locale.ENGLISH)) ?: stringResource(R.string.entry_time_not_set),
+                    style = ZarType.bodyM,
+                    color = if (time == null) colors.textTertiary else colors.textPrimary,
+                )
                 ZarIcon(R.drawable.ic_ph_caret_down, size = 14.dp, tint = colors.iconMuted)
             }
+        }
+    }
+    if (stacked) {
+        Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            ZarMonoLabel(stringResource(R.string.manual_field_date))
+            values(Modifier.fillMaxWidth())
+        }
+    } else {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            ZarMonoLabel(stringResource(R.string.manual_field_date), modifier = Modifier.size(width = 96.dp, height = 16.dp))
+            values(Modifier.weight(1f))
         }
     }
 }
