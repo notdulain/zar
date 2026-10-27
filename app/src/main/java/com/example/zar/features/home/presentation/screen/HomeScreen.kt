@@ -10,6 +10,18 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.windowInsetsTopHeight
+import androidx.compose.runtime.remember
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalDensity
+import com.example.zar.core.presentation.components.CollapseLine
+import com.example.zar.core.presentation.components.HomeCollapse
+import com.example.zar.core.presentation.components.collapseChartFade
+import com.example.zar.core.presentation.components.collapseLine
+import com.example.zar.core.presentation.components.collapseShift
+import com.example.zar.core.presentation.components.rememberHomeCollapse
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -140,6 +152,7 @@ internal fun HomeScreenContent(
         // The hero reads this same state for its bounded parallax; nothing else about the scroll changes.
         val scrollState = rememberScrollState()
         val layoutDirection = androidx.compose.ui.platform.LocalLayoutDirection.current
+        Box(Modifier.fillMaxSize()) {
         Column(
             // Only the sides and top are outer padding. The bottom clearance is scroll content, so the list passes behind the
             // floating nav and its last row ends 24dp above it.
@@ -183,6 +196,15 @@ internal fun HomeScreenContent(
                 )
             }
             Spacer(Modifier.height(padding.calculateBottomPadding()))
+        }
+        // The pinned band that takes over the status-bar area once the card has collapsed into it.
+        val collapse = rememberHomeCollapse(scrollState, cardHeight = 507.dp, fadeMargin = 8.dp)
+        Box(
+            Modifier.align(Alignment.TopCenter).fillMaxWidth().windowInsetsTopHeight(WindowInsets.statusBars)
+                .graphicsLayer { alpha = HomeCollapse.bandAlpha(collapse.p()) }
+                .background(Color(0xFF05070B))
+                .testTag("home-status-band"),
+        )
         }
     }
 }
@@ -264,57 +286,77 @@ private fun ReceivedHero(
 ) {
     val colors = ZarTheme.colors
     var chartMode by rememberSaveable { mutableIntStateOf(0) }
-    // The gradient is the decorative background layer: it drifts at the background rate behind the text and chart
-    // groups, each of which keeps its normal layout bounds. The card paints the gradient's own top colour so the
-    // strip the drifting layer uncovers stays seamless.
-    val heroOffset = scrollState.heroDisplacement()
+    // The whole card collapses into the status bar as the page scrolls (see HomeCollapse): the gradient drifts at 0.35 of
+    // the scroll, a dark overlay builds to 70%, the text group follows at 0.30 and fades line by line before it reaches the
+    // status-bar glyphs, the chart group drifts at 0.18 and fades over the middle, the bottom corners flatten and a pinned
+    // band takes over. Everything is read in the layer phase, so scrolling never recomposes the card.
+    val spec = rememberHomeCollapse(scrollState, cardHeight = 507.dp, fadeMargin = 8.dp)
+    val density = LocalDensity.current
+    val fullRadiusPx = with(density) { 32.dp.toPx() }
+    val tabsLine = remember { CollapseLine() }
+    val monthLine = remember { CollapseLine() }
+    val labelLine = remember { CollapseLine() }
+    val amountLine = remember { CollapseLine() }
+    val statusLine = remember { CollapseLine() }
+    val toggleLine = remember { CollapseLine() }
     Box(
         Modifier.fillMaxWidth().height(507.dp)
-            .clip(RoundedCornerShape(bottomStart = 32.dp, bottomEnd = 32.dp))
+            .graphicsLayer {
+                clip = true
+                val r = HomeCollapse.cornerRadius(spec.p(), fullRadiusPx)
+                shape = RoundedCornerShape(topStart = 0f, topEnd = 0f, bottomEnd = r, bottomStart = r)
+            }
             .background(Color(0xFF05070B))
             .testTag("received-card"),
     ) {
         Box(
             Modifier.fillMaxSize()
-                .heroParallax(heroOffset, ZarMotion.PARALLAX_BACKGROUND, ZarMotion.ParallaxBackgroundCap)
+                .collapseShift(spec, HomeCollapse.BACKGROUND_RATE)
                 .background(ZarGradients.dusk),
         )
+        Box(
+            Modifier.fillMaxSize()
+                .graphicsLayer { alpha = HomeCollapse.overlayAlpha(spec.p()) }
+                .background(Color(0xFF05070B)),
+        )
         Column(Modifier.fillMaxSize().padding(horizontal = 30.dp)) {
-            Column(
-                Modifier.heroParallax(heroOffset, ZarMotion.PARALLAX_TEXT, ZarMotion.ParallaxTextCap),
-            ) {
+            Column(Modifier.collapseShift(spec, HomeCollapse.TEXT_RATE)) {
                 Spacer(Modifier.height(54.dp))
-                ChartModeTabs(selected = chartMode, onSelect = { chartMode = it })
+                Box(Modifier.collapseLine(spec, tabsLine)) { ChartModeTabs(selected = chartMode, onSelect = { chartMode = it }) }
                 Spacer(Modifier.height(4.dp))
-                MonthPicker(
-                    month = overview.month,
-                    canGoForward = canGoForward,
-                    onPrevious = onPreviousMonth,
-                    onNext = onNextMonth,
-                    onDark = true,
-                )
+                Box(Modifier.collapseLine(spec, monthLine)) {
+                    MonthPicker(
+                        month = overview.month,
+                        canGoForward = canGoForward,
+                        onPrevious = onPreviousMonth,
+                        onNext = onNextMonth,
+                        onDark = true,
+                    )
+                }
                 Spacer(Modifier.height(2.dp))
-                Text(
-                    stringResource(R.string.home_received_this_month).uppercase(),
-                    style = ZarType.monoLabel,
-                    color = colors.textOnInverse,
-                )
+                Box(Modifier.collapseLine(spec, labelLine)) {
+                    Text(
+                        stringResource(R.string.home_received_this_month).uppercase(),
+                        style = ZarType.monoLabel,
+                        color = colors.textOnInverse,
+                    )
+                }
                 Spacer(Modifier.height(2.dp))
-                Text(
-                    overview.summary.received.amount.formatWithCode(),
-                    style = ZarType.amountL,
-                    color = colors.textOnInverse,
-                    modifier = Modifier.testTag("received-amount"),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
+                Box(Modifier.collapseLine(spec, amountLine)) {
+                    Text(
+                        overview.summary.received.amount.formatWithCode(),
+                        style = ZarType.amountL,
+                        color = colors.textOnInverse,
+                        modifier = Modifier.testTag("received-amount"),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
                 Spacer(Modifier.height(8.dp))
-                HeroStatus(overview)
+                Box(Modifier.collapseLine(spec, statusLine)) { HeroStatus(overview) }
             }
             Spacer(Modifier.weight(1f))
-            Column(
-                Modifier.heroParallax(heroOffset, ZarMotion.PARALLAX_CHART, ZarMotion.ParallaxChartCap),
-            ) {
+            Column(Modifier.collapseShift(spec, HomeCollapse.CHART_RATE).collapseChartFade(spec)) {
                 val chartModifier = Modifier.fillMaxWidth().height(165.dp).padding(horizontal = 18.dp)
                 when {
                     AmountMask.isHidden -> HiddenChart(chartModifier)
@@ -330,7 +372,12 @@ private fun ReceivedHero(
                 Spacer(Modifier.height(22.dp))
             }
         }
-        HideAmountsToggle(onToggleAmounts, Modifier.align(Alignment.TopEnd).padding(top = 48.dp, end = 14.dp))
+        HideAmountsToggle(
+            onToggleAmounts,
+            Modifier.align(Alignment.TopEnd).padding(top = 48.dp, end = 14.dp)
+                .collapseShift(spec, HomeCollapse.TEXT_RATE)
+                .collapseLine(spec, toggleLine),
+        )
     }
 }
 
