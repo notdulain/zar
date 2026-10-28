@@ -37,6 +37,7 @@ class B(rm.Dev):
     def go(self, name):
         n = self.find(desc=name)
         if n: self.tap_node(n)
+        elif name == "Home" and not self.find(text="Home"): return  # the selected Home tab exposes no label: already there
         else: self.tap(text=name)
         time.sleep(1.2)
 
