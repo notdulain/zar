@@ -29,6 +29,14 @@ against these frames (positions, 420dp hero, gradient, button colours match; dif
 Recorded with `tools/back-check.py emulator-5554 <dir> --theme both --only tab-button,tab-edge` on `com.example.zar.perf` (built
 `-Pzar.useEmulators=true -Pzar.appIdSuffix=.perf`). Physical-phone frame timing is in [`performance.md`](performance.md).
 
+## Physical Pixel 6a clips (28 Oct 2026, `f5e82df`)
+
+`phone/phone-back-*-{light,dark}.mp4`: screen recordings from the physical phone (540x1200 re-encodes, 60 Hz) of the isolated `.perf` debug
+install with the synthetic demo user: `tab-button` (Plans, Back button), `tab-edge` (More, edge drag cancel then commit), `child-edge`
+(Settings, edge cancel then commit) and `add-sheet-edge` (Add transaction sheet, edge cancel then commit). Recorded with
+`tools/back-check.py 2B111JEGR05183 <dir> --theme both` against `com.example.zar.perf`. Frame timing for the same build is Part 1 of
+[`performance.md`](performance.md). A recording shows what moved, not how it feels.
+
 ## Frame timing (emulator, honest)
 
 `dumpsys gfxinfo` on the emulator's 60 Hz display, one pass each: Home scroll collapse x8: 156 frames, 11.5% janky, p50 17 ms, p95 23 ms,

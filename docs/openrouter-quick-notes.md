@@ -99,6 +99,14 @@ On 27 Oct 2026 a probe on the `emulator-5554` debug install returned `EXCHANGE_R
 answered 200 and an unauthenticated POST answered 401, so the deployed Worker is up and enforcing. The physical phone
 was not attached for that check, so its registration state is unconfirmed.
 
+On 28 Oct 2026 the physical Pixel 6a was attached. Its original install `com.example.zar` has a debug secret that Firebase App Check
+**accepts**: the `exchangeDebugToken` call for app `1:588119468948:android:61ae9f5e46dc9cf09bbd81` returned HTTP 200 with a token (secret
+read privately through `run-as`, never printed or stored). The registered entry "Pixel 6a debug install (owner)" therefore belongs to the
+original install. The isolated `com.example.zar.perf` install has its own secret, which is **not** registered (HTTP 403 "App attestation
+failed."); it was not registered, because it is a benchmark install that never calls the Worker. **Not verified:** a synthetic draft
+through the Worker with the original install's real session. The app sends the signed-in user's real account names with every
+request, and a dummy value cannot be substituted without changing the original app or reading its Auth refresh token, so no draft was sent.
+
 ## Model and privacy
 
 `worker/wrangler.jsonc` pins `google/gemini-3.5-flash-lite`, the OpenRouter ID for Zar's evaluated Gemini model.
