@@ -34,7 +34,7 @@ Recorded with `tools/back-check.py emulator-5554 <dir> --theme both --only tab-b
 `phone/phone-back-*-{light,dark}.mp4`: screen recordings from the physical phone (540x1200 re-encodes, 60 Hz) of the isolated `.perf` debug
 install with the synthetic demo user: `tab-button` (Plans, Back button), `tab-edge` (More, edge drag cancel then commit), `child-edge`
 (Settings, edge cancel then commit) and `add-sheet-edge` (Add transaction sheet, edge cancel then commit). Recorded with
-`tools/back-check.py 2B111JEGR05183 <dir> --theme both` against `com.example.zar.perf`. Frame timing for the same build is Part 1 of
+`tools/back-check.py <phone-adb-serial> <dir> --theme both` against `com.example.zar.perf`. Frame timing for the same build is Part 1 of
 [`performance.md`](performance.md). A recording shows what moved, not how it feels.
 
 ## Frame timing (emulator, honest)
