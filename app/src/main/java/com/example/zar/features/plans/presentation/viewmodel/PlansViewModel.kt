@@ -103,10 +103,12 @@ class PlansViewModel @Inject constructor(
 
     /**
      * Creates the one savings goal from the New plan sheet. Zar keeps a single goal, so when one exists this does nothing:
-     * the sheet offers Edit instead and nothing is ever replaced by a "new" plan.
+     * the sheet offers Edit instead and nothing is ever replaced by a "new" plan. Until the plans have loaded it is not
+     * known whether a goal exists (and the goal ID is fixed), so nothing is written then either.
      */
     fun createGoal(name: String, target: String, date: LocalDate?) {
-        if (_uiState.value.overview?.goal != null) return
+        val overview = _uiState.value.overview ?: return
+        if (overview.goal != null) return
         val amount = Money.parse(target, Currencies.LKR)
         if (name.isBlank() || name.length > 80 || amount == null || !amount.isPositive) {
             _uiState.update { it.copy(message = PlansMessage.INVALID_GOAL) }

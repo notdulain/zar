@@ -165,7 +165,8 @@ fun PlansScreen(
                 NewPlanSheet(
                     goalName = state.overview?.goal?.name,
                     hasWeeklyLimit = allowance.overview?.settings?.isEnabled == true,
-                    isSaving = state.isSaving,
+                    // Disabled until the plans have loaded: only then is it known that no goal exists to be replaced.
+                    isSaving = state.isSaving || state.overview == null,
                     onDismiss = dismiss,
                     onCreateGoal = viewModel::createGoal,
                     onEditGoal = { showNewPlan = false; viewModel.openGoalEditor() },

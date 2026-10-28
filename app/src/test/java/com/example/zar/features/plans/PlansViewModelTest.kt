@@ -6,6 +6,8 @@ import com.example.zar.core.domain.model.AccountId
 import com.example.zar.core.domain.model.AccountType
 import com.example.zar.core.domain.model.OpeningBalance
 import com.example.zar.core.domain.model.money.Currencies
+import com.example.zar.features.plans.domain.model.SavingsGoal
+import com.example.zar.features.plans.domain.repository.GoalRepository
 import com.example.zar.features.plans.domain.usecase.ObservePlansOverviewUseCase
 import com.example.zar.features.plans.domain.usecase.SaveGoalUseCase
 import com.example.zar.features.plans.domain.usecase.SetGoalAllocationUseCase
@@ -14,7 +16,10 @@ import com.example.zar.features.plans.presentation.viewmodel.PlansViewModel
 import java.time.LocalDate
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
@@ -125,5 +130,34 @@ class PlansViewModelTest {
         vm.submitGoal()
         assertNull(vm.uiState.value.overview?.goal?.targetDate)
         assertEquals(lkr(1_000), vm.uiState.value.overview?.goal?.allocated)
+    }
+
+    @Test
+    fun createGoalWritesNothingUntilThePlansHaveLoaded() = runTest {
+        val saved = mutableListOf<SavingsGoal>()
+        val neverLoads = object : GoalRepository {
+            override fun observeGoals(): Flow<List<SavingsGoal>> = flow { awaitCancellation() }
+            override suspend fun saveGoal(goal: SavingsGoal) { saved += goal }
+        }
+        val accounts = FakePlanAccounts(listOf(savings))
+        val unloaded = PlansViewModel(
+            ObservePlansOverviewUseCase(neverLoads, accounts, TrackingPlanLedger()),
+            SaveGoalUseCase(neverLoads),
+            SetGoalAllocationUseCase(neverLoads, accounts, TrackingPlanLedger()),
+        )
+        unloaded.createGoal("Laptop", "490000", null)
+        assertTrue(unloaded.uiState.value.overview == null)
+        assertTrue(saved.isEmpty())
+        assertEquals(0, unloaded.uiState.value.goalCreatedCount)
+    }
+
+    @Test
+    fun createGoalNeverReplacesAnExistingGoal() = runTest {
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.uiState.collect {} }
+        vm.createGoal("Laptop", "490000", null)
+        assertEquals("Laptop", vm.uiState.value.overview?.goal?.name)
+        vm.createGoal("Other", "1000", null)
+        assertEquals("Laptop", vm.uiState.value.overview?.goal?.name)
+        assertEquals(1, vm.uiState.value.goalCreatedCount)
     }
 }
