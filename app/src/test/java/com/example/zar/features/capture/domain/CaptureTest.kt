@@ -31,6 +31,7 @@ import com.example.zar.features.capture.domain.usecase.CaptureOutcome
 import com.example.zar.features.capture.domain.usecase.CaptureTextUseCase
 import com.example.zar.features.capture.domain.usecase.ConfirmCapturedDraftUseCase
 import com.example.zar.features.capture.domain.usecase.ObserveCaptureHealthUseCase
+import com.example.zar.features.rules.domain.usecase.EditCategoryRuleUseCase
 import java.time.LocalDate
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -225,9 +226,13 @@ class CaptureTest {
     }
     // --- Category rules (SCRUM-39) ---
 
-    private suspend fun confirmPurchaseWith(rules: List<com.example.zar.features.rules.domain.model.CategoryRule>, type: TransactionType = TransactionType.EXPENSE): FakeDrafts {
+    private suspend fun confirmPurchaseWith(
+        rules: List<com.example.zar.features.rules.domain.model.CategoryRule>,
+        type: TransactionType = TransactionType.EXPENSE,
+        message: String = purchase,
+    ): FakeDrafts {
         val drafts = FakeDrafts()
-        CaptureTextUseCase(BankSmsParser(), drafts)(purchase, DraftSource.SHARED_TEXT, T0).getOrThrow()
+        CaptureTextUseCase(BankSmsParser(), drafts)(message, DraftSource.SHARED_TEXT, T0).getOrThrow()
         val draft = drafts.drafts.value.values.single()
         val confirm = ConfirmCapturedDraftUseCase(drafts, FakeCategoryRules(rules).observeUseCase())
         confirm(draft, bank, type, if (type == TransactionType.EXPENSE) SpendingClass.UNKNOWN else null, Instant.parse("2026-10-22T04:00:00Z")).getOrThrow()
@@ -259,6 +264,55 @@ class CaptureTest {
         val a = rule("CAFE SEVENTY THREE MALABE LK", category = "groceries", id = "a")
         val b = rule("CAFE SEVENTY THREE MALABE LK", category = "coffee-dining", id = "b")
         assertNull(confirmPurchaseWith(listOf(a, b)).ledger.transactions.values.single().categoryId)
+    }
+
+    private fun purchaseAt(merchant: String, amount: String = "650.00") =
+        "Dear Cardholder, Purchase at $merchant for LKR $amount on 11/10/26 10:49 AM has been authorised on your debit card ending #1111."
+
+    @Test fun aGeneralNameLikePickMeIsNeverFiledEvenWhenARuleExistsForIt() = runBlocking {
+        val general = rule("PickMe", category = "transport")
+        val saved = confirmPurchaseWith(listOf(general), message = purchaseAt("PICKME")).ledger.transactions.values.single()
+
+        assertNull(saved.categoryId)
+        assertNull(saved.appliedRuleId)
+        assertEquals(lkr(650), saved.amount)
+    }
+
+    @Test fun aPreciseNameOfTheSameBrandIsStillFiled() = runBlocking {
+        val food = rule("PickMe Food", category = "coffee-dining")
+        val saved = confirmPurchaseWith(listOf(food), message = purchaseAt("PICKME FOOD")).ledger.transactions.values.single()
+
+        assertEquals("coffee-dining", saved.categoryId)
+        assertEquals(food.id.value, saved.appliedRuleId)
+    }
+
+    @Test fun editingARuleOnlyChangesLaterCapturesNeverTheEntryAlreadySaved() = runBlocking {
+        val drafts = FakeDrafts()
+        val capture = CaptureTextUseCase(BankSmsParser(), drafts)
+        val v1 = rule("CAFE SEVENTY THREE MALABE LK", category = "coffee-dining", id = "cafe", version = 1)
+        val rules = FakeCategoryRules(listOf(v1))
+        val confirm = ConfirmCapturedDraftUseCase(drafts, rules.observeUseCase())
+
+        capture(purchase, DraftSource.SHARED_TEXT, T0).getOrThrow()
+        confirm(drafts.drafts.value.values.single(), bank, TransactionType.EXPENSE, SpendingClass.UNKNOWN, Instant.parse("2026-10-22T04:00:00Z")).getOrThrow()
+        val before = drafts.ledger.transactions.values.single()
+
+        EditCategoryRuleUseCase(rules)(v1.id, "groceries", null, true, Instant.parse("2026-10-23T04:00:00Z")).getOrThrow()
+        assertEquals(before, drafts.ledger.transactions.values.single())
+
+        val later = purchase.replace("800.00", "900.00")
+        capture(later, DraftSource.SHARED_TEXT, T0).getOrThrow()
+        val second = drafts.drafts.value.values.single { it.status == DraftStatus.PENDING_REVIEW }
+        confirm(second, bank, TransactionType.EXPENSE, SpendingClass.UNKNOWN, Instant.parse("2026-10-24T04:00:00Z")).getOrThrow()
+
+        val saved = drafts.ledger.transactions.values.toList()
+        assertEquals(2, saved.size)
+        val first = saved.single { it.id == before.id }
+        assertEquals("coffee-dining", first.categoryId)
+        assertEquals(1, first.appliedRuleVersion)
+        val newer = saved.single { it.id != before.id }
+        assertEquals("groceries", newer.categoryId)
+        assertEquals(2, newer.appliedRuleVersion)
     }
 
     @Test fun aRuleNeverCategorisesIncome() = runBlocking {
