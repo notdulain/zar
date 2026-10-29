@@ -1,6 +1,10 @@
 package com.example.zar.features.home
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
@@ -43,10 +47,14 @@ class HomeCollapseUiTest {
         compose.setContent {
             ZarTheme(darkTheme = dark) {
                 CompositionLocalProvider(LocalZarMotion provides policy) {
-                    HomeScreenContent(
-                        state = HomeUiState(month, canGoForward = true, HomeContent.Ready(overview)),
-                        onPreviousMonth = {}, onNextMonth = {}, onRetry = {}, onNavigate = {}, onAddOption = {},
-                    )
+                    // A fixed phone-size frame: the scroll distances below only collapse the card when the
+                    // short fixture content overflows a phone-height screen, not a tall tablet one.
+                    Box(Modifier.size(width = 412.dp, height = 732.dp)) {
+                        HomeScreenContent(
+                            state = HomeUiState(month, canGoForward = true, HomeContent.Ready(overview)),
+                            onPreviousMonth = {}, onNextMonth = {}, onRetry = {}, onNavigate = {}, onAddOption = {},
+                        )
+                    }
                 }
             }
         }
