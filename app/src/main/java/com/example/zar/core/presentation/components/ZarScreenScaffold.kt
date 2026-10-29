@@ -1,41 +1,32 @@
 package com.example.zar.core.presentation.components
 
+import com.example.zar.core.presentation.motion.pressScale
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.Alignment
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
-import androidx.compose.foundation.layout.safeDrawing
-import androidx.compose.foundation.layout.only
-import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.calculateEndPadding
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.layout.calculateStartPadding
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -43,17 +34,24 @@ import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
 import com.example.zar.R
 import com.example.zar.core.presentation.theme.ZarDimens
-import com.example.zar.core.presentation.theme.ZarTheme
 import com.example.zar.core.presentation.theme.ZarLightColors
+import com.example.zar.core.presentation.theme.ZarTheme
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.layout.size
 
 /**
  * Layout shared by the four main screens.
  *
- * - [TopLevelDestination.Home]: no navbar, Add button centred at the bottom.
- * - Everything else: pill navbar and Add button share one floating row.
+ * - [NavChrome.AddOnly] (initial Home of a fresh session): no navbar, Add button centred at the bottom.
+ * - [NavChrome.Full]: pill navbar and Add button share one floating row. Every other top-level screen, and Home once
+ *   another tab has been visited, uses this; [chrome] comes from the session in [LocalNavSession].
  *
- * [content] receives padding that already clears the navbar and the Add button, so lists can
- * scroll fully into view.
+ * The chrome floats over the content: nothing is reserved or painted behind it. [content] receives bottom padding that
+ * is only an end clearance (system inset + gap + chrome height + 24dp), so the last item can scroll fully into view above
+ * the pill while earlier items scroll behind it. The padding belongs inside the scrolling content, never outside it.
+ *
+ * The chrome itself is drawn once for the whole signed-in graph by `ZarNavHost` (see [LocalNavChromeHost]), outside the
+ * tab pager. Outside that host (previews, component tests) the scaffold overlays the chrome itself.
  */
 @Composable
 fun ZarScreenScaffold(
@@ -62,99 +60,79 @@ fun ZarScreenScaffold(
     onAddOption: (AddEntryOption) -> Unit,
     modifier: Modifier = Modifier,
     heroUnderStatusBar: Boolean = destination == TopLevelDestination.Home,
+    chrome: NavChrome = LocalNavSession.current.chromeFor(destination),
     content: @Composable (PaddingValues) -> Unit,
 ) {
-    var showAddSheet by rememberSaveable { mutableStateOf(false) }
-    val isHome = destination == TopLevelDestination.Home
-    val addDescription = stringResource(R.string.add_entry)
     val layoutDirection = LocalLayoutDirection.current
     val activity = LocalContext.current.findActivity()
     val view = LocalView.current
     val isLightTheme = ZarTheme.colors.canvas == ZarLightColors.canvas
+    val sharedChromeHost = LocalNavChromeHost.current
 
     // A hero that extends under the status bar (Home, Activity) needs white system glyphs and no top inset.
     // Nothing is restored on exit: the screen opened next sets what it needs, and putting the old value back
     // after the transition left white glyphs on the light screens opened from Activity and More.
-    DisposableEffect(activity, view, heroUnderStatusBar, isLightTheme) {
-        val controller = activity?.let { WindowCompat.getInsetsController(it.window, view) }
-        controller?.isAppearanceLightStatusBars = !heroUnderStatusBar && isLightTheme
+    // Inside the tab pager the host sets this once for all four tabs, because two pages are on screen mid-swipe.
+    DisposableEffect(activity, view, heroUnderStatusBar, isLightTheme, sharedChromeHost) {
+        if (!sharedChromeHost) {
+            val controller = activity?.let { WindowCompat.getInsetsController(it.window, view) }
+            controller?.isAppearanceLightStatusBars = !heroUnderStatusBar && isLightTheme
+        }
         onDispose { }
     }
 
+    val keyboardOpen = rememberKeyboardOpen()
+
+    Box(modifier) {
     Scaffold(
-        modifier = modifier,
+        modifier = Modifier.fillMaxSize(),
         containerColor = MaterialTheme.colorScheme.background,
         contentWindowInsets = if (heroUnderStatusBar) {
             WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom)
         } else {
             WindowInsets.safeDrawing
         },
-        bottomBar = {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom))
-                    .padding(start = ZarDimens.ScreenGutter, end = ZarDimens.ScreenGutter, top = ZarDimens.SpaceMd, bottom = ZarDimens.NavBottomGap),
-                contentAlignment = Alignment.Center,
-            ) {
-                BoxWithConstraints(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                    if (isHome) {
-                        ZarAddButton(addDescription) { showAddSheet = true }
-                    } else {
-                        // Figma's floating group is 293 + 8 + 68 = 369dp. Keep it
-                        // centered and let the tab bar contract on narrow screens.
-                        val navWidth = (maxWidth - ZarDimens.AddButtonSize - ZarDimens.SpaceXs)
-                            .coerceAtMost(293.dp)
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(ZarDimens.SpaceXs),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            ZarBottomNav(
-                                selected = destination,
-                                onNavigate = onNavigate,
-                                modifier = Modifier.width(navWidth),
-                            )
-                            ZarAddButton(addDescription) { showAddSheet = true }
-                        }
-                    }
-                }
-            }
-        },
     ) { inner ->
-        // Preserve side insets as well, so landscape content clears display cutouts.
+        // Preserve side insets as well, so landscape content clears display cutouts. The chrome floats over the content, so
+        // the only bottom padding is the end clearance that lets the last item scroll 24dp above the pill (nothing is
+        // painted or reserved there); with the keyboard open the chrome is hidden and the clearance is the usual gap.
         content(
             PaddingValues(
                 start = inner.calculateStartPadding(layoutDirection),
                 end = inner.calculateEndPadding(layoutDirection),
                 top = inner.calculateTopPadding(),
-                bottom = inner.calculateBottomPadding() + ZarDimens.NavBottomGap,
+                bottom = inner.calculateBottomPadding() + if (keyboardOpen) ZarDimens.NavBottomGap else ZarDimens.ChromeClearance,
             ),
         )
     }
-
-    if (showAddSheet) {
-        AddEntrySheet(
-            onDismiss = { showAddSheet = false },
-            onOption = { option ->
-                showAddSheet = false
-                onAddOption(option)
-            },
+    if (!sharedChromeHost) {
+        ZarTopLevelChrome(
+            destination = destination,
+            chrome = chrome,
+            onNavigate = onNavigate,
+            onAddOption = onAddOption,
+            controller = LocalNavCapsuleController.current ?: remember { NavCapsuleController() },
+            modifier = Modifier.align(Alignment.BottomCenter),
         )
+    }
     }
 }
 
-private fun Context.findActivity(): Activity? = when (this) {
+internal fun Context.findActivity(): Activity? = when (this) {
     is Activity -> this
     is ContextWrapper -> baseContext.findActivity()
     else -> null
 }
 
 @Composable
-private fun ZarAddButton(description: String, onClick: () -> Unit) {
+internal fun ZarAddButton(description: String, onClick: () -> Unit) {
     val colors = ZarTheme.colors
+    val press = remember { MutableInteractionSource() }
     FloatingActionButton(
         onClick = onClick,
+        interactionSource = press,
         modifier = Modifier
+            .pressScale(press)
             .size(ZarDimens.AddButtonSize)
             .testTag("add-entry")
             .semantics { contentDescription = description },

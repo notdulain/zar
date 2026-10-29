@@ -10,13 +10,28 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.windowInsetsTopHeight
+import androidx.compose.runtime.remember
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalDensity
+import com.example.zar.core.presentation.components.CollapseLine
+import com.example.zar.core.presentation.components.HomeCollapse
+import com.example.zar.core.presentation.components.collapseChartFade
+import com.example.zar.core.presentation.components.collapseLine
+import com.example.zar.core.presentation.components.collapseShift
+import com.example.zar.core.presentation.components.rememberHomeCollapse
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -63,12 +78,16 @@ import com.example.zar.core.presentation.components.TopLevelDestination
 import com.example.zar.core.presentation.components.ZarCard
 import com.example.zar.core.presentation.components.ZarScreenScaffold
 import com.example.zar.core.presentation.components.ZarSplitBar
+import com.example.zar.core.presentation.components.heroDisplacement
+import com.example.zar.core.presentation.components.heroParallax
 import com.example.zar.core.presentation.format.formatForRow
 import com.example.zar.core.presentation.format.formatWithCode
 import com.example.zar.core.presentation.theme.ZarDimens
 import com.example.zar.core.presentation.theme.ZarGradients
 import com.example.zar.core.presentation.theme.ZarHighlight
+import com.example.zar.core.presentation.motion.ZarMotion
 import com.example.zar.core.presentation.theme.ZarTheme
+import com.example.zar.core.presentation.theme.amountText
 import com.example.zar.core.presentation.theme.ZarType
 import com.example.zar.features.home.domain.model.HomeOverview
 import com.example.zar.features.home.presentation.viewmodel.HomeAllowanceContent
@@ -130,8 +149,20 @@ internal fun HomeScreenContent(
         onNavigate = onNavigate,
         onAddOption = onAddOption,
     ) { padding ->
+        // The hero reads this same state for its bounded parallax; nothing else about the scroll changes.
+        val scrollState = rememberScrollState()
+        val layoutDirection = androidx.compose.ui.platform.LocalLayoutDirection.current
+        Box(Modifier.fillMaxSize()) {
         Column(
-            Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()),
+            // Only the sides and top are outer padding. The bottom clearance is scroll content, so the list passes behind the
+            // floating nav and its last row ends 24dp above it.
+            Modifier.fillMaxSize()
+                .padding(
+                    start = padding.calculateStartPadding(layoutDirection),
+                    end = padding.calculateEndPadding(layoutDirection),
+                    top = padding.calculateTopPadding(),
+                )
+                .verticalScroll(scrollState),
             verticalArrangement = Arrangement.spacedBy(0.dp),
         ) {
             when (val content = state.content) {
@@ -161,8 +192,19 @@ internal fun HomeScreenContent(
                     onOpenBills = onOpenBills,
                     onOpenBill = onOpenBill,
                     onToggleAmounts = onToggleAmounts,
+                    scrollState = scrollState,
                 )
             }
+            Spacer(Modifier.height(padding.calculateBottomPadding()))
+        }
+        // The pinned band that takes over the status-bar area once the card has collapsed into it.
+        val collapse = rememberHomeCollapse(scrollState, cardHeight = 507.dp, fadeMargin = 8.dp)
+        Box(
+            Modifier.align(Alignment.TopCenter).fillMaxWidth().windowInsetsTopHeight(WindowInsets.statusBars)
+                .graphicsLayer { alpha = HomeCollapse.bandAlpha(collapse.p()) }
+                .background(Color(0xFF05070B))
+                .testTag("home-status-band"),
+        )
         }
     }
 }
@@ -199,8 +241,9 @@ private fun OverviewBlock(
     onOpenBills: () -> Unit,
     onOpenBill: (String) -> Unit,
     onToggleAmounts: () -> Unit,
+    scrollState: ScrollState,
 ) {
-    ReceivedHero(overview, canGoForward, onPreviousMonth, onNextMonth, onToggleAmounts)
+    ReceivedHero(overview, canGoForward, onPreviousMonth, onNextMonth, onToggleAmounts, scrollState)
 
     Column(
         Modifier.fillMaxWidth().padding(horizontal = 9.dp).padding(top = 12.dp, bottom = 28.dp),
@@ -239,59 +282,102 @@ private fun ReceivedHero(
     onPreviousMonth: () -> Unit,
     onNextMonth: () -> Unit,
     onToggleAmounts: () -> Unit,
+    scrollState: ScrollState,
 ) {
     val colors = ZarTheme.colors
     var chartMode by rememberSaveable { mutableIntStateOf(0) }
+    // The whole card collapses into the status bar as the page scrolls (see HomeCollapse): the gradient drifts at 0.35 of
+    // the scroll, a dark overlay builds to 70%, the text group follows at 0.30 and fades line by line before it reaches the
+    // status-bar glyphs, the chart group drifts at 0.18 and fades over the middle, the bottom corners flatten and a pinned
+    // band takes over. Everything is read in the layer phase, so scrolling never recomposes the card.
+    val spec = rememberHomeCollapse(scrollState, cardHeight = 507.dp, fadeMargin = 8.dp)
+    val density = LocalDensity.current
+    val fullRadiusPx = with(density) { 32.dp.toPx() }
+    val tabsLine = remember { CollapseLine() }
+    val monthLine = remember { CollapseLine() }
+    val labelLine = remember { CollapseLine() }
+    val amountLine = remember { CollapseLine() }
+    val statusLine = remember { CollapseLine() }
+    val toggleLine = remember { CollapseLine() }
     Box(
         Modifier.fillMaxWidth().height(507.dp)
-            .clip(RoundedCornerShape(bottomStart = 32.dp, bottomEnd = 32.dp))
-            .background(ZarGradients.dusk)
+            .graphicsLayer {
+                clip = true
+                val r = HomeCollapse.cornerRadius(spec.p(), fullRadiusPx)
+                shape = RoundedCornerShape(topStart = 0f, topEnd = 0f, bottomEnd = r, bottomStart = r)
+            }
+            .background(Color(0xFF05070B))
             .testTag("received-card"),
     ) {
+        Box(
+            Modifier.fillMaxSize()
+                .collapseShift(spec, HomeCollapse.BACKGROUND_RATE)
+                .background(ZarGradients.dusk),
+        )
+        Box(
+            Modifier.fillMaxSize()
+                .graphicsLayer { alpha = HomeCollapse.overlayAlpha(spec.p()) }
+                .background(Color(0xFF05070B)),
+        )
         Column(Modifier.fillMaxSize().padding(horizontal = 30.dp)) {
-            Spacer(Modifier.height(54.dp))
-            ChartModeTabs(selected = chartMode, onSelect = { chartMode = it })
-            Spacer(Modifier.height(4.dp))
-            MonthPicker(
-                month = overview.month,
-                canGoForward = canGoForward,
-                onPrevious = onPreviousMonth,
-                onNext = onNextMonth,
-                onDark = true,
-            )
-            Spacer(Modifier.height(2.dp))
-            Text(
-                stringResource(R.string.home_received_this_month).uppercase(),
-                style = ZarType.monoLabel,
-                color = colors.textOnInverse,
-            )
-            Spacer(Modifier.height(2.dp))
-            Text(
-                overview.summary.received.amount.formatWithCode(),
-                style = ZarType.amountL,
-                color = colors.textOnInverse,
-                modifier = Modifier.testTag("received-amount"),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Spacer(Modifier.height(8.dp))
-            HeroStatus(overview)
+            Column(Modifier.collapseShift(spec, HomeCollapse.TEXT_RATE)) {
+                Spacer(Modifier.height(54.dp))
+                Box(Modifier.collapseLine(spec, tabsLine)) { ChartModeTabs(selected = chartMode, onSelect = { chartMode = it }) }
+                Spacer(Modifier.height(4.dp))
+                Box(Modifier.collapseLine(spec, monthLine)) {
+                    MonthPicker(
+                        month = overview.month,
+                        canGoForward = canGoForward,
+                        onPrevious = onPreviousMonth,
+                        onNext = onNextMonth,
+                        onDark = true,
+                    )
+                }
+                Spacer(Modifier.height(2.dp))
+                Box(Modifier.collapseLine(spec, labelLine)) {
+                    Text(
+                        stringResource(R.string.home_received_this_month).uppercase(),
+                        style = ZarType.monoLabel,
+                        color = colors.textOnInverse,
+                    )
+                }
+                Spacer(Modifier.height(2.dp))
+                Box(Modifier.collapseLine(spec, amountLine)) {
+                    Text(
+                        overview.summary.received.amount.formatWithCode(),
+                        style = ZarType.amountL,
+                        color = colors.textOnInverse,
+                        modifier = Modifier.testTag("received-amount"),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                Spacer(Modifier.height(8.dp))
+                Box(Modifier.collapseLine(spec, statusLine)) { HeroStatus(overview) }
+            }
             Spacer(Modifier.weight(1f))
-            val chartModifier = Modifier.fillMaxWidth().height(165.dp).padding(horizontal = 18.dp)
-            when {
-                AmountMask.isHidden -> HiddenChart(chartModifier)
-                chartMode == 0 -> ReceivedBarChart(overview, chartModifier)
-                chartMode == 1 -> SpendingDonutChart(overview, chartModifier)
-                else -> ReceivedLineChart(overview, chartModifier)
+            Column(Modifier.collapseShift(spec, HomeCollapse.CHART_RATE).collapseChartFade(spec)) {
+                val chartModifier = Modifier.fillMaxWidth().height(165.dp).padding(horizontal = 18.dp)
+                when {
+                    AmountMask.isHidden -> HiddenChart(chartModifier)
+                    chartMode == 0 -> ReceivedBarChart(overview, chartModifier)
+                    chartMode == 1 -> SpendingDonutChart(overview, chartModifier)
+                    else -> ReceivedLineChart(overview, chartModifier)
+                }
+                Spacer(Modifier.height(7.dp))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text(overview.month.atDay(1).format(AxisFormat).uppercase(), style = ZarType.monoLabel, color = colors.textOnInverse)
+                    Text(overview.month.atEndOfMonth().format(AxisFormat).uppercase(), style = ZarType.monoLabel, color = colors.textOnInverse)
+                }
+                Spacer(Modifier.height(22.dp))
             }
-            Spacer(Modifier.height(7.dp))
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(overview.month.atDay(1).format(AxisFormat).uppercase(), style = ZarType.monoLabel, color = colors.textOnInverse)
-                Text(overview.month.atEndOfMonth().format(AxisFormat).uppercase(), style = ZarType.monoLabel, color = colors.textOnInverse)
-            }
-            Spacer(Modifier.height(22.dp))
         }
-        HideAmountsToggle(onToggleAmounts, Modifier.align(Alignment.TopEnd).padding(top = 48.dp, end = 14.dp))
+        HideAmountsToggle(
+            onToggleAmounts,
+            Modifier.align(Alignment.TopEnd).padding(top = 48.dp, end = 14.dp)
+                .collapseShift(spec, HomeCollapse.TEXT_RATE)
+                .collapseLine(spec, toggleLine),
+        )
     }
 }
 
@@ -507,9 +593,9 @@ private fun QuickCard(title: String, detail: String, icon: Int, modifier: Modifi
     ZarCard(modifier.height(114.dp), onClick = onClick, contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(30.dp).background(colors.subtle, CircleShape), contentAlignment = Alignment.Center) {
-                Icon(painterResource(icon), contentDescription = null, modifier = Modifier.size(16.dp), tint = Color.Unspecified)
+                Icon(painterResource(icon), contentDescription = null, modifier = Modifier.size(16.dp), tint = colors.textPrimary)
             }
-            Icon(painterResource(R.drawable.ic_ph_arrowupright), contentDescription = null, modifier = Modifier.size(14.dp), tint = Color.Unspecified)
+            Icon(painterResource(R.drawable.ic_ph_arrowupright), contentDescription = null, modifier = Modifier.size(14.dp), tint = colors.textSecondary)
         }
         Spacer(Modifier.weight(1f))
         Text(title, style = ZarType.bodyM, color = colors.textPrimary)
@@ -634,7 +720,7 @@ private fun RecentRow(entry: LedgerEntry) {
         Text(
             "$sign ${tx.amount.formatForRow()}",
             style = ZarType.bodyS,
-            color = if (tx.direction == Direction.IN) ZarTheme.colors.fresh else ZarTheme.colors.textPrimary,
+            color = ZarTheme.colors.amountText(tx.type),
         )
     }
 }

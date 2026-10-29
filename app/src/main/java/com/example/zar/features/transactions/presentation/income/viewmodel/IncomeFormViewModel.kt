@@ -3,7 +3,6 @@ package com.example.zar.features.transactions.presentation.income.viewmodel
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import androidx.navigation.toRoute
 import com.example.zar.core.domain.calculation.ZarTime
 import com.example.zar.core.domain.model.Account
 import com.example.zar.core.domain.model.AccountId
@@ -15,7 +14,6 @@ import com.example.zar.core.domain.model.TransactionId
 import com.example.zar.core.domain.model.money.Currencies
 import com.example.zar.core.domain.model.money.Currency
 import com.example.zar.core.domain.usecase.VoidTransactionUseCase
-import com.example.zar.core.navigation.IncomeFormRoute
 import com.example.zar.features.transactions.domain.income.IncomeRules
 import com.example.zar.features.transactions.domain.income.model.IncomeCategory
 import com.example.zar.features.transactions.domain.income.model.IncomeFormInput
@@ -74,7 +72,9 @@ class IncomeFormViewModel @Inject constructor(
     private val voidTransaction: VoidTransactionUseCase,
 ) : ViewModel() {
 
-    private val incomeId = savedStateHandle.toRoute<IncomeFormRoute>().incomeId?.let(::TransactionId)
+    // Read by name instead of toRoute so the same ViewModel serves both the edit route and the income tab of the
+    // one Add-transaction session (which is a ManualEntryRoute), and so it can be created in plain unit tests.
+    private val incomeId = savedStateHandle.get<String>("incomeId")?.let(::TransactionId)
 
     // Created once per screen and reused on every retry, so a repeated save can't duplicate.
     private val newIncomeId = TransactionId(RecordIds.newId())

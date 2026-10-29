@@ -1,5 +1,9 @@
 package com.example.zar.core.presentation.components
 
+import com.example.zar.core.presentation.motion.pressScale
+import androidx.compose.runtime.remember
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.LocalIndication
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -15,6 +19,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -30,6 +35,7 @@ import androidx.compose.ui.composed
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
@@ -79,7 +85,7 @@ fun ZarIconChip(
 
 /** 44dp back button with the 22dp arrow, at the top-left of a screen. */
 @Composable
-fun ZarBackButton(onClick: () -> Unit, contentDescription: String, modifier: Modifier = Modifier) {
+fun ZarBackButton(onClick: () -> Unit, contentDescription: String, modifier: Modifier = Modifier, tint: Color = ZarTheme.colors.iconStrong) {
     Box(
         modifier
             .size(44.dp)
@@ -91,7 +97,7 @@ fun ZarBackButton(onClick: () -> Unit, contentDescription: String, modifier: Mod
             painterResource(com.example.zar.R.drawable.ic_ph_arrow_left),
             contentDescription = contentDescription,
             modifier = Modifier.size(22.dp),
-            tint = ZarTheme.colors.iconStrong,
+            tint = tint,
         )
     }
 }
@@ -109,7 +115,7 @@ fun ZarTitleBlock(title: String, subtitle: String?, modifier: Modifier = Modifie
 @Composable
 fun ZarSectionHeader(label: String, modifier: Modifier = Modifier, action: String? = null, onAction: (() -> Unit)? = null) {
     Row(
-        modifier.fillMaxWidth().padding(horizontal = 22.dp).height(16.dp),
+        modifier.fillMaxWidth().padding(horizontal = 22.dp).heightIn(min = 16.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -129,6 +135,8 @@ fun ZarSectionHeader(label: String, modifier: Modifier = Modifier, action: Strin
 fun ZarMonoLabel(text: String, modifier: Modifier = Modifier, color: Color = ZarTheme.colors.textTertiary) {
     Text(text.uppercase(), style = ZarType.monoLabel, color = color, modifier = modifier)
 }
+
+private const val ICON_MAX_FONT_SCALE = 1.2f
 
 enum class ZarButtonStyle { Primary, Soft, Outline }
 enum class ZarButtonSize { Large, Medium }
@@ -155,19 +163,25 @@ fun ZarButton(
         ZarButtonStyle.Outline -> colors.surface
     }
     val content = contentColor ?: if (style == ZarButtonStyle.Primary) colors.textOnInverse else colors.textPrimary
+    val press = remember { MutableInteractionSource() }
     Box(
         modifier
+            .pressScale(press)
             .height(height)
             .alpha(if (enabled) 1f else 0.4f)
             .clip(shape)
             .background(container)
             .then(if (style == ZarButtonStyle.Outline) Modifier.border(BorderStroke(1.dp, colors.borderDefault), shape) else Modifier)
-            .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
+            .clickable(interactionSource = press, indication = LocalIndication.current, enabled = enabled, role = Role.Button, onClick = onClick)
             .padding(horizontal = horizontalPadding),
         Alignment.Center,
     ) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            if (icon != null) ZarIcon(icon, size = if (size == ZarButtonSize.Large) 20.dp else 18.dp, tint = content)
+            // A decorative icon gives way to the label at large font sizes, where half-width buttons otherwise cut the
+            // label to "Quick n…".
+            if (icon != null && LocalDensity.current.fontScale <= ICON_MAX_FONT_SCALE) {
+                ZarIcon(icon, size = if (size == ZarButtonSize.Large) 20.dp else 18.dp, tint = content)
+            }
             Text(
                 text,
                 style = if (size == ZarButtonSize.Large) ZarType.labelButton else ZarType.labelChip,
@@ -192,13 +206,15 @@ fun ZarChip(
 ) {
     val colors = ZarTheme.colors
     val foreground = if (selected) colors.textOnInverse else colors.textPrimary
+    val press = remember { MutableInteractionSource() }
     Row(
         modifier
+            .pressScale(press)
             .alpha(if (enabled) 1f else 0.45f)
             .clip(ZarShapes.sm)
             .background(if (selected) colors.accentSelected else colors.subtle)
-            .then(if (multiSelect) Modifier.toggleable(value = selected, enabled = enabled, role = Role.Checkbox, onValueChange = { onClick() })
-                else Modifier.selectable(selected = selected, enabled = enabled, role = Role.RadioButton, onClick = onClick))
+            .then(if (multiSelect) Modifier.toggleable(value = selected, interactionSource = press, indication = LocalIndication.current, enabled = enabled, role = Role.Checkbox, onValueChange = { onClick() })
+                else Modifier.selectable(selected = selected, interactionSource = press, indication = LocalIndication.current, enabled = enabled, role = Role.RadioButton, onClick = onClick))
             .padding(start = 12.dp, end = 14.dp, top = 9.dp, bottom = 9.dp),
         horizontalArrangement = Arrangement.spacedBy(7.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -212,14 +228,16 @@ fun ZarChip(
 @Composable
 fun ZarAddPill(text: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val colors = ZarTheme.colors
+    val press = remember { MutableInteractionSource() }
     Row(
         modifier
+            .pressScale(press)
             .height(56.dp)
             .shadow(8.dp, ZarShapes.pill, ambientColor = Color(0x0F0F1A2B), spotColor = Color(0x1F0F1A2B))
             .background(colors.surface, ZarShapes.pill)
             .border(1.dp, colors.borderDefault, ZarShapes.pill)
             .clip(ZarShapes.pill)
-            .clickable(role = Role.Button, onClick = onClick)
+            .clickable(interactionSource = press, indication = LocalIndication.current, role = Role.Button, onClick = onClick)
             .padding(start = 20.dp, end = 24.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,

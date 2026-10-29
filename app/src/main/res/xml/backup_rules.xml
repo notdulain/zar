@@ -9,4 +9,6 @@
     <exclude domain="file" path="datastore/auto_sms_capture.preferences_pb" />
     <!-- Whether amounts are hidden is a choice about this phone, not about the account. -->
     <exclude domain="sharedpref" path="amount_privacy.xml" />
+    <!-- How this phone shows the app (Light/Dark/System, Reduce motion) is a choice about this phone, not about the account. -->
+    <exclude domain="sharedpref" path="display_preferences.xml" />
 </full-backup-content>

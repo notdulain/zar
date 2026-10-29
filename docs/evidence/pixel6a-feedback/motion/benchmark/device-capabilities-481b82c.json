@@ -1,0 +1,24 @@
+{
+  "model": "sdk_gphone16k_arm64",
+  "android": "17",
+  "api": 37,
+  "fingerprint": "google/sdk_gphone16k_arm64/emu64a16k:17/CP31.260623.005/15817740:user/dev-keys",
+  "emulator": true,
+  "supportedModeRefreshHz": [
+    60.000004
+  ],
+  "activeRenderFrameRateHz": 60.000004,
+  "supportedRefreshRates": [
+    60.000004,
+    30.000002,
+    20.0
+  ],
+  "hasAdaptiveRefreshRateSupport": false,
+  "userPeakRefreshRate": "null",
+  "userMinRefreshRate": "null",
+  "batterySaver(low_power)": "0",
+  "animatorDurationScale": "1",
+  "thermal": "Thermal Status: 0",
+  "supports120Hz": false,
+  "verdict": "no physical 120 Hz mode here: any 120 Hz result stays pending"
+}

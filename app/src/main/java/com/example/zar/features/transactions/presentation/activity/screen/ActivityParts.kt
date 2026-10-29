@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -48,7 +49,13 @@ import com.example.zar.core.presentation.theme.ZarType
 
 /** A soft note card: an optional icon, a title and a line of detail (offline, voided, original kept). */
 @Composable
-internal fun InfoBanner(title: String, body: String, modifier: Modifier = Modifier, @DrawableRes icon: Int? = null) {
+internal fun InfoBanner(
+    title: String,
+    body: String,
+    modifier: Modifier = Modifier,
+    @DrawableRes icon: Int? = null,
+    actions: (@Composable RowScope.() -> Unit)? = null,
+) {
     val colors = ZarTheme.colors
     Row(
         modifier.fillMaxWidth().clip(ZarShapes.lg).background(colors.subtle).padding(horizontal = 16.dp, vertical = 14.dp),
@@ -59,7 +66,25 @@ internal fun InfoBanner(title: String, body: String, modifier: Modifier = Modifi
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(title, style = ZarType.labelChip, color = colors.textPrimary)
             Text(body, style = ZarType.bodyCaption.copy(lineHeight = 16.sp), color = colors.textSecondary)
+            if (actions != null) {
+                Row(Modifier.padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), content = actions)
+            }
         }
+    }
+}
+
+/** A small pill action for use inside an [InfoBanner]. */
+@Composable
+internal fun BannerAction(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, filled: Boolean = true) {
+    val colors = ZarTheme.colors
+    Box(
+        modifier
+            .clip(CircleShape)
+            .background(if (filled) colors.accentPrimary else colors.canvas)
+            .clickable(role = Role.Button, onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 8.dp),
+    ) {
+        Text(text, style = ZarType.labelChip, color = if (filled) colors.textOnInverse else colors.textPrimary)
     }
 }
 
@@ -179,7 +204,7 @@ internal fun EmptyCard(
     }
 }
 
-/** Dark status bar icons for a light screen, so the clock stays visible on the detail and form screens. */
+/** Status bar icons that contrast with a plain screen: dark on Light, light on Dark, so the clock stays visible. */
 @Composable
 internal fun DarkStatusBarIcons() {
     val view = LocalView.current
@@ -187,7 +212,7 @@ internal fun DarkStatusBarIcons() {
     val isLightTheme = ZarTheme.colors.canvas == ZarLightColors.canvas
     DisposableEffect(activity, view, isLightTheme) {
         val controller = activity?.let { WindowCompat.getInsetsController(it.window, view) }
-        if (isLightTheme) controller?.isAppearanceLightStatusBars = true
+        controller?.isAppearanceLightStatusBars = isLightTheme
         onDispose { }
     }
 }

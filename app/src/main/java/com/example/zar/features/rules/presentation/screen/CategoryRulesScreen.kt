@@ -1,5 +1,8 @@
 package com.example.zar.features.rules.presentation.screen
 
+import com.example.zar.features.transactions.presentation.category.LocalExpenseCategoryCatalog
+import com.example.zar.features.transactions.presentation.manual.screen.labelText
+import com.example.zar.features.transactions.presentation.category.ProvideExpenseCategoryCatalog
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -47,7 +50,6 @@ import com.example.zar.features.catchup.presentation.screen.CatchUpScaffold
 import com.example.zar.features.rules.domain.model.CategoryRule
 import com.example.zar.features.rules.presentation.viewmodel.CategoryRulesUiState
 import com.example.zar.features.rules.presentation.viewmodel.CategoryRulesViewModel
-import com.example.zar.features.transactions.domain.manual.model.ExpenseCategory
 import com.example.zar.features.transactions.presentation.activity.screen.SheetGrabber
 import com.example.zar.features.transactions.presentation.activity.screen.SheetHeader
 import com.example.zar.features.transactions.presentation.activity.screen.SheetScrim
@@ -57,17 +59,19 @@ import com.example.zar.features.transactions.presentation.manual.screen.labelRes
 @Composable
 fun CategoryRulesScreen(onBack: () -> Unit, viewModel: CategoryRulesViewModel = hiltViewModel()) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    CategoryRulesBody(
-        state = state,
-        onBack = onBack,
-        onOpen = viewModel::open,
-        onToggle = viewModel::setEnabled,
-        onCloseEditor = viewModel::closeEditor,
-        onCategory = viewModel::onCategorySelect,
-        onAccount = viewModel::onAccountSelect,
-        onEnabled = viewModel::onEnabledChange,
-        onSave = viewModel::saveEdit,
-    )
+    ProvideExpenseCategoryCatalog {
+        CategoryRulesBody(
+            state = state,
+            onBack = onBack,
+            onOpen = viewModel::open,
+            onToggle = viewModel::setEnabled,
+            onCloseEditor = viewModel::closeEditor,
+            onCategory = viewModel::onCategorySelect,
+            onAccount = viewModel::onAccountSelect,
+            onEnabled = viewModel::onEnabledChange,
+            onSave = viewModel::saveEdit,
+        )
+    }
 }
 
 @Composable
@@ -184,9 +188,9 @@ private fun EditRuleSheet(
             SheetHeader(stringResource(R.string.rules_edit_title, rule.displayName), onClose = onDismiss)
             ZarMonoLabel(stringResource(R.string.rules_edit_category))
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                ExpenseCategory.entries.forEach { category ->
+                LocalExpenseCategoryCatalog.current.choices.forEach { category ->
                     ZarChip(
-                        label = stringResource(category.labelRes()),
+                        label = category.labelText(),
                         selected = draft.categoryId == category.id,
                         onClick = { onCategory(category.id) },
                         modifier = Modifier.testTag("rule-category-${category.id}"),

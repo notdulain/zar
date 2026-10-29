@@ -1,5 +1,6 @@
 package com.example.zar.features.transactions.presentation.income
 
+import com.example.zar.core.domain.calculation.ZarTime
 import com.example.zar.core.presentation.privacy.AmountMask
 import com.example.zar.core.domain.model.money.Currencies
 import com.example.zar.core.domain.model.money.Money
@@ -14,6 +15,8 @@ import java.util.Locale
 object IncomeFormat {
     private val SHORT_DATE = DateTimeFormatter.ofPattern("MMM d", Locale.ENGLISH)
     private val FULL_DATE = DateTimeFormatter.ofPattern("EEE, d MMM yyyy", Locale.ENGLISH)
+    private val DAY_MONTH = DateTimeFormatter.ofPattern("d MMM", Locale.ENGLISH)
+    private val WEEKDAY = DateTimeFormatter.ofPattern("EEE", Locale.ENGLISH)
     private val MONTH = DateTimeFormatter.ofPattern("MMMM yyyy", Locale.ENGLISH)
 
     /** "125,000" for whole amounts, "1,094.95" otherwise. */
@@ -38,6 +41,16 @@ object IncomeFormat {
     fun shortDate(date: LocalDate): String = date.format(SHORT_DATE)
 
     fun fullDate(date: LocalDate): String = date.format(FULL_DATE)
+
+    /** Figma's date value: "Today, 15 Oct", "Yesterday, 14 Oct", otherwise "Tue, 13 Oct". */
+    fun dateLabel(date: LocalDate, today: LocalDate = ZarTime.today()): String {
+        val day = date.format(DAY_MONTH)
+        return when (date) {
+            today -> "Today, $day"
+            today.minusDays(1) -> "Yesterday, $day"
+            else -> "${date.format(WEEKDAY)}, $day"
+        }
+    }
 
     fun month(month: YearMonth): String = month.format(MONTH).uppercase(Locale.ENGLISH)
 }

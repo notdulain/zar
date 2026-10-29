@@ -6,6 +6,7 @@ import com.example.zar.core.domain.model.Correction
 import com.example.zar.core.domain.model.EvidenceLink
 import com.example.zar.core.domain.model.LedgerEntry
 import com.example.zar.core.domain.model.LedgerError
+import com.example.zar.core.domain.model.RejectedLedgerWrite
 import com.example.zar.core.domain.model.Transaction
 import com.example.zar.core.domain.model.Transfer
 import com.example.zar.core.domain.model.UserId
@@ -14,28 +15,39 @@ import com.example.zar.core.domain.repository.LedgerRepository
 import com.example.zar.core.domain.repository.UserSessionProvider
 import com.google.android.gms.tasks.Task
 import com.google.firebase.firestore.CollectionReference
+import com.google.firebase.firestore.DocumentReference
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.Source
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.update
 
 /**
  * Write-once ledger on Firestore. Records are set by stable ID and firestore.rules denies
  * updates and deletes, so a replayed save is rejected by the server instead of overwriting.
  * Writes are not awaited: Firestore applies them to the local cache at once and syncs when
- * online, so saving works offline.
+ * online, so saving works offline. If the server later refuses a transaction or transfer, Firestore rolls
+ * it back locally; the records are then kept in memory and reported by [observeRejectedWrites] so the
+ * person can try again. A refusal that arrives after the app process has ended cannot be reported.
  */
 @Singleton
 class FirestoreLedgerRepository @Inject constructor(
     private val firestore: FirebaseFirestore,
     private val session: UserSessionProvider,
 ) : LedgerRepository {
+
+    /** Refused saves per user, oldest first. Lost with the process, like the task that reported them. */
+    private val rejected = MutableStateFlow<Map<String, List<RejectedLedgerWrite>>>(emptyMap())
 
     @OptIn(ExperimentalCoroutinesApi::class)
     override fun observeLedger(): Flow<List<LedgerEntry>> = session.observeUserId().flatMapLatest { uid ->
@@ -54,23 +66,40 @@ class FirestoreLedgerRepository @Inject constructor(
     }
 
     override suspend fun saveTransaction(transaction: Transaction) {
-        collection(FirestoreCollections.TRANSACTIONS)
-            .document(transaction.id.value)
-            .set(LedgerDocumentMapper.transactionToMap(transaction))
-            .logFailure("saveTransaction ${transaction.id.value}")
+        val uid = signedInUser()
+        val document = userCollection(uid, FirestoreCollections.TRANSACTIONS).document(transaction.id.value)
+        document.set(LedgerDocumentMapper.transactionToMap(transaction))
+            .trackRejection(uid, RejectedLedgerWrite(transaction.id.value, listOf(transaction)), document)
     }
 
     override suspend fun saveTransfer(transfer: Transfer) {
-        val transactions = collection(FirestoreCollections.TRANSACTIONS)
-        val outLeg = transfer.outLeg()
-        val inLeg = transfer.inLeg()
+        val uid = signedInUser()
+        val records = listOf(transfer.outLeg(), transfer.inLeg()) + listOfNotNull(transfer.fee)
+        write(uid, RejectedLedgerWrite(transfer.id.value, records))
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    override fun observeRejectedWrites(): Flow<List<RejectedLedgerWrite>> = session.observeUserId().flatMapLatest { uid ->
+        if (uid == null) flowOf(emptyList()) else rejected.map { it[uid.value].orEmpty() }.distinctUntilChanged()
+    }
+
+    override suspend fun retryRejectedWrite(id: String) {
+        val uid = signedInUser()
+        val write = rejected.value[uid.value].orEmpty().firstOrNull { it.id == id } ?: return
+        forget(uid, id)
+        write(uid, write)
+    }
+
+    override fun dismissRejectedWrite(id: String) {
+        session.currentUserId()?.let { forget(it, id) }
+    }
+
+    /** Writes every record of [write] in one atomic batch under its stable IDs. */
+    private fun write(uid: UserId, write: RejectedLedgerWrite) {
+        val transactions = userCollection(uid, FirestoreCollections.TRANSACTIONS)
         val batch = firestore.batch()
-            .set(transactions.document(outLeg.id.value), LedgerDocumentMapper.transactionToMap(outLeg))
-            .set(transactions.document(inLeg.id.value), LedgerDocumentMapper.transactionToMap(inLeg))
-        transfer.fee?.let { fee ->
-            batch.set(transactions.document(fee.id.value), LedgerDocumentMapper.transactionToMap(fee))
-        }
-        batch.commit().logFailure("saveTransfer ${transfer.id.value}")
+        write.transactions.forEach { batch.set(transactions.document(it.id.value), LedgerDocumentMapper.transactionToMap(it)) }
+        batch.commit().trackRejection(uid, write, transactions.document(write.transactions.first().id.value))
     }
 
     override suspend fun addCorrection(correction: Correction) {
@@ -95,10 +124,9 @@ class FirestoreLedgerRepository @Inject constructor(
             .logFailure("linkEvidence ${link.evidenceId.value}")
     }
 
-    private fun collection(name: String): CollectionReference {
-        val uid = session.currentUserId() ?: throw LedgerError.NotSignedIn()
-        return userCollection(uid, name)
-    }
+    private fun collection(name: String): CollectionReference = userCollection(signedInUser(), name)
+
+    private fun signedInUser(): UserId = session.currentUserId() ?: throw LedgerError.NotSignedIn()
 
     private fun userCollection(uid: UserId, name: String): CollectionReference =
         firestore.collection(FirestoreCollections.USERS).document(uid.value).collection(name)
@@ -121,6 +149,25 @@ class FirestoreLedgerRepository @Inject constructor(
     // A rejected replay (document already exists) also lands here; it is expected and harmless.
     private fun Task<Void>.logFailure(operation: String) {
         addOnFailureListener { Log.w(TAG, "$operation was rejected", it) }
+    }
+
+    /**
+     * Keeps [write] when the server refuses it. The refusal arrives after Firestore has already rolled the local
+     * copy back, so a record still in the cache means the save was a replay of one that is stored (the write-once
+     * rules deny the overwrite) and nothing was lost.
+     */
+    private fun Task<Void>.trackRejection(uid: UserId, write: RejectedLedgerWrite, stored: DocumentReference) {
+        addOnFailureListener { error ->
+            Log.w(TAG, "save ${write.id} was rejected", error)
+            stored.get(Source.CACHE).addOnCompleteListener { read ->
+                if (read.isSuccessful && read.result.exists()) return@addOnCompleteListener
+                rejected.update { all -> all + (uid.value to all[uid.value].orEmpty().filterNot { it.id == write.id } + write) }
+            }
+        }
+    }
+
+    private fun forget(uid: UserId, id: String) {
+        rejected.update { all -> all + (uid.value to all[uid.value].orEmpty().filterNot { it.id == id }) }
     }
 
     private companion object {

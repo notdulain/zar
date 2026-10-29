@@ -27,7 +27,7 @@ private val LightColors = lightColorScheme(
     outlineVariant = ZarLightColors.borderHairline,
     inverseSurface = ZarLightColors.inverse,
     inverseOnSurface = ZarLightColors.textOnInverse,
-    error = ZarPrimitives.coral700,
+    error = ZarLightColors.textAttentionStrong,
     onError = ZarLightColors.textOnInverse,
 )
 
@@ -50,8 +50,8 @@ private val DarkColors = darkColorScheme(
     outlineVariant = ZarDarkColors.borderHairline,
     inverseSurface = ZarDarkColors.surface,
     inverseOnSurface = ZarDarkColors.textPrimary,
-    error = ZarPrimitives.coral700,
-    onError = ZarDarkColors.textOnInverse,
+    error = ZarDarkColors.textAttentionStrong,
+    onError = ZarDarkColors.textOnAttention,
 )
 
 private val ZarMaterialShapes = Shapes(

@@ -16,8 +16,9 @@ import javax.inject.Singleton
 @InstallIn(SingletonComponent::class)
 object FirebaseModule {
 
-    // The Android emulator reaches the host machine's Firebase Emulator Suite through 10.0.2.2.
-    private const val EMULATOR_HOST = "10.0.2.2"
+    // Only read when emulators are on (debug and benchmark builds): 10.0.2.2 is the Android emulator's route to the
+    // host machine's Firebase Emulator Suite; a physical phone uses 127.0.0.1 through `adb reverse` (zar.emulatorHost).
+    private val EMULATOR_HOST = BuildConfig.EMULATOR_HOST
 
     @Provides
     @Singleton

@@ -4,7 +4,12 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.awaitTouchSlopOrCancellation
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.drag
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,11 +28,14 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -38,15 +46,28 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.input.pointer.PointerInputScope
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.zar.R
@@ -55,6 +76,9 @@ import com.example.zar.core.presentation.components.ZarButton
 import com.example.zar.core.presentation.components.ZarButtonStyle
 import com.example.zar.core.presentation.components.ZarChip
 import com.example.zar.core.presentation.components.ZarIcon
+import com.example.zar.core.presentation.haptics.rememberSelectionTicker
+import com.example.zar.core.presentation.motion.LocalZarMotion
+import com.example.zar.core.presentation.motion.ZarSprings
 import com.example.zar.core.presentation.theme.ZarShapes
 import com.example.zar.core.presentation.theme.ZarTheme
 import com.example.zar.core.presentation.theme.ZarType
@@ -152,7 +176,14 @@ fun ManualDatePickerSheet(
 
 /** Figma Z09 picker: 12-hour hour/minute dial, AM/PM switch and keyboard mode. */
 @Composable
-fun ManualTimePickerSheet(time: LocalTime, onCancel: () -> Unit, onSetTime: (LocalTime) -> Unit, modifier: Modifier = Modifier) {
+fun ManualTimePickerSheet(
+    time: LocalTime,
+    onCancel: () -> Unit,
+    onSetTime: (LocalTime) -> Unit,
+    modifier: Modifier = Modifier,
+    /** Optional times (Income) offer "Remove time"; Expense and Transfer always have a time and pass null. */
+    onClear: (() -> Unit)? = null,
+) {
     var selected by remember(time) { mutableStateOf(time.withSecond(0).withNano(0)) }
     var activeHour by remember { mutableStateOf(true) }
     var typing by remember { mutableStateOf(false) }
@@ -169,10 +200,11 @@ fun ManualTimePickerSheet(time: LocalTime, onCancel: () -> Unit, onSetTime: (Loc
         if (chosen != null) onSetTime(chosen)
     }) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            val now = remember { LocalTime.now(ZarTime.ZONE) }
-            listOf("Now" to now, "15 min ago" to now.minusMinutes(15), "1 hour ago" to now.minusHours(1)).forEach { (label, value) ->
+            // "Now" is read when a chip is tapped, not when the sheet composed: the picker can stay composed for
+            // minutes, and "15 min ago" must be relative to the clock at the tap.
+            listOf("Now" to 0L, "15 min ago" to 15L, "1 hour ago" to 60L).forEach { (label, minutesAgo) ->
                 ZarChip(label = label, selected = false, onClick = {
-                    selected = value.withSecond(0).withNano(0)
+                    selected = LocalTime.now(ZarTime.ZONE).minusMinutes(minutesAgo).withSecond(0).withNano(0)
                     typedHour = ((selected.hour + 11) % 12 + 1).toString()
                     typedMinute = "%02d".format(selected.minute)
                 })
@@ -210,18 +242,22 @@ fun ManualTimePickerSheet(time: LocalTime, onCancel: () -> Unit, onSetTime: (Loc
         }
 
         if (!typing) {
-            ClockDial(selected = selected, hourMode = activeHour, onSelect = { value ->
+            ClockDial(time = selected, hourMode = activeHour, onSelect = { detent ->
                 selected = if (activeHour) {
-                    selected.withHour((value % 12) + if (selected.hour >= 12) 12 else 0)
+                    selected.withHour(detent + if (selected.hour >= 12) 12 else 0)
                 } else {
-                    selected.withMinute((value % 12) * 5)
+                    selected.withMinute(detent * 5)
                 }
-                if (activeHour) activeHour = false
-            })
+            }, onSelectionFinished = { if (activeHour) activeHour = false })
         } else {
-            Box(Modifier.fillMaxWidth().height(256.dp), Alignment.Center) {
-                Text("Enter hour and minute above", style = ZarType.bodyS, color = colors.textSecondary)
-            }
+            // Figma Z191: the 256dp dial box collapses to one hint line, so the sheet shrinks and the actions stay above
+            // the number pad instead of being pushed off the screen.
+            Text(
+                "Enter hour and minute above. AM / PM stays as selected.",
+                style = ZarType.bodyS,
+                color = colors.textSecondary,
+                modifier = Modifier.fillMaxWidth().testTag("time-typing-hint"),
+            )
         }
 
         Box(Modifier.fillMaxWidth(), Alignment.Center) {
@@ -250,6 +286,14 @@ fun ManualTimePickerSheet(time: LocalTime, onCancel: () -> Unit, onSetTime: (Loc
                 }
             }
         }
+        if (onClear != null) {
+            Box(Modifier.fillMaxWidth(), Alignment.Center) {
+                Box(Modifier.heightIn(min = 48.dp).clip(RoundedCornerShape(16.dp))
+                    .clickable(role = Role.Button, onClick = onClear).padding(horizontal = 16.dp).testTag("time-clear"), Alignment.Center) {
+                    Text("Remove time", style = ZarType.labelAction, color = colors.textSelected)
+                }
+            }
+        }
     }
 }
 
@@ -267,7 +311,7 @@ private fun PickerShell(title: String, onCancel: () -> Unit, action: String, onA
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Box(Modifier.fillMaxWidth(), Alignment.Center) {
-                Box(Modifier.size(36.dp, 4.dp).background(colors.trackOff, RoundedCornerShape(2.dp)))
+                Box(Modifier.size(36.dp, 4.dp).background(colors.handle, RoundedCornerShape(2.dp)))
             }
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Box(Modifier.size(20.dp).clickable(role = Role.Button, onClickLabel = "Back") { onCancel() }, Alignment.Center) {
@@ -312,12 +356,56 @@ private fun TimeNumber(value: String, selected: Boolean, onClick: () -> Unit, on
 }
 
 @Composable
-private fun ClockDial(selected: LocalTime, hourMode: Boolean, onSelect: (Int) -> Unit) {
+private fun ClockDial(time: LocalTime, hourMode: Boolean, onSelect: (Int) -> Unit, onSelectionFinished: () -> Unit) {
     val colors = ZarTheme.colors
-    val selectedIndex = if (hourMode) selected.hour % 12 else selected.minute / 5
-    val theta = 2 * PI * selectedIndex / 12 - PI / 2
+    val density = LocalDensity.current
+    // Typed minutes keep their exact arm angle; hours rest on their detent.
+    val restingAngle = if (hourMode) ClockGeometry.angleOfDetent(time.hour % 12) else time.minute * 6f
+    val selectedIndex = ClockGeometry.detentOf(restingAngle)
+    val policy = LocalZarMotion.current
+    var dragAngle by remember { mutableStateOf<Float?>(null) }
+    // The arm tracks the finger directly; only the release settles, along the shortest path to the resting detent,
+    // with the shared settle spring. Reduced motion and disabled system animations resolve immediately.
+    val settle = remember { Animatable(restingAngle) }
+    LaunchedEffect(dragAngle, restingAngle, policy) {
+        val current = dragAngle
+        if (current != null) {
+            settle.snapTo(current)
+        } else {
+            val delta = ClockGeometry.signedDelta(settle.value, restingAngle)
+            if (delta != 0f && policy.allowsSpatialMotion) {
+                settle.animateTo(settle.value + delta, policy.spring(ZarSprings.Settle))
+            } else {
+                settle.snapTo(restingAngle)
+            }
+        }
+    }
+    val armAngle = dragAngle ?: settle.value
+    val theta = armAngle * PI / 180 - PI / 2
+    val latestAngle by rememberUpdatedState(restingAngle)
+    val latestIndex by rememberUpdatedState(selectedIndex)
+    val latestSelect by rememberUpdatedState(onSelect)
+    val latestFinished by rememberUpdatedState(onSelectionFinished)
+    val ticks = rememberSelectionTicker()
+    val input = remember(density, ticks) {
+        with(density) {
+            ClockDialInput(
+                config = ClockDialConfig(armLength = 100.dp.toPx(), centerDeadzone = 24.dp.toPx(), armGrabRadius = 24.dp.toPx()),
+                restingArmAngle = { latestAngle },
+                currentDetent = { latestIndex },
+                onSelectDetent = { latestSelect(it) },
+                onFinished = { latestFinished() },
+                ticks = ticks,
+                onArmAngle = { dragAngle = it },
+            )
+        }
+    }
     Box(Modifier.fillMaxWidth(), Alignment.Center) {
-        Box(Modifier.size(256.dp).clip(CircleShape).background(colors.subtle), Alignment.Center) {
+        Box(
+            Modifier.size(256.dp).clip(CircleShape).background(colors.subtle)
+                .pointerInput(input) { detectClockGestures(input) },
+            Alignment.Center,
+        ) {
             Canvas(Modifier.size(256.dp)) {
                 val centre = Offset(size.width / 2, size.height / 2)
                 val end = Offset(
@@ -328,20 +416,72 @@ private fun ClockDial(selected: LocalTime, hourMode: Boolean, onSelect: (Int) ->
                 drawCircle(colors.accentPrimary, radius = 4.dp.toPx(), center = centre)
             }
             repeat(12) { index ->
-                val number = if (index == 0) 12 else index
-                val label = if (hourMode) number.toString() else "%02d".format(index * 5)
+                val label = if (hourMode) (if (index == 0) 12 else index).toString() else "%02d".format(index * 5)
                 val angle = 2 * PI * index / 12 - PI / 2
                 val x = (100 * cos(angle)).dp
                 val y = (100 * sin(angle)).dp
-                Box(Modifier.align(Alignment.Center).padding(0.dp)
-                    .then(Modifier.offset(x = x, y = y))
-                    .size(44.dp).clip(CircleShape)
-                    .background(if (selectedIndex == index) colors.accentPrimary else Color.Transparent)
-                    .clickable(role = Role.Button, onClickLabel = "Select $label") { onSelect(number) }, Alignment.Center) {
-                    Text(label, style = ZarType.bodyL.copy(fontWeight = if (selectedIndex == index) FontWeight.Medium else FontWeight.Normal),
-                        color = if (selectedIndex == index) colors.textOnInverse else colors.textPrimary)
+                // Touches are resolved by sector on the dial itself; this node is the TalkBack/keyboard alternative.
+                var focused by remember { mutableStateOf(false) }
+                Box(Modifier.align(Alignment.Center)
+                    .offset(x = x, y = y)
+                    .size(48.dp)
+                    .onFocusChanged { focused = it.isFocused }
+                    .onKeyEvent { event ->
+                        // Real keyboard activation: Enter/Space/centre-Dpad select this detent exactly like a tap.
+                        if (event.type == KeyEventType.KeyUp &&
+                            (event.key == Key.Enter || event.key == Key.NumPadEnter ||
+                                event.key == Key.Spacebar || event.key == Key.DirectionCenter)
+                        ) {
+                            input.clickDetent(index)
+                            true
+                        } else {
+                            false
+                        }
+                    }
+                    .focusable()
+                    .semantics(mergeDescendants = true) {
+                        role = Role.Button
+                        selected = selectedIndex == index
+                        onClick(label = "Select $label") { input.clickDetent(index); true }
+                    }, Alignment.Center) {
+                    Box(Modifier.size(44.dp).clip(CircleShape)
+                        .then(if (focused) Modifier.border(2.dp, colors.accentPrimary, CircleShape) else Modifier)
+                        .background(if (selectedIndex == index) colors.accentPrimary else Color.Transparent), Alignment.Center) {
+                        Text(label, style = ZarType.bodyL.copy(fontWeight = if (selectedIndex == index) FontWeight.Medium else FontWeight.Normal),
+                            color = if (selectedIndex == index) colors.textOnInverse else colors.textPrimary)
+                    }
                 }
             }
+        }
+    }
+}
+
+/** Tap selects the sector under the finger; a drag past touch slop moves the arm, then ends once on release. */
+internal suspend fun PointerInputScope.detectClockGestures(input: ClockDialInput) {
+    awaitEachGesture {
+        val down = awaitFirstDown()
+        val centre = Offset(size.width / 2f, size.height / 2f)
+        fun rel(position: Offset) = position - centre
+        input.press(rel(down.position).x, rel(down.position).y)
+        val slop = awaitTouchSlopOrCancellation(down.id) { change, _ -> change.consume() }
+        if (slop == null) {
+            val up = currentEvent.changes.firstOrNull { it.id == down.id }
+            if (up != null && !up.pressed && !up.isConsumed) {
+                up.consume()
+                input.tap(rel(up.position).x, rel(up.position).y, up.uptimeMillis)
+            }
+            return@awaitEachGesture
+        }
+        input.dragStart(rel(slop.position).x, rel(slop.position).y, slop.uptimeMillis)
+        var completed = false
+        try {
+            completed = drag(slop.id) { change ->
+                input.dragMove(rel(change.position).x, rel(change.position).y, change.uptimeMillis)
+                change.consume()
+            }
+        } finally {
+            // A cancelled coroutine (re-created pointerInput, taken-over gesture) must still end dragging and clear the arm.
+            if (completed) input.dragEnd() else input.dragCancel()
         }
     }
 }

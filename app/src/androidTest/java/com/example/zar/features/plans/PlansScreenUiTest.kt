@@ -49,7 +49,8 @@ class PlansScreenUiTest {
         var allocations = 0
         show(overview(), onEdit = { edits++ }, onAllocate = { allocations++ })
         compose.onNodeWithTag("plans-backed").assertTextEquals("LKR 4,000")
-        compose.onNodeWithText("Allocated LKR 8,000").assertIsDisplayed()
+        compose.onNodeWithText("Allocated LKR 8,000").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("plans-backed").performScrollTo()
         compose.onNodeWithTag("plans-edit-goal").performClick()
         compose.onNodeWithTag("plans-set-aside").performClick()
         assertEquals(1, edits)
@@ -71,6 +72,9 @@ class PlansScreenUiTest {
         show(overview(account.copy(openingBalance = OpeningBalance.Unknown)), fontScale = 2f, narrow = true)
         compose.onNodeWithTag("plans-balance-warning").performScrollTo().assertTextContains("no known balance", substring = true)
         compose.onNodeWithTag("plans-weekly-pace").performScrollTo().assertTextContains("when backing can be valued", substring = true)
+        // Content scrolls behind the floating nav; the end of the list must still come to rest clear of it.
+        compose.onNode(androidx.compose.ui.test.hasScrollAction()).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.ScrollBy) { it(0f, 100_000f) }
+        compose.waitForIdle()
         org.junit.Assert.assertTrue("Pace must scroll clear of floating navigation",
             compose.onNodeWithTag("plans-weekly-pace").getUnclippedBoundsInRoot().bottom <=
                 compose.onNodeWithTag("nav-more").getUnclippedBoundsInRoot().top)

@@ -23,6 +23,7 @@ These are the shared models, repository interfaces and saving rules that every f
 5. **Transfers are atomic.** `SaveTransferUseCase` writes both legs and any separate transfer-fee expense in one batch.
 6. **Captured counterparts link; they don't post.** When an SMS describes money already recorded (e.g. a manual transfer leg), save an `EvidenceLink`, not a new transaction. Each evidence ID links to one transaction only.
 7. **Offline first.** Repository saves return once Firestore has the write locally; sync happens later. Don't wait for the server in the UI.
+8. **A refused save is reported, not dropped.** If the server later refuses a transaction or transfer that was accepted locally (rules, a stale deployed ruleset), Firestore rolls it back and the row disappears. `LedgerRepository.observeRejectedWrites()` keeps those records so the person can retry under the same IDs (`retryRejectedWrite`) or dismiss them. A replay of a record that is already stored is denied by the write-once rules but is not reported: nothing was lost. The list lives in memory, so a refusal that arrives after the app process has ended cannot be reported.
 
 ## Money rules
 
@@ -63,9 +64,21 @@ Two separate files, so money that arrived is never mixed with money that is only
 - **Never exported:** raw bank messages (evidence is only counted) and other users' records. A signed-out export fails instead of writing an empty file.
 - **Escaping:** RFC 4180 quoting, CRLF line ends, and a leading apostrophe on text starting with `=`, `+`, `-` or `@` so a spreadsheet cannot run it as a formula.
 
+## Expense categories (`features/transactions/domain/category`)
+
+An expense stores its category as a plain string, `Transaction.categoryId`. That string is the only link, so renaming or reordering a category never touches the ledger.
+
+- **Built-ins** are the `ExpenseCategory` enum: `coffee-dining`, `groceries`, `transport`, `bills`, `rent`, `season-ticket`, `subscriptions`, `other`. IDs are permanent; ordinals are never stored. They keep their usual "Counts as" hint.
+- **Custom categories** live in `users/{uid}/expenseCategories/{id}` with `id` = `custom-<uuid>` (created once, reused on every retry), `name` (trimmed, 1-40 Unicode code points, no line breaks or control characters), `nameKey` (the NFKC, lower-case, single-spaced comparison key), `source` = `CUSTOM` and `createdAt` (epoch ms). No money, no spending class: a custom category never infers "Counts as" from its name, so it is `UNKNOWN` unless the person chooses one. Rules allow create, an update only if nothing changes (so a replayed save is harmless), no delete, and no rename.
+- **Duplicate names** are refused by `CategoryNameRules` against built-in names and the user's customs (case, width and spacing ignored). The check is local, so two devices that create the same name offline can both succeed. `ExpenseCategoryCatalog` reconciles that on read, deterministically and without rewriting anything: a built-in beats a custom with its name, otherwise the earliest `(createdAt, id)` is canonical. The other documents stay stored and keep resolving to the canonical name, so no expense loses its label. They are left out of the picker and listed in `catalog.conflicts`.
+- **Unknown IDs** (legacy, imported, or a custom category that has not synced yet) resolve to `CategoryLabel.Unavailable`. The entry stays visible and keeps its ID; nothing rewrites it to Other.
+- **Offline order.** The category write and the expense write go through the same local Firestore queue, so they reach the server in the order they were made and the label is available the moment the category is accepted locally. Ledger rules do not look up the category document, so a transaction never waits on it.
+- **Search** uses the resolved name (`ExpenseCategoryCatalog.searchTerms`), never a `custom-` ID.
+- **Using it.** Domain and ViewModels take `ObserveExpenseCategoryCatalogUseCase` (built-ins first, then the user's, never empty). Resolve a stored ID with `catalog.find(id)` or `catalog.label(id)`; create with `CreateExpenseCategoryUseCase(id, name, catalog, now)` using one `CustomCategoryIds.newId()` per attempt. A reading screen that owns a ViewModel wraps itself in `ProvideExpenseCategoryCatalog` and reads names with `categoryDisplayName(id)`; stateless bodies fall back to the built-ins.
+
 ## Storage
 
-- **Firestore is the primary financial store.** Everything is under `users/{uid}/` with these subcollections: `accounts`, `transactions`, `corrections`, `voids`, `evidenceLinks`, `expectedPayments`, `paymentMatches`, `drafts` (`FirestoreCollections`).
+- **Firestore is the primary financial store.** Everything is under `users/{uid}/` with these subcollections: `accounts`, `transactions`, `corrections`, `voids`, `evidenceLinks`, `expectedPayments`, `paymentMatches`, `drafts`, `expenseCategories` (`FirestoreCollections`).
 - `firestore.rules` allows only the owner and enforces each collection's schema and write-once behaviour. Tests are in `firestore-tests/` (`npm install && npm test`, needs Java).
 - **Encrypted Room is only for capture staging** (L08): raw bank messages stay on the device and are never uploaded. Drafts carry structured fields only, and the rules reject a `rawText` field.
 - Implemented now: `LedgerRepository` (Firestore), `UserSessionProvider` (Firebase Auth) and `AccountRepository` (Firestore, D03: `features/accounts`). Interfaces only, to be implemented by their owners: `ExpectedPaymentRepository` (L03/L05), `DraftRepository` (S07). Draft *generation* (D06) is separate and saves nothing: see [ai-quick-notes-service.md](ai-quick-notes-service.md). Use the field names already in `firestore.rules`.
@@ -80,9 +93,11 @@ Two separate files, so money that arrived is never mixed with money that is only
 | Overdue-milestone alerts switch and reminders already shown | This phone only: DataStore `payment_reminders` (`features/reminders`) | Cleared on sign-out (`ResetRemindersOnSignOut`) |
 | Dismissed subscription suggestions | This phone only: DataStore `subscription_suggestions` (`features/bills`) | Cleared on sign-out (`ResetSuggestionsOnSignOut`) |
 | Bank text shared into Zar | Memory only (`SharedTextInbox`), never written to disk | Cleared once taken and on sign-out |
+| Appearance (Light / Dark / System; Light until chosen) | This phone only: SharedPreferences `display_preferences` (`features/settings`), read synchronously at start-up, excluded from backup | Chosen in Settings. **Kept on sign-out** and across account switches (`DisplayPreferencesRepository` has no sign-out handler). A failed write keeps the previous choice |
+| Reduce motion (off until chosen) | Same `display_preferences` file as Appearance; combined with Android's animation setting by `MotionPolicy` | Chosen in Settings. **Kept on sign-out**. A failed write keeps the previous choice |
 | Accounts, entries, bills and their reminder choice, everything financial | Firestore under `users/{uid}/` | Synced to the user's Zar account |
 
-Nothing on the Settings or reminder screens is held only in memory. Masking and export settings are not built yet; their stories add their own rows here.
+Nothing on the Settings or reminder screens is held only in memory. Hide amounts is built and device-local (`SharedPreferences` `amount_privacy`); CSV export writes only through the system file picker and stores no setting.
 
 ## Decisions to confirm as a team
 

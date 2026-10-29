@@ -1,5 +1,6 @@
 package com.example.zar.features.transactions.presentation.screen
 
+import com.example.zar.features.transactions.presentation.category.ProvideExpenseCategoryCatalog
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -14,6 +15,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
+import com.example.zar.core.presentation.components.ownHorizontalDrags
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -28,7 +30,9 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -74,6 +78,7 @@ import com.example.zar.R
 import com.example.zar.core.domain.model.Account
 import com.example.zar.core.domain.model.TransactionType
 import com.example.zar.core.presentation.components.AddEntryOption
+import com.example.zar.core.presentation.components.HeroScrollOffset
 import com.example.zar.core.presentation.components.TopLevelDestination
 import com.example.zar.core.presentation.components.ZarButton
 import com.example.zar.core.presentation.components.ZarButtonStyle
@@ -83,6 +88,10 @@ import com.example.zar.core.presentation.components.ZarIcon
 import com.example.zar.core.presentation.components.ZarIconChip
 import com.example.zar.core.presentation.components.ZarScreenScaffold
 import com.example.zar.core.presentation.components.ZarSwitch
+import com.example.zar.core.presentation.components.ZarHeroItemKey
+import com.example.zar.core.presentation.components.heroDisplacement
+import com.example.zar.core.presentation.components.heroParallax
+import com.example.zar.core.presentation.motion.ZarMotion
 import com.example.zar.core.presentation.theme.ZarDimens
 import com.example.zar.core.presentation.theme.ZarShapes
 import com.example.zar.core.presentation.theme.ZarTheme
@@ -97,6 +106,7 @@ import com.example.zar.features.transactions.domain.activity.model.DatePreset
 import com.example.zar.features.transactions.presentation.activity.EntryDisplay
 import com.example.zar.features.transactions.presentation.activity.entrySubtitle
 import com.example.zar.features.transactions.presentation.activity.entryTitle
+import com.example.zar.features.transactions.presentation.activity.screen.BannerAction
 import com.example.zar.features.transactions.presentation.activity.screen.EmptyCard
 import com.example.zar.features.transactions.presentation.activity.screen.FilterPill
 import com.example.zar.features.transactions.presentation.activity.screen.InfoBanner
@@ -128,25 +138,29 @@ fun ActivityScreen(
     viewModel: ActivityViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    ZarScreenScaffold(
-        destination = TopLevelDestination.Activity,
-        onNavigate = onNavigate,
-        onAddOption = onAddOption,
-        heroUnderStatusBar = true,
-    ) { padding ->
-        ActivityBody(
-            state = state,
-            actions = ActivityActions(
-                onOpenEntry = onOpenEntry,
-                onAddEntry = { onAddOption(AddEntryOption.Manual) },
-                onApplyFilter = viewModel::applyFilter,
-                onClearFilters = viewModel::clearFilters,
-                onQuery = viewModel::setQuery,
-                onRetry = viewModel::retry,
-                previewCount = viewModel::previewCount,
-            ),
-            contentPadding = padding,
-        )
+    ProvideExpenseCategoryCatalog {
+        ZarScreenScaffold(
+            destination = TopLevelDestination.Activity,
+            onNavigate = onNavigate,
+            onAddOption = onAddOption,
+            heroUnderStatusBar = true,
+        ) { padding ->
+            ActivityBody(
+                state = state,
+                actions = ActivityActions(
+                    onOpenEntry = onOpenEntry,
+                    onAddEntry = { onAddOption(AddEntryOption.Manual) },
+                    onApplyFilter = viewModel::applyFilter,
+                    onClearFilters = viewModel::clearFilters,
+                    onQuery = viewModel::setQuery,
+                    onRetry = viewModel::retry,
+                    onRetryRejected = viewModel::retryRejectedWrite,
+                    onDismissRejected = viewModel::dismissRejectedWrite,
+                    previewCount = viewModel::previewCount,
+                ),
+                contentPadding = padding,
+            )
+        }
     }
 }
 
@@ -158,6 +172,8 @@ internal class ActivityActions(
     val onQuery: (String) -> Unit,
     val onRetry: () -> Unit,
     val previewCount: (ActivityFilter) -> Int,
+    val onRetryRejected: (String) -> Unit = {},
+    val onDismissRejected: (String) -> Unit = {},
 )
 
 @Composable
@@ -174,20 +190,23 @@ internal fun ActivityBody(
     val list = (state.content as? ActivityContent.Ready)?.list
     val layoutDirection = LocalLayoutDirection.current
     val gutter = Modifier.padding(horizontal = ListGutter)
+    val listState = rememberLazyListState()
+    val heroOffset = listState.heroDisplacement()
 
     // The hero runs under the status bar and the list scrolls behind the floating nav, so only the sides are
-    // inset here; the bottom inset becomes scroll padding that lets the last row clear the nav.
+    // inset here; the bottom clearance becomes scroll padding that lets the last row end 24dp above the nav.
     LazyColumn(
+        state = listState,
         modifier = modifier
             .fillMaxSize()
             .padding(
                 start = contentPadding.calculateStartPadding(layoutDirection),
                 end = contentPadding.calculateEndPadding(layoutDirection),
             ),
-        contentPadding = PaddingValues(bottom = contentPadding.calculateBottomPadding() + ZarDimens.SpaceXl),
+        contentPadding = PaddingValues(bottom = contentPadding.calculateBottomPadding()),
         verticalArrangement = Arrangement.spacedBy(ZarDimens.SpaceXs),
     ) {
-        item {
+        item(key = ZarHeroItemKey) {
             val summary = list?.summary
             ActivityHero(
                 received = summary?.let { EntryDisplay.money(it.received.amount) } ?: stringResource(R.string.activity_amount_pending),
@@ -195,6 +214,7 @@ internal fun ActivityBody(
                 receivedFraction = ActivityBalance.receivedFraction(summary),
                 rangeLabel = heroRangeLabel(state),
                 onRange = { showFilters = true },
+                heroOffset = heroOffset,
             )
         }
         item {
@@ -221,6 +241,31 @@ internal fun ActivityBody(
                     modifier = gutter.testTag("activity-offline"),
                 )
             }
+        }
+        items(state.rejectedWrites, key = { "rejected-${it.id}" }) { write ->
+            val first = write.transactions.first()
+            InfoBanner(
+                title = stringResource(
+                    R.string.activity_rejected_title,
+                    "${entryTitle(first)} · ${EntryDisplay.money(first.amount)}",
+                ),
+                body = stringResource(R.string.activity_rejected_body),
+                modifier = gutter.testTag("activity-rejected"),
+                icon = R.drawable.ic_ph_info,
+                actions = {
+                    BannerAction(
+                        stringResource(R.string.activity_rejected_retry),
+                        onClick = { actions.onRetryRejected(write.id) },
+                        modifier = Modifier.testTag("activity-rejected-retry"),
+                    )
+                    BannerAction(
+                        stringResource(R.string.activity_rejected_dismiss),
+                        onClick = { actions.onDismissRejected(write.id) },
+                        modifier = Modifier.testTag("activity-rejected-dismiss"),
+                        filled = false,
+                    )
+                },
+            )
         }
         if (list != null) {
             val unresolved = list.summary.received.unresolvedCount + list.summary.spent.total.unresolvedCount
@@ -331,7 +376,14 @@ private val SpentStops = arrayOf(
 
 /** The color boundary follows Received / (Received + Spent); labels keep a stable, readable layout. */
 @Composable
-private fun ActivityHero(received: String, spent: String, receivedFraction: Float?, rangeLabel: String, onRange: () -> Unit) {
+private fun ActivityHero(
+    received: String,
+    spent: String,
+    receivedFraction: Float?,
+    rangeLabel: String,
+    onRange: () -> Unit,
+    heroOffset: HeroScrollOffset,
+) {
     val tealShare by animateFloatAsState(
         targetValue = receivedFraction ?: 0.5f,
         animationSpec = tween(300),
@@ -352,8 +404,11 @@ private fun ActivityHero(received: String, spent: String, receivedFraction: Floa
                 drawRect(if (receivedFraction == null) neutral else SpentStops.first().second, Offset(split, -reach), Size(size.width - split, reach))
             },
     ) {
+        // The gradient is the decorative background layer: it drifts at the background rate while the text groups move
+        // at the text rate. The solid first-stop colours painted above the hero cover the strip it uncovers.
         Box(
             Modifier.fillMaxSize()
+                .heroParallax(heroOffset, ZarMotion.PARALLAX_BACKGROUND, ZarMotion.ParallaxBackgroundCap)
                 .clip(RoundedCornerShape(bottomStart = HeroRadius, bottomEnd = HeroRadius))
                 .drawBehind {
                     if (receivedFraction == null) {
@@ -371,8 +426,9 @@ private fun ActivityHero(received: String, spent: String, receivedFraction: Floa
                     }
                 },
         )
+        val textLayer = Modifier.heroParallax(heroOffset, ZarMotion.PARALLAX_TEXT, ZarMotion.ParallaxTextCap)
         Row(
-            Modifier
+            textLayer
                 .padding(start = 22.dp, end = 22.dp, top = 62.dp)
                 .fillMaxWidth()
                 .height(42.dp),
@@ -404,6 +460,7 @@ private fun ActivityHero(received: String, spent: String, receivedFraction: Floa
             Modifier
                 .align(Alignment.BottomStart)
                 .fillMaxWidth()
+                .heroParallax(heroOffset, ZarMotion.PARALLAX_TEXT, ZarMotion.ParallaxTextCap)
                 .padding(start = 22.dp, end = 22.dp, bottom = 22.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.Bottom,
@@ -448,7 +505,7 @@ private fun FilterRow(
     val accountName = state.accounts.firstOrNull { it.id == filter.accountId }?.name
     val remove = stringResource(R.string.activity_remove_filter)
     Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-        Row(Modifier.weight(1f).horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(Modifier.weight(1f).ownHorizontalDrags().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             val chipsActive = filter.accountId != null || filter.preset != DatePreset.THIS_MONTH || filter.showVoided
             if (!chipsActive) {
                 FilterPill(stringResource(R.string.activity_filter_all), selected = true, modifier = Modifier.testTag("activity-chip-all"))

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- The benchmark build type is profiled by the :benchmark module; the shell may profile it. Never shipped.
+         Cleartext is limited to the host's Firebase Emulator Suite so a signed-in journey can run against it. -->
+    <application android:networkSecurityConfig="@xml/network_security_config">
+        <profileable android:shell="true" />
+    </application>
+</manifest>

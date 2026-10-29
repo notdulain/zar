@@ -270,4 +270,20 @@ class ManualEntryRulesTest {
         assertEquals(setOf(TransferProblem.FEE_INVALID), problems(result))
     }
 
+    @Test
+    fun aCustomCategoryRoundTripsByIdAndNeverInfersASpendingClass() {
+        val rentLike = com.example.zar.features.transactions.domain.manual.model.CustomExpenseCategory(
+            "custom-rent-like", "Rent deposit", "rent deposit", java.time.Instant.EPOCH,
+        )
+        assertNull(rentLike.usualClass)
+        val input = ExpenseFormInput(
+            amount = "500", account = com.example.zar.core.domain.TestLedger.cash, date = LocalDate.of(2026, 10, 20),
+            category = rentLike, spendingClass = SpendingClass.COMMITTED, title = "Deposit", description = "",
+        )
+        val details = (ManualEntryRules.validateExpense(input, LocalDate.of(2026, 10, 24)) as ExpenseFormResult.Valid).details
+        val tx = ManualEntryRules.newExpense(com.example.zar.core.domain.model.TransactionId("e1"), details, java.time.Instant.EPOCH)
+        assertEquals("custom-rent-like", tx.categoryId)
+        // The explicitly chosen Counts as is kept; nothing is inferred from the name.
+        assertEquals(SpendingClass.COMMITTED, tx.spendingClass)
+    }
 }

@@ -13,7 +13,9 @@
         <item quantity="one">%d record has no LKR rate and is not included</item>
         <item quantity="other">%d records have no LKR rate and are not included</item>
     </plurals>
-    <string name="income_empty">No income yet. Tap + to add money you received.</string>
+    <string name="income_subtitle">Money that actually arrived · LKR</string>
+    <string name="income_empty">No income yet. Tap Add income to record money you received.</string>
+    <string name="income_retry">Try again</string>
     <string name="income_load_failed">Could not load your income. Check your connection and try again.</string>
     <string name="income_add">Add income</string>
     <string name="income_edit">Edit income</string>
@@ -29,6 +31,7 @@
     <string name="income_field_received_from">Received from (optional)</string>
     <string name="income_field_category">Category (optional)</string>
     <string name="income_field_note">Note (optional)</string>
+    <string name="income_field_optional">Optional</string>
     <string name="income_no_accounts">Add an account first.</string>
 
     <string name="income_error_amount_missing">Enter the amount you received</string>
@@ -65,6 +68,11 @@
     <string name="auth_show">Show</string>
     <string name="auth_hide">Hide</string>
     <string name="auth_sign_in_action">Sign in</string>
+    <string name="auth_signing_in">Signing in…</string>
+    <string name="auth_forgot_short">Forgot?</string>
+    <string name="auth_new_here">New here?</string>
+    <string name="auth_create_account_link">Create an account</string>
+    <string name="auth_sign_in_headline">Sign in to\nyour account</string>
     <string name="auth_register_action">Create account</string>
     <string name="auth_forgot_password">Forgot password?</string>
     <string name="auth_to_register">New here? Create an account</string>
@@ -96,8 +104,19 @@
     <string name="settings_hide_amounts">Hide amounts</string>
     <string name="settings_hide_amounts_detail">Replaces every amount with •••• on every screen, chart and notification. Your records are not changed.</string>
     <string name="settings_signed_in_as">Signed in as</string>
+    <string name="settings_appearance">Appearance</string>
+    <string name="settings_appearance_light">Light</string>
+    <string name="settings_appearance_dark">Dark</string>
+    <string name="settings_appearance_system">System</string>
+    <string name="settings_appearance_system_detail">Follow your device settings</string>
+    <string name="settings_appearance_on">On</string>
+    <string name="settings_appearance_save_failed">Couldn\'t save your choice. %1$s is still on.</string>
+    <string name="settings_appearance_retry">Try again →</string>
+    <string name="settings_on_this_phone">On this phone</string>
+    <string name="settings_reduce_motion">Reduce motion</string>
+    <string name="settings_reduce_motion_detail">Turns off sliding, bouncing and depth effects. Zar does this too when Android animations are off.</string>
     <string name="settings_where_title">Where your settings live</string>
-    <string name="settings_where_body">Your accounts and entries sync to your Zar account. The catch-up reminder stays on this phone and resets when you sign out.</string>
+    <string name="settings_where_body">Your accounts and entries sync to your Zar account. Appearance, Reduce motion and Hide amounts stay on this phone after you sign out.</string>
     <string name="settings_sign_out">Sign out</string>
     <string name="sign_out_unsynced_title">Some changes haven’t synced</string>
     <string name="sign_out_unsynced_body">Your latest changes are only on this phone. If you sign out now they will be lost. Connect to the internet and wait a moment, or sign out anyway.</string>
@@ -114,7 +133,8 @@
         <item quantity="other">Across %d projects. Only money not yet received.</item>
     </plurals>
     <string name="freelance_overdue">%1$s overdue</string>
-    <string name="freelance_empty">No projects yet. Tap + to add a client project and its milestones.</string>
+    <string name="freelance_empty">No projects yet. Tap New project to add a client project and its milestones.</string>
+    <string name="freelance_hero_empty">No client projects yet.\nNothing owed right now.</string>
     <string name="freelance_load_failed">Could not load your projects. Check your connection and try again.</string>
     <string name="freelance_left">%1$s left</string>
     <string name="freelance_received_of">Received %1$s of %2$s</string>
@@ -127,6 +147,11 @@
     <string name="project_add">New project</string>
     <string name="project_edit">Edit project</string>
     <string name="project_name">Project name</string>
+    <string name="project_form_name">Name</string>
+    <string name="project_form_name_hint">e.g. Café website</string>
+    <string name="project_form_client">Client</string>
+    <string name="project_form_client_hint">Optional</string>
+    <string name="project_form_note">Client is optional. Pick the currency the client pays in; it can\'t change after the first save.</string>
     <string name="project_client">Client (optional)</string>
     <string name="project_currency">Currency</string>
     <string name="project_currency_locked">The currency can\'t change once a project exists.</string>
@@ -352,6 +377,55 @@
     <string name="allowance_save_failed">Couldn\'t save. Try again.</string>
     <string name="home_view_allowance">View allowance →</string>
     <string name="home_allowance_check">Check: some spending is left out</string>
+    <string name="plans_not_created_yet">Not created yet</string>
+    <string name="plans_weekly_limit_unset">Not set · choose an amount</string>
+    <string name="plans_weekly_limit_per_week">%1$s per week</string>
+    <string name="plans_new_plan">New plan</string>
+    <string name="plans_main_goal">Main goal</string>
+    <string name="plans_change">Change</string>
+    <string name="plans_by_date">by %1$s</string>
+    <string name="plans_other_plans">Other plans</string>
+    <string name="plans_weekly_limit_title">Weekly limit</string>
+    <string name="plans_bills_title">Bills &amp; subscriptions</string>
+    <string name="plans_freelance_title">Freelance</string>
+    <string name="plans_freelance_empty">No projects added</string>
+    <plurals name="plans_bills_count">
+        <item quantity="one">%1$d bill</item>
+        <item quantity="other">%1$d bills</item>
+    </plurals>
+    <plurals name="plans_projects_count">
+        <item quantity="one">%1$d project</item>
+        <item quantity="other">%1$d projects</item>
+    </plurals>
+    <string name="new_plan_title">New plan</string>
+    <string name="new_plan_type">Type</string>
+    <string name="new_plan_type_goal">Savings goal</string>
+    <string name="new_plan_type_limit">Weekly limit</string>
+    <string name="new_plan_type_bill">Bill</string>
+    <string name="new_plan_type_project">Freelance project</string>
+    <string name="new_plan_name">Name</string>
+    <string name="new_plan_target">Target</string>
+    <string name="new_plan_by">By</string>
+    <string name="new_plan_by_optional">Optional</string>
+    <string name="new_plan_per_month">Each month to reach it</string>
+    <string name="new_plan_reserved">Reserved now</string>
+    <string name="new_plan_nothing">Nothing</string>
+    <string name="new_plan_create">Create plan</string>
+    <string name="new_plan_goal_exists_title">%1$s is your savings goal</string>
+    <string name="new_plan_goal_exists_body">Zar keeps one savings goal at a time. Edit it to change its name, target or date. Nothing is replaced until you save.</string>
+    <string name="new_plan_edit_goal">Edit %1$s</string>
+    <string name="new_plan_limit_title">Set a weekly spending limit</string>
+    <string name="new_plan_limit_title_set">Your weekly limit</string>
+    <string name="new_plan_limit_body">Pick an amount and the categories it counts. Zar shows what is left each week.</string>
+    <string name="new_plan_limit_set">Set weekly limit</string>
+    <string name="new_plan_limit_edit">Edit weekly limit</string>
+    <string name="new_plan_bill_title">Add a bill or subscription</string>
+    <string name="new_plan_bill_body">Track what is due, link payments and see the yearly cost.</string>
+    <string name="new_plan_bill_action">Add bill</string>
+    <string name="new_plan_project_title">Add a freelance project</string>
+    <string name="new_plan_project_body">Add milestones and link the income you receive for them.</string>
+    <string name="new_plan_project_action">Add project</string>
+    <string name="new_plan_close">Close new plan</string>
     <string name="plans_bills_empty">No bills added</string>
     <string name="more_description">Accounts, privacy and settings</string>
     <string name="more_hero_subtitle">Your accounts and app settings</string>
@@ -513,6 +587,15 @@
     <string name="manual_category_season_ticket">Season ticket</string>
     <string name="manual_category_subscriptions">Subscriptions</string>
     <string name="manual_category_other">Other</string>
+    <string name="category_unavailable">Unavailable category</string>
+    <string name="manual_add_category">Add category</string>
+    <string name="manual_new_category_title">New category</string>
+    <string name="manual_new_category_hint">Category name</string>
+    <string name="manual_category_error_empty">Enter a category name</string>
+    <string name="manual_category_error_too_long">Use 40 characters or fewer</string>
+    <string name="manual_category_error_invalid">Use letters, numbers or spaces only</string>
+    <string name="manual_category_error_duplicate">This category already exists</string>
+    <string name="manual_category_error_failed">Couldn\'t save. Check your connection and try again.</string>
 
     <string name="manual_suggestions_header">From your recent entries</string>
     <string name="manual_suggestions_fills">Fills the form</string>
@@ -545,6 +628,10 @@
     <string name="activity_error_title">Could not load Activity</string>
     <string name="activity_error_body">Check your connection and try again.</string>
     <string name="activity_retry">Try again</string>
+    <string name="activity_rejected_title">Couldn\'t save %1$s</string>
+    <string name="activity_rejected_body">The server refused it, so it is not in your records or totals. Try again to keep it.</string>
+    <string name="activity_rejected_retry">Try again</string>
+    <string name="activity_rejected_dismiss">Dismiss</string>
     <string name="activity_empty_title">Nothing recorded yet</string>
     <string name="activity_empty_body">Entries you add or capture show up here. Add your first one.</string>
     <string name="activity_empty_action">Add an entry</string>

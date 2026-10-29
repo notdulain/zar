@@ -11,18 +11,9 @@ data object SignInRoute
 @Serializable
 data object RegisterRoute
 
-// Signed-in
+// Signed-in. The four tabs (Home, Activity, Plans, More) are the pages of one pager inside this one destination.
 @Serializable
 data object HomeRoute
-
-@Serializable
-data object ActivityRoute
-
-@Serializable
-data object PlansRoute
-
-@Serializable
-data object MoreRoute
 
 @Serializable
 data object SettingsRoute
@@ -42,6 +33,10 @@ data class IncomeFormRoute(val incomeId: String? = null)
  * Add a manual expense or transfer. [focusNote] opens it with the note focused (Quick note).
  * With [prefillAmount] and [prefillAccountId] it opens as "Add the missing entry": an expense on that
  * account with the gap from a balance check already filled in.
+ *
+ * This is the one Add-transaction session: Expense, Income and Transfer are tabs of a single sheet, and each
+ * keeps its own draft across tab switches until the session is dismissed. [initialKind] picks the tab it opens on
+ * ("expense", "income" or "transfer"); the Add menu opens on expense, and More → Received income opens on income.
  */
 @Serializable
 data class ManualEntryRoute(
@@ -50,6 +45,7 @@ data class ManualEntryRoute(
     val prefillAccountId: String? = null,
     /** Fills "What was it for?" with a note the person typed into Quick note, when they chose to fill the form instead. */
     val prefillTitle: String? = null,
+    val initialKind: String? = null,
 )
 
 /** Write a rough note, have it read, and review the records it suggests before anything is saved. */

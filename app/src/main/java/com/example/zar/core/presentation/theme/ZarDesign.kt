@@ -30,23 +30,29 @@ object ZarPrimitives {
     val gray500 = Color(0xFFB4B5BB)
     val gray600 = Color(0xFF8B8C93)
     val gray650 = Color(0xFF7A7B82)
+    val gray680 = Color(0xFF696A71)
     val gray700 = Color(0xFF5E5F66)
     val gray900 = Color(0xFF0E0F12)
     val gray950 = Color(0xFF05070B)
     val navy50 = Color(0xFFE9EEF3)
+    val navy300 = Color(0xFF5A86A6)
+    val navy400 = Color(0xFF41799C)
     val navy500 = Color(0xFF26506A)
     val navy600 = Color(0xFF1E3A55)
     val navy700 = Color(0xFF14304A)
     val navy800 = Color(0xFF0B1524)
     val navy900 = Color(0xFF0C1625)
     val teal50 = Color(0xFFE6F1F1)
+    val teal300 = Color(0xFF5FB3B9)
     val teal500 = Color(0xFF2E7F86)
     val teal600 = Color(0xFF2A7A80)
+    val teal700 = Color(0xFF23676C)
     val teal800 = Color(0xFF174257)
     val teal900 = Color(0xFF10292B)
     val coral300 = Color(0xFFF2B596)
     val coral500 = Color(0xFFDD8468)
     val coral700 = Color(0xFFC9685A)
+    val coral800 = Color(0xFFA9573F)
     val plum700 = Color(0xFF7E3D52)
     val plum900 = Color(0xFF2A1828)
     val mint300 = Color(0xFF8FD6C4)
@@ -70,6 +76,8 @@ class ZarColors(
     val borderDefault: Color,
     val borderHairline: Color,
     val borderSelected: Color,
+    /** The floating bottom-nav outline; a light edge on Light, a low-contrast night edge on Dark. */
+    val borderNav: Color,
     val textPrimary: Color,
     val textSecondary: Color,
     val textTertiary: Color,
@@ -78,7 +86,13 @@ class ZarColors(
     val textSelected: Color,
     val textOnInverse: Color,
     val textIncome: Color,
+    /** Income text drawn on an income tint, where [textIncome] alone would not reach 4.5:1. */
+    val textIncomeOnTint: Color,
+    /** Attention/validation *text*; [textAttention] stays a graphic/large-text colour only. */
+    val textAttentionStrong: Color,
     val textAttention: Color,
+    /** Labels and icons drawn on a coral fill: #05070B reaches 7.27:1 where white measured 2.77:1. */
+    val textOnAttention: Color,
     val iconDefault: Color,
     val iconStrong: Color,
     val iconMuted: Color,
@@ -94,8 +108,11 @@ class ZarColors(
     val chartDiscretionary: Color,
     val chartUnknown: Color,
     val scrim: Color,
+    /** The OFF track of a switch only (3:1 against the surface). Grabbers and progress tracks use [handle]. */
     val trackOff: Color,
-    /** coral/700, for validation text. */
+    /** control/handle: sheet grabbers, progress tracks and keyboard modifier keys. Decorative, never a switch track. */
+    val handle: Color,
+    /** Validation text. Same value as [textAttentionStrong] (coral/700 measured 3.74:1 on white). */
     val danger: Color,
     /** accent/discretionary: something needs attention. */
     val attention: Color,
@@ -113,20 +130,24 @@ val ZarLightColors = ZarColors(
     borderDefault = Color(0xFFECECEE),
     borderHairline = Color(0xFFEFEFF1),
     borderSelected = Color(0xFF1E3A55),
+    borderNav = Color(0xFFFFFFFF),
     textPrimary = Color(0xFF0E0F12),
     textSecondary = Color(0xFF5E5F66),
     textTertiary = Color(0xFF696A71),
-    textPlaceholder = Color(0xFFB4B5BB),
+    textPlaceholder = ZarPrimitives.gray680,
     textDisabled = Color(0xFFC4C5CA),
     textSelected = Color(0xFF1E3A55),
     textOnInverse = Color(0xFFFFFFFF),
     textIncome = Color(0xFF2A7A80),
+    textIncomeOnTint = Color(0xFF23676C),
+    textAttentionStrong = Color(0xFFA9573F),
     textAttention = Color(0xFFDD8468),
+    textOnAttention = ZarPrimitives.gray950,
     iconDefault = Color(0xFF5E5F66),
     iconStrong = Color(0xFF0E0F12),
     iconMuted = Color(0xFF8B8C93),
     iconOnInverse = Color(0xFFFFFFFF),
-    navInactive = Color(0xFF7A7B82),
+    navInactive = ZarPrimitives.gray680,
     accentPrimary = Color(0xFF0C1625),
     accentSelected = Color(0xFF1E3A55),
     accentIncome = Color(0xFF2A7A80),
@@ -137,13 +158,17 @@ val ZarLightColors = ZarColors(
     chartDiscretionary = Color(0xFFDD8468),
     chartUnknown = Color(0xFFE6E6EA),
     scrim = Color(0xFF05070B),
-    trackOff = Color(0xFFD9DADE),
-    danger = Color(0xFFC9685A),
+    trackOff = ZarPrimitives.gray650,
+    handle = ZarPrimitives.gray300,
+    danger = Color(0xFFA9573F),
     attention = Color(0xFFDD8468),
     fresh = Color(0xFF8FD6C4),
 )
 
-/** Dark mode only changes the neutrals; accents are identical to light. */
+/**
+ * Dark mode changes lightness only, never hue: the dark neutrals, and the few accents that failed contrast on the dark
+ * canvas (income text, the primary/selected accents, the unknown chart mark, the placeholder and the selected outline).
+ */
 val ZarDarkColors = ZarColors(
     canvas = Color(0xFF07080B),
     surface = Color(0xFF111318),
@@ -153,33 +178,38 @@ val ZarDarkColors = ZarColors(
     incomeTint = Color(0xFF10292B),
     borderDefault = Color(0xFF272B33),
     borderHairline = Color(0xFF20232A),
-    borderSelected = Color(0xFF26506A),
+    borderSelected = Color(0xFF5A86A6),
+    borderNav = Color(0xFF272B33),
     textPrimary = Color(0xFFF3F3F5),
     textSecondary = Color(0xFFC4C5CA),
     textTertiary = Color(0xFF8B8C93),
-    textPlaceholder = Color(0xFF5E5F66),
+    textPlaceholder = Color(0xFF8B8C93),
     textDisabled = Color(0xFF4A4F5A),
     textSelected = Color(0xFFE9EEF3),
     textOnInverse = Color(0xFFFFFFFF),
-    textIncome = Color(0xFF2A7A80),
+    textIncome = Color(0xFF5FB3B9),
+    textIncomeOnTint = Color(0xFF5FB3B9),
+    textAttentionStrong = Color(0xFFDD8468),
     textAttention = Color(0xFFDD8468),
+    textOnAttention = ZarPrimitives.gray950,
     iconDefault = Color(0xFFC4C5CA),
     iconStrong = Color(0xFFF3F3F5),
     iconMuted = Color(0xFF8B8C93),
     iconOnInverse = Color(0xFFFFFFFF),
     navInactive = Color(0xFF8B8C93),
-    accentPrimary = Color(0xFF0C1625),
-    accentSelected = Color(0xFF1E3A55),
+    accentPrimary = Color(0xFF41799C),
+    accentSelected = Color(0xFF41799C),
     accentIncome = Color(0xFF2A7A80),
     accentDiscretionary = Color(0xFFDD8468),
     accentHighlight = Color(0xFFF2B596),
     accentFresh = Color(0xFF8FD6C4),
-    chartCommitted = Color(0xFF1E3A55),
+    chartCommitted = Color(0xFF41799C),
     chartDiscretionary = Color(0xFFDD8468),
-    chartUnknown = Color(0xFFE6E6EA),
+    chartUnknown = Color(0xFF7A7B82),
     scrim = Color(0xFF05070B),
-    trackOff = Color(0xFF343944),
-    danger = Color(0xFFC9685A),
+    trackOff = ZarPrimitives.gray650,
+    handle = ZarPrimitives.night700,
+    danger = Color(0xFFDD8468),
     attention = Color(0xFFDD8468),
     fresh = Color(0xFF8FD6C4),
 )
@@ -230,7 +260,7 @@ object ZarType {
     val labelButton = TextStyle(fontFamily = GeistFamily, fontWeight = FontWeight.Medium, fontSize = 15.sp, lineHeight = 15.sp)
     val labelChip = TextStyle(fontFamily = GeistFamily, fontWeight = FontWeight.Medium, fontSize = 13.sp, lineHeight = 13.sp)
     val labelAction = labelChip
-    val labelTab = TextStyle(fontFamily = GeistFamily, fontWeight = FontWeight.Normal, fontSize = 8.sp, lineHeight = 8.sp, letterSpacing = 0.08.sp)
+    val labelTab = TextStyle(fontFamily = GeistFamily, fontWeight = FontWeight.Medium, fontSize = 10.sp, lineHeight = 12.sp, letterSpacing = 0.sp)
     val monoLabel = TextStyle(fontFamily = GeistMonoFamily, fontWeight = FontWeight.Normal, fontSize = 11.sp, lineHeight = 11.sp, letterSpacing = 0.44.sp)
     val monoCaption = TextStyle(fontFamily = GeistMonoFamily, fontWeight = FontWeight.Normal, fontSize = 10.sp, lineHeight = 10.sp)
     val monoAxis = TextStyle(fontFamily = GeistMonoFamily, fontWeight = FontWeight.Normal, fontSize = 10.sp, lineHeight = 10.sp, letterSpacing = 0.2.sp)

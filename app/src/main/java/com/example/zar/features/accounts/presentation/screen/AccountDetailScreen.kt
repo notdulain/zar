@@ -59,6 +59,10 @@ import com.example.zar.core.presentation.components.ZarIconChip
 import com.example.zar.core.presentation.components.ZarMonoLabel
 import com.example.zar.core.presentation.components.ZarSectionHeader
 import com.example.zar.core.presentation.components.ZarTitleBlock
+import com.example.zar.core.presentation.components.HeroScrollOffset
+import com.example.zar.core.presentation.components.heroDisplacement
+import com.example.zar.core.presentation.components.heroParallax
+import com.example.zar.core.presentation.motion.ZarMotion
 import com.example.zar.core.presentation.theme.ZarTheme
 import com.example.zar.core.presentation.theme.ZarType
 import com.example.zar.features.accounts.domain.AccountRules
@@ -80,14 +84,16 @@ fun AccountDetailScreen(
     val detail = uiState.detail
     val backTop = maxOf(4.dp, 54.dp - WindowInsets.statusBars.asPaddingValues().calculateTopPadding())
     Box(Modifier.fillMaxSize().background(colors.canvas)) {
-        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).statusBarsPadding()) {
+        val scrollState = rememberScrollState()
+        val heroOffset = scrollState.heroDisplacement()
+        Column(Modifier.fillMaxSize().verticalScroll(scrollState).statusBarsPadding()) {
             ZarBackButton(onBack, stringResource(R.string.accounts_back), Modifier.padding(start = 10.dp, top = backTop))
             when {
                 uiState.isLoading -> Box(Modifier.fillMaxWidth().padding(top = 96.dp), Alignment.Center) { CircularProgressIndicator(color = colors.accentSelected) }
                 uiState.loadFailed -> Message(stringResource(R.string.accounts_load_failed))
                 detail == null -> Message(stringResource(R.string.account_not_found))
                 else -> {
-                    DetailContent(detail, onEdit)
+                    DetailContent(detail, onEdit, heroOffset)
                     if (uiState.actionFailed) {
                         Text(
                             stringResource(R.string.account_action_failed),
@@ -147,15 +153,17 @@ private fun Message(text: String) {
 }
 
 @Composable
-private fun DetailContent(detail: AccountDetail, onEdit: (String) -> Unit) {
+private fun DetailContent(detail: AccountDetail, onEdit: (String) -> Unit, heroOffset: HeroScrollOffset) {
     val account = detail.account
     val colors = ZarTheme.colors
+    // Title block and balance card are the top summary group; they drift together at the bounded text rate.
+    val summaryLayer = Modifier.heroParallax(heroOffset, ZarMotion.PARALLAX_TEXT, ZarMotion.ParallaxTextCap)
     ZarTitleBlock(
         title = account.name,
         subtitle = "${stringResource(account.type.longLabelRes())} · ${account.currency.code}",
-        modifier = Modifier.padding(top = 6.dp),
+        modifier = summaryLayer.padding(top = 6.dp),
     )
-    BalanceCard(detail, Modifier.padding(horizontal = 10.dp).padding(top = 18.dp))
+    BalanceCard(detail, Modifier.heroParallax(heroOffset, ZarMotion.PARALLAX_TEXT, ZarMotion.ParallaxTextCap).padding(horizontal = 10.dp).padding(top = 18.dp))
     DetailsCard(detail, onEdit, Modifier.padding(horizontal = 10.dp).padding(top = 12.dp))
     ZarSectionHeader(stringResource(R.string.account_recent), Modifier.padding(top = 18.dp))
     if (detail.recent.isEmpty()) {

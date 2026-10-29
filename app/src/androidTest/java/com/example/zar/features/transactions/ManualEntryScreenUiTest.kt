@@ -28,6 +28,7 @@ import com.example.zar.features.transactions.presentation.manual.screen.ManualEn
 import com.example.zar.features.transactions.presentation.manual.viewmodel.ManualEntryKind
 import com.example.zar.features.transactions.presentation.manual.viewmodel.ManualEntryMessage
 import com.example.zar.features.transactions.presentation.manual.viewmodel.ManualEntryUiState
+import com.example.zar.features.transactions.presentation.manual.viewmodel.NewCategoryState
 import java.time.LocalDate
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -60,10 +61,14 @@ class ManualEntryScreenUiTest {
         var kind: ManualEntryKind? = null
         var income = 0
         var addAccount = 0
-        var category: ExpenseCategory? = null
+        var category: com.example.zar.features.transactions.domain.manual.model.ExpenseCategoryChoice? = null
         var time: java.time.LocalTime? = null
         var suggestion: EntrySuggestion? = null
         var closed = 0
+        var addCategoryStart = 0
+        var newCategoryName: String? = null
+        var addCategoryCancel = 0
+        var addCategorySave = 0
     }
 
     private fun show(state: ManualEntryUiState, rec: Recorder = Recorder(), focusNote: Boolean = false) {
@@ -82,6 +87,10 @@ class ManualEntryScreenUiTest {
                         onTime = { rec.time = it },
                         onAccount = {},
                         onCategory = { rec.category = it },
+                        onAddCategoryStart = { rec.addCategoryStart++ },
+                        onNewCategoryName = { rec.newCategoryName = it },
+                        onAddCategoryCancel = { rec.addCategoryCancel++ },
+                        onAddCategorySave = { rec.addCategorySave++ },
                         onSpendingClass = {},
                         onTitle = {},
                         onDescription = {},
@@ -298,5 +307,39 @@ class ManualEntryScreenUiTest {
         compose.onNodeWithTag("manual-gap-banner").assertDoesNotExist()
         compose.onNodeWithTag("manual-account-locked").assertDoesNotExist()
         compose.onNodeWithTag("manual-account-bank").assertIsDisplayed()
+    }
+
+    @Test
+    fun allCategoriesOpensTheThreeColumnGridWithAnAddAction() {
+        val rec = Recorder()
+        show(state(), rec)
+
+        compose.onNodeWithText("All categories →").performClick()
+        // Every built-in is offered as a tile, and the visible Add category action starts creation.
+        compose.onNodeWithTag("manual-category-groceries").assertExists()
+        compose.onNodeWithTag("manual-category-subscriptions").assertExists()
+        compose.onNodeWithTag("manual-add-category").performScrollTo().assertIsDisplayed().performClick()
+
+        assertEquals(1, rec.addCategoryStart)
+    }
+
+    @Test
+    fun addCategorySheetReportsTheTypedName() {
+        val rec = Recorder()
+        show(state { copy(newCategory = NewCategoryState()) }, rec)
+
+        compose.onNodeWithTag("manual-new-category-name").performTextInput("Pets")
+
+        assertEquals("Pets", rec.newCategoryName)
+    }
+
+    @Test
+    fun addCategorySaveIsEnabledWithANameAndReportsTheSave() {
+        val rec = Recorder()
+        show(state { copy(newCategory = NewCategoryState(name = "Pets")) }, rec)
+
+        compose.onNodeWithTag("manual-new-category-save").assertIsEnabled().performClick()
+
+        assertEquals(1, rec.addCategorySave)
     }
 }

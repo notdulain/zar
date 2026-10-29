@@ -41,6 +41,9 @@ import com.example.zar.core.presentation.components.ZarDivider
 import com.example.zar.core.presentation.components.ZarIconChip
 import com.example.zar.core.presentation.components.ZarSectionHeader
 import com.example.zar.core.presentation.components.ZarTitleBlock
+import com.example.zar.core.presentation.components.heroDisplacement
+import com.example.zar.core.presentation.components.heroParallax
+import com.example.zar.core.presentation.motion.ZarMotion
 import com.example.zar.core.presentation.theme.ZarTheme
 import com.example.zar.core.presentation.theme.ZarType
 import com.example.zar.features.accounts.domain.model.AccountsOverview
@@ -60,13 +63,16 @@ fun AccountsScreen(
     val colors = ZarTheme.colors
     val backTop = maxOf(4.dp, 54.dp - WindowInsets.statusBars.asPaddingValues().calculateTopPadding())
     Box(Modifier.fillMaxSize().background(colors.canvas)) {
-        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).statusBarsPadding()) {
+        val scrollState = rememberScrollState()
+        val heroOffset = scrollState.heroDisplacement()
+        Column(Modifier.fillMaxSize().verticalScroll(scrollState).statusBarsPadding()) {
             ZarBackButton(onBack, stringResource(R.string.accounts_back), Modifier.padding(start = 10.dp, top = backTop))
             val overview = uiState.overview
+            // Accounts has no hero card: the title block is the top header and carries the bounded text layer only.
             ZarTitleBlock(
                 title = stringResource(R.string.accounts_title),
                 subtitle = overview?.let { subtitle(it) },
-                modifier = Modifier.padding(top = 6.dp),
+                modifier = Modifier.heroParallax(heroOffset, ZarMotion.PARALLAX_TEXT, ZarMotion.ParallaxTextCap).padding(top = 6.dp),
             )
             when {
                 uiState.isLoading -> Box(Modifier.fillMaxWidth().padding(top = 96.dp), Alignment.Center) { CircularProgressIndicator(color = colors.accentSelected) }

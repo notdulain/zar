@@ -19,7 +19,11 @@ import com.example.zar.features.allowance.presentation.screen.AllowanceEditorDia
 import com.example.zar.features.allowance.presentation.viewmodel.AllowanceEditorState
 import com.example.zar.features.allowance.presentation.viewmodel.AllowanceMessage
 import com.example.zar.features.allowance.presentation.viewmodel.AllowanceUiState
+import com.example.zar.features.transactions.domain.category.CategoryNameRules
+import com.example.zar.features.transactions.domain.category.ExpenseCategoryCatalog
+import com.example.zar.features.transactions.domain.manual.model.CustomExpenseCategory
 import java.time.DayOfWeek
+import java.time.Instant
 import java.time.LocalDate
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -114,5 +118,29 @@ class AllowanceUiTest {
         assertEquals("5000", amount)
         assertEquals(listOf("groceries"), toggled)
         assertEquals(DayOfWeek.SUNDAY, weekStart)
+    }
+
+    @Test
+    fun theFormListsAUsersOwnCategoriesToo() {
+        val custom = CustomExpenseCategory("custom-pets-1", "Pets", CategoryNameRules.keyOf("Pets"), Instant.ofEpochMilli(1_000))
+        val toggled = mutableListOf<String>()
+        compose.setContent {
+            ZarTheme {
+                AllowanceEditorDialog(
+                    editor = AllowanceEditorState(),
+                    isSaving = false,
+                    message = null,
+                    onEnabledChange = {},
+                    onAmountChange = {},
+                    onToggleCategory = { toggled += it },
+                    onWeekStartChange = {},
+                    onDismiss = {},
+                    onSave = {},
+                    categories = ExpenseCategoryCatalog(listOf(custom)),
+                )
+            }
+        }
+        compose.onNodeWithTag("allowance-category-custom-pets-1").performScrollTo().performClick()
+        assertEquals(listOf("custom-pets-1"), toggled)
     }
 }

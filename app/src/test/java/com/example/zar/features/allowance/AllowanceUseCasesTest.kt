@@ -87,6 +87,14 @@ class AllowanceUseCasesTest {
     }
 
     @Test
+    fun aUsersOwnCategoryIsAcceptedAsAFilter() = runTest {
+        // A custom category is a valid filter even though the allowance never lists built-ins only.
+        val custom = "custom-5f2c9a1e-7d44-4c0b-9c1d-0a1b2c3d4e5f"
+        assertTrue(save(AllowanceSettings(true, lkr(5_000), setOf("groceries", custom))).isSuccess)
+        assertEquals(setOf("groceries", custom), repo.settings.value.categoryIds)
+    }
+
+    @Test
     fun aFailedSaveIsReportedNotThrown() = runTest {
         repo.failSaves = true
         assertTrue(save(AllowanceSettings(true, lkr(5_000))).isFailure)

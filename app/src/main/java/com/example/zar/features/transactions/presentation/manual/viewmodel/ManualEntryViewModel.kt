@@ -23,10 +23,17 @@ import com.example.zar.features.rules.domain.model.OfferDecision
 import com.example.zar.features.rules.domain.model.RuleMatch
 import com.example.zar.features.rules.domain.repository.RuleOfferInbox
 import com.example.zar.features.rules.domain.usecase.ObserveCategoryRulesUseCase
+import com.example.zar.features.transactions.domain.category.CategoryNameProblem
+import com.example.zar.features.transactions.domain.category.ExpenseCategoryCatalog
+import com.example.zar.features.transactions.domain.category.usecase.CategoryNameRejected
+import com.example.zar.features.transactions.domain.category.usecase.CreateExpenseCategoryUseCase
+import com.example.zar.features.transactions.domain.category.usecase.ObserveExpenseCategoryCatalogUseCase
 import com.example.zar.features.transactions.domain.manual.EntrySuggestions
 import com.example.zar.features.transactions.domain.manual.ManualEntryRules
+import com.example.zar.features.transactions.domain.manual.model.CustomCategoryIds
+import com.example.zar.features.transactions.domain.manual.model.CustomExpenseCategory
 import com.example.zar.features.transactions.domain.manual.model.EntrySuggestion
-import com.example.zar.features.transactions.domain.manual.model.ExpenseCategory
+import com.example.zar.features.transactions.domain.manual.model.ExpenseCategoryChoice
 import com.example.zar.features.transactions.domain.manual.model.ExpenseFormInput
 import com.example.zar.features.transactions.domain.manual.model.ExpenseFormResult
 import com.example.zar.features.transactions.domain.manual.model.ExpenseProblem
@@ -54,6 +61,18 @@ enum class ManualEntryKind { EXPENSE, TRANSFER }
 
 enum class ManualEntryMessage { NOT_SIGNED_IN, ACCOUNT_ARCHIVED, FAILED }
 
+/**
+ * The "Add category" form while it is open. [problem] is a name problem shown inline; [failed] means the write was
+ * rejected or unavailable, so the same name can be retried (it reuses one category ID). Creating a category never
+ * saves the transaction or touches any other field of the draft.
+ */
+data class NewCategoryState(
+    val name: String = "",
+    val problem: CategoryNameProblem? = null,
+    val isSaving: Boolean = false,
+    val failed: Boolean = false,
+)
+
 data class ManualEntryUiState(
     val isLoading: Boolean = true,
     val kind: ManualEntryKind = ManualEntryKind.EXPENSE,
@@ -66,7 +85,11 @@ data class ManualEntryUiState(
     val time: LocalTime = LocalTime.now(ZarTime.ZONE).truncatedTo(ChronoUnit.MINUTES),
     // Expense
     val accountId: AccountId? = null,
-    val category: ExpenseCategory? = null,
+    val category: ExpenseCategoryChoice? = null,
+    /** Built-ins plus the user's own categories, in picker order. Built-ins only until the catalog arrives. */
+    val categoryCatalog: ExpenseCategoryCatalog = ExpenseCategoryCatalog.BUILT_IN_ONLY,
+    /** Non-null while the Add category form is open. */
+    val newCategory: NewCategoryState? = null,
     /** True once the user picked the category themselves, so a remembered rule no longer fills it in. */
     val categoryChosen: Boolean = false,
     /** The rule that filled in [category] for the typed title. Cleared as soon as the user picks another category. */
@@ -134,12 +157,16 @@ class ManualEntryViewModel @Inject constructor(
     private val recordTransfer: RecordTransferUseCase,
     observeRules: ObserveCategoryRulesUseCase,
     private val ruleInbox: RuleOfferInbox,
+    observeCategories: ObserveExpenseCategoryCatalogUseCase,
+    private val createCategory: CreateExpenseCategoryUseCase,
 ) : ViewModel() {
 
     // Read by name instead of toRoute so the ViewModel can be created in plain unit tests.
     private val prefillAmount: String? = savedStateHandle.get<String>(ManualEntryRoute::prefillAmount.name)
     private val prefillAccountId: String? = savedStateHandle.get<String>(ManualEntryRoute::prefillAccountId.name)
     private val prefillTitle: String? = savedStateHandle.get<String>(ManualEntryRoute::prefillTitle.name)
+    private val initialKind: ManualEntryKind =
+        if (savedStateHandle.get<String>(ManualEntryRoute::initialKind.name) == "transfer") ManualEntryKind.TRANSFER else ManualEntryKind.EXPENSE
 
     // Created once per screen and reused on every retry, so a repeated save can't duplicate.
     private val expenseId = TransactionId(RecordIds.newId())
@@ -147,8 +174,12 @@ class ManualEntryViewModel @Inject constructor(
     private var allSuggestions: List<EntrySuggestion> = emptyList()
     private var rules: List<CategoryRule> = emptyList()
 
+    // Created when "Add category" opens and reused on every retry, so repeated Save is one category.
+    private var pendingCategoryId: String? = null
+
     private val _uiState = MutableStateFlow(
         ManualEntryUiState(
+            kind = initialKind,
             amount = if (prefillAccountId != null) prefillAmount.orEmpty() else "",
             title = prefillTitle.orEmpty(),
         ),
@@ -169,6 +200,12 @@ class ManualEntryViewModel @Inject constructor(
         }
         viewModelScope.launch {
             observeOnline().catch { }.collect { online -> _uiState.update { it.copy(isOnline = online) } }
+        }
+        viewModelScope.launch {
+            observeCategories().collect { catalog -> _uiState.update { it.copy(categoryCatalog = catalog).withRule() } }
+        }
+        viewModelScope.launch {
+            createCategory.lateRejections.collect(::onCategoryRejectedLate)
         }
         viewModelScope.launch {
             observeRules().catch { }.collect { list ->
@@ -208,7 +245,7 @@ class ManualEntryViewModel @Inject constructor(
         it.copy(accountId = id, expenseProblems = it.expenseProblems - ExpenseProblem.ACCOUNT_MISSING).withRule()
     }
 
-    fun onCategorySelect(value: ExpenseCategory) = _uiState.update {
+    fun onCategorySelect(value: ExpenseCategoryChoice) = _uiState.update {
         val usual = value.usualClass
         it.copy(
             category = value,
@@ -217,6 +254,67 @@ class ManualEntryViewModel @Inject constructor(
             spendingClass = if (!it.spendingClassChosen && usual != null) usual else it.spendingClass,
             expenseProblems = it.expenseProblems - ExpenseProblem.CATEGORY_MISSING,
         )
+    }
+
+    /** Opens the Add category form. The transaction draft and the current selection are left as they are. */
+    fun onAddCategoryStart() {
+        pendingCategoryId = CustomCategoryIds.newId()
+        _uiState.update { it.copy(newCategory = NewCategoryState()) }
+    }
+
+    fun onNewCategoryNameChange(value: String) = _uiState.update { state ->
+        state.newCategory?.let { state.copy(newCategory = it.copy(name = value, problem = null, failed = false)) } ?: state
+    }
+
+    /** Closes the form without creating anything; the selection and every typed field stay. */
+    fun onAddCategoryCancel() {
+        pendingCategoryId = null
+        _uiState.update { it.copy(newCategory = null) }
+    }
+
+    /**
+     * Saves the new category and selects it, without saving the transaction. A name problem or a failed write
+     * keeps the form open with the typed name so it can be corrected or retried.
+     */
+    fun onAddCategorySave() {
+        val form = _uiState.value.newCategory ?: return
+        if (form.isSaving) return
+        val id = pendingCategoryId ?: CustomCategoryIds.newId().also { pendingCategoryId = it }
+        _uiState.update { it.copy(newCategory = form.copy(isSaving = true, problem = null, failed = false)) }
+        viewModelScope.launch {
+            val outcome = createCategory(id, form.name, _uiState.value.categoryCatalog, Instant.now())
+            outcome.fold(
+                onSuccess = { created ->
+                    pendingCategoryId = null
+                    _uiState.update { it.copy(newCategory = null) }
+                    onCategorySelect(created)
+                },
+                onFailure = { error ->
+                    val problem = (error as? CategoryNameRejected)?.problem
+                    _uiState.update {
+                        it.copy(newCategory = it.newCategory?.copy(isSaving = false, problem = problem, failed = problem == null))
+                    }
+                },
+            )
+        }
+    }
+
+    /**
+     * The server refused a category that was already saved and selected (an offline create, refused on reconnect), and
+     * the local copy is gone. Taking it back and reopening "Add category" with the same name and ID keeps the person's
+     * typing and offers a retry, instead of leaving a selection that points at a category that no longer exists.
+     * Nothing else in the draft changes. A category the person has since replaced with another is left alone.
+     */
+    private fun onCategoryRejectedLate(rejected: CustomExpenseCategory) {
+        if (_uiState.value.category?.id != rejected.id) return
+        if (_uiState.value.newCategory == null) pendingCategoryId = rejected.id
+        _uiState.update {
+            it.copy(
+                category = null,
+                categoryChosen = false,
+                newCategory = it.newCategory ?: NewCategoryState(name = rejected.name, failed = true),
+            ).withRule()
+        }
     }
 
     fun onSpendingClassSelect(value: SpendingClass) = _uiState.update {
@@ -365,7 +463,7 @@ class ManualEntryViewModel @Inject constructor(
     private fun ManualEntryUiState.withRule(): ManualEntryUiState {
         if (kind != ManualEntryKind.EXPENSE || categoryChosen) return this
         val rule = (CategoryRuleMatcher.match(rules, title, accountId) as? RuleMatch.Applied)?.rule
-        val filed = rule?.let { ExpenseCategory.fromId(it.categoryId) }
+        val filed = rule?.let { categoryCatalog.find(it.categoryId) }
             ?: return if (appliedRule != null) copy(category = null, appliedRule = null) else this
         val usual = filed.usualClass
         return copy(

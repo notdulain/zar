@@ -1,5 +1,12 @@
 package com.example.zar.features.transactions.presentation.manual
 
+import com.example.zar.features.transactions.domain.manual.model.CustomExpenseCategory
+import com.example.zar.features.transactions.domain.manual.model.CustomCategoryIds
+import com.example.zar.features.transactions.domain.category.CategoryNameRules
+import com.example.zar.features.transactions.domain.category.CategoryNameProblem
+import com.example.zar.features.transactions.domain.category.usecase.CreateExpenseCategoryUseCase
+import com.example.zar.features.transactions.domain.category.usecase.ObserveExpenseCategoryCatalogUseCase
+import com.example.zar.features.transactions.domain.category.FakeExpenseCategoryRepository
 import com.example.zar.features.rules.FakeCategoryRules
 import com.example.zar.features.rules.rule
 import com.example.zar.features.rules.newInbox
@@ -113,6 +120,8 @@ class ManualEntryViewModelTest {
     @After fun tearDown() = Dispatchers.resetMain()
 
     private val rules = FakeCategoryRules()
+    private val categoryRepo = FakeExpenseCategoryRepository()
+    private val categoryCatalog = ObserveExpenseCategoryCatalogUseCase(categoryRepo)
     private val inbox = newInbox()
 
     private fun viewModel(handle: SavedStateHandle = SavedStateHandle()): ManualEntryViewModel {
@@ -120,12 +129,14 @@ class ManualEntryViewModelTest {
         return ManualEntryViewModel(
             handle,
             observeAccounts = ObserveActiveAccountsUseCase(accounts),
-            observeSuggestions = ObserveEntrySuggestionsUseCase(ledger),
+            observeSuggestions = ObserveEntrySuggestionsUseCase(ledger, categoryCatalog),
             observeOnline = ObserveOnlineStatusUseCase(connectivity),
             recordExpense = RecordExpenseUseCase(saveTransaction),
             recordTransfer = RecordTransferUseCase(SaveTransferUseCase(ledger)),
             observeRules = rules.observeUseCase(),
             ruleInbox = inbox,
+            observeCategories = categoryCatalog,
+            createCategory = CreateExpenseCategoryUseCase(categoryRepo),
         )
     }
 
@@ -185,12 +196,14 @@ class ManualEntryViewModelTest {
         val vm = ManualEntryViewModel(
             SavedStateHandle(),
             ObserveActiveAccountsUseCase(failing),
-            ObserveEntrySuggestionsUseCase(ledger),
+            ObserveEntrySuggestionsUseCase(ledger, categoryCatalog),
             ObserveOnlineStatusUseCase(connectivity),
             RecordExpenseUseCase(SaveTransactionUseCase(ledger)),
             RecordTransferUseCase(SaveTransferUseCase(ledger)),
             rules.observeUseCase(),
             inbox,
+            categoryCatalog,
+            CreateExpenseCategoryUseCase(categoryRepo),
         )
 
         assertFalse(vm.uiState.value.isLoading)
@@ -784,5 +797,176 @@ class ManualEntryViewModelTest {
         vm.save()
 
         assertNull(inbox.state.value.offer)
+    }
+
+    // --- Custom expense categories ---
+
+    private fun makeCategory(vm: ManualEntryViewModel, name: String) {
+        vm.onAddCategoryStart()
+        vm.onNewCategoryNameChange(name)
+        vm.onAddCategorySave()
+    }
+
+    @Test
+    fun creatingACategorySelectsItAndKeepsTheWholeDraft() {
+        val vm = viewModel()
+        vm.onAccountSelect(cash.id)
+        vm.onAmountChange("850")
+        vm.onTitleChange("Vet")
+        vm.onCategorySelect(ExpenseCategory.TRANSPORT)
+
+        makeCategory(vm, " Pets ")
+
+        val state = vm.uiState.value
+        val created = state.categoryCatalog.customs.single()
+        assertEquals("Pets", created.name)
+        assertEquals(created, state.category)
+        assertNull("form closes", state.newCategory)
+        assertEquals("850", state.amount)
+        assertEquals("Vet", state.title)
+        assertEquals(cash.id, state.accountId)
+        assertTrue("category is in the compact choices", created in state.categoryCatalog.choices)
+        assertTrue("no transaction was saved by creating a category", ledger.saved.isEmpty())
+        assertFalse(state.isFinished)
+    }
+
+    @Test
+    fun cancelLeavesTheSelectionAndCreatesNothing() {
+        val vm = viewModel()
+        vm.onCategorySelect(ExpenseCategory.BILLS)
+        vm.onAddCategoryStart()
+        vm.onNewCategoryNameChange("Pets")
+        vm.onAddCategoryCancel()
+
+        assertEquals(ExpenseCategory.BILLS, vm.uiState.value.category)
+        assertNull(vm.uiState.value.newCategory)
+        assertEquals(0, categoryRepo.writes)
+    }
+
+    @Test
+    fun nameProblemsStayInlineAndKeepTheTypedName() {
+        val vm = viewModel()
+        vm.onCategorySelect(ExpenseCategory.BILLS)
+        listOf("" to CategoryNameProblem.EMPTY, "x".repeat(41) to CategoryNameProblem.TOO_LONG, " groceries " to CategoryNameProblem.DUPLICATE).forEach { (name, problem) ->
+            makeCategory(vm, name)
+            val form = vm.uiState.value.newCategory!!
+            assertEquals(problem, form.problem)
+            assertEquals(name, form.name)
+            assertFalse(form.isSaving)
+            assertFalse(form.failed)
+        }
+        assertEquals(ExpenseCategory.BILLS, vm.uiState.value.category)
+        assertEquals(0, categoryRepo.writes)
+        // Fixing the name clears the message and succeeds.
+        vm.onNewCategoryNameChange("Pets")
+        assertNull(vm.uiState.value.newCategory!!.problem)
+        vm.onAddCategorySave()
+        assertEquals("Pets", (vm.uiState.value.category as CustomExpenseCategory).name)
+    }
+
+    @Test
+    fun aFailedWriteKeepsTheFormAndRetryingMakesOneCategory() {
+        val vm = viewModel()
+        vm.onCategorySelect(ExpenseCategory.BILLS)
+        categoryRepo.failNextWith = java.io.IOException("unavailable")
+        makeCategory(vm, "Pets")
+
+        assertTrue(vm.uiState.value.newCategory!!.failed)
+        assertEquals("Pets", vm.uiState.value.newCategory!!.name)
+        assertEquals(ExpenseCategory.BILLS, vm.uiState.value.category)
+
+        vm.onAddCategorySave()
+        vm.onAddCategorySave()
+        assertEquals(1, categoryRepo.writes)
+        assertEquals(1, vm.uiState.value.categoryCatalog.customs.size)
+        assertEquals("Pets", (vm.uiState.value.category as CustomExpenseCategory).name)
+    }
+
+    @Test
+    fun aCategoryTheServerRefusesLaterIsTakenBackAndTheTypedNameCanBeRetried() {
+        val vm = viewModel()
+        vm.onAccountSelect(cash.id)
+        vm.onAmountChange("850")
+        vm.onTitleChange("Vet")
+        makeCategory(vm, "Pets")
+        val id = vm.uiState.value.categoryCatalog.customs.single().id
+
+        categoryRepo.rejectLate(id)
+
+        // Not a silent disappearance: the selection is released and the form reopens with the name, ready to retry.
+        val state = vm.uiState.value
+        assertNull(state.category)
+        assertTrue(state.categoryCatalog.customs.isEmpty())
+        assertTrue(state.newCategory!!.failed)
+        assertEquals("Pets", state.newCategory!!.name)
+        // The rest of the draft is untouched.
+        assertEquals("850", state.amount)
+        assertEquals("Vet", state.title)
+        assertEquals(cash.id, state.accountId)
+
+        // Retrying reuses the same ID, so the category comes back once under the id the draft already used.
+        vm.onAddCategorySave()
+        assertEquals(id, vm.uiState.value.categoryCatalog.customs.single().id)
+        assertEquals(id, vm.uiState.value.category!!.id)
+        assertNull(vm.uiState.value.newCategory)
+    }
+
+    @Test
+    fun aLateRefusalOfACategoryThePersonHasSinceReplacedChangesNothing() {
+        val vm = viewModel()
+        makeCategory(vm, "Pets")
+        val id = vm.uiState.value.categoryCatalog.customs.single().id
+        vm.onCategorySelect(ExpenseCategory.BILLS)
+
+        categoryRepo.rejectLate(id)
+
+        assertEquals(ExpenseCategory.BILLS, vm.uiState.value.category)
+        assertNull(vm.uiState.value.newCategory)
+    }
+
+    @Test
+    fun anExpenseSavedUnderACustomCategoryStoresItsStableIdAndChosenClass() {
+        val vm = viewModel()
+        vm.onAccountSelect(cash.id)
+        vm.onAmountChange("850")
+        makeCategory(vm, "Pets")
+        val id = vm.uiState.value.categoryCatalog.customs.single().id
+        // A custom category has no usual class, so "Counts as" stays as it was; an explicit choice is kept.
+        assertEquals(SpendingClass.DISCRETIONARY, vm.uiState.value.spendingClass)
+        vm.onSpendingClassSelect(SpendingClass.COMMITTED)
+        vm.save()
+
+        val saved = ledger.saved.values.single()
+        assertEquals(id, saved.categoryId)
+        assertEquals(SpendingClass.COMMITTED, saved.spendingClass)
+        assertTrue(CustomCategoryIds.isCustom(saved.categoryId))
+    }
+
+    @Test
+    fun aSavedCustomCategoryIsSuggestedAndFilledByARule() {
+        val id = "custom-9f8e7d6c-0000"
+        categoryRepo.signInAs("alice")
+        kotlinx.coroutines.runBlocking {
+            categoryRepo.create(CustomExpenseCategory(id, "Pets", CategoryNameRules.keyOf("Pets"), java.time.Instant.EPOCH))
+        }
+        recentExpense("vet1", "Vet", id)
+        rules.rules.value = listOf(rule("Pet Shop", category = id))
+        val vm = viewModel()
+
+        vm.onTitleChange("Ve")
+        assertEquals(id, vm.uiState.value.suggestions.single().category?.id)
+        vm.onTitleChange("pet shop")
+        assertEquals(id, vm.uiState.value.category?.id)
+        assertNotNull(vm.uiState.value.appliedRule)
+    }
+
+    @Test
+    fun anotherAccountDoesNotSeeTheFirstAccountsCategories() {
+        val vm = viewModel()
+        makeCategory(vm, "Pets")
+        categoryRepo.signInAs("bob")
+        assertTrue(vm.uiState.value.categoryCatalog.customs.isEmpty())
+        categoryRepo.signInAs("alice")
+        assertEquals(1, vm.uiState.value.categoryCatalog.customs.size)
     }
 }

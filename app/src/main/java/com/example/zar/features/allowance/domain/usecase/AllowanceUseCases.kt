@@ -8,6 +8,7 @@ import com.example.zar.features.allowance.domain.AllowanceCalculator
 import com.example.zar.features.allowance.domain.model.AllowanceOverview
 import com.example.zar.features.allowance.domain.model.AllowanceSettings
 import com.example.zar.features.allowance.domain.repository.AllowanceRepository
+import com.example.zar.features.transactions.domain.manual.model.CustomCategoryIds
 import com.example.zar.features.transactions.domain.manual.model.ExpenseCategory
 import java.time.LocalDate
 import java.time.Instant
@@ -54,8 +55,9 @@ class SaveAllowanceSettingsUseCase @Inject constructor(
     private val allowance: AllowanceRepository,
 ) {
     suspend operator fun invoke(settings: AllowanceSettings): Result<Unit> = resultOf {
-        val known = ExpenseCategory.entries.map { it.id }.toSet()
-        if (!known.containsAll(settings.categoryIds)) throw LedgerError.InvalidRecord("Unknown category")
+        // A filter may name a built-in or one of the user's own categories; anything else is a mistake.
+        val unknown = settings.categoryIds.filterNot { ExpenseCategory.fromId(it) != null || CustomCategoryIds.isCustom(it) }
+        if (unknown.isNotEmpty()) throw LedgerError.InvalidRecord("Unknown category")
         allowance.saveSettings(settings)
     }
 }

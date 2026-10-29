@@ -1,4 +1,24 @@
 <resources>
-    <!-- Window theme only. Compose screens are styled by ZarTheme. -->
-    <style name="Theme.Zar" parent="android:Theme.Material.Light.NoActionBar" />
+    <!-- Window theme only. Compose screens are styled by ZarTheme.
+
+         Android draws this window, and on Android 12+ its own splash, before the process can read the saved
+         appearance. The surface is therefore a neutral brand navy that reads the same in Light and Dark, so a saved
+         Dark choice on a Light phone (or the reverse) never flashes the opposite mode. MainActivity replaces the
+         window background with the resolved canvas colour as soon as it starts, so everything the app draws itself
+         follows the saved Appearance. -->
+    <style name="Theme.Zar.Base" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/zar_launch_surface</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <!-- The launch surface is dark, so the bar glyphs must be light until Compose takes over. -->
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+
+    <style name="Theme.Zar" parent="Theme.Zar.Base" />
+
+    <!-- Sheet dialog windows: the platform enter animation as before, no exit animation (Back slides the sheet instead). -->
+    <style name="ZarSheetWindowAnimation">
+        <item name="android:windowEnterAnimation">@anim/zar_sheet_enter</item>
+        <item name="android:windowExitAnimation">@anim/zar_sheet_exit_none</item>
+    </style>
 </resources>

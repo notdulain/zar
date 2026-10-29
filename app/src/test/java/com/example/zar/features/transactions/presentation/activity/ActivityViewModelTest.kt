@@ -1,13 +1,19 @@
 package com.example.zar.features.transactions.presentation.activity
 
+import com.example.zar.features.transactions.domain.category.usecase.ObserveExpenseCategoryCatalogUseCase
+import com.example.zar.features.transactions.domain.category.FakeExpenseCategoryRepository
 import com.example.zar.core.domain.TestLedger.bank
 import com.example.zar.core.domain.TestLedger.cash
 import com.example.zar.core.domain.TestLedger.lkr
 import com.example.zar.core.domain.TestLedger.tx
 import com.example.zar.core.domain.calculation.ZarTime
+import com.example.zar.core.domain.model.RejectedLedgerWrite
 import com.example.zar.core.domain.model.Transaction
 import com.example.zar.core.domain.model.TransactionType
 import com.example.zar.core.domain.model.VoidMarker
+import com.example.zar.core.domain.usecase.DismissRejectedLedgerWriteUseCase
+import com.example.zar.core.domain.usecase.ObserveRejectedLedgerWritesUseCase
+import com.example.zar.core.domain.usecase.RetryRejectedLedgerWriteUseCase
 import com.example.zar.features.transactions.domain.activity.model.ActivityFilter
 import com.example.zar.features.transactions.domain.activity.model.DatePreset
 import com.example.zar.features.transactions.domain.activity.usecase.ObserveActivityUseCase
@@ -42,8 +48,11 @@ class ActivityViewModelTest {
     @After fun tearDown() = Dispatchers.resetMain()
 
     private fun viewModel() = ActivityViewModel(
-        observeActivity = ObserveActivityUseCase(ledger, accounts),
+        observeActivity = ObserveActivityUseCase(ledger, accounts, ObserveExpenseCategoryCatalogUseCase(FakeExpenseCategoryRepository())),
         observeOnline = ObserveOnlineStatusUseCase(connectivity),
+        observeRejected = ObserveRejectedLedgerWritesUseCase(ledger),
+        retryRejected = RetryRejectedLedgerWriteUseCase(ledger),
+        dismissRejected = DismissRejectedLedgerWriteUseCase(ledger),
     )
 
     private fun expense(id: String, amount: Long, account: com.example.zar.core.domain.model.Account = cash, date: LocalDate = today): Transaction =
@@ -181,5 +190,36 @@ class ActivityViewModelTest {
         accounts.accounts.value = listOf(bank, cash.copy(isArchived = true))
 
         assertEquals(listOf(bank), vm.uiState.value.accounts)
+    }
+
+    @Test
+    fun refusedSavesAreListedWithTheirRecordsAndCanBeRetriedOrDismissed() = runScreen { vm ->
+        val first = RejectedLedgerWrite("refused-1", listOf(expense("refused-1", 500)))
+        val second = RejectedLedgerWrite("refused-2", listOf(expense("refused-2", 900)))
+        assertTrue(vm.uiState.value.rejectedWrites.isEmpty())
+
+        ledger.inner.rejectedWrites.value = listOf(first, second)
+        assertEquals(listOf(first, second), vm.uiState.value.rejectedWrites)
+        // They already left the ledger: the list and totals show only what the server holds.
+        assertTrue((vm.uiState.value.content as ActivityContent.Ready).list.rows.isEmpty())
+
+        vm.retryRejectedWrite("refused-1")
+        assertEquals(listOf("refused-1"), ledger.inner.retriedWrites)
+        assertEquals(listOf(second), vm.uiState.value.rejectedWrites)
+
+        vm.dismissRejectedWrite("refused-2")
+        assertTrue(vm.uiState.value.rejectedWrites.isEmpty())
+    }
+
+    @Test
+    fun aRefusedSaveStaysVisibleWhileTheLedgerFailsToLoad() = runTest(UnconfinedTestDispatcher()) {
+        ledger.loadFailures = 1
+        val refused = RejectedLedgerWrite("refused", listOf(expense("refused", 500)))
+        ledger.inner.rejectedWrites.value = listOf(refused)
+        val vm = viewModel()
+        backgroundScope.launch { vm.uiState.collect { } }
+
+        assertEquals(ActivityContent.Error, vm.uiState.value.content)
+        assertEquals(listOf(refused), vm.uiState.value.rejectedWrites)
     }
 }

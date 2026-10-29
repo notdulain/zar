@@ -1,15 +1,12 @@
 package com.example.zar.features.auth.presentation.screen
 
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
+import androidx.core.view.WindowCompat
+import com.example.zar.core.presentation.components.findActivity
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -25,6 +22,13 @@ fun SignInScreen(
     viewModel: SignInViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    // The gradient is dark in both themes, so the status-bar glyphs are light.
+    val activity = LocalContext.current.findActivity()
+    val view = LocalView.current
+    DisposableEffect(activity, view) {
+        activity?.let { WindowCompat.getInsetsController(it.window, view).isAppearanceLightStatusBars = false }
+        onDispose { }
+    }
     SignInContent(
         state = state,
         onEmailChange = viewModel::onEmailChange,
@@ -33,50 +37,6 @@ fun SignInScreen(
         onForgotPassword = viewModel::sendReset,
         onCreateAccount = onCreateAccount,
     )
-}
-
-@Composable
-private fun SignInContent(
-    state: SignInUiState,
-    onEmailChange: (String) -> Unit,
-    onPasswordChange: (String) -> Unit,
-    onSubmit: () -> Unit,
-    onForgotPassword: () -> Unit,
-    onCreateAccount: () -> Unit,
-) {
-    AuthScaffold(title = stringResource(R.string.auth_sign_in_title)) {
-        EmailField(state.email, onEmailChange, state.emailProblem, enabled = !state.isSubmitting)
-        PasswordField(
-            value = state.password,
-            onValueChange = onPasswordChange,
-            label = stringResource(R.string.auth_password),
-            problem = state.passwordProblem,
-            enabled = !state.isSubmitting,
-            isNewPassword = false,
-            imeAction = ImeAction.Done,
-            onImeAction = onSubmit,
-            testTag = "password",
-        )
-        AuthErrorText(state.error)
-        state.resetSentTo?.let {
-            Text(
-                text = stringResource(R.string.auth_reset_sent, it),
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.testTag("reset-sent"),
-            )
-        }
-        PrimaryAuthButton(stringResource(R.string.auth_sign_in_action), state.isSubmitting, onSubmit)
-        TextButton(onClick = onForgotPassword, enabled = !state.isSubmitting, modifier = Modifier.fillMaxWidth()) {
-            Text(stringResource(R.string.auth_forgot_password))
-        }
-        TextButton(
-            onClick = onCreateAccount,
-            enabled = !state.isSubmitting,
-            modifier = Modifier.fillMaxWidth().testTag("to-register"),
-        ) {
-            Text(stringResource(R.string.auth_to_register))
-        }
-    }
 }
 
 @Preview(showBackground = true)

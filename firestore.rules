@@ -69,6 +69,13 @@ rules_version = '2';
 //   categoryIds (list of up to 8 category ids), weekStart (MONDAY..SUNDAY), updatedAt (int)
 //   The allowance reads the ledger but never writes to it.
 //
+// expenseCategories/{categoryId} create, no-change update, no delete (custom expense categories)
+//   id (== doc id, 'custom-' + 8-56 letters, digits or hyphens: built-in and income ids can never match),
+//   name (1-80 stored characters, trimmed, no control or line-break characters; the app limits it to 40 code points),
+//   nameKey (1-160, lower case, trimmed: the comparison key), source ('CUSTOM'), createdAt (int).
+//   A category never changes or goes away, so an expense's categoryId keeps resolving. A replayed create is an
+//   update with identical data and is allowed; the rules never look the category up from a transaction.
+//
 // drafts/{draftId}                create, update, delete (unconfirmed proposals)
 //   id (== doc id), source, status, proposals (list of maps, max 5), createdAt (immutable)
 //   Raw message text is never stored here; it stays in encrypted on-device staging.
@@ -216,6 +223,28 @@ service cloud.firestore {
         && isDateString(d.openingDate)
         && d.archived is bool
         && isMillis(d.updatedAt);
+    }
+
+    // A user's own expense category. IDs must start with custom-, so a client can never claim a built-in or
+    // income category ID. Name length is bounded here; the 40 code-point limit and duplicate check are the app's.
+    // The rules can only bound what is stored: Unicode normalisation (NFKC) and the exact comparison key are
+    // computed by the app (CategoryNameRules), so nameKey is only checked to be a plausible normalised form.
+    function isValidExpenseCategory(categoryId) {
+      let d = data();
+      return hasOnlyAllowedFields(['id', 'name', 'nameKey', 'source', 'createdAt'])
+        && hasRequiredFields(['id', 'name', 'nameKey', 'source', 'createdAt'])
+        && d.id == categoryId
+        && categoryId.matches('^custom-[A-Za-z0-9-]{8,56}$')
+        && d.source == 'CUSTOM'
+        && isShortString(d.name, 80)
+        && d.name == d.name.trim()
+        && !d.name.matches('(?s).*[\\x00-\\x1f\\x7f-\\x9f\\x{2028}\\x{2029}].*')
+        && isShortString(d.nameKey, 160)
+        && d.nameKey == d.nameKey.lower()
+        && d.nameKey == d.nameKey.trim()
+        && !d.nameKey.matches('(?s).*[\\x00-\\x1f\\x7f-\\x9f\\x{2028}\\x{2029}].*')
+        && !d.nameKey.matches('.*  .*')
+        && isMillis(d.createdAt);
     }
 
     function isValidTransaction(transactionId) {
@@ -612,6 +641,14 @@ service cloud.firestore {
         allow update: if isOwner(userId) && isValidCategoryRule(ruleId)
           && areImmutableFieldsUnchanged(['id', 'merchantKey', 'displayName', 'createdAt'])
           && data().version > resource.data.version;
+        allow delete: if false;
+      }
+
+      match /expenseCategories/{categoryId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidExpenseCategory(categoryId);
+        // Only an identical replay of the create may "update": categories are never renamed or edited.
+        allow update: if isOwner(userId) && isValidExpenseCategory(categoryId) && data() == resource.data;
         allow delete: if false;
       }
 

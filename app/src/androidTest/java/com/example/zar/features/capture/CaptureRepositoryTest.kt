@@ -1,18 +1,15 @@
 package com.example.zar.features.capture
 
-import androidx.test.platform.app.InstrumentationRegistry
 import com.example.zar.core.data.remote.firestore.*
 import com.example.zar.core.domain.model.*
 import com.example.zar.core.domain.model.money.*
 import com.example.zar.core.domain.repository.LinkWrite
 import com.example.zar.core.domain.repository.UserSessionProvider
 import com.example.zar.features.accounts.data.repository.AccountDocumentMapper
+import com.example.zar.features.auth.IsolatedFirebaseApp
 import com.example.zar.features.capture.domain.CapturedDraftRules
 import com.example.zar.features.capture.domain.model.SmsParseResult
 import com.example.zar.features.capture.domain.parser.BankSmsParser
-import com.google.firebase.FirebaseApp
-import com.google.firebase.FirebaseOptions
-import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import java.time.Instant
 import java.time.LocalDate
@@ -26,19 +23,17 @@ import org.junit.Assert.*
 /** Real Android repository against local Auth/Firestore emulators, project demo-zar. */
 class CaptureRepositoryTest {
     companion object {
-        private lateinit var app: FirebaseApp
+        private lateinit var client: IsolatedFirebaseApp
         private lateinit var db: FirebaseFirestore
         private var uid: UserId = UserId("not-connected")
+        // An isolated client with its own API key: sharing one fixed key with other classes made them share Auth's
+        // backend, and this class's app.delete() then left the next class with "FirebaseApp was deleted".
         @JvmStatic @BeforeClass fun connect()=runBlocking {
-            app=FirebaseApp.initializeApp(InstrumentationRegistry.getInstrumentation().targetContext,
-                FirebaseOptions.Builder().setProjectId("demo-zar").setApplicationId("1:123:android:capture-review")
-                    .setApiKey("fake-emulator-key").build(),"capture-review-${UUID.randomUUID()}")
-            FirebaseAuth.getInstance(app).useEmulator("10.0.2.2",9099)
-            uid=UserId(checkNotNull(FirebaseAuth.getInstance(app).signInAnonymously().await().user).uid)
-            db=FirebaseFirestore.getInstance(app)
-            db.useEmulator("10.0.2.2",8080)
+            client=IsolatedFirebaseApp.open("capture-review-${UUID.randomUUID()}")
+            uid=UserId(checkNotNull(client.auth.signInAnonymously().await().user).uid)
+            db=client.db
         }
-        @JvmStatic @AfterClass fun disconnect() { app.delete() }
+        @JvmStatic @AfterClass fun disconnect() { client.close() }
     }
     private val session=object:UserSessionProvider {
         var current:UserId?=null
@@ -147,7 +142,7 @@ class CaptureRepositoryTest {
             // Another device discarded this draft while this device was offline. The emulator's admin REST
             // endpoint simulates that server state without touching the device's queued write.
             withContext(Dispatchers.IO) {
-                val url = java.net.URL("http://10.0.2.2:8080/v1/projects/demo-zar/databases/(default)/documents/users/${uid.value}/drafts/${d.id.value}?updateMask.fieldPaths=status")
+                val url = java.net.URL("http://${IsolatedFirebaseApp.EMULATOR_HOST}:8080/v1/projects/demo-zar/databases/(default)/documents/users/${uid.value}/drafts/${d.id.value}?updateMask.fieldPaths=status")
                 val connection = url.openConnection() as java.net.HttpURLConnection
                 try {
                     connection.requestMethod = "PATCH"

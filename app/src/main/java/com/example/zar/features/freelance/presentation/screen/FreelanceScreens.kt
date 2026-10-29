@@ -1,6 +1,40 @@
 package com.example.zar.features.freelance.presentation.screen
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
+import com.example.zar.core.presentation.components.ZarAddPill
+import com.example.zar.core.presentation.components.ZarBackButton
+import com.example.zar.core.presentation.components.ZarCard
+import com.example.zar.core.presentation.components.ZarSwitch
+import com.example.zar.core.presentation.theme.ZarDimens
+import com.example.zar.core.presentation.theme.ZarGradients
+import com.example.zar.core.presentation.theme.ZarShapes
+import com.example.zar.core.presentation.theme.ZarSubtle
+import com.example.zar.core.presentation.theme.ZarWhite
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.Role
+import com.example.zar.core.presentation.components.ZarButton
+import com.example.zar.core.presentation.components.ZarButtonStyle
+import com.example.zar.core.presentation.components.ZarChip
+import com.example.zar.core.presentation.components.ZarDivider
+import com.example.zar.core.presentation.components.ZarFormRow
+import com.example.zar.core.presentation.components.ZarIcon
+import com.example.zar.core.presentation.components.ZarMonoLabel
+import com.example.zar.core.presentation.theme.ZarTheme
+import com.example.zar.core.presentation.theme.ZarType
+import com.example.zar.features.transactions.presentation.manual.screen.TextInput
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -15,6 +49,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
@@ -44,6 +79,12 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.zar.R
 import com.example.zar.core.domain.model.MatchState
+import com.example.zar.core.presentation.components.HeroScrollOffset
+import com.example.zar.core.presentation.components.ZarHeroItemKey
+import com.example.zar.core.presentation.components.heroDisplacement
+import com.example.zar.core.presentation.components.heroParallax
+import com.example.zar.core.presentation.motion.ZarMotion
+import com.example.zar.features.bills.presentation.screen.StatusBarGlyphs
 import com.example.zar.features.freelance.domain.FreelanceProblem
 import com.example.zar.features.freelance.domain.model.MilestoneSummary
 import com.example.zar.features.freelance.domain.model.Outstanding
@@ -54,13 +95,14 @@ import com.example.zar.features.freelance.presentation.viewmodel.ProjectFormView
 import com.example.zar.features.freelance.presentation.viewmodel.ProjectViewModel
 import com.example.zar.features.reminders.presentation.NotificationsOffNote
 import com.example.zar.features.reminders.presentation.rememberNotificationAccess
+import com.example.zar.features.transactions.presentation.activity.screen.DarkStatusBarIcons
 import com.example.zar.features.transactions.presentation.income.IncomeFormat
 import com.example.zar.features.transactions.presentation.income.screen.SummaryHeaderCard
 import com.example.zar.features.transactions.presentation.income.screen.ZarMono
 
 // --- Projects list -------------------------------------------------------------------------
 
-@OptIn(ExperimentalMaterial3Api::class)
+/** Figma Z197: a full-width gradient hero with Back, the owed summary, grouped project cards and a "New project" pill. */
 @Composable
 fun FreelanceScreen(
     onBack: () -> Unit,
@@ -70,112 +112,139 @@ fun FreelanceScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val overdueAlerts by viewModel.overdueAlerts.collectAsStateWithLifecycle()
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.freelance_title)) },
-                navigationIcon = { TextButton(onClick = onBack) { Text(stringResource(R.string.action_back)) } },
-            )
-        },
-        floatingActionButton = { AddButton(onAddProject) },
-    ) { innerPadding ->
-        when {
-            uiState.isLoading -> Loading(Modifier.padding(innerPadding))
-            uiState.loadFailed -> CenteredText(stringResource(R.string.freelance_load_failed), Modifier.padding(innerPadding))
-            else -> LazyColumn(
-                modifier = Modifier.fillMaxSize().padding(innerPadding),
-                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 96.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                item { OwedHeader(uiState.outstanding) }
-                item { OverdueAlertsRow(enabled = overdueAlerts, onChange = viewModel::setOverdueAlerts) }
-                if (uiState.projects.isEmpty()) item { CenteredText(stringResource(R.string.freelance_empty), Modifier.padding(top = 48.dp)) }
-                items(uiState.projects, key = { it.project.id.value }) { summary ->
-                    ProjectCard(summary, onClick = { onOpenProject(summary.project.id.value) })
+    val colors = ZarTheme.colors
+    StatusBarGlyphs(onDarkHero = true)
+    val listState = rememberLazyListState()
+    val heroOffset = listState.heroDisplacement()
+    val topInset = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+    Box(Modifier.fillMaxSize().background(colors.canvas)) {
+        LazyColumn(
+            state = listState,
+            modifier = Modifier.fillMaxSize().testTag("freelance-list"),
+            contentPadding = PaddingValues(bottom = 120.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            item(key = ZarHeroItemKey) {
+                OwedHero(uiState.outstanding, uiState.projects.isEmpty(), topInset, onBack, heroOffset)
+            }
+            when {
+                uiState.isLoading -> item {
+                    Box(Modifier.fillMaxWidth().padding(top = 72.dp), Alignment.Center) { CircularProgressIndicator(color = colors.accentSelected) }
                 }
+                uiState.loadFailed -> item { FreelanceNote(stringResource(R.string.freelance_load_failed)) }
+                else -> {
+                    item { OverdueAlertsRow(enabled = overdueAlerts, onChange = viewModel::setOverdueAlerts) }
+                    if (uiState.projects.isEmpty()) {
+                        item { FreelanceNote(stringResource(R.string.freelance_empty), Modifier.testTag("freelance-empty")) }
+                    }
+                    items(uiState.projects, key = { it.project.id.value }) { summary ->
+                        ProjectCard(summary, onClick = { onOpenProject(summary.project.id.value) })
+                    }
+                }
+            }
+        }
+        ZarAddPill(
+            text = stringResource(R.string.project_add),
+            onClick = onAddProject,
+            modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 20.dp).testTag("freelance-add"),
+        )
+    }
+}
+
+@Composable
+private fun FreelanceNote(text: String, modifier: Modifier = Modifier) {
+    Text(text, style = ZarType.bodyS, color = ZarTheme.colors.textSecondary, modifier = modifier.padding(horizontal = 22.dp, vertical = 4.dp))
+}
+
+@Composable
+private fun OverdueAlertsRow(enabled: Boolean, onChange: (Boolean) -> Unit) {
+    val colors = ZarTheme.colors
+    val notifications = rememberNotificationAccess()
+    Column(Modifier.padding(horizontal = 22.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(stringResource(R.string.freelance_overdue_alerts), style = ZarType.bodyS, color = colors.textPrimary, modifier = Modifier.weight(1f).padding(end = 12.dp))
+            ZarSwitch(checked = enabled, onCheckedChange = { checked ->
+                onChange(checked)
+                if (checked) notifications.request()
+            })
+        }
+        if (enabled && !notifications.enabled) {
+            Text(stringResource(R.string.reminders_notifications_off), style = ZarType.bodyCaption, color = colors.textAttentionStrong)
+        }
+    }
+}
+
+@Composable
+private fun OwedHero(outstanding: Outstanding?, noProjects: Boolean, topInset: Dp, onBack: () -> Unit, heroOffset: HeroScrollOffset) {
+    val owed = outstanding?.takeUnless { it.isEmpty }
+    val textLayer = Modifier.heroParallax(heroOffset, ZarMotion.PARALLAX_TEXT, ZarMotion.ParallaxTextCap)
+    Column(
+        Modifier.fillMaxWidth().clip(ZarShapes.hero).background(ZarGradients.received).padding(top = topInset),
+    ) {
+        ZarBackButton(onBack, stringResource(R.string.action_back), Modifier.padding(start = 10.dp, top = 4.dp), tint = ZarWhite)
+        if (noProjects && owed == null) {
+            // Z197: nothing to summarise, so the hero says so in two plain lines.
+            Text(
+                stringResource(R.string.freelance_hero_empty),
+                style = ZarType.displayTitle.copy(fontSize = 24.sp, lineHeight = 30.sp),
+                color = ZarWhite,
+                textAlign = TextAlign.Center,
+                modifier = textLayer.fillMaxWidth().padding(horizontal = 24.dp, vertical = 36.dp).testTag("freelance-hero"),
+            )
+        } else {
+            Column(textLayer.padding(horizontal = 24.dp).padding(top = 12.dp, bottom = 32.dp).testTag("freelance-hero"), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                ZarMonoLabel(stringResource(R.string.freelance_owed_label), color = ZarSubtle)
+                Text(
+                    owed?.owed?.display() ?: stringResource(R.string.freelance_owed_none),
+                    style = ZarType.amountL,
+                    color = ZarWhite,
+                )
+                Text(
+                    when {
+                        owed == null -> stringResource(R.string.income_header_caption)
+                        owed.overdue.isNotEmpty() -> stringResource(R.string.freelance_overdue, owed.overdue.display())
+                        else -> pluralStringResource(R.plurals.freelance_owed_caption, owed.projectsWithBalance, owed.projectsWithBalance)
+                    },
+                    style = ZarType.bodyS,
+                    color = ZarWhite.copy(alpha = 0.9f),
+                )
             }
         }
     }
 }
 
 @Composable
-private fun OverdueAlertsRow(enabled: Boolean, onChange: (Boolean) -> Unit) {
-    val notifications = rememberNotificationAccess()
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                stringResource(R.string.freelance_overdue_alerts),
-                style = MaterialTheme.typography.bodyMedium,
-                fontFamily = ZarMono,
-                modifier = Modifier.weight(1f),
-            )
-            Switch(checked = enabled, onCheckedChange = { checked ->
-                onChange(checked)
-                if (checked) notifications.request()
-            })
-        }
-        if (enabled && !notifications.enabled) NotificationsOffNote()
-    }
-}
-
-@Composable
-private fun OwedHeader(outstanding: Outstanding?) {
-    val owed = outstanding?.takeUnless { it.isEmpty }
-    SummaryHeaderCard(
-        label = stringResource(R.string.freelance_owed_label),
-        amount = owed?.owed?.display() ?: stringResource(R.string.freelance_owed_none),
-        caption = when {
-            owed == null -> stringResource(R.string.income_header_caption)
-            owed.overdue.isNotEmpty() -> stringResource(R.string.freelance_overdue, owed.overdue.display())
-            else -> pluralStringResource(R.plurals.freelance_owed_caption, owed.projectsWithBalance, owed.projectsWithBalance)
-        },
-    )
-}
-
-@Composable
 private fun ProjectCard(summary: ProjectSummary, onClick: () -> Unit) {
+    val colors = ZarTheme.colors
     val project = summary.project
-    OutlinedCard(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
-        Row(Modifier.padding(horizontal = 16.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                Text(project.name, style = MaterialTheme.typography.bodyLarge, fontFamily = ZarMono)
+    ZarCard(Modifier.padding(horizontal = 10.dp).fillMaxWidth(), onClick = onClick, radius = ZarDimens.RowCardRadius, contentPadding = PaddingValues(horizontal = 16.dp, vertical = 14.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(project.name, style = ZarType.labelButton, color = colors.textPrimary)
                 val details = listOfNotNull(
                     project.client,
                     pluralStringResource(R.plurals.freelance_milestone_count, summary.milestones.size, summary.milestones.size),
                     if (project.isArchived) stringResource(R.string.freelance_archived) else null,
                 )
-                Text(details.joinToString(" · "), style = MaterialTheme.typography.bodySmall, fontFamily = ZarMono, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(details.joinToString(" · "), style = ZarType.bodyCaption, color = colors.textSecondary)
                 Text(
                     stringResource(R.string.freelance_received_of, IncomeFormat.amount(summary.received), summary.expected.display()),
-                    style = MaterialTheme.typography.bodySmall,
-                    fontFamily = ZarMono,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = ZarType.bodyCaption,
+                    color = colors.textSecondary,
                 )
             }
-            Spacer(Modifier.width(12.dp))
-            Column(horizontalAlignment = Alignment.End) {
-                Text(stringResource(R.string.freelance_left, summary.remaining.display()), style = MaterialTheme.typography.bodyMedium, fontFamily = ZarMono)
+            Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(stringResource(R.string.freelance_left, summary.remaining.display()), style = ZarType.bodyM, color = colors.textPrimary)
                 if (summary.overdue.isPositive) {
                     Text(
                         stringResource(R.string.freelance_overdue, IncomeFormat.amount(summary.overdue)),
-                        style = MaterialTheme.typography.labelSmall,
-                        fontFamily = ZarMono,
-                        color = MaterialTheme.colorScheme.error,
+                        style = ZarType.bodyCaption,
+                        color = colors.textAttentionStrong,
                     )
                 }
             }
         }
     }
-}
-
-@Composable
-private fun AddButton(onClick: () -> Unit) {
-    FloatingActionButton(
-        onClick = onClick,
-        shape = CircleShape,
-        containerColor = MaterialTheme.colorScheme.inverseSurface,
-        contentColor = MaterialTheme.colorScheme.inverseOnSurface,
-    ) { Text("+", fontSize = 28.sp) }
 }
 
 // --- Project detail ------------------------------------------------------------------------
@@ -206,30 +275,36 @@ fun ProjectScreen(
             uiState.isLoading -> Loading(Modifier.padding(innerPadding))
             uiState.loadFailed -> CenteredText(stringResource(R.string.freelance_load_failed), Modifier.padding(innerPadding))
             summary == null -> CenteredText(stringResource(R.string.project_not_found), Modifier.padding(innerPadding))
-            else -> LazyColumn(
-                modifier = Modifier.fillMaxSize().padding(innerPadding),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                item {
-                    SummaryHeaderCard(
-                        label = stringResource(R.string.project_still_owed),
-                        amount = summary.remaining.display(),
-                        caption = buildString {
-                            append(stringResource(R.string.freelance_received_of, IncomeFormat.amount(summary.received), summary.expected.display()))
-                            if (summary.overdue.isPositive) append(" · ").append(stringResource(R.string.freelance_overdue, IncomeFormat.amount(summary.overdue)))
-                        },
-                    )
-                }
-                if (summary.project.isArchived) item { Text(stringResource(R.string.project_archived_note), fontFamily = ZarMono, color = MaterialTheme.colorScheme.error) }
-                if (summary.milestones.isEmpty()) item { CenteredText(stringResource(R.string.project_no_milestones)) }
-                items(summary.milestones, key = { it.milestone.id.value }) { milestone ->
-                    MilestoneCard(milestone, onClick = { onOpenMilestone(summary.project.id.value, milestone.milestone.id.value) })
-                }
-                if (!summary.project.isArchived) {
-                    item {
-                        OutlinedButton(onClick = { onAddMilestone(summary.project.id.value) }, modifier = Modifier.fillMaxWidth()) {
-                            Text(stringResource(R.string.project_add_milestone), fontFamily = ZarMono)
+            else -> {
+                val listState = rememberLazyListState()
+                val heroOffset = listState.heroDisplacement()
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier.fillMaxSize().padding(innerPadding),
+                    contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    item(key = ZarHeroItemKey) {
+                        SummaryHeaderCard(
+                            label = stringResource(R.string.project_still_owed),
+                            amount = summary.remaining.display(),
+                            caption = buildString {
+                                append(stringResource(R.string.freelance_received_of, IncomeFormat.amount(summary.received), summary.expected.display()))
+                                if (summary.overdue.isPositive) append(" · ").append(stringResource(R.string.freelance_overdue, IncomeFormat.amount(summary.overdue)))
+                            },
+                            modifier = Modifier.heroParallax(heroOffset, ZarMotion.PARALLAX_TEXT, ZarMotion.ParallaxTextCap),
+                        )
+                    }
+                    if (summary.project.isArchived) item { Text(stringResource(R.string.project_archived_note), fontFamily = ZarMono, color = MaterialTheme.colorScheme.error) }
+                    if (summary.milestones.isEmpty()) item { CenteredText(stringResource(R.string.project_no_milestones)) }
+                    items(summary.milestones, key = { it.milestone.id.value }) { milestone ->
+                        MilestoneCard(milestone, onClick = { onOpenMilestone(summary.project.id.value, milestone.milestone.id.value) })
+                    }
+                    if (!summary.project.isArchived) {
+                        item {
+                            OutlinedButton(onClick = { onAddMilestone(summary.project.id.value) }, modifier = Modifier.fillMaxWidth()) {
+                                Text(stringResource(R.string.project_add_milestone), fontFamily = ZarMono)
+                            }
                         }
                     }
                 }
@@ -273,7 +348,8 @@ private fun MilestoneCard(summary: MilestoneSummary, onClick: () -> Unit) {
 
 // --- Project form --------------------------------------------------------------------------
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+/** Figma Z195: Zar header with close, mono-labelled rows, currency chips and the Cancel / Save pair, like the account form. */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ProjectFormScreen(
     onBack: () -> Unit,
@@ -282,71 +358,103 @@ fun ProjectFormScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     LaunchedEffect(uiState.savedProjectId) { uiState.savedProjectId?.let { onSaved(it, !uiState.isEditing) } }
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(stringResource(if (uiState.isEditing) R.string.project_edit else R.string.project_add)) },
-                navigationIcon = { TextButton(onClick = onBack) { Text(stringResource(R.string.action_back)) } },
-            )
-        },
-    ) { innerPadding ->
-        if (uiState.isLoading) {
-            Loading(Modifier.padding(innerPadding))
-            return@Scaffold
-        }
-        if (uiState.message == FreelanceMessage.NOT_FOUND) {
-            CenteredText(stringResource(R.string.project_not_found), Modifier.padding(innerPadding))
-            return@Scaffold
-        }
-        Column(
-            Modifier.fillMaxSize().padding(innerPadding).imePadding().verticalScroll(rememberScrollState()).padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+    DarkStatusBarIcons()
+    val colors = ZarTheme.colors
+    val notFound = uiState.message == FreelanceMessage.NOT_FOUND
+    Column(Modifier.fillMaxSize().background(colors.surface).statusBarsPadding().imePadding()) {
+        Row(
+            Modifier.fillMaxWidth().padding(start = 24.dp, end = 24.dp, top = 18.dp, bottom = 4.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            OutlinedTextField(
-                value = uiState.name,
-                onValueChange = viewModel::onNameChange,
-                label = { Text(stringResource(R.string.project_name)) },
-                isError = uiState.problems.nameErrorRes() != null,
-                supportingText = uiState.problems.nameErrorRes()?.let { { Text(stringResource(it)) } },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
+            Text(
+                stringResource(if (uiState.isEditing) R.string.project_edit else R.string.project_add),
+                style = ZarType.headingSheet,
+                color = colors.textPrimary,
             )
-            OutlinedTextField(
-                value = uiState.client,
-                onValueChange = viewModel::onClientChange,
-                label = { Text(stringResource(R.string.project_client)) },
-                isError = FreelanceProblem.CLIENT_TOO_LONG in uiState.problems,
-                supportingText = if (FreelanceProblem.CLIENT_TOO_LONG in uiState.problems) {
-                    { Text(stringResource(R.string.income_error_too_long)) }
-                } else null,
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
-            )
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                SectionLabel(stringResource(R.string.project_currency))
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    uiState.currencyChoices.forEach { currency ->
-                        FilterChip(
-                            selected = currency == uiState.currency,
-                            onClick = { viewModel.onCurrencySelect(currency) },
-                            enabled = !uiState.isEditing,
-                            label = { Text(currency.code, fontFamily = ZarMono) },
-                        )
+            Box(
+                Modifier.size(40.dp).clip(CircleShape)
+                    .clickable(role = Role.Button, onClickLabel = stringResource(R.string.account_form_close), onClick = onBack)
+                    .testTag("project-form-close"),
+                Alignment.Center,
+            ) { ZarIcon(R.drawable.ic_ph_x, size = 20.dp) }
+        }
+        when {
+            uiState.isLoading -> Box(Modifier.weight(1f).fillMaxWidth(), Alignment.Center) { CircularProgressIndicator(color = colors.accentSelected) }
+            notFound -> Box(Modifier.weight(1f).fillMaxWidth().padding(24.dp), Alignment.Center) {
+                Text(stringResource(R.string.project_not_found), style = ZarType.bodyS, color = colors.textSecondary)
+            }
+            else -> Column(
+                Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 24.dp, vertical = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+            ) {
+                ZarFormRow(stringResource(R.string.project_form_name)) {
+                    TextInput(
+                        value = uiState.name,
+                        onValueChange = viewModel::onNameChange,
+                        placeholder = stringResource(R.string.project_form_name_hint),
+                        modifier = Modifier.weight(1f).testTag("project-name"),
+                    )
+                }
+                uiState.problems.nameErrorRes()?.let { ProjectFieldError(it) }
+                ZarDivider()
+                ZarFormRow(stringResource(R.string.project_form_client)) {
+                    TextInput(
+                        value = uiState.client,
+                        onValueChange = viewModel::onClientChange,
+                        placeholder = stringResource(R.string.project_form_client_hint),
+                        modifier = Modifier.weight(1f).testTag("project-client"),
+                    )
+                }
+                if (FreelanceProblem.CLIENT_TOO_LONG in uiState.problems) ProjectFieldError(R.string.income_error_too_long)
+                ZarDivider()
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    ZarMonoLabel(stringResource(R.string.project_currency))
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        uiState.currencyChoices.forEach { currency ->
+                            ZarChip(
+                                label = currency.code,
+                                selected = currency == uiState.currency,
+                                onClick = { viewModel.onCurrencySelect(currency) },
+                                enabled = !uiState.isEditing || currency == uiState.currency,
+                                modifier = Modifier.testTag("project-currency-${currency.code}"),
+                            )
+                        }
                     }
+                    Text(
+                        stringResource(if (uiState.isEditing) R.string.project_currency_locked else R.string.project_form_note),
+                        style = ZarType.bodyS,
+                        color = colors.textSecondary,
+                    )
                 }
-                if (uiState.isEditing) {
-                    Text(stringResource(R.string.project_currency_locked), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                uiState.message?.let { ProjectFieldError(it.textRes()) }
+                uiState.project?.let { project ->
+                    ZarButton(
+                        text = stringResource(if (project.isArchived) R.string.project_unarchive else R.string.project_archive),
+                        onClick = { viewModel.setArchived(!project.isArchived) },
+                        modifier = Modifier.fillMaxWidth().testTag("project-archive"),
+                        style = ZarButtonStyle.Soft,
+                        enabled = !uiState.isSaving,
+                    )
                 }
             }
-            uiState.message?.let { Text(stringResource(it.textRes()), color = MaterialTheme.colorScheme.error, fontFamily = ZarMono) }
-            Button(onClick = viewModel::save, enabled = !uiState.isSaving, modifier = Modifier.fillMaxWidth().height(52.dp)) {
-                Text(stringResource(R.string.income_save))
-            }
-            uiState.project?.let { project ->
-                TextButton(onClick = { viewModel.setArchived(!project.isArchived) }, enabled = !uiState.isSaving, modifier = Modifier.fillMaxWidth()) {
-                    Text(stringResource(if (project.isArchived) R.string.project_unarchive else R.string.project_archive))
-                }
-            }
+        }
+        Row(
+            Modifier.fillMaxWidth().navigationBarsPadding().padding(start = 24.dp, end = 24.dp, top = 12.dp, bottom = 22.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            ZarButton(stringResource(R.string.account_form_cancel), onBack, Modifier.weight(1f).testTag("project-cancel"), ZarButtonStyle.Soft)
+            ZarButton(
+                text = stringResource(R.string.income_save),
+                onClick = viewModel::save,
+                modifier = Modifier.weight(1f).testTag("project-save"),
+                enabled = !uiState.isSaving && !uiState.isLoading && !notFound,
+            )
         }
     }
+}
+
+@Composable
+private fun ProjectFieldError(@androidx.annotation.StringRes res: Int) {
+    Text(stringResource(res), style = ZarType.bodyCaption, color = ZarTheme.colors.danger)
 }

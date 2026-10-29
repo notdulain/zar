@@ -64,7 +64,11 @@ import com.example.zar.features.rules.data.InMemoryRuleOfferInbox
 import com.example.zar.features.rules.domain.repository.CategoryRuleRepository
 import com.example.zar.features.rules.domain.repository.RuleOfferInbox
 import com.example.zar.features.settings.data.repository.ReportingCurrencyPreferencesRepository
+import com.example.zar.features.settings.data.repository.SharedPreferencesDisplayPreferencesRepository
+import com.example.zar.features.transactions.data.category.FirestoreExpenseCategoryRepository
+import com.example.zar.features.transactions.domain.category.repository.ExpenseCategoryRepository
 import com.example.zar.features.settings.domain.repository.AppPreferencesRepository
+import com.example.zar.features.settings.domain.repository.DisplayPreferencesRepository
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -156,6 +160,13 @@ abstract class RepositoryModule {
         impl: ReportingCurrencyPreferencesRepository,
     ): AppPreferencesRepository
 
+    /** Device-local and deliberately not a [SignOutHandler]: appearance survives sign-out and account switching. */
+    @Binds
+    @Singleton
+    abstract fun bindDisplayPreferencesRepository(
+        impl: SharedPreferencesDisplayPreferencesRepository,
+    ): DisplayPreferencesRepository
+
     @Binds
     @Singleton
     abstract fun bindCatchUpPreferencesRepository(
@@ -185,6 +196,10 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun bindCategoryRuleRepository(impl: FirestoreCategoryRuleRepository): CategoryRuleRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindExpenseCategoryRepository(impl: FirestoreExpenseCategoryRepository): ExpenseCategoryRepository
 
     @Binds
     @Singleton

@@ -1,6 +1,8 @@
 package com.example.zar.features.catchup
 
+import android.Manifest
 import android.app.NotificationManager
+import android.os.Build
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkInfo
@@ -21,7 +23,13 @@ import org.junit.Test
 class CatchUpReminderWorkerTest {
     @Test
     fun theWorkerPostsTheReminderAndQueuesOneSuccessorAndHonoursOff() = runBlocking {
-        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val context = instrumentation.targetContext
+        // From Android 13 a notification needs the runtime permission, and ReminderNotifier correctly posts nothing
+        // without it. A fresh test install has not been granted it, so the fixture grants it as the person would.
+        if (Build.VERSION.SDK_INT >= 33) {
+            instrumentation.uiAutomation.grantRuntimePermission(context.packageName, Manifest.permission.POST_NOTIFICATIONS)
+        }
         val preferences = DataStoreCatchUpPreferencesRepository(context)
         val original = preferences.observe().first()
         val work = WorkManager.getInstance(context)

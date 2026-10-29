@@ -4,14 +4,19 @@ import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.zar.core.navigation.LaunchTargets
 import com.example.zar.core.navigation.ZarRoot
-import com.example.zar.core.presentation.theme.ZarTheme
+import com.example.zar.core.presentation.motion.ProvideZarMotion
+import com.example.zar.core.presentation.theme.ProvideBaselineProportions
+import com.example.zar.core.presentation.theme.ZarAppearance
+import com.example.zar.core.presentation.theme.applyZarAppearance
+import com.example.zar.core.presentation.theme.isSystemNightMode
 import com.example.zar.features.capture.presentation.SharedTextInbox
+import com.example.zar.features.settings.domain.usecase.ObserveDisplayPreferencesUseCase
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 
@@ -24,14 +29,24 @@ class MainActivity : ComponentActivity() {
     // Bank text shared from another app. Kept in memory only; the capture screen takes it.
     @Inject lateinit var sharedTextInbox: SharedTextInbox
 
+    // How this phone shows the app. Read synchronously before the first frame so the saved appearance never flashes.
+    @Inject lateinit var displayPreferences: ObserveDisplayPreferencesUseCase
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
+        applyZarAppearance(dark = displayPreferences.current().appearance.resolveDark(resources.configuration.isSystemNightMode()))
         openCatchUp = savedInstanceState?.getBoolean(LaunchTargets.EXTRA) ?: intent.isCatchUpLaunch()
         takeSharedText(intent)
         setContent {
-            ZarTheme {
-                ZarRoot(openCatchUp = openCatchUp, onCatchUpOpened = { openCatchUp = false })
+            val display by displayPreferences().collectAsStateWithLifecycle(initialValue = displayPreferences.current())
+            ZarAppearance(display.appearance) {
+                // Keeps the accepted default composition when Android's display/font size is below default. A no-op at
+                // or above default; see ZarProportionPolicy for why it only ever raises the layout density.
+                ProvideBaselineProportions {
+                    ProvideZarMotion(display.reduceMotion) {
+                        ZarRoot(openCatchUp = openCatchUp, onCatchUpOpened = { openCatchUp = false })
+                    }
+                }
             }
         }
     }

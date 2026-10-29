@@ -4,11 +4,15 @@ import com.example.zar.core.presentation.privacy.AmountMask
 import com.example.zar.core.presentation.privacy.amountFieldTransformation
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
@@ -33,6 +37,18 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.ui.unit.sp
+import com.example.zar.core.presentation.components.ZarIcon
+import com.example.zar.core.presentation.components.ZarIconChip
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.window.DialogProperties
+import com.example.zar.core.presentation.components.SheetBackHost
+import com.example.zar.features.plans.presentation.viewmodel.PlansCounts
+import com.example.zar.features.plans.presentation.viewmodel.PlansCountsViewModel
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -59,6 +75,7 @@ import com.example.zar.core.domain.model.OpeningBalance
 import com.example.zar.core.domain.model.money.Currencies
 import com.example.zar.core.domain.model.money.FiatMoney
 import com.example.zar.core.presentation.components.AddEntryOption
+import com.example.zar.core.presentation.components.HeroScrollOffset
 import com.example.zar.core.presentation.components.TopLevelDestination
 import com.example.zar.core.presentation.components.ZarButton
 import com.example.zar.core.presentation.components.ZarButtonSize
@@ -67,7 +84,10 @@ import com.example.zar.core.presentation.components.ZarCard
 import com.example.zar.core.presentation.components.ZarDivider
 import com.example.zar.core.presentation.components.ZarMonoLabel
 import com.example.zar.core.presentation.components.ZarScreenScaffold
+import com.example.zar.core.presentation.components.heroDisplacement
+import com.example.zar.core.presentation.components.heroParallax
 import com.example.zar.core.presentation.format.formatWithCode
+import com.example.zar.core.presentation.motion.ZarMotion
 import com.example.zar.core.presentation.theme.ZarDimens
 import com.example.zar.core.presentation.theme.ZarGradients
 import com.example.zar.core.presentation.theme.ZarShapes
@@ -79,6 +99,7 @@ import com.example.zar.core.presentation.theme.ZarWhite
 import com.example.zar.features.allowance.presentation.screen.AllowanceCard
 import com.example.zar.features.allowance.presentation.screen.AllowanceEditorDialog
 import com.example.zar.features.allowance.presentation.viewmodel.AllowanceViewModel
+import com.example.zar.features.transactions.presentation.category.ProvideExpenseCategoryCatalog
 import com.example.zar.features.plans.domain.model.BackedGoalProgress
 import com.example.zar.features.plans.domain.model.GoalBackingCalculator
 import com.example.zar.features.plans.domain.model.GoalId
@@ -100,11 +121,20 @@ import java.util.Locale
 fun PlansScreen(
     onNavigate: (TopLevelDestination) -> Unit,
     onAddOption: (AddEntryOption) -> Unit,
+    onOpenBills: () -> Unit = {},
+    onOpenFreelance: () -> Unit = {},
+    onNewBill: () -> Unit = {},
+    onNewProject: () -> Unit = {},
     viewModel: PlansViewModel = hiltViewModel(),
     allowanceViewModel: AllowanceViewModel = hiltViewModel(),
+    countsViewModel: PlansCountsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val allowance by allowanceViewModel.uiState.collectAsStateWithLifecycle()
+    val counts by countsViewModel.counts.collectAsStateWithLifecycle()
+    var showNewPlan by rememberSaveable { mutableStateOf(false) }
+    // The sheet closes once the goal it created has been saved.
+    LaunchedEffect(state.goalCreatedCount) { if (state.goalCreatedCount > 0) showNewPlan = false }
     PlansScreenContent(
         state = state,
         onNavigate = onNavigate,
@@ -112,22 +142,55 @@ fun PlansScreen(
         onRetry = viewModel::retry,
         onEditGoal = viewModel::openGoalEditor,
         onAllocate = viewModel::openAllocationEditor,
-        allowanceSection = {
-            AllowanceCard(allowance, onEdit = allowanceViewModel::openEditor, onRetry = allowanceViewModel::retry)
+        onNewPlan = { viewModel.clearMessage(); showNewPlan = true },
+        counts = counts,
+        onOpenBills = onOpenBills,
+        onOpenFreelance = onOpenFreelance,
+        allowanceSection = if (allowance.overview?.settings?.isEnabled == true) {
+            { AllowanceCard(allowance, onEdit = allowanceViewModel::openEditor, onRetry = allowanceViewModel::retry) }
+        } else {
+            null
         },
+        weeklyLimitSummary = allowance.overview?.settings?.takeIf { it.isEnabled }?.amount?.let {
+            stringResource(R.string.plans_weekly_limit_per_week, it.formatWithCode())
+        },
+        onEditWeeklyLimit = allowanceViewModel::openEditor,
     )
+    if (showNewPlan) {
+        Dialog(
+            onDismissRequest = {},
+            properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
+        ) {
+            SheetBackHost(onPop = { showNewPlan = false }) { dismiss ->
+                NewPlanSheet(
+                    goalName = state.overview?.goal?.name,
+                    hasWeeklyLimit = allowance.overview?.settings?.isEnabled == true,
+                    // Disabled until the plans have loaded: only then is it known that no goal exists to be replaced.
+                    isSaving = state.isSaving || state.overview == null,
+                    onDismiss = dismiss,
+                    onCreateGoal = viewModel::createGoal,
+                    onEditGoal = { showNewPlan = false; viewModel.openGoalEditor() },
+                    onSetLimit = { showNewPlan = false; allowanceViewModel.openEditor() },
+                    onAddBill = { showNewPlan = false; onNewBill() },
+                    onAddProject = { showNewPlan = false; onNewProject() },
+                )
+            }
+        }
+    }
     allowance.editor?.let { editor ->
-        AllowanceEditorDialog(
-            editor = editor,
-            isSaving = allowance.isSaving,
-            message = allowance.message,
-            onEnabledChange = allowanceViewModel::setEnabled,
-            onAmountChange = allowanceViewModel::updateAmount,
-            onToggleCategory = allowanceViewModel::toggleCategory,
-            onWeekStartChange = allowanceViewModel::setWeekStart,
-            onDismiss = allowanceViewModel::closeEditor,
-            onSave = allowanceViewModel::submit,
-        )
+        ProvideExpenseCategoryCatalog {
+            AllowanceEditorDialog(
+                editor = editor,
+                isSaving = allowance.isSaving,
+                message = allowance.message,
+                onEnabledChange = allowanceViewModel::setEnabled,
+                onAmountChange = allowanceViewModel::updateAmount,
+                onToggleCategory = allowanceViewModel::toggleCategory,
+                onWeekStartChange = allowanceViewModel::setWeekStart,
+                onDismiss = allowanceViewModel::closeEditor,
+                onSave = allowanceViewModel::submit,
+            )
+        }
     }
     state.goalEditor?.let { editor ->
         GoalEditorDialog(
@@ -163,129 +226,116 @@ internal fun PlansScreenContent(
     onRetry: () -> Unit,
     onEditGoal: () -> Unit,
     onAllocate: () -> Unit,
-    allowanceSection: @Composable () -> Unit = {
-        PlanShellCard(R.string.plans_allowance, R.string.plans_allowance_empty)
-    },
+    allowanceSection: (@Composable () -> Unit)? = null,
+    weeklyLimitSummary: String? = null,
+    onEditWeeklyLimit: () -> Unit = {},
+    onNewPlan: () -> Unit = {},
+    counts: PlansCounts = PlansCounts(),
+    onOpenBills: () -> Unit = {},
+    onOpenFreelance: () -> Unit = {},
 ) {
     ZarScreenScaffold(
         destination = TopLevelDestination.Plans,
         onNavigate = onNavigate,
         onAddOption = onAddOption,
+        heroUnderStatusBar = true,
     ) { padding ->
+        val scrollState = rememberScrollState()
+        val heroOffset = scrollState.heroDisplacement()
+        val layoutDirection = androidx.compose.ui.platform.LocalLayoutDirection.current
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
-                .verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(ZarDimens.SpaceMd),
+                .padding(
+                    start = padding.calculateStartPadding(layoutDirection),
+                    end = padding.calculateEndPadding(layoutDirection),
+                    top = padding.calculateTopPadding(),
+                )
+                .verticalScroll(scrollState),
         ) {
             when {
-                state.isLoading -> LoadingHero()
-                state.loadFailed -> ErrorHero(onRetry)
+                state.isLoading -> LoadingHero(heroOffset, onNewPlan)
+                state.loadFailed -> ErrorHero(onRetry, heroOffset, onNewPlan)
                 else -> GoalHero(
                     overview = state.overview ?: PlansOverview(null, emptyList()),
+                    onNewPlan = onNewPlan,
                     onEditGoal = onEditGoal,
                     onAllocate = onAllocate,
+                    heroOffset = heroOffset,
                 )
             }
             Column(
-                Modifier.padding(horizontal = ZarDimens.ScreenGutter),
+                Modifier.padding(horizontal = ZarDimens.ScreenGutter).padding(top = 18.dp),
                 verticalArrangement = Arrangement.spacedBy(ZarDimens.SpaceMd),
             ) {
+                ZarMonoLabel(stringResource(R.string.plans_other_plans).uppercase(), Modifier.padding(start = 12.dp))
+                // One grouped card, a row per plan kind (Figma Z04): each opens its real screen or editor.
+                ZarCard(Modifier.fillMaxWidth(), contentPadding = PaddingValues(vertical = 4.dp)) {
+                    PlanRow(
+                        icon = R.drawable.ic_ph_wallet,
+                        title = stringResource(R.string.plans_weekly_limit_title),
+                        subtitle = weeklyLimitSummary ?: stringResource(R.string.plans_weekly_limit_unset),
+                        onClick = onEditWeeklyLimit,
+                        tag = "plans-weekly-limit-row",
+                    )
+                    ZarDivider(Modifier.padding(start = 70.dp))
+                    PlanRow(
+                        icon = R.drawable.ic_ph_receipt,
+                        title = stringResource(R.string.plans_bills_title),
+                        subtitle = countText(counts.bills, R.plurals.plans_bills_count, R.string.plans_bills_empty),
+                        onClick = onOpenBills,
+                        tag = "plans-bills-card",
+                    )
+                    ZarDivider(Modifier.padding(start = 70.dp))
+                    PlanRow(
+                        icon = R.drawable.ic_ph_briefcase,
+                        title = stringResource(R.string.plans_freelance_title),
+                        subtitle = countText(counts.projects, R.plurals.plans_projects_count, R.string.plans_freelance_empty),
+                        onClick = onOpenFreelance,
+                        tag = "plans-freelance-card",
+                    )
+                }
+                // The weekly limit's status and coverage notes, once one is set (or when a caller supplies the section).
+                allowanceSection?.invoke()
                 state.overview?.takeIf { !state.isLoading && !state.loadFailed }?.let { overview ->
                     val goal = overview.goal
                     val progress = overview.progress
-                    if (goal != null && progress != null) GoalProgressDetails(goal, progress)
+                    if (goal != null && progress != null) {
+                        Text(
+                            stringResource(R.string.plans_allocated_label, progress.allocated.formatWithCode()),
+                            style = ZarType.bodyS, color = ZarTheme.colors.textSecondary, modifier = Modifier.padding(start = 12.dp),
+                        )
+                        GoalProgressDetails(goal, progress)
+                    }
                 }
-                allowanceSection()
-                PlanShellCard(R.string.home_bills, R.string.plans_bills_empty)
             }
-        }
-    }
-}
-
-/** Uses the same dusk surface, Geist amounts and rounded bottom edge as Home. */
-@Composable
-private fun PlansHero(content: @Composable ColumnScope.() -> Unit) {
-    Column(
-        Modifier.fillMaxWidth()
-            .clip(RoundedCornerShape(bottomStart = ZarDimens.FullHeroRadius, bottomEnd = ZarDimens.FullHeroRadius))
-            .background(ZarGradients.dusk)
-            .padding(horizontal = 24.dp, vertical = 24.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-        content = content,
-    )
-}
-
-@Composable
-private fun GoalHero(overview: PlansOverview, onEditGoal: () -> Unit, onAllocate: () -> Unit) {
-    val goal = overview.goal
-    val progress = overview.progress
-    PlansHero {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            ZarMonoLabel(stringResource(R.string.nav_plans), color = ZarSubtle)
-            TextButton(onClick = onEditGoal, modifier = Modifier.testTag("plans-edit-goal")) {
-                Text(stringResource(if (goal == null) R.string.plans_create else R.string.action_edit), style = ZarType.labelAction, color = ZarWhite)
-            }
-        }
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.testTag("plans-hero")) {
-            Text(goal?.name ?: stringResource(R.string.plans_goal_name), style = ZarType.bodyL, color = ZarWhite)
-            ZarMonoLabel(stringResource(R.string.plans_backed_heading), color = ZarSubtle)
-            Text(
-                progress?.backed?.formatWithCode() ?: FiatMoney(0, Currencies.LKR).formatWithCode(),
-                style = ZarType.amountL, color = ZarWhite, modifier = Modifier.testTag("plans-backed"),
-            )
-            Text(
-                goal?.let { stringResource(R.string.plans_of_target, it.target.formatWithCode()) }
-                    ?: stringResource(R.string.plans_goal_not_created),
-                style = ZarType.bodyS, color = ZarSubtle,
-            )
-        }
-        if (goal != null && progress != null) GoalProgressBars(goal, progress)
-        Text(
-            when {
-                goal == null -> stringResource(R.string.plans_create_note)
-                goal.allocations.isEmpty() -> stringResource(R.string.plans_nothing_allocated)
-                progress?.hasUnknownBalance == true -> stringResource(R.string.plans_unknown_backing)
-                progress?.isApproximate == true -> stringResource(R.string.plans_estimated_backing)
-                else -> stringResource(R.string.plans_recorded_backing)
-            },
-            style = ZarType.bodyCaption, color = ZarSubtle,
-        )
-        ZarButton(
-            text = stringResource(if (goal == null) R.string.plans_create_action else R.string.plans_allocate_action),
-            onClick = { if (goal == null) onEditGoal() else onAllocate() },
-            style = ZarButtonStyle.Soft,
-            modifier = Modifier.fillMaxWidth().testTag("plans-set-aside"),
-            enabled = goal == null || overview.allocationAccounts.isNotEmpty(),
-            size = ZarButtonSize.Medium,
-        )
-        if (goal != null && overview.allocationAccounts.isEmpty()) {
-            Text(stringResource(R.string.plans_no_accounts), style = ZarType.bodyS, color = ZarSubtle)
+            Spacer(Modifier.height(padding.calculateBottomPadding()))
         }
     }
 }
 
 @Composable
-private fun GoalProgressBars(goal: SavingsGoal, progress: BackedGoalProgress) {
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        ProgressRow(stringResource(R.string.plans_backed_label, progress.backed.formatWithCode()), progress.backedFraction(goal.target), "plans-backed-progress", ZarWhite)
-        ProgressRow(stringResource(R.string.plans_allocated_label, progress.allocated.formatWithCode()), progress.allocatedFraction(goal.target), "plans-allocated-progress", ZarSubtle)
-    }
+private fun countText(count: Int?, plural: Int, empty: Int): String = when {
+    count == null -> "…"
+    count == 0 -> stringResource(empty)
+    else -> pluralStringResource(plural, count, count)
 }
 
 @Composable
-private fun ProgressRow(label: String, fraction: Float, tag: String, color: androidx.compose.ui.graphics.Color) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(label, style = ZarType.bodyCaption, color = ZarSubtle)
-        // A bar would show how much is set aside, so it is left out while amounts are hidden.
-        if (!AmountMask.isHidden) {
-            LinearProgressIndicator(
-                progress = { fraction },
-                modifier = Modifier.fillMaxWidth().height(5.dp).testTag(tag),
-                color = color, trackColor = ZarTrack.copy(alpha = 0.35f),
-            )
+private fun PlanRow(icon: Int, title: String, subtitle: String, onClick: () -> Unit, tag: String) {
+    val colors = ZarTheme.colors
+    Row(
+        Modifier.fillMaxWidth().heightIn(min = 64.dp).clickable(role = androidx.compose.ui.semantics.Role.Button, onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 10.dp).testTag(tag),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+        ZarIconChip(icon, size = 40.dp, iconSize = 19.dp)
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(title, style = ZarType.bodyL.copy(lineHeight = 20.sp), color = colors.textPrimary)
+            Text(subtitle, style = ZarType.bodyS.copy(lineHeight = 18.sp), color = colors.textSecondary)
         }
+        ZarIcon(R.drawable.ic_ph_caret_right, size = 16.dp, tint = colors.textTertiary)
     }
 }
 
@@ -326,19 +376,6 @@ private fun GoalProgressDetails(goal: SavingsGoal, progress: BackedGoalProgress)
 }
 
 private fun LocalDate.displayDate(): String = format(DateTimeFormatter.ofPattern("d MMM yyyy", Locale.getDefault()))
-
-@Composable
-private fun LoadingHero() = PlansHero {
-    ZarMonoLabel(stringResource(R.string.nav_plans), color = ZarSubtle)
-    CircularProgressIndicator(color = ZarWhite, modifier = Modifier.align(Alignment.CenterHorizontally))
-}
-
-@Composable
-private fun ErrorHero(onRetry: () -> Unit) = PlansHero {
-    ZarMonoLabel(stringResource(R.string.nav_plans), color = ZarSubtle)
-    Text(stringResource(R.string.plans_load_failed), style = ZarType.bodyL, color = ZarWhite)
-    ZarButton(stringResource(R.string.action_retry), onRetry, style = ZarButtonStyle.Soft)
-}
 
 @Composable
 private fun PlanShellCard(label: Int, value: Int) {
@@ -389,7 +426,7 @@ internal fun GoalEditorDialog(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun GoalDateField(date: LocalDate?, onDateChange: (LocalDate?) -> Unit, enabled: Boolean) {
+internal fun GoalDateField(date: LocalDate?, onDateChange: (LocalDate?) -> Unit, enabled: Boolean) {
     var showPicker by rememberSaveable { mutableStateOf(false) }
     ZarButton(
         date?.let { stringResource(R.string.plans_target_date_value, it.displayDate()) } ?: stringResource(R.string.plans_target_date_empty),

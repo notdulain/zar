@@ -17,6 +17,7 @@ import com.example.zar.features.transactions.domain.activity.EntryHistory
 import com.example.zar.features.transactions.domain.activity.model.ActivitySnapshot
 import com.example.zar.features.transactions.domain.activity.model.EditKind
 import com.example.zar.features.transactions.domain.activity.model.EntryDetail
+import com.example.zar.features.transactions.domain.category.usecase.ObserveExpenseCategoryCatalogUseCase
 import com.example.zar.features.transactions.domain.refund.RefundRules
 import java.time.Instant
 import javax.inject.Inject
@@ -27,9 +28,12 @@ import kotlinx.coroutines.flow.combine
 class ObserveActivityUseCase @Inject constructor(
     private val ledger: LedgerRepository,
     private val accounts: AccountRepository,
+    private val categories: ObserveExpenseCategoryCatalogUseCase,
 ) {
     operator fun invoke(): Flow<ActivitySnapshot> =
-        combine(ledger.observeLedger(), accounts.observeAccounts()) { entries, list -> ActivitySnapshot(entries, list) }
+        combine(ledger.observeLedger(), accounts.observeAccounts(), categories()) { entries, list, catalog ->
+            ActivitySnapshot(entries, list, catalog)
+        }
 }
 
 /** One entry with its account, transfer partner, fee and correction history. Null if it doesn't exist. */

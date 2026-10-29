@@ -5,10 +5,12 @@ import { doc, setDoc, getDoc, getDocs, collection, deleteDoc, updateDoc, writeBa
 
 let env;
 const RULES = new URL("../firestore.rules", import.meta.url);
+// `firebase emulators:exec` exports the emulator address; fall back to the default port for a bare run.
+const [emulatorHost, emulatorPort] = (process.env.FIRESTORE_EMULATOR_HOST ?? '127.0.0.1:8080').split(':');
 before(async () => {
   env = await initializeTestEnvironment({
     projectId: 'demo-zar',
-    firestore: { rules: readFileSync(RULES, 'utf8'), host: '127.0.0.1', port: 8080 },
+    firestore: { rules: readFileSync(RULES, 'utf8'), host: emulatorHost, port: Number(emulatorPort) },
   });
 });
 after(async () => env.cleanup());
@@ -230,6 +232,77 @@ test('allowance: one owner-only setting, LKR amount, no delete', async () => {
   await assertFails(getDoc(doc(bob(), path('alice', 'allowance', 'weekly'))));
   await assertFails(setDoc(doc(bob(), path('alice', 'allowance', 'weekly')), setting));
   await assertFails(getDoc(doc(anon(), path('alice', 'allowance', 'weekly'))));
+});
+
+test('expense categories: owner-only, custom ids, safe names, never changed or deleted', async () => {
+  const cat = (id, over = {}) => ({ id, name: 'Pets', nameKey: 'pets', source: 'CUSTOM', createdAt: 1790000000000, ...over });
+  const at = (id) => doc(alice(), path('alice', 'expenseCategories', id));
+  const id = 'custom-5f2c9a1e-7d44-4c0b-9c1d-0a1b2c3d4e5f';
+
+  await assertSucceeds(setDoc(at(id), cat(id)));
+  await assertSucceeds(getDoc(at(id)));
+  await assertSucceeds(getDocs(collection(alice(), 'users/alice/expenseCategories')));
+  // A retry or offline replay of the same create is allowed and changes nothing.
+  await assertSucceeds(setDoc(at(id), cat(id)));
+  // Unicode, spaces inside and a 40-character name are fine.
+  await assertSucceeds(setDoc(at('custom-unicode-1'), cat('custom-unicode-1', { name: 'කෑම & 🐶 Fees', nameKey: 'කෑම & 🐶 fees' })));
+  await assertSucceeds(setDoc(at('custom-long-name1'), cat('custom-long-name1', { name: 'x'.repeat(40), nameKey: 'x'.repeat(40) })));
+
+  // Never edited, renamed or deleted: an expense's categoryId must keep resolving.
+  await assertFails(setDoc(at(id), cat(id, { name: 'Dogs', nameKey: 'dogs' })));
+  await assertFails(updateDoc(at(id), { createdAt: 1790000000001 }));
+  await assertFails(deleteDoc(at(id)));
+
+  // Reserved ids: built-in, income and transfer-fee ids are never creatable; id must match the document.
+  for (const reserved of ['groceries', 'other', 'coffee-dining', 'season-ticket', 'salary', 'freelance', 'transfer-fee', 'custom-']) {
+    await assertFails(setDoc(at(reserved), cat(reserved)));
+  }
+  await assertFails(setDoc(at('custom-short'), cat('custom-short')));
+  await assertFails(setDoc(at('custom-bad_id_1'), cat('custom-bad_id_1')));
+  await assertFails(setDoc(at('custom-mismatch-1'), cat('custom-another-id')));
+
+  // Malformed payloads.
+  const bad = (name, over) => assertFails(setDoc(at('custom-bad-' + name), cat('custom-bad-' + name, over)));
+  await bad('empty', { name: '', nameKey: '' });
+  await bad('long', { name: 'x'.repeat(81), nameKey: 'x'.repeat(81) });
+  await bad('key-long', { nameKey: 'x'.repeat(161) });
+  await bad('untrimmed', { name: ' Pets' });
+  await bad('newline', { name: 'Pet\nfood', nameKey: 'pet food' });
+  await bad('tab', { name: 'Pet\tfood', nameKey: 'pet food' });
+  await bad('nul', { name: 'Pet\u0000food', nameKey: 'pet food' });
+  await bad('linesep', { name: 'Pet\u2028food', nameKey: 'pet food' });
+  await bad('upperkey', { nameKey: 'Pets' });
+  await bad('keyspace', { nameKey: 'pets ' });
+  await bad('keynewline', { nameKey: 'pet\nfood' });
+  await bad('keytab', { nameKey: 'pet\tfood' });
+  await bad('keydouble', { nameKey: 'pet  food' });
+  await bad('source', { source: 'BUILT_IN' });
+  const noSource = cat('custom-bad-nosource'); delete noSource.source;
+  await assertFails(setDoc(at('custom-bad-nosource'), noSource));
+  await bad('extra', { extra: true });
+  await bad('nonstring', { name: 7 });
+  await bad('created', { createdAt: 0 });
+  await bad('createdstr', { createdAt: '1790000000000' });
+
+  // Owner isolation: another user and a signed-out user can neither read nor write Alice's categories.
+  await assertFails(getDoc(doc(bob(), path('alice', 'expenseCategories', id))));
+  await assertFails(getDocs(collection(bob(), 'users/alice/expenseCategories')));
+  await assertFails(setDoc(doc(bob(), path('alice', 'expenseCategories', 'custom-bobs-attempt')), cat('custom-bobs-attempt')));
+  await assertFails(getDoc(doc(anon(), path('alice', 'expenseCategories', id))));
+  await assertFails(setDoc(doc(anon(), path('alice', 'expenseCategories', 'custom-anon-attempt')), cat('custom-anon-attempt')));
+  // Bob has his own catalog, and the same id under his scope does not touch Alice's.
+  await assertSucceeds(setDoc(doc(bob(), path('bob', 'expenseCategories', id)), cat(id, { name: 'Bob pets' , nameKey: 'bob pets' })));
+  await assertSucceeds(getDoc(doc(alice(), path('alice', 'expenseCategories', id))));
+  // Outside the user scope there is nothing.
+  await assertFails(setDoc(doc(alice(), `expenseCategories/${id}`), cat(id)));
+});
+
+test('an expense can reference a category before the category document exists (offline ordering)', async () => {
+  // The ledger rules never look a category up, so an expense saved offline right after its new category
+  // is accepted whatever order the writes reach the server.
+  await assertSucceeds(setDoc(doc(alice(), path('alice', 'transactions', 'e1')), tx('e1', { categoryId: 'custom-5f2c9a1e-7d44-4c0b-9c1d-0a1b2c3d4e5f' })));
+  await assertSucceeds(setDoc(doc(alice(), path('alice', 'expenseCategories', 'custom-5f2c9a1e-7d44-4c0b-9c1d-0a1b2c3d4e5f')), {
+    id: 'custom-5f2c9a1e-7d44-4c0b-9c1d-0a1b2c3d4e5f', name: 'Pets', nameKey: 'pets', source: 'CUSTOM', createdAt: 1790000000000 }));
 });
 
 test('crypto opening costs: LKR only, owner only, can be cleared', async () => {

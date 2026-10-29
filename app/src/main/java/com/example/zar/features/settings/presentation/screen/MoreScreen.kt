@@ -4,6 +4,7 @@ import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -31,6 +32,9 @@ import com.example.zar.core.presentation.components.ZarCard
 import com.example.zar.core.presentation.components.ZarIcon
 import com.example.zar.core.presentation.components.ZarIconChip
 import com.example.zar.core.presentation.components.ZarScreenScaffold
+import com.example.zar.core.presentation.components.heroDisplacement
+import com.example.zar.core.presentation.components.heroParallax
+import com.example.zar.core.presentation.motion.ZarMotion
 import com.example.zar.core.presentation.theme.ZarTheme
 import com.example.zar.core.presentation.theme.ZarGradients
 import com.example.zar.core.presentation.theme.ZarType
@@ -58,13 +62,14 @@ fun MoreScreen(
         // The dusk hero runs under the status bar, so the system glyphs must be white.
         heroUnderStatusBar = true,
     ) { padding ->
+        val scrollState = rememberScrollState()
         Column(
             Modifier.fillMaxSize()
                 .background(ZarTheme.colors.canvas)
-                .verticalScroll(rememberScrollState())
+                .verticalScroll(scrollState)
                 .padding(bottom = padding.calculateBottomPadding()),
         ) {
-            MoreHero()
+            MoreHero(scrollState)
             Column(
                 Modifier.fillMaxWidth().padding(start = 10.dp, end = 10.dp, top = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -79,7 +84,11 @@ fun MoreScreen(
 }
 
 @Composable
-private fun MoreHero() {
+private fun MoreHero(scrollState: ScrollState) {
+    // Title/subtitle are the text layer; the dusk surface is the card itself and stays put. Resting positions are
+    // unchanged: at zero displacement the layers sit exactly where the padding puts them.
+    val heroOffset = scrollState.heroDisplacement()
+    val textLayer = Modifier.heroParallax(heroOffset, ZarMotion.PARALLAX_TEXT, ZarMotion.ParallaxTextCap)
     Box(
         Modifier.fillMaxWidth().height(168.dp)
             .background(ZarGradients.dusk, RoundedCornerShape(bottomStart = 40.dp, bottomEnd = 40.dp)),
@@ -88,13 +97,13 @@ private fun MoreHero() {
             stringResource(R.string.nav_more),
             style = ZarType.displayTitle,
             color = Color.White,
-            modifier = Modifier.padding(start = 22.dp, top = 62.dp),
+            modifier = textLayer.padding(start = 22.dp, top = 62.dp),
         )
         Text(
             stringResource(R.string.more_hero_subtitle),
             style = ZarType.bodyS,
             color = Color.White,
-            modifier = Modifier.padding(start = 22.dp, top = 108.dp),
+            modifier = textLayer.padding(start = 22.dp, top = 108.dp),
         )
     }
 }
