@@ -1,13 +1,16 @@
 #!/usr/bin/env python3
-"""Scripted motion recordings of the running Zar debug app on one emulator or device (adb screenrecord + input).
+"""Scripted motion recordings of the running Zar debug app on one emulator (adb screenrecord + input).
 
-    python3 tools/record-motion.py <adb-serial> <out-dir> [--theme light|dark|both] [--only name,name]
+    python3 tools/record-motion.py <adb-serial> <out-dir> [--theme light|dark|both] [--only name,name] [--allow-device]
+
+It force-stops the app and overwrites its Appearance and Reduce motion preferences (ending on Light, motion on), so it
+refuses any serial that is not `emulator-*` unless --allow-device says the device's own settings may be changed.
 
 Needs the debug app installed (built with -Pzar.useEmulators=true), the demo account seeded on the LOCAL Firebase
 emulators (`node tools/benchmark-seed.mjs`) and a device on gesture navigation. It signs in through the real sign-in
 screen with the benchmark demo credentials, so nothing is bypassed and no live service is contacted. The theme is
 chosen by writing the app's own display-preferences file (the setting Settings > Appearance writes), and the
-animator scale / reduce-motion state is restored to normal when the run ends.
+animator scale / reduce-motion state is set back to its defaults (scale 1, Light, motion on) when the run ends.
 
 These are recordings, not timings: screenrecord adds load, so no frame figure is taken from them.
 """
@@ -297,7 +300,10 @@ def main():
     ap.add_argument("serial"); ap.add_argument("out")
     ap.add_argument("--theme", default="both", choices=["light", "dark", "both"])
     ap.add_argument("--only", default="")
+    ap.add_argument("--allow-device", action="store_true", help="permit a serial that is not an emulator (its preferences are overwritten)")
     a = ap.parse_args()
+    if not a.serial.startswith("emulator-") and not a.allow_device:
+        sys.exit("refusing a non-emulator serial: this overwrites the app's Appearance setting; pass --allow-device to accept that")
     d = Dev(a.serial)
     d.out = Path(a.out); d.out.mkdir(parents=True, exist_ok=True)
     wanted = [s for s in a.only.split(",") if s] or list(SCENARIOS)
