@@ -7,6 +7,7 @@ Each section is written by the task that produced it. The final acceptance matri
 | Task | Report | Status |
 |---|---|---|
 | 1.1 Architecture boundaries | [01-architecture-boundaries.md](01-architecture-boundaries.md) | Done |
+| 2.1 Offline cross-feature ledger consistency | [02-offline-ledger-integration.md](02-offline-ledger-integration.md) | Done |
 
 ## Reproduce the environment
 
@@ -14,4 +15,14 @@ Each section is written by the task that produced it. The final acceptance matri
 export JAVA_HOME=/path/to/jdk-17        # JDK 17 works; any JDK 17+ is supported by the build
 echo "sdk.dir=/path/to/Android/sdk" > local.properties   # ignored by git
 ./gradlew :app:testDebugUnitTest         # no emulator, no google-services.json needed
+```
+
+## Reproduce the emulator runs
+
+Needs JDK 21 for the Firestore emulator, an Android emulator (these runs: `Pixel_6a` AVD), and a **git-ignored** `app/google-services.json` pointing at the fake project `demo-zar` with a dummy API key. The app's `Application.onCreate` initialises the default Firebase app, so an instrumented run cannot start without some such file. Never use the real file for these runs and never commit it.
+
+```bash
+firebase emulators:start --only auth,firestore --project demo-zar      # from the repo root so firestore.rules is loaded
+./gradlew :app:connectedDebugAndroidTest -Pzar.useEmulators=true \
+  -Pandroid.testInstrumentationRunnerArguments.class=<fully.qualified.TestClass>[,<another>]
 ```
