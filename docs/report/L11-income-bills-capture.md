@@ -192,3 +192,116 @@ How data flows:
 3. A captured SMS becomes a draft. In this build the draft is reviewed from **Capture sources** (the Review message screen), not from the Needs review list. The Needs review list shows unresolved ledger records, not drafts.
 4. When the user saves the draft, it becomes an expense, income or transfer. Only then do Spent or Received change. A draft never changes Home on its own.
 5. Linking a recorded expense to a bill due date settles that due date. The expense counts in Spent once, and the bill due date adds nothing.
+
+## 5. Test evidence
+
+### 5.1 Automated tests (L10)
+
+Taken from [L10](../evidence/L10/README.md), run on 29 Oct 2026.
+
+| Command | Result |
+|---|---|
+| `./gradlew testDebugUnitTest` | 1,274 passed, 0 failed (24 new in L10) |
+| `cd firestore-tests && npm test` | 25 out of 25 passed |
+| Instrumented runs of `CaptureUiTest`, `BillsUiTest`, `AutoCaptureTest`, `CaptureRepositoryTest`, `IncomeSheetParityUiTest`, `IncomeCorrectionUiTest` | All 71 passed |
+
+| Area | Unit tests | Instrumented tests |
+|---|---|---|
+| Income | 25 | 20 (`IncomeSheetParityUiTest` 19, `IncomeCorrectionUiTest` 1) |
+| Bills and subscriptions | 41 | `BillsUiTest` 12 |
+| Reminders | 9 | none |
+| Freelance and milestones | 25 | none |
+| Currencies | 17 (`CurrencyConverterTest` 5, `MoneyTest` 6, `MoneyFormatTest` 6) | none |
+| Crypto | 23 | none |
+| SMS parser | `BankSmsParserTest` 13 | none |
+| Capture, manual and automatic | 100 | 39 (`CaptureUiTest` 23, `CaptureRepositoryTest` 10, `AutoCaptureTest` 6) |
+
+These tests cover the money rules in section 3: minor-unit maths, rate stored at save time, missing rate as unresolved, due-date clamping at month end, cancellation, crypto average cost, parser formats, OTP and declined messages, and the capture switch.
+
+### 5.2 Device and emulator evidence
+
+| Ticket | Screenshots | What they prove |
+|---|---|---|
+| L02 | [6](../evidence/L02) | LKR income saved, USD income with a missing rate, adding the rate updates the total, undo |
+| L03 | [6](../evidence/L03) | Project in USD, milestones, partial receipts, a receipt-only entry, Clients owe you, undo |
+| L04 | [7](../evidence/L04) | Unknown opening cost, average-cost profit, Home Received and Spent unchanged, undo a sale, network fee |
+| L05 | [9](../evidence/L05) | Monthly bill on the 30th, past due not matched, linking a payment, Spent counts only the real expense |
+| L06 | [10](../evidence/L06) | Subscription suggestion, planning to cancel keeps due dates, confirmed cancellation keeps history |
+| L07 | [8](../evidence/L07) | Permission asked when a reminder is chosen, refusal handled, one reminder per bill, overdue milestone alert once |
+| L08 | [10](../evidence/L08) | Off by default, SMS access refusal, offline messages waiting encrypted, saved as drafts online, turned off, expiry notice |
+| L09 | [6](../evidence/L09) | Shared SMS read, review before saving, a credit never assumed to be income, an OTP gives nothing to record |
+| L10 | [6](../evidence/L10) | Bill, project and milestone screens still open after the argument refactor |
+| L11 | [9 annotated](../evidence/L11) | The seeded demo account end to end (section 2) |
+
+Seeded run for L11 on the Pixel 8 emulator (API 36), checked by hand against the numbers on screen:
+
+| Check | Expected | Seen |
+|---|---|---|
+| Received this month | 185,000 + 1,200 × 300 = LKR 545,000 (USD 450 has no rate, so it is left out) | LKR 545,000 on the income screen and on Home |
+| Clients owe you | 1,500 + 1,000 − 1,200 = USD 1,300 | USD 1,300 |
+| Spent this month | Bills, milestones and the pending draft add nothing | LKR 0 |
+| Next bill | Netflix, due 29 Oct, LKR 1,990 | Same |
+| Yearly bill estimate | (5,850 + 1,990) × 12 = LKR 94,080 | LKR 94,080 |
+| Shared Commercial Bank card SMS | Draft of LKR 800 on 28 Oct, not saved | Draft waiting for review |
+
+The income form layout was also checked on a Pixel 6a phone in [income parity](../evidence/pixel6a-feedback/final-figma-alignment/income-parity/README.md). That run did not test SMS.
+
+## 6. SMS formats and capture limits
+
+### 6.1 Validated formats
+
+From [sms-compatibility.md](../sms-compatibility.md). The messages are real, collected in October 2026 and anonymized. "Supported" means every sample was extracted correctly.
+
+| Bank | Message type | Samples | Status |
+|---|---|---|---|
+| Commercial Bank | Card purchase | 9 | Supported |
+| Commercial Bank | ATM withdrawal | 3 | Supported |
+| Commercial Bank | Online fund transfer | 4 | Needs review: the time has no AM/PM, and "request" does not confirm the money moved |
+| Commercial Bank | Money received | 0 | Unknown |
+| Sampath Bank | Debits (POS, ATM, online, transfers) | 25 | Supported |
+| Sampath Bank | Credits and reversals | 5 | Supported, but the user sets the type |
+| DFCC Bank | Debits and fees | 6 | Needs review: no time in the message |
+| DFCC Bank | Money received | 0 | Unknown |
+| BOC, People's, HNB, NSB, NDB, Seylan, Nations Trust, others | Any | 0 | Unknown |
+
+Messages that are not read as transactions:
+
+- OTP messages, even when they contain an amount.
+- Declined payments ("your card was declined").
+- Anything that mentions money but is not a tested format. It is reported as not recognised and the user adds it manually.
+
+### 6.2 Capture routes: actual results
+
+| Route | Built | Tested | Result |
+|---|---|---|---|
+| Share to Zar (`ACTION_SEND`, text/plain) | Yes (L09) | Pixel 8 emulator, L09 and again for L11 with an `adb` share intent | A Commercial Bank card message became a draft. Nothing was saved until the user confirmed |
+| Automatic capture (`RECEIVE_SMS`) | Yes (L08) | Pixel 8 emulator, messages sent with `adb emu sms send` | Off by default. Messages were staged encrypted, turned into drafts online, and discarded when capture was turned off |
+| Paste into Capture sources | Yes (L09) | No separate paste run recorded | Uses the same reading code as share (`CaptureTextUseCase`) |
+| Notification listener | No | No | Not built |
+| Physical Android phone receiving a real bank SMS | n/a | No | Not tested |
+
+### 6.3 Actual limitations
+
+- **No real-phone SMS test.** All collected samples came from iPhones, where apps cannot read SMS. Automatic capture was only tried with emulator SMS. How real operators, dual-SIM phones, long messages and battery restrictions behave is unknown.
+- **Few banks.** Only Commercial Bank card and ATM messages and Sampath messages are fully supported. DFCC and Commercial Bank transfers always need a check. Other banks go to manual entry.
+- **No credit alerts** from Commercial Bank or DFCC have been seen, so incoming money from those banks is not parsed. A Sampath credit only has the sender's note, so the user must pick income, transfer or refund. Reversals are never income.
+- **Foreign amounts.** No SMS with a USD amount has been seen, so foreign purchases are not validated. The only foreign sample was shown in LKR.
+- **Raw merchant names.** Names keep country codes, terminal IDs and typos. The user can edit the name in review.
+- **Sharing is manual.** The user has to share each message. Zar cannot tell the difference between a quiet week and a missed message, so Capture sources shows the last capture time and never says "all caught up".
+- **Automatic capture** needs the SMS permission and only sees new messages, never the inbox. It is off by default. Google Play restricts the SMS permission, so treat it as a demo feature. Messages need the phone to be online to become drafts, and a message not saved within 7 days is deleted with a notice.
+- **Drafts are reviewed in Capture sources.** They do not appear in the Needs review list.
+- **Rates are typed by the user.** There is no live exchange-rate service, so income in USD stays "missing rate" until a rate is entered.
+- **Reminders** run from a daily background job and need the notification permission. The exact minute is not guaranteed. If notifications are refused, no reminder is shown and the screen says so.
+- **Subscription suggestions** appear only after two expenses with the same merchant, account, currency and exact amount, 25 to 35 days apart. Anything else is not suggested.
+- **Test gaps** (from L10): one flaky capture UI test that passed on re-run, one lint error already on `main` in `PlansHero.kt`, no dark-mode or TalkBack pass, and no run against live Firebase (emulators only).
+
+## 7. Future work
+
+- Run the share and automatic capture routes on a physical Android phone with real messages.
+- Collect samples from BOC, People's Bank, HNB and NSB, and credit alerts from Commercial Bank and DFCC.
+- Collect an SMS with a USD amount before claiming foreign purchase support.
+- Show captured drafts in the Needs review list as well.
+- Clean merchant names (country codes, terminal IDs).
+- Add a notification-listener route only if Google Play policy and the team agree it is worth the special access.
+- Add an optional exchange-rate source that fills the rate field and still saves the rate used with each record.
+- Add UI tests for the freelance, crypto and reminder screens, which have unit tests only.
