@@ -1,6 +1,6 @@
 # S09 demo script: Add, Activity and cash catch-up
 
-About 5 minutes. It runs on the Android emulator with the Firebase emulators and seeded test data. The report section is [S09-add-activity-catch-up.md](S09-add-activity-catch-up.md). A recording of the first two parts, with the quick-note part as stills, is [demo-add-activity-catch-up.mp4](../evidence/S09/demo-add-activity-catch-up.mp4) (about 65 seconds, idle waiting cut out). Screens below link to the annotated captures in [docs/evidence/S09](../evidence/S09).
+About 5 minutes. It runs on the Android emulator with the Firebase emulators and seeded test data. The report section is [S09-add-activity-catch-up.md](S09-add-activity-catch-up.md). A recording of the first two parts (add and correct an expense, then the cash catch-up) is [demo-add-activity-catch-up.mp4](../evidence/S09/demo-add-activity-catch-up.mp4): one continuous take of about 71 seconds, not edited. The quick-note part is not in it; use the [S07 stills](../evidence/S07). Screens below link to the annotated captures in [docs/evidence/S09](../evidence/S09).
 
 ## Before the demo: seed (about 5 minutes, not part of the 5)
 

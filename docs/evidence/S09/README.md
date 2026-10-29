@@ -10,7 +10,8 @@ Captured on 29 Oct 2026 from the running debug app on a Pixel 4 emulator (Androi
 |---|---|
 | `1-add-sheet-annotated.png` to `11-catchup-done-annotated.png` | Annotated screens with numbered red marks. The marks are explained in the report, section 2 |
 | `raw/` | The same screens without marks (the expense form was filled with a test value) |
-| `demo-add-activity-catch-up.mp4` | The demo recording, about 65 seconds, 540 x 1210, H.264, under 1 MB |
+| `demo-add-activity-catch-up.mp4` | The demo recording: one continuous take, about 71 seconds, 576 x 1216, 30 frames per second, H.264, 1.3 MB. Not cut, trimmed or captioned |
+| `demo-take.sh` | The script that drove the phone during the take |
 
 ## How the annotated screens were made
 
@@ -18,12 +19,19 @@ Each raw screenshot was captured with `adb exec-out screencap`, and the marks we
 
 ## How the recording was made
 
-1. Segments 1 and 2 were recorded on the emulator with `adb shell screenrecord --size 540x1140`, while a script drove the app with `adb input`. Segment 1 is "Add an expense, then correct it" (raw 116 seconds). Segment 2 is "Weekly cash catch-up" (raw 129 seconds).
-2. Most of the raw time was waiting between scripted taps. With `ffmpeg`, any stretch where the screen did not change for more than 2.6 seconds was cut down to 1.8 seconds, the clips were joined, and a black caption band with the segment name was added above the phone. Nothing on the phone screen was altered or cropped.
-3. Segment 3, "Reviewed quick note", is **six stills from the SCRUM-41 run** in [docs/evidence/S07](../S07), shown for about 3 seconds each. It is not a live recording: a real quick-note read cannot be made from the emulator, because a debug build there is refused by App Check and its test sign-in is not accepted by the deployed service. This is stated in the caption.
+One continuous take, from the first tap to the last. It was not cut, trimmed, sped up, cropped or captioned.
 
-The raw recordings are not committed. They are only waiting time.
+1. **Smooth capture.** The emulator's own host-side recorder was used (`adb emu screenrecord start --size 576x1216 --fps 30`). It records a constant 30 frames per second. The recorder that runs on the phone (`adb shell screenrecord`) only reached 14 to 19 frames per second and left gaps of over a second when the screen was still, which is why an earlier version of this video was jerky. Animations were switched on and the emulator rendered on the machine's GPU.
+2. **No dead time.** Every tap and every typed digit comes from one script that runs on the phone ([demo-take.sh](demo-take.sh)), with fixed pauses of 1.3 to 4 seconds. The tap positions were logged from a rehearsal of the same steps, so nothing waits on the computer between steps.
+3. **Fresh state.** The test data was reset and the app signed in just before the take, so the take starts on Home.
+4. **Size.** The recorder's output is VP9 at about 3.6 megabits per second, 30 MB for this take. GitHub accepts at most 10 MB for video on a free plan, so it was re-encoded once to H.264 (`ffmpeg -c:v libx264 -crf 24 -r 30`), giving 1.3 MB. This changes the file format, not the content: the picture is the same size and every moment is there. The encoder added 15 duplicate frames to keep a steady 30 frames per second (2,129 in the file, 2,114 in the recording).
+
+What the take shows: Add an expense (LKR 1,450, Sampath, Coffee & dining), open it in Activity, correct it to LKR 1,500, then the weekly cash catch-up: count LKR 19,200 against 19,700 recorded, review and save the LKR 500 adjustment, and open it.
+
+**The reviewed quick note is not in the take.** A real quick-note read cannot be made from the emulator: a debug build there is refused by App Check, and its test sign-in is not accepted by the deployed service. The review screens are in the stills from the SCRUM-41 run, [docs/evidence/S07](../S07).
+
+The emulator still limits how smooth the app's own animations look. Over a second of motion the picture changes on 15 or fewer of the 30 frames, because the emulator does not draw faster. A real phone would look smoother.
 
 ## Not covered
 
-Segment 3 is not a live recording of a quick note being read. A physical phone, dark mode, large fonts and TalkBack were not recorded.
+A live recording of a quick note being read. A physical phone, dark mode, large fonts and TalkBack.

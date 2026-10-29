@@ -1,6 +1,6 @@
 # S09 (SCRUM-43): Add, Activity and cash catch-up
 
-Report section for Sanuk's area. Screens in this section were captured on 29 Oct 2026 from the running debug app on a Pixel 4 emulator (Android 37.1) with the Firebase emulators and seeded test data. The short demo is in [S09-demo-script.md](S09-demo-script.md) and the recording is [demo-add-activity-catch-up.mp4](../evidence/S09/demo-add-activity-catch-up.mp4).
+Report section for Sanuk's area. Screens in this section were captured on 29 Oct 2026 from the running debug app on a Pixel 4 emulator (Android 37.1) with the Firebase emulators and seeded test data. The short demo is in [S09-demo-script.md](S09-demo-script.md) and the recording is [demo-add-activity-catch-up.mp4](../evidence/S09/demo-add-activity-catch-up.mp4) (one unedited take of adding and correcting an expense, then the cash catch-up).
 
 ## 1. Overview
 
@@ -115,6 +115,6 @@ Not run in that session: the instrumented (emulator) test classes, `lintDebug` a
 ## 6. Limits
 
 - Tested on an emulator with local Firebase emulators. Not on a physical phone, not with dark mode, large fonts or TalkBack, and not against the live Firebase project.
-- A real quick-note read was not made in this session. A debug build on the emulator is refused by App Check and its test sign-in is not accepted by the deployed service, so the quick-note part of the demo uses stills from the SCRUM-41 run.
+- A real quick-note read was not made in this session. A debug build on the emulator is refused by App Check and its test sign-in is not accepted by the deployed service, so the recording does not include a quick note. Its review screens are the stills from the SCRUM-41 run.
 - Undoing a refund or a correction by hand on the phone was not exercised in S08.
 - Rules about capture and quick notes in section 4 summarise work documented in S06 and S07. They were not re-tested in S09.
