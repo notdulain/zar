@@ -121,3 +121,30 @@ class IntegrationHarness private constructor(val client: IsolatedFirebaseApp) {
         }
     }
 }
+
+/**
+ * Reads what the Firestore emulator really holds, bypassing security rules with the emulator's `Bearer owner` token,
+ * so a test can prove that a record is absent from a user's collection without being that user. Emulator only.
+ */
+object EmulatorAdmin {
+    /** Document id → raw JSON of `users/{uid}/{collection}`. Empty when the collection has no documents. */
+    suspend fun documents(uid: String, collection: String): Map<String, String> = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+        val url = java.net.URL(
+            "http://${IsolatedFirebaseApp.EMULATOR_HOST}:${IsolatedFirebaseApp.FIRESTORE_PORT}" +
+                "/v1/projects/demo-zar/databases/(default)/documents/users/$uid/$collection?pageSize=300",
+        )
+        val connection = url.openConnection() as java.net.HttpURLConnection
+        try {
+            connection.setRequestProperty("Authorization", "Bearer owner")
+            check(connection.responseCode == 200) { "admin read failed: ${connection.responseCode}" }
+            val body = connection.inputStream.bufferedReader().use { it.readText() }
+            val docs = org.json.JSONObject(body).optJSONArray("documents") ?: return@withContext emptyMap()
+            (0 until docs.length()).associate { i ->
+                val doc = docs.getJSONObject(i)
+                doc.getString("name").substringAfterLast('/') to doc.toString()
+            }
+        } finally {
+            connection.disconnect()
+        }
+    }
+}

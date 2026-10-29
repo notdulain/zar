@@ -6,6 +6,7 @@ import com.example.zar.core.domain.model.DraftStatus
 import com.example.zar.core.domain.model.EvidenceLink
 import com.example.zar.core.domain.model.Transaction
 import com.example.zar.core.domain.model.TransactionId
+import com.example.zar.core.domain.model.UserId
 import kotlinx.coroutines.flow.Flow
 
 /** Whether a closing write reached the server, or is stored on this phone and will sync when it can. */
@@ -19,6 +20,13 @@ interface DraftRepository {
     fun observeDrafts(): Flow<List<Draft>>
     /** Returns the existing draft on replay without resetting its status or capture time. */
     suspend fun saveDraft(draft: Draft): Draft
+
+    /**
+     * [saveDraft] for work that was started for [owner] (e.g. their staged messages). Fails with
+     * `LedgerError.NotSignedIn` unless [owner] is still the signed-in user, so a user switch in the middle of
+     * the work can never put one person's draft into another person's collection.
+     */
+    suspend fun saveDraftFor(owner: UserId, draft: Draft): Draft
 
     /** Creates the record and closes its draft atomically; a confirmed replay never rewrites the record. */
     suspend fun confirmCapturedDraft(draft: Draft, transaction: Transaction)

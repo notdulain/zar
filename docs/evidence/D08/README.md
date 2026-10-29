@@ -8,6 +8,7 @@ Each section is written by the task that produced it. The final acceptance matri
 |---|---|---|
 | 1.1 Architecture boundaries | [01-architecture-boundaries.md](01-architecture-boundaries.md) | Done |
 | 2.1 Offline cross-feature ledger consistency | [02-offline-ledger-integration.md](02-offline-ledger-integration.md) | Done |
+| 3.1 Two-user capture isolation | [03-capture-user-isolation.md](03-capture-user-isolation.md) | Done, 1 defect fixed |
 
 ## Reproduce the environment
 
