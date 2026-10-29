@@ -33,7 +33,12 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.setMain
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -292,5 +297,57 @@ class AutoCaptureTest {
         val draft = f.drafts.byUser.getValue(alice).values.single()
         val tx = CapturedDraftRules.transactionFrom(draft, com.example.zar.core.domain.TestLedger.bank, TransactionType.EXPENSE, null, received.plusSeconds(60))
         assertEquals(com.example.zar.core.domain.model.RecordSource.SMS, tx.source)
+    }
+
+    // --- Screen state and resuming (L10) ----------------------------------------------------
+
+    private fun <T> onMain(block: suspend kotlinx.coroutines.test.TestScope.() -> T) = kotlinx.coroutines.test.runTest {
+        kotlinx.coroutines.Dispatchers.setMain(kotlinx.coroutines.test.UnconfinedTestDispatcher(testScheduler))
+        try { block() } finally { kotlinx.coroutines.Dispatchers.resetMain() }
+    }
+
+    private fun viewModel(f: Fixture) = com.example.zar.features.capture.presentation.viewmodel.AutoCaptureViewModel(
+        ObserveAutoCaptureUseCase(f.session, f.preferences, f.staging),
+        SetAutoCaptureUseCase(f.session, f.preferences, f.staging, f.scheduler),
+        com.example.zar.features.capture.domain.auto.DismissExpiredSmsUseCase(f.session, f.staging),
+    )
+
+    @Test
+    fun theSwitchShowsOffThenOnWithWhatIsWaiting() = onMain {
+        val f = Fixture(alice, null)
+        val vm = viewModel(f)
+        assertFalse(vm.uiState.value.isLoading)
+        assertFalse(vm.uiState.value.status.enabled)
+        vm.setEnabled(true)
+        assertTrue(vm.uiState.value.status.enabled)
+        assertFalse(vm.uiState.value.failed)
+        f.stage(purchase, received)
+        assertEquals(1, vm.uiState.value.status.queue.waiting)
+        vm.viewModelScope.cancel()
+    }
+
+    @Test
+    fun aFailedChangeIsShownAndLeavesItOff() = onMain {
+        val f = Fixture(null, null)
+        val vm = viewModel(f)
+        vm.setEnabled(true)
+        assertTrue("Signed out: can't turn it on", vm.uiState.value.failed)
+        assertFalse(vm.uiState.value.isSaving)
+        assertEquals(null, f.preferences.enabledFor.value)
+        vm.viewModelScope.cancel()
+    }
+
+    @Test
+    fun signingBackInResumesOnlyForTheOwner() = onMain {
+        val f = Fixture(null, alice)
+        val resume = com.example.zar.features.capture.domain.auto.ResumeAutoCaptureUseCase(f.session, f.preferences, f.scheduler)
+        val job = backgroundScope.launch(kotlinx.coroutines.test.UnconfinedTestDispatcher(testScheduler)) { resume() }
+        assertEquals("Nobody signed in: nothing scheduled", 0, f.scheduler.soon)
+        f.session.user.value = bob
+        assertEquals("Someone else: still nothing", 0, f.scheduler.soon)
+        f.session.user.value = alice
+        assertEquals(1, f.scheduler.soon)
+        assertEquals(1, f.scheduler.periodic)
+        job.cancel()
     }
 }
