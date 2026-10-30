@@ -28,10 +28,25 @@ One continuous take, from the first tap to the last. It was not cut, trimmed, sp
 
 What the take shows: Add an expense (LKR 1,450, Sampath, Coffee & dining), open it in Activity, correct it to LKR 1,500, then the weekly cash catch-up: count LKR 19,200 against 19,700 recorded, review and save the LKR 500 adjustment, and open it.
 
-**The reviewed quick note is not in the take.** A real quick-note read cannot be made from the emulator: a debug build there is refused by App Check, and its test sign-in is not accepted by the deployed service. The review screens are in the stills from the SCRUM-41 run, [docs/evidence/S07](../S07).
+**The reviewed quick note is not in the take.** The author reported App Check/test sign-in rejection in the recorded emulator setup. A successful read requires working authentication and App Check for that install; emulator hardware alone does not decide service access. The review screens are in the stills from the SCRUM-41 run, [docs/evidence/S07](../S07).
 
-The emulator still limits how smooth the app's own animations look. Over a second of motion the picture changes on 15 or fewer of the 30 frames, because the emulator does not draw faster. A real phone would look smoother.
+The emulator still limits how smooth the app's own animations look. Over a second of motion the picture changes on 15 or fewer of the 30 frames, because the emulator does not draw faster. A physical phone was not measured in this run, so its animation smoothness is unverified.
 
 ## Not covered
 
 A live recording of a quick note being read. A physical phone, dark mode, large fonts and TalkBack.
+
+## Reproducing the driving script
+
+`demo-take.sh` is an archival coordinate script for the stated 1080 × 2280 emulator, starting on the seeded Home screen. It changes test-account ledger data; it does not check which screen is open. On a disposable seeded emulator, copy it with `adb -s SERIAL push docs/evidence/S09/demo-take.sh /sdcard/demo-take.sh`, start the recorder, then run `adb -s SERIAL shell sh /sdcard/demo-take.sh`. Replace SERIAL with the intended device. Do not run it against a differently sized or differently seeded device.
+
+## PR review validation (30 Oct 2026)
+
+- Integrated main after parent PR #41 merged and retargeted this dependent PR to main. The annotation helper is already identical on main and is no longer part of this PR's final diff.
+- Corrected the scope of offline saves, the distinction between structured drafts and ledger entries, surplus versus shortfall reporting, and how to reverse a correction. Updated the demo to use a fresh test account and current-month seed dates.
+- Checked 56 local document/image links across the report, demo and this README: all resolve. Checked all 29 individually named class/enum references in the report against app sources: all found.
+- Decoded and visually inspected all 25 PNGs (11 annotated and 14 raw). Activity's bottom navigation and Home's check-line truncation obscure some content; these historical author captures show states and data, not clipping-free UI or Figma parity.
+- `sh -n docs/evidence/S09/demo-take.sh` passed. The archival driving script was read but not executed against a device.
+- Fully decoded the MP4 with FFmpeg without errors and inspected 12 frames sampled at six-second intervals. FFprobe reports H.264, 576 × 1216, 30 fps, 2,129 frames, 70.966 seconds, 1,305,556 bytes. The samples show entry, correction and saved cash adjustment. The no-edit/source-recorder claims above are author provenance; the original recording is not included for comparison.
+- Checked the seed arithmetic: cash 20,000 − 8,400 − 1,250 − 650 + 10,000 = 19,700; Spent 16,180, then 17,630 after the demo expense and 17,680 after correction. The LKR 500 outgoing catch-up adjustment would raise Spent to 18,180 if the optional void is skipped.
+- No Android, instrumentation, backend or fresh device/demo run was performed for this docs/media-only diff. S08 test counts are dated historical runs; PR #41's separate review recorded 1,294 passing unit tests. Live quick-note responses, physical-device smoothness and Figma comparison remain unverified here.

@@ -20,9 +20,9 @@ Owner of all tickets: Sanuk. Code lives in `features/transactions` (Add, Activit
 
 Three rules shape the whole area:
 
-1. **A saved record is never edited or deleted.** A correction is a new record that points at the original, and undo is a void marker.
+1. **A saved ledger transaction is never overwritten or deleted.** A correction is a new record that points at the original, and undo is a void marker.
 2. **Nothing is guessed.** An unexplained cash gap is saved as unknown spending, a bank credit is never assumed to be income, and a generic name such as PickMe is never filed by a remembered rule.
-3. **Nothing is lost offline.** A save is kept on the phone at once, sent later under the same IDs, and a repeat cannot create a second record.
+3. **Ledger saves work offline.** A ledger write is kept on the phone at once and sent later under the same IDs. Server rejection is reported for retry. Quick-note interpretation and saving captured SMS drafts require a connection.
 
 ## 2. Annotated screens
 
@@ -87,22 +87,22 @@ The domain rule is enforced by a test: `DomainLayerPurityTest` fails if domain c
 
 | Rule | Where it lives | How to see it |
 |---|---|---|
-| Every record is write-once and keyed by a stable ID. Saving the same ID again does nothing, so retries and offline replays cannot duplicate, overwrite or revive anything. | `LedgerRepository` contract; `firestore.rules` denies `update` and `delete` on `transactions`, `corrections`, `voids` and `evidenceLinks` | [S08 server read-back](../evidence/S08/server-after-reconnect.txt): after reconnecting, 4 new records and 1 correction, nothing written twice |
+| Ledger transactions, corrections, void markers and evidence links are write-once and keyed by a stable ID. Saving the same ID again does nothing, so retries and offline replays cannot duplicate, overwrite or revive anything. | `LedgerRepository` contract; `firestore.rules` denies `update` and `delete` on `transactions`, `corrections`, `voids` and `evidenceLinks` | [S08 server read-back](../evidence/S08/server-after-reconnect.txt): after reconnecting, 4 new records and 1 correction, nothing written twice |
 | An edit is a correction. The original stays and the history is kept. | `CorrectTransactionUseCase` appends a `Correction`; the amount's stored historical rate is reused | Section 2.3; S08 screenshots 09, 10 |
 | A correction that would break a link is refused: moving a linked entry to another account, a different currency, an amount below what is already refunded. | `CorrectTransactionUseCase` (`HasActiveRefunds`, `CurrencyMismatch`, `RefundTooHigh`) | Unit tests; section 2.3 mark 4 |
 | Undo is a void marker. Voiding a transfer leg voids both legs and its fee together. A purchase with active refunds cannot be undone. Voiding twice is harmless. | `VoidTransactionUseCase` | Section 2.2 mark 5; the detail page says so |
 | A refund cannot exceed the purchase, and is not income. | Refund use cases and `Transaction` types | Section 2.3 |
-| A cash or bank count saves at most one adjustment. A match saves nothing. A repeat with the same ID saves nothing more. The gap is unknown spending, never discretionary. | `RecordBalanceCheckUseCase`, `RecordCatchUpUseCase` | Section 2.4; S08 screenshots 11 to 13 |
+| A cash or bank count saves at most one adjustment. A match saves nothing. A repeat with the same ID saves nothing more. A shortfall is `ADJUSTMENT_OUT` under Unknown spending; a surplus is `ADJUSTMENT_IN`, affecting the balance but neither Received nor Spent. Both leave the classification picture incomplete. | `RecordBalanceCheckUseCase`, `RecordCatchUpUseCase` | Section 2.4; S08 screenshots 11 to 13 |
 | Catch-up remembers its date only after the check succeeded, and never hides a saved adjustment if remembering fails. | `RecordCatchUpUseCase` | Unit tests |
 | A save works offline: it returns once stored on the phone and syncs later. A save the server later refuses is rolled back on the phone and reported with its records so it can be retried under the same IDs. | `LedgerRepository` contract; `FirestoreLedgerRepository` (`observeRejectedWrites`, `retryRejectedWrite`) | [S08 screenshots 02 to 14](../evidence/S08/README.md): four actions made offline, the server held 10 records before reconnecting and 14 after |
 | A remembered category applies to future expenses only. It never changes an amount, a saved entry, the spending type or recurrence. | `CategoryRule` and `CategoryRuleMatcher` | Unit test `editingARuleOnlyChangesLaterCapturesNeverTheEntryAlreadySaved`; S08 screenshots 15 to 17 |
 | A general name (PickMe, Uber) is never filed by a remembered rule. | `MerchantKey.isGeneric`, `CategoryRuleMatcher` | Unit tests; S08 screenshot 15 |
-| A captured bank message becomes a draft. A credit is never assumed to be income. Nothing is saved until you confirm or link it. | `features/capture` | [S06](../evidence/S06) |
+| A captured bank message is saved as a structured draft, separate from the ledger. A credit is never assumed to be income. Confirming Expense or Income posts a transaction; linking a duplicate or transfer attaches evidence to an existing entry without posting money again. | `features/capture` | [S06](../evidence/S06) |
 | A quick note is read once and not saved. Nothing is recorded until you confirm each suggested record. A failed read keeps the note. | `features/quicknote` | [S07](../evidence/S07), [S08 screenshot 19](../evidence/S08/19-quick-note-failed-read-note-kept.png) |
 
 ## 5. Test evidence
 
-Full results, the offline journey and the cross-check of another member's PR are in [docs/evidence/S08/README.md](../evidence/S08/README.md). In short, from the S08 run on 29 Oct 2026:
+Historical author results, the offline journey and the cross-check of another member's PR are in [docs/evidence/S08/README.md](../evidence/S08/README.md). The table below is from the S08 author run on 29 Oct 2026; PR #41's separate 30 Oct review integrated main and recorded 1,294 passing unit tests. No tests were rerun for this documentation review.
 
 | Command | Result |
 |---|---|
@@ -115,6 +115,6 @@ Not run in that session: the instrumented (emulator) test classes, `lintDebug` a
 ## 6. Limits
 
 - Tested on an emulator with local Firebase emulators. Not on a physical phone, not with dark mode, large fonts or TalkBack, and not against the live Firebase project.
-- A real quick-note read was not made in this session. A debug build on the emulator is refused by App Check and its test sign-in is not accepted by the deployed service, so the recording does not include a quick note. Its review screens are the stills from the SCRUM-41 run.
+- A real quick-note read was not made in this session. The author reported App Check/test sign-in rejection in this emulator setup, so the recording does not include a quick note. Emulator hardware alone does not establish whether a configured install can use the service. Its review screens are the stills from the SCRUM-41 run.
 - Undoing a refund or a correction by hand on the phone was not exercised in S08.
 - Rules about capture and quick notes in section 4 summarise work documented in S06 and S07. They were not re-tested in S09.
