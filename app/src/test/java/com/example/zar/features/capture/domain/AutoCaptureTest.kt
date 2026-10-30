@@ -52,7 +52,10 @@ class AutoCaptureTest {
 
     private class FakeSession(initial: UserId?) : UserSessionProvider {
         val user = MutableStateFlow(initial)
-        override fun currentUserId(): UserId? = user.value
+        var reads = 0
+        /** Runs just before the n-th read, so a test can change the user at an exact point. */
+        var beforeRead: (Int) -> Unit = {}
+        override fun currentUserId(): UserId? { reads++; beforeRead(reads); return user.value }
         override fun observeUserId(): Flow<UserId?> = user
     }
 
@@ -102,6 +105,10 @@ class AutoCaptureTest {
         val byUser = mutableMapOf<UserId, MutableMap<DraftId, Draft>>()
         override fun observePendingDrafts(): Flow<List<Draft>> = MutableStateFlow(emptyList())
         override fun observeDrafts(): Flow<List<Draft>> = MutableStateFlow(emptyList())
+        override suspend fun saveDraftFor(owner: UserId, draft: Draft): Draft {
+            if (session.currentUserId() != owner) throw com.example.zar.core.domain.model.LedgerError.NotSignedIn()
+            return saveDraft(draft)
+        }
         override suspend fun saveDraft(draft: Draft): Draft {
             if (offline) throw IOException("Offline")
             val drafts = byUser.getOrPut(requireNotNull(session.currentUserId())) { mutableMapOf() }
@@ -244,6 +251,27 @@ class AutoCaptureTest {
         f.session.user.value = alice
         f.process(received)
         assertEquals(1, f.drafts.byUser.getValue(alice).size)
+    }
+
+    @Test
+    fun aSwitchAfterTheOwnerCheckDoesNotMoveAlicesDraftIntoBobsAccountOrLoseTheMessage() = runBlocking {
+        val f = Fixture(alice, alice)
+        f.stage(purchase, received)
+        f.session.reads = 0
+        // Session reads in one pass: 1 the owner, 2 the per-message check, 3 the draft save. Bob signs in before read 3.
+        f.session.beforeRead = { read -> if (read == 3) f.session.user.value = bob }
+        val interrupted = f.process(received)
+        assertTrue("Nothing reached Bob's drafts", f.drafts.byUser[bob].isNullOrEmpty())
+        assertTrue("Nothing was saved for Alice either", f.drafts.byUser[alice].isNullOrEmpty())
+        assertEquals(1, interrupted.left)
+        assertEquals("Alice's message is still queued for her", 1, f.staging.waiting(alice).size)
+
+        f.session.beforeRead = {}
+        f.session.user.value = alice
+        assertEquals(1, f.process(received).processed)
+        assertEquals(1, f.drafts.byUser.getValue(alice).size)
+        assertTrue(f.drafts.byUser[bob].isNullOrEmpty())
+        assertTrue(f.staging.rows.value.isEmpty())
     }
 
     @Test
