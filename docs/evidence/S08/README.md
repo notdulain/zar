@@ -3,11 +3,11 @@
 Tested on branch `feature/SCRUM-42-testing` (from `main` at `163df2d`) on 29 Oct 2026.
 Screenshots: Pixel 4 emulator (Android 37.1), local Firebase Auth and Firestore emulators, a seeded test user, airplane mode switched on and off from the phone.
 
-## Results
+## Original author results (29 Oct 2026)
 
 | Command | Result |
 | --- | --- |
-| `./gradlew testDebugUnitTest` | **1,253 passed, 0 failed, 0 skipped.** `main` has 1,250, so the 3 new tests are the difference. |
+| `./gradlew testDebugUnitTest` | **1,253 passed, 0 failed, 0 skipped.** The `163df2d` baseline had 1,250, so the 3 new tests are the difference. |
 | `cd functions && npm test` | 50 of 50 passed |
 | `cd worker && npm run check && npm test` | type check clean, 37 of 37 passed |
 | PR #38's five changed test classes, run on its own branch | 38 of 38 passed (see the cross-check below) |
@@ -98,3 +98,13 @@ Physical device, dark mode and TalkBack. The live Firebase project. A real answe
 | 17 | `17-remember-rule-future-expenses-only.png` |
 | 18 | `18-rule-saved-entry-detail.png` |
 | 19 | `19-quick-note-failed-read-note-kept.png` |
+
+## PR review validation (30 Oct 2026)
+
+- Integrated current main (`5b48732`) into the PR branch before validation. No production or screen code changes are introduced by this PR.
+- Strengthened `editingARuleOnlyChangesLaterCapturesNeverTheEntryAlreadySaved` to compare the entire original transaction after a later confirmation, and verify the later entry's amount, spending class and applied rule ID as well as its category/version.
+- Final reviewer run: `./gradlew :app:testDebugUnitTest` passed with **1,294 tests, zero failures, errors or skips**. `CaptureTest` has 19 passing tests, including the three added here. This total includes tests merged into main since the author run.
+- Decoded and visually inspected all 19 screenshots and checked every filename in the screenshot index. These remain historical author-provided captures; some scrolled screens and Activity's bottom navigation obscure content, so they are state/data evidence rather than a visual-parity check.
+- Parsed both server read-backs: all ten original transaction rows are unchanged; the four new rows have the expected transfer/refund/adjustment types and minor-unit amounts. The original `keells` amount is still 840000 and the correction summary records 860000. These text summaries omit dates, exchange rates, link targets and full correction payloads, so they cannot independently reconcile every total or prove all server invariants.
+- Confirmed the named quick-note regression tests exist; they were included in the unit suite. The before/after spending change shown in the captures is arithmetically consistent (16,180 + 200 + 1,000 − 1,000 = 16,380).
+- No new device journey, instrumentation, Functions/Worker, Firestore rules or lint run was performed in this review. Their results above belong to the author session. Real AI responses, physical-device behavior and live Figma comparison remain unverified here.

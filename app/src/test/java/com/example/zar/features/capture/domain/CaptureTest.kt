@@ -310,11 +310,15 @@ class CaptureTest {
         val saved = drafts.ledger.transactions.values.toList()
         assertEquals(2, saved.size)
         val first = saved.single { it.id == before.id }
+        assertEquals("Later captures must leave the entire original transaction unchanged", before, first)
         assertEquals("coffee-dining", first.categoryId)
         assertEquals(1, first.appliedRuleVersion)
         val newer = saved.single { it.id != before.id }
         assertEquals("groceries", newer.categoryId)
+        assertEquals(v1.id.value, newer.appliedRuleId)
         assertEquals(2, newer.appliedRuleVersion)
+        assertEquals(lkr(900), newer.amount)
+        assertEquals(SpendingClass.UNKNOWN, newer.spendingClass)
     }
 
     @Test fun aRuleNeverCategorisesIncome() = runBlocking {
