@@ -1,0 +1,255 @@
+{
+  "baseline": "163df2d34ca5c40de693105119d1d8419b90749b",
+  "verifiedCodeCommit": "5e75d236a16c87ae963256f08d40cbe3a0ce8bd6",
+  "date": "2026-10-29",
+  "jvm": {
+    "command": "./gradlew testDebugUnitTest assembleDebug",
+    "result": "BUILD SUCCESSFUL",
+    "counts": {
+      "tests": 1264,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  },
+  "instrumentation": {
+    "device": "Pixel_6a AVD Android 17 API 37",
+    "project": "demo-zar",
+    "buildProperty": "zar.useEmulators=true",
+    "runner": "com.example.zar.test/androidx.test.runner.AndroidJUnitRunner",
+    "counts": {
+      "tests": 41,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "seconds": 346.395,
+    "byClass": {
+      "com.example.zar.integration.OfflineLedgerIntegrationTest": 9,
+      "com.example.zar.integration.CaptureUserIsolationTest": 2,
+      "com.example.zar.integration.FinancialJourneyTest": 3,
+      "com.example.zar.core.data.LedgerWriteOutcomeTest": 4,
+      "com.example.zar.core.data.TransferBatchTest": 2,
+      "com.example.zar.features.capture.CaptureRepositoryTest": 10,
+      "com.example.zar.features.capture.AutoCaptureTest": 6,
+      "com.example.zar.features.auth.UserScopedDataTest": 1,
+      "com.example.zar.features.auth.SignInFlowTest": 4
+    },
+    "cases": [
+      {
+        "class": "com.example.zar.integration.OfflineLedgerIntegrationTest",
+        "method": "aCapturedMessageLinkedOfflineAddsNoMoneyAndUndoingTheEntryStillRemovesItAndTheEvidenceStaysSingle",
+        "result": "passed"
+      },
+      {
+        "class": "com.example.zar.integration.OfflineLedgerIntegrationTest",
+        "method": "aQuickNoteSavesOnlyTheConfirmedProposalOnceKeepsExpectedSeparateAndUndoRestoresTheBalance",
+        "result": "passed"
+      },
+      {
+        "class": "com.example.zar.integration.OfflineLedgerIntegrationTest",
+        "method": "aTransferLegLinkedToAMessageIsNotDoubleCountedAndUndoingItVoidsBothLegsAndTheFee",
+        "result": "passed"
+      },
+      {
+        "class": "com.example.zar.integration.OfflineLedgerIntegrationTest",
+        "method": "aReplayedSaveWithTheSameIdKeepsTheOriginalAndIsCountedOnce",
+        "result": "passed"
+      },
+      {
+        "class": "com.example.zar.integration.OfflineLedgerIntegrationTest",
+        "method": "offlineCorrectionsOfASyncedExpenseApplyOldestFirstAndAReplayedCorrectionIdChangesNothing",
+        "result": "passed"
+      },
+      {
+        "class": "com.example.zar.integration.OfflineLedgerIntegrationTest",
+        "method": "anOfflineUndoRemovesTheEntryFromBalanceAndSpendingAndALateCorrectionCannotReviveIt",
+        "result": "passed"
+      },
+      {
+        "class": "com.example.zar.integration.OfflineLedgerIntegrationTest",
+        "method": "aConfirmedCaptureCanBeCorrectedAndUndoneAndConfirmingAgainSavesOnce",
+        "result": "passed"
+      },
+      {
+        "class": "com.example.zar.integration.OfflineLedgerIntegrationTest",
+        "method": "offlineSaveThenOfflineCorrectionReachTheServerOnceAndEveryProjectionAgrees",
+        "result": "passed"
+      },
+      {
+        "class": "com.example.zar.integration.OfflineLedgerIntegrationTest",
+        "method": "anOfflineReplayWithChangedContentSettlesBackToTheStoredOriginalAfterReconnecting",
+        "result": "passed"
+      },
+      {
+        "class": "com.example.zar.integration.CaptureUserIsolationTest",
+        "method": "aUserSwitchAtAnyPointOfAProcessingPassNeverPublishesAsMessageToBAndNeverLosesIt",
+        "result": "passed"
+      },
+      {
+        "class": "com.example.zar.integration.CaptureUserIsolationTest",
+        "method": "aQueuedMessageStaysWithItsOwnerWhileAnotherUserSignsInAndIsProcessedOnlyWhenTheOwnerReturns",
+        "result": "passed"
+      },
+      {
+        "class": "com.example.zar.integration.FinancialJourneyTest",
+        "method": "quickNoteInputReviewAccountPickerEditAndConfirmPersistActualAndExpectedSeparately",
+        "result": "passed"
+      },
+      {
+        "class": "com.example.zar.integration.FinancialJourneyTest",
+        "method": "offlineQuickNoteKeepsTextAndItsFormFallbackSavesLocallyThenReconnects",
+        "result": "passed"
+      },
+      {
+        "class": "com.example.zar.integration.FinancialJourneyTest",
+        "method": "manualSaveOfflineCorrectionAndUndoAreVisibleAndPersistAfterReconnect",
+        "result": "passed"
+      },
+      {
+        "class": "com.example.zar.core.data.LedgerWriteOutcomeTest",
+        "method": "aRefusedSaveKeepsItsIdWhenTriedAgainAndLeavesTheListWhenDismissed",
+        "result": "passed"
+      },
+      {
+        "class": "com.example.zar.core.data.LedgerWriteOutcomeTest",
+        "method": "replayingAnAlreadyStoredExpenseIsNotReportedAsRejected",
+        "result": "passed"
+      },
+      {
+        "class": "com.example.zar.core.data.LedgerWriteOutcomeTest",
+        "method": "aServerRejectedExpenseIsReportedWithItsRecordInsteadOfSilentlyDropped",
+        "result": "passed"
+      },
+      {
+        "class": "com.example.zar.core.data.LedgerWriteOutcomeTest",
+        "method": "anExpenseSavedOfflineAppearsOnceImmediatelyAndStaysAfterReconnect",
+        "result": "passed"
+      },
+      {
+        "class": "com.example.zar.core.data.TransferBatchTest",
+        "method": "transferAndFeeAreStoredTogether",
+        "result": "passed"
+      },
+      {
+        "class": "com.example.zar.core.data.TransferBatchTest",
+        "method": "rejectedFeeLeavesNeitherTransferLegStored",
+        "result": "passed"
+      },
+      {
+        "class": "com.example.zar.features.capture.CaptureRepositoryTest",
+        "method": "confirmationIsAtomicAndRetryNeverRewritesTheRecord",
+        "result": "passed"
+      },
+      {
+        "class": "com.example.zar.features.capture.CaptureRepositoryTest",
+        "method": "anOfflineLinkReportsQueuedThenAcknowledgedAfterReconnecting",
+        "result": "passed"
+      },
+      {
+        "class": "com.example.zar.features.capture.CaptureRepositoryTest",
+        "method": "concurrentConfirmationsKeepOneOriginalRecord",
+        "result": "passed"
+      },
+      {
+        "class": "com.example.zar.features.capture.CaptureRepositoryTest",
+        "method": "aQueuedLinkRejectedAfterReconnectFailsItsStatusStreamAndRestoresTheDraft",
+        "result": "passed"
+      },
+      {
+        "class": "com.example.zar.features.capture.CaptureRepositoryTest",
+        "method": "anotherTargetForTheSameMessageIsNotReportedAsThisChoicesSuccess",
+        "result": "passed"
+      },
+      {
+        "class": "com.example.zar.features.capture.CaptureRepositoryTest",
+        "method": "changedAccountFailsWithoutClosingDraftAndCanRetry",
+        "result": "passed"
+      },
+      {
+        "class": "com.example.zar.features.capture.CaptureRepositoryTest",
+        "method": "replayPreservesOriginalDraftAndTerminalStatus",
+        "result": "passed"
+      },
+      {
+        "class": "com.example.zar.features.capture.CaptureRepositoryTest",
+        "method": "theMessageDirectionIsStoredWithTheDraftAndReadBack",
+        "result": "passed"
+      },
+      {
+        "class": "com.example.zar.features.capture.CaptureRepositoryTest",
+        "method": "linkingAttachesTheMessageAndClosesTheDraftWithoutPostingMoneyAndReplaysAreSafe",
+        "result": "passed"
+      },
+      {
+        "class": "com.example.zar.features.capture.CaptureRepositoryTest",
+        "method": "aDraftThatWasDiscardedCannotBeLinked",
+        "result": "passed"
+      },
+      {
+        "class": "com.example.zar.features.capture.AutoCaptureTest",
+        "method": "revokedAccessOffersToAllowAgain",
+        "result": "passed"
+      },
+      {
+        "class": "com.example.zar.features.capture.AutoCaptureTest",
+        "method": "offExplainsAndAsksOnlyWhenSwitchedOn",
+        "result": "passed"
+      },
+      {
+        "class": "com.example.zar.features.capture.AutoCaptureTest",
+        "method": "expiredMessagesLoseTheirTextButKeepANotice",
+        "result": "passed"
+      },
+      {
+        "class": "com.example.zar.features.capture.AutoCaptureTest",
+        "method": "refusedWhileOffStillOffersAWayToAllow",
+        "result": "passed"
+      },
+      {
+        "class": "com.example.zar.features.capture.AutoCaptureTest",
+        "method": "onShowsWaitingMessagesAndExpiryNotice",
+        "result": "passed"
+      },
+      {
+        "class": "com.example.zar.features.capture.AutoCaptureTest",
+        "method": "stagedTextIsEncryptedOnDiskAndDeletedOnceProcessed",
+        "result": "passed"
+      },
+      {
+        "class": "com.example.zar.features.auth.UserScopedDataTest",
+        "method": "nextUserSeesNoneOfThePreviousUsersRecords",
+        "result": "passed"
+      },
+      {
+        "class": "com.example.zar.features.auth.SignInFlowTest",
+        "method": "registeringATakenEmailSuggestsSigningIn",
+        "result": "passed"
+      },
+      {
+        "class": "com.example.zar.features.auth.SignInFlowTest",
+        "method": "invalidInputIsCaughtBeforeFirebase",
+        "result": "passed"
+      },
+      {
+        "class": "com.example.zar.features.auth.SignInFlowTest",
+        "method": "moreKeepsExistingFeaturesReachableAndTabsReturnHome",
+        "result": "passed"
+      },
+      {
+        "class": "com.example.zar.features.auth.SignInFlowTest",
+        "method": "registerSignOutAndSignInAgain",
+        "result": "passed"
+      }
+    ]
+  },
+  "firestoreRules": {
+    "command": "FIRESTORE_EMULATOR_HOST=127.0.0.1:8080 node --test rules.test.mjs",
+    "project": "demo-zar",
+    "tests": 44,
+    "passed": 44,
+    "failures": 0,
+    "skipped": 0,
+    "milliseconds": 3400.718709
+  }
+}
