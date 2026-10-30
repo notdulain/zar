@@ -69,3 +69,13 @@ I signed in to a test account on the emulator with one LKR bill and one USD proj
   - a physical phone receiving a real bank SMS (the emulator SMS was used for L08);
   - dark mode and TalkBack passes;
   - live Firebase instead of the emulators.
+
+## PR review validation (30 Oct 2026)
+
+- Merged current `main` (`a8ac464`) into this branch before validation.
+- Strengthened bill, project and crypto retry tests to compare IDs across failed and successful write attempts. Counting only successful records did not prove that the failed attempt reused its ID.
+- Cancelled the income test ViewModel scopes after assertions.
+- `./gradlew :app:testDebugUnitTest :app:assembleDebug :app:assembleDebugAndroidTest`: passed; 1,291 unit tests, zero failures, errors or skips. The total includes tests added to main since the original author run.
+- `lintDebug`: one error and 82 warnings. The error remains the unchanged `NonObservableLocale` in `PlansHero.kt:213`, also present on main.
+- Inspected all six original screenshots. They remain author-provided runtime evidence; this review changed no screen layout or styling and captured no new screenshots.
+- This review did not rerun instrumentation, Firestore emulator tests, or live Figma comparison. The earlier emulator results above belong to the author run, not this review. No visual parity claim is made.

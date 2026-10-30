@@ -45,8 +45,10 @@ class FreelanceViewModelsTest {
     private class Projects(private val failLoad: Boolean = false) : ProjectRepository {
         val projects = MutableStateFlow<List<Project>>(emptyList())
         var offline = false
+        val attemptedIds = mutableListOf<com.example.zar.features.freelance.domain.model.ProjectId>()
         override fun observeProjects(): Flow<List<Project>> = if (failLoad) flow { throw IOException("Permission denied") } else projects
         override suspend fun saveProject(project: Project) {
+            attemptedIds += project.id
             if (offline) throw IOException("Offline")
             projects.value = projects.value.filterNot { it.id == project.id } + project
         }
@@ -142,6 +144,7 @@ class FreelanceViewModelsTest {
         projects.offline = false
         vm.save()
         vm.save()
+        assertEquals("Failed attempts and retries keep the same ID", 1, projects.attemptedIds.distinct().size)
         val saved = projects.projects.value.single()
         assertEquals(Currencies.USD, saved.currency)
         assertEquals(saved.id.value, vm.uiState.value.savedProjectId)

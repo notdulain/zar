@@ -56,7 +56,9 @@ class CryptoViewModelsTest {
     /** The shared fake ledger, with transfers that fail while "offline". */
     private class Ledger(val inner: FakeLedgerRepository = FakeLedgerRepository()) : LedgerRepository by inner {
         var offline = false
+        val attemptedIds = mutableListOf<com.example.zar.core.domain.model.TransferId>()
         override suspend fun saveTransfer(transfer: Transfer) {
+            attemptedIds += transfer.id
             if (offline) throw IOException("Offline")
             inner.saveTransfer(transfer)
         }
@@ -160,6 +162,7 @@ class CryptoViewModelsTest {
         ledger.offline = false
         vm.save()
         assertTrue(vm.uiState.value.isFinished)
+        assertEquals("Failed attempts and retries keep the same ID", 1, ledger.attemptedIds.distinct().size)
         assertEquals("One transfer: out of the bank and into the wallet", 2, ledger.inner.transactions.size)
         vm.save()
         assertEquals("A second tap saves nothing more", 2, ledger.inner.transactions.size)
