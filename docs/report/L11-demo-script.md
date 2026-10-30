@@ -4,7 +4,7 @@ About 5 minutes. It runs on the Android emulator with the Firebase emulators and
 
 ## Before the demo: seed (about 5 minutes, not part of the 5)
 
-Use a debug build pointed at the emulators: `./gradlew installDebug -Pzar.useEmulators=true`. Use a test account only. No real names, card numbers or bank messages.
+Use a debug build pointed at the emulators: `./gradlew installDebug -Pzar.useEmulators=true`. Start with a fresh test account so existing records do not change the totals or trigger duplicate matching. No real names, card numbers or bank messages. Keep all three income dates in the current month. The images record the original 29 Oct run; dates in a fresh demo will differ.
 
 | Step | Where | What to enter |
 |---|---|---|
@@ -15,11 +15,11 @@ Use a debug build pointed at the emulators: `./gradlew installDebug -Pzar.useEmu
 | 5 | More → Freelance projects → New project | "Logo redesign", client "Acme", USD |
 | 6 | Open the project → Add milestone | "Design deposit" USD 1,500 and "Final files" USD 1,000 (due today is fine) |
 | 7 | Open "Design deposit" → Link a payment | Link the Acme USD 1,200 income |
-| 8 | More → Bills → Add bill | "Dialog Internet", LKR 5,850, monthly, first due earlier this month (for example the 25th) |
+| 8 | More → Bills → Add bill | "Dialog Internet", LKR 5,850, monthly, first due yesterday (including the previous month if today is the 1st) |
 | 9 | Add bill | "Netflix", LKR 1,990, monthly, first due **today** |
 | 10 | Share a bank SMS (below) | Do not save the draft |
 
-Step 10, from a computer with `adb`. Use a date in the current month.
+Step 10, from a computer with `adb`. Replace `28/10/26` below with today's date in `dd/MM/yy` format before running; future dates cannot be confirmed. Select a single emulator with `adb -s SERIAL` if multiple devices are connected.
 
 ```bash
 adb shell am start -a android.intent.action.SEND -t text/plain \
@@ -41,13 +41,13 @@ Expected after seeding: Received LKR 545,000, Clients owe you USD 1,300, Spent L
 | 1:30 | Back to Home, open the "need review" card | "The same record shows up in Needs review so it is not forgotten. Adding the rate there would update the total." | One Missing rate item for Globex. [Annotated Needs review](../evidence/L11/9-needs-review-annotated.png) |
 | 2:00 | More → Freelance projects → Logo redesign | "A project has milestones. Milestones are expected money, not income. The Acme payment is linked to the deposit, so USD 300 of it is left." | Still owed USD 1,300. Received 1,200 of USD 2,500. [Annotated project](../evidence/L11/2-project-milestones-annotated.png) |
 | 2:45 | Home, scroll to the bottom | "Home reads the same rules. Clients owe you is USD 1,300, one total per currency, never converted. The next bill is Netflix." | Clients owe you USD 1,300. Next bill due Netflix, expected LKR 1,990. [Annotated Home bottom](../evidence/L11/8-home-clients-owe-next-bill-annotated.png) |
-| 3:15 | More → Bills | "Bills are expected payments too. Dialog Internet was due on the 25th and nothing is matched, so Zar says it needs a look. It does not say unpaid. Spent stays at zero until a real expense is linked." | One bill due this week, one needing a look, a yearly estimate of LKR 94,080. [Annotated bills](../evidence/L11/3-bills-list-annotated.png) |
+| 3:15 | More → Bills | "Bills are expected payments too. Dialog Internet was due yesterday and nothing is matched, so Zar says it needs a look. It does not say unpaid. Spent stays at zero until a real expense is recorded. Linking that expense to a bill does not count it again." | One bill due this week, one needing a look, a yearly estimate of LKR 94,080. [Annotated bills](../evidence/L11/3-bills-list-annotated.png) |
 | 4:00 | More → Capture sources | "SMS capture is off by default. The safest route is to share a message to Zar. It is read on the phone, and the raw text is never uploaded." | Status shows one message waiting. Automatic capture switch is off. [Annotated capture](../evidence/L11/4-capture-settings-annotated.png) |
 | 4:20 | Open the waiting draft | "Commercial Bank card purchases are a validated format. The draft shows the merchant, date and amount. Nothing is in the ledger until I confirm." | Review message with LKR 800 and Cafe Seventy Three. [Annotated review](../evidence/L11/6-capture-review-annotated.png) |
 | 4:40 | Optional: choose Expense and tap Save entry, then open Home | "Now it is an expense, and only now does Spent change." | Spent LKR 800. Received is still LKR 545,000 |
 | 4:55 | Close | "Limit: the formats are validated on real iPhone-collected messages. Capture was tried on an emulator, not on a real Android phone yet." | none |
 
-If you save the draft in the 4:40 step, the seed must be redone for the next run, because the draft is gone and Spent is no longer zero.
+If you save the draft in the 4:40 step, the seed must be redone for the next run, because the draft is gone and Spent is no longer zero. Use a fresh test account for a clean repeat; reading the same message again does not recreate a confirmed draft.
 
 ## What to say about limits (if asked)
 
@@ -63,7 +63,7 @@ If you save the draft in the 4:40 step, the seed must be redone for the next run
 | The emulator or app will not start | Walk through the annotated images in [docs/evidence/L11](../evidence/L11) in the order above |
 | The Firebase emulators are not running | Start them with `npx -y firebase-tools@latest emulators:start --only auth,firestore` or show the images. The app needs them for sign-in |
 | The `adb` share does nothing | Open Capture sources, paste the same text into "Bank SMS text" and tap Read message. Or show [the capture images](../evidence/L11/5-capture-drafts-supported-annotated.png) |
-| The draft is missing | The message may have been read before (the same text gives the same draft). Paste a different sample from [sms-compatibility.md](../sms-compatibility.md) |
+| The draft is missing | First check the waiting list in Capture sources. If the message was already confirmed or discarded, its stable ID prevents recreation. Use a fresh test account, or a different anonymized sample with a current date |
 | Totals look different | Check that the USD 1,200 income has rate 300 and the USD 450 income has none. The report table in section 5.2 lists every expected number |
 | Someone asks for automatic capture | Show the off switch and L08 images in [docs/evidence/L08](../evidence/L08): off by default, messages waiting encrypted offline, drafts once online, expiry notice |
 | Someone asks about reminders | Show [docs/evidence/L07](../evidence/L07): permission asked when a reminder is chosen, one reminder per bill |

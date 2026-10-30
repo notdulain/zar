@@ -94,7 +94,7 @@ All images are in [docs/evidence/L11](../evidence/L11). The unmarked originals a
 | 1 | Date and amount read from the SMS |
 | 2 | Warning that nothing enters the ledger until the user confirms |
 | 3 | Account chosen by the user (the card's last four digits are only a hint) |
-| 4 | Type: Expense, Income or Transfer. The user decides |
+| 4 | Expense or Income creates an entry after confirmation. Transfer links the message to an existing transfer leg and creates no money |
 | 5 | "Counts as": Committed, Discretionary or Unknown |
 | 6 | Save entry. Saving closes the draft and adds the entry together |
 
@@ -132,7 +132,7 @@ Layers follow the repository rules. Screens and ViewModels are in `presentation`
 
 ### 3.1 What each feature uses
 
-| Feature | Domain (rules, use cases) | Stored in | Data class |
+| Feature | Domain (rules, use cases) | Stored in | Repository or worker |
 |---|---|---|---|
 | Income | `IncomeRules`, `RecordIncomeUseCase`, `EditIncomeUseCase`, `ObserveIncomeUseCase` | `users/{uid}/transactions`, type `INCOME`; edits in `corrections`; undo in `voids` | Shared `LedgerRepository` (Firestore) |
 | Freelance | `FreelanceRules`, `FreelanceCalculator`, `SaveProjectUseCase`, `SaveMilestoneUseCase`, `LinkReceiptUseCase`, `ObserveOutstandingUseCase` | Projects in `users/{uid}/projects`. Milestones in `expectedPayments`. Receipt links in `paymentMatches` | `FirestoreProjectRepository` (`ProjectRepository`) |
@@ -141,12 +141,12 @@ Layers follow the repository rules. Screens and ViewModels are in `presentation`
 | Reminders | `ReminderPlanner`, `PlanRemindersUseCase`, `MarkRemindersShownUseCase` | This phone only: DataStore `payment_reminders` | `WorkManagerPaymentReminderScheduler`, `PaymentReminderWorker` |
 | Capture | `BankSmsParser`, `CaptureTextUseCase`, `CapturedDraftRules`, `ConfirmCapturedDraftUseCase`, `StageIncomingSmsUseCase`, `ProcessStagedSmsUseCase` | Drafts in `users/{uid}/drafts` (structured fields only). Automatic capture stages text in the encrypted Room table `staged_sms` | `FirestoreDraftRepository`; `RoomSmsStagingRepository`; `SmsCipher`; `AutoCaptureWorker` |
 
-Shared models are in `core/domain` and described in [domain-contracts.md](../domain-contracts.md). Firestore access is limited to the owner by `firestore.rules`; 25 rules tests pass (see [L10](../evidence/L10/README.md)).
+Shared models are in `core/domain` and described in [domain-contracts.md](../domain-contracts.md). Firestore access is limited to the owner by `firestore.rules`; the original L10 run recorded 25 passing rules tests (see [L10](../evidence/L10/README.md) for dated results).
 
 ### 3.2 Money rules
 
 - Amounts are `Money`: integer minor units for fiat (LKR 1,250.50 is `125050`) and exact decimals for crypto. No `Double`.
-- Every record stores a `ReportingConversion` to LKR at save time: `SameCurrency`, `Converted` (with the rate) or `Missing`.
+- Every ledger transaction stores a `ReportingConversion` to LKR at save time: `SameCurrency`, `Converted` (with the rate) or `Missing`.
 - Income form: a rate applies only to foreign income. A blank rate means unknown and is stored as `Missing`. Rates must be positive (`IncomeRules`).
 - A corrected amount keeps the stored historical rate. Changing the rate replaces the conversion.
 - Totals return an amount and an `unresolvedCount`. When the count is above zero, the screen says a record has no rate.
@@ -169,7 +169,7 @@ Shared models are in `core/domain` and described in [domain-contracts.md](../dom
 - Automatic capture (`RECEIVE_SMS`) is off until the user turns it on. The receiver component is disabled in the manifest until then. Only messages that parse as a tested bank format are staged.
 - Staged text is encrypted with AES-GCM using a key in the Android Keystore. The staging table is `staged_sms` in `CaptureStagingDatabase`.
 - A WorkManager job turns staged messages into pending drafts when the phone is online (an extra pass runs every 12 hours). The staged text is deleted once processed.
-- Messages not saved within 7 days are deleted and only an expiry notice is kept. Turning capture off discards waiting messages.
+- On a background pass, staged SMS text older than 7 days is deleted and an expiry notice is kept if it has not become a structured draft. Drafts already saved to Firestore do not expire under this rule. Turning capture off discards the signed-in user's waiting staged messages; it does not delete existing drafts.
 - A message staged by one user is never processed for another user.
 - Firestore never receives the raw SMS.
 
@@ -178,7 +178,7 @@ Shared models are in `core/domain` and described in [domain-contracts.md](../dom
 | Where | What it reads | Source |
 |---|---|---|
 | Home: Received this month | `INCOME` entries of the month | `ObserveHomeOverviewUseCase` using `LedgerSummaryCalculator`, the same maths as `ObserveIncomeUseCase` |
-| Home: Spent this month | `EXPENSE` entries only | Bills, milestones and drafts add nothing until a real expense is saved |
+| Home: Spent this month | `EXPENSE` entries net of linked refunds, capped at the purchase, plus `ADJUSTMENT_OUT` under Unknown | Bills, milestones and drafts add nothing; refunds reduce spending in the original purchase period |
 | Home: Clients owe you | Unreceived milestone money, one total per currency | `ObserveHomeCommitmentsUseCase` using `ObserveOutstandingUseCase` |
 | Home: Next bill due | Next bill due date, shown as expected | `ObserveHomeCommitmentsUseCase` using `ObserveNextBillUseCase` |
 | Home: "need review" card and Needs review | Records that need attention, such as income with a missing rate | `features/catchup` (`UnresolvedRules`, kind `MISSING_RATE`) |
@@ -190,14 +190,14 @@ How data flows:
 1. Home reads the ledger through use cases, so adding income, linking a receipt or undoing an entry updates Received, Clients owe you and Next bill without a refresh, including offline.
 2. Income with no rate raises the Home check line and a "Missing rate" item in Needs review. Adding the rate on the entry removes it and the total updates.
 3. A captured SMS becomes a draft. In this build the draft is reviewed from **Capture sources** (the Review message screen), not from the Needs review list. The Needs review list shows unresolved ledger records, not drafts.
-4. When the user saves the draft, it becomes an expense, income or transfer. Only then do Spent or Received change. A draft never changes Home on its own.
+4. Confirming a draft as Expense or Income creates an entry and can change Spent or Received. Choosing Transfer links the draft to an existing transfer leg without adding a transaction. Linking a duplicate to an existing payment likewise adds only evidence. A draft never changes Home on its own.
 5. Linking a recorded expense to a bill due date settles that due date. The expense counts in Spent once, and the bill due date adds nothing.
 
 ## 5. Test evidence
 
 ### 5.1 Automated tests (L10)
 
-Taken from [L10](../evidence/L10/README.md), run on 29 Oct 2026.
+Historical author results from [L10](../evidence/L10/README.md), run on 29 Oct 2026. PR #38's later review integrated main and recorded 1,291 passing unit tests on 30 Oct; these are separate runs. No Android or Firestore tests were rerun for this documentation review.
 
 | Command | Result |
 |---|---|
@@ -284,11 +284,11 @@ Messages that are not read as transactions:
 
 - **No real-phone SMS test.** All collected samples came from iPhones, where apps cannot read SMS. Automatic capture was only tried with emulator SMS. How real operators, dual-SIM phones, long messages and battery restrictions behave is unknown.
 - **Few banks.** Only Commercial Bank card and ATM messages and Sampath messages are fully supported. DFCC and Commercial Bank transfers always need a check. Other banks go to manual entry.
-- **No credit alerts** from Commercial Bank or DFCC have been seen, so incoming money from those banks is not parsed. A Sampath credit only has the sender's note, so the user must pick income, transfer or refund. Reversals are never income.
+- **No credit alerts** from Commercial Bank or DFCC have been seen, so incoming money from those banks is not parsed. A Sampath credit only has the sender's note, so the user must decide whether it is income, a transfer or a refund. Refunds must be discarded from capture review and recorded manually; the review screen does not offer a Refund type. Reversals are never income.
 - **Foreign amounts.** No SMS with a USD amount has been seen, so foreign purchases are not validated. The only foreign sample was shown in LKR.
-- **Raw merchant names.** Names keep country codes, terminal IDs and typos. The user can edit the name in review.
+- **Raw merchant names.** Names keep country codes, terminal IDs and typos. Capture review does not edit the merchant, amount or date; discard an incorrect draft and add the payment manually.
 - **Sharing is manual.** The user has to share each message. Zar cannot tell the difference between a quiet week and a missed message, so Capture sources shows the last capture time and never says "all caught up".
-- **Automatic capture** needs the SMS permission and only sees new messages, never the inbox. It is off by default. Google Play restricts the SMS permission, so treat it as a demo feature. Messages need the phone to be online to become drafts, and a message not saved within 7 days is deleted with a notice.
+- **Automatic capture** needs the SMS permission and only sees new messages, never the inbox. It is off by default. Google Play restricts the SMS permission, so treat it as a demo feature. Saving a structured draft requires a connection. Staged text older than 7 days is deleted on a background pass with a notice if it has not become a draft; already-created drafts are not deleted by this rule.
 - **Drafts are reviewed in Capture sources.** They do not appear in the Needs review list.
 - **Rates are typed by the user.** There is no live exchange-rate service, so income in USD stays "missing rate" until a rate is entered.
 - **Reminders** run from a daily background job and need the notification permission. The exact minute is not guaranteed. If notifications are refused, no reminder is shown and the screen says so.

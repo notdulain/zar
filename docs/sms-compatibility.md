@@ -50,7 +50,7 @@ The word after the account shows the channel: `via POS at` is a card purchase, `
 4. **Credits are not automatically income.** Sampath credits carry only the sender's note ("Food", "wifi"). The money might be income, a friend paying back, or a transfer, so the user picks the type. This matches the rule that unexplained credits stay out of Received.
 5. **Commercial Bank transfer times are 12-hour without AM/PM.** A message received at 21:59 said `09:59:34`, so only the date is used. The wording is "Fund transfer request", so the user confirms it went through.
 6. **DFCC has no time** and sends card fees as separate messages (`ref: POS Transaction Fee`). The parser marks these as bank fees.
-7. **Merchant names are raw.** They include country codes, terminal IDs and typos (`COLK`). Merchant cleanup is future work, and the user can edit the name in review.
+7. **Merchant names are raw.** They include country codes, terminal IDs and typos (`COLK`). Merchant cleanup is future work. Capture review does not edit the merchant; discard an incorrect draft and add the payment manually.
 8. **No credit alerts were seen** from Commercial Bank or DFCC, so they are unknown, not supported.
 9. **Foreign purchases show in LKR.** The only foreign sample (a declined Google One charge) was in LKR. No USD-amount message has been seen yet.
 
