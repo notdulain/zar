@@ -8,6 +8,7 @@ import com.example.zar.core.domain.TestLedger.lkr
 import com.example.zar.core.domain.TestLedger.tx
 import com.example.zar.core.domain.TestLedger.void
 import com.example.zar.core.domain.model.Draft
+import com.example.zar.core.domain.model.UserId
 import com.example.zar.core.domain.model.DraftId
 import com.example.zar.core.domain.model.DraftProposal
 import com.example.zar.core.domain.model.DraftSource
@@ -37,6 +38,7 @@ class LinkCapturedDraftUseCaseTest {
         var failure: Throwable? = null
         override fun observePendingDrafts(): Flow<List<Draft>> = values.map { it.filter { d -> d.status == DraftStatus.PENDING_REVIEW } }
         override fun observeDrafts(): Flow<List<Draft>> = values
+        override suspend fun saveDraftFor(owner: UserId, draft: Draft): Draft = saveDraft(draft)
         override suspend fun saveDraft(draft: Draft): Draft { values.value = values.value + draft; return draft }
         override suspend fun confirmCapturedDraft(draft: Draft, transaction: Transaction) = Unit
         override suspend fun setStatus(id: DraftId, status: DraftStatus) = Unit

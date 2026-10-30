@@ -71,7 +71,8 @@ class ProcessStagedSmsUseCase @Inject constructor(
         for (message in staging.waiting(owner)) {
             // Signed out or switched user mid-pass: stop, and leave the rest for their owner.
             if (session.currentUserId() != owner) return ProcessResult(processed, left, expired, paused = true)
-            captureText(message.text, DraftSource.SMS, message.receivedAt).fold(
+            // Bound to the owner checked above: a switch after the check cannot redirect the draft to the new user.
+            captureText(message.text, DraftSource.SMS, message.receivedAt, owner).fold(
                 onSuccess = {
                     staging.clear(message.id)
                     processed++
