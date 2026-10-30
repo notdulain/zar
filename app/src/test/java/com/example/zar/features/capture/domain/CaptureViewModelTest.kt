@@ -22,6 +22,7 @@ class CaptureViewModelTest {
         var gate: CompletableDeferred<Unit>?=null
         override fun observeDrafts()=values
         override fun observePendingDrafts()=values.map { it.filter { d -> d.status==DraftStatus.PENDING_REVIEW } }
+        override suspend fun saveDraftFor(owner: UserId, draft: Draft): Draft = saveDraft(draft)
         override suspend fun saveDraft(draft:Draft):Draft { gate?.await(); values.value=values.value+draft;return draft }
         override suspend fun confirmCapturedDraft(draft:Draft,transaction:Transaction) { }
         override suspend fun setStatus(id:DraftId,status:DraftStatus) { }

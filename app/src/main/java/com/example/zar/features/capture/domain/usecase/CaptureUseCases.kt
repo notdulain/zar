@@ -13,6 +13,7 @@ import com.example.zar.core.domain.model.LedgerEntry
 import com.example.zar.core.domain.model.SpendingClass
 import com.example.zar.core.domain.model.TransactionId
 import com.example.zar.core.domain.model.TransactionType
+import com.example.zar.core.domain.model.UserId
 import com.example.zar.core.domain.repository.AccountRepository
 import com.example.zar.core.domain.repository.DraftRepository
 import com.example.zar.core.domain.repository.LedgerRepository
@@ -59,14 +60,16 @@ class CaptureTextUseCase @Inject constructor(
     private val parser: BankSmsParser,
     private val drafts: DraftRepository,
 ) {
-    suspend operator fun invoke(text: String, source: DraftSource, now: Instant): Result<CaptureOutcome> = attempt {
+    /** With [owner] the draft is saved only if that user is still signed in (see [DraftRepository.saveDraftFor]). */
+    suspend operator fun invoke(text: String, source: DraftSource, now: Instant, owner: UserId? = null): Result<CaptureOutcome> = attempt {
         if (text.isBlank()) return@attempt CaptureOutcome.Empty
         when (val result = parser.parse(text)) {
             is SmsParseResult.Ignored -> CaptureOutcome.Ignored(result.reason)
             SmsParseResult.Unrecognised -> CaptureOutcome.Unrecognised
             is SmsParseResult.Parsed -> {
                 val id = CapturedDraftRules.draftIdFor(text)
-                val saved = drafts.saveDraft(CapturedDraftRules.draftFrom(id, result.sms, source, now))
+                val draft = CapturedDraftRules.draftFrom(id, result.sms, source, now)
+                val saved = if (owner == null) drafts.saveDraft(draft) else drafts.saveDraftFor(owner, draft)
                 if (saved.status == DraftStatus.PENDING_REVIEW) CaptureOutcome.Drafted(id, result.sms)
                 else CaptureOutcome.AlreadyReviewed
             }

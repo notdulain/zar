@@ -50,19 +50,19 @@ The word after the account shows the channel: `via POS at` is a card purchase, `
 4. **Credits are not automatically income.** Sampath credits carry only the sender's note ("Food", "wifi"). The money might be income, a friend paying back, or a transfer, so the user picks the type. This matches the rule that unexplained credits stay out of Received.
 5. **Commercial Bank transfer times are 12-hour without AM/PM.** A message received at 21:59 said `09:59:34`, so only the date is used. The wording is "Fund transfer request", so the user confirms it went through.
 6. **DFCC has no time** and sends card fees as separate messages (`ref: POS Transaction Fee`). The parser marks these as bank fees.
-7. **Merchant names are raw.** They include country codes, terminal IDs and typos (`COLK`). Merchant cleanup is future work, and the user can edit the name in review.
+7. **Merchant names are raw.** They include country codes, terminal IDs and typos (`COLK`). Merchant cleanup is future work. Capture review does not edit the merchant; discard an incorrect draft and add the payment manually.
 8. **No credit alerts were seen** from Commercial Bank or DFCC, so they are unknown, not supported.
 9. **Foreign purchases show in LKR.** The only foreign sample (a declined Google One charge) was in LKR. No USD-amount message has been seen yet.
 
-## Capture routes (to test on an Android phone with Dulain)
+## Capture routes (actual results)
 
-All samples so far came from iPhones, and iOS doesn't let apps read SMS. Fill this table on a real Android device:
+All samples so far came from iPhones, and iOS doesn't let apps read SMS. The routes were built and checked on a Pixel 8 emulator (API 36). None has been tried with a real bank SMS on a physical Android phone.
 
 | Route | Permission | User steps | Works when app closed? | Result |
 |---|---|---|---|---|
-| Share SMS to Zar (`ACTION_SEND`, text/plain) | None | Long-press message → Share → Zar | Not needed | Not tested yet |
-| Read incoming SMS (`RECEIVE_SMS`) | Runtime SMS permission | Allow once | Yes | Not tested yet. Google Play restricts SMS permissions, so treat it as a demo only |
-| Notification listener | Special notification access | Enable in system settings | Yes | Not tested yet |
+| Share SMS to Zar (`ACTION_SEND`, text/plain) | None | Long-press message → Share → Zar | Not needed | Built (L09). Checked on the emulator with a share intent: a Commercial Bank card message became a draft and nothing was saved until confirmed. Not tested on a physical phone |
+| Read incoming SMS (`RECEIVE_SMS`) | Runtime SMS permission | Turn on "Capture new bank SMS" in Capture sources, then allow | Yes | Built (L08), off by default. Checked on the emulator with `adb emu sms send`: messages were staged encrypted and became drafts when online. Not tested on a physical phone. Google Play restricts SMS permissions, so treat it as a demo only |
+| Notification listener | Special notification access | Enable in system settings | Yes | Not built |
 
 Recommendation: make **share to Zar** the main route, because it needs no sensitive permission. Raw message text stays on the device and is never uploaded (see `docs/domain-contracts.md`).
 
@@ -73,5 +73,5 @@ Samples were anonymized before being committed: card and account digits, people'
 ## Next steps
 
 - Collect samples from BOC, People's Bank, HNB and NSB, plus credit messages from Commercial Bank and DFCC.
-- Run the capture-route tests on an Android phone.
+- Run the share and automatic capture routes on a physical Android phone with real messages.
 - Re-run the tests after adding each new sample.

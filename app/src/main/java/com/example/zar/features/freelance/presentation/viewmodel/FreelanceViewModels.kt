@@ -3,7 +3,6 @@ package com.example.zar.features.freelance.presentation.viewmodel
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import androidx.navigation.toRoute
 import com.example.zar.core.domain.calculation.ZarTime
 import com.example.zar.core.domain.model.LedgerError
 import com.example.zar.core.domain.model.RecordIds
@@ -91,7 +90,7 @@ class ProjectViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     observeFreelance: ObserveFreelanceUseCase,
 ) : ViewModel() {
-    private val projectId = ProjectId(savedStateHandle.toRoute<ProjectRoute>().projectId)
+    private val projectId = ProjectId(savedStateHandle.get<String>(ProjectRoute::projectId.name).orEmpty())
 
     val uiState: StateFlow<ProjectUiState> = observeFreelance(ZarTime.today())
         .map { overview -> ProjectUiState(isLoading = false, summary = overview.projects.firstOrNull { it.project.id == projectId }) }
@@ -123,7 +122,7 @@ class ProjectFormViewModel @Inject constructor(
     private val observeFreelance: ObserveFreelanceUseCase,
     private val saveProject: SaveProjectUseCase,
 ) : ViewModel() {
-    private val editingId = savedStateHandle.toRoute<ProjectFormRoute>().projectId?.let(::ProjectId)
+    private val editingId = savedStateHandle.get<String>(ProjectFormRoute::projectId.name)?.let(::ProjectId)
 
     // Created once and reused on retry, so a repeated save can't create two projects.
     private val newProjectId = ProjectId(RecordIds.newId())

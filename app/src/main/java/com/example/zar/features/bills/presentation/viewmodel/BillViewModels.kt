@@ -3,7 +3,6 @@ package com.example.zar.features.bills.presentation.viewmodel
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import androidx.navigation.toRoute
 import com.example.zar.core.domain.calculation.ZarTime
 import com.example.zar.core.domain.model.Account
 import com.example.zar.core.domain.model.AccountId
@@ -97,7 +96,7 @@ class BillViewModel @Inject constructor(
     private val saveBill: SaveBillUseCase,
     private val refreshReminders: RefreshRemindersUseCase,
 ) : ViewModel() {
-    private val billId = BillId(savedStateHandle.toRoute<BillRoute>().billId)
+    private val billId = BillId(savedStateHandle.get<String>(BillRoute::billId.name).orEmpty())
 
     val uiState: StateFlow<BillUiState> = combine(observeBills(ZarTime.today()), observeAccounts()) { overview, accounts ->
         BillUiState(
@@ -177,7 +176,7 @@ class BillFormViewModel @Inject constructor(
     private val saveBill: SaveBillUseCase,
     private val refreshReminders: RefreshRemindersUseCase,
 ) : ViewModel() {
-    private val editingId = savedStateHandle.toRoute<BillFormRoute>().billId?.let(::BillId)
+    private val editingId = savedStateHandle.get<String>(BillFormRoute::billId.name)?.let(::BillId)
 
     // Created once and reused on retry, so a repeated save can't create two bills.
     private val newBillId = BillId(RecordIds.newId())
@@ -280,9 +279,8 @@ class BillOccurrenceViewModel @Inject constructor(
     private val linkPayment: LinkBillPaymentUseCase,
     private val unlinkPayment: UnlinkBillPaymentUseCase,
 ) : ViewModel() {
-    private val route = savedStateHandle.toRoute<BillOccurrenceRoute>()
-    private val billId = BillId(route.billId)
-    private val dueDate = LocalDate.parse(route.dueDate)
+    private val billId = BillId(savedStateHandle.get<String>(BillOccurrenceRoute::billId.name).orEmpty())
+    private val dueDate = LocalDate.parse(requireNotNull(savedStateHandle.get<String>(BillOccurrenceRoute::dueDate.name)))
 
     private val _uiState = MutableStateFlow(BillOccurrenceUiState())
     val uiState: StateFlow<BillOccurrenceUiState> = _uiState.asStateFlow()

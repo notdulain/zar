@@ -16,6 +16,7 @@ import com.example.zar.core.domain.model.SpendingClass
 import com.example.zar.core.domain.model.TransactionType
 import com.example.zar.core.domain.model.Transaction
 import com.example.zar.core.domain.model.TransactionId
+import com.example.zar.core.domain.model.UserId
 import kotlinx.coroutines.tasks.await
 import com.example.zar.core.domain.repository.DraftRepository
 import com.example.zar.core.domain.repository.LinkWrite
@@ -74,8 +75,14 @@ class FirestoreDraftRepository @Inject constructor(
         }
     }
 
-    override suspend fun saveDraft(draft: Draft): Draft {
-        val uid = requireUid()
+    override suspend fun saveDraft(draft: Draft): Draft = saveFor(requireUid(), draft)
+
+    override suspend fun saveDraftFor(owner: UserId, draft: Draft): Draft {
+        checkSession(owner.value)
+        return saveFor(owner.value, draft)
+    }
+
+    private suspend fun saveFor(uid: String, draft: Draft): Draft {
         val ref = drafts(uid).document(draft.id.value)
         return firestore.runTransaction { tx ->
             checkSession(uid)
