@@ -117,6 +117,41 @@ class GoalBackingCalculatorTest {
         assertNull(result.weeklyPace)
     }
 
+    @Test fun zeroInitialAllocationHasNoBackingAndTheWholeTargetIsTheShortfall() {
+        val unallocated = goal.copy(allocations = emptyList())
+        val result = GoalBackingCalculator.calculate(unallocated, listOf(account), emptyList(), today)
+        assertEquals(lkr(0), result.allocated)
+        assertEquals(lkr(0), result.backed)
+        assertEquals(lkr(0), result.allocationGap)
+        assertEquals(lkr(20_000), result.targetShortfall)
+        assertEquals(lkr(10_000), result.weeklyPace)
+        assertEquals(0f, result.backedFraction(unallocated.target))
+        assertEquals(0f, result.allocatedFraction(unallocated.target))
+        assertFalse(result.hasUnknownBalance)
+        assertNull(result.balanceAsOf)
+    }
+
+    @Test fun balanceFreshnessIsTheOldestLastRecordedDateAmongBackingAccounts() {
+        val cash = Account(
+            AccountId("cash"), "Cash", AccountType.CASH, Currencies.LKR,
+            OpeningBalance.Known(lkr(5_000)), LocalDate.of(2026, 10, 5),
+        )
+        val twoAccounts = goal.copy(allocations = listOf(GoalAllocation(account.id, lkr(8_000)), GoalAllocation(cash.id, lkr(2_000))))
+        val recent = TestLedger.entry(TestLedger.tx("recent", TransactionType.EXPENSE, lkr(100), account, LocalDate.of(2026, 10, 18)))
+        val result = GoalBackingCalculator.calculate(twoAccounts, listOf(account, cash), listOf(recent), today)
+        assertEquals(LocalDate.of(2026, 10, 5), result.balanceAsOf)
+
+        val cashUpdated = TestLedger.entry(TestLedger.tx("cash-update", TransactionType.EXPENSE, lkr(100), cash, LocalDate.of(2026, 10, 19)))
+        val refreshed = GoalBackingCalculator.calculate(twoAccounts, listOf(account, cash), listOf(recent, cashUpdated), today)
+        assertEquals(LocalDate.of(2026, 10, 18), refreshed.balanceAsOf)
+    }
+
+    @Test fun anEntryAfterTodayDoesNotMakeTheBalanceLookFresher() {
+        val future = TestLedger.entry(TestLedger.tx("future", TransactionType.EXPENSE, lkr(100), account, today.plusDays(2)))
+        val result = GoalBackingCalculator.calculate(goal, listOf(account), listOf(future), today)
+        assertEquals(account.openingDate, result.balanceAsOf)
+    }
+
     @Test fun weeklyPaceRoundsUpToTheSmallestCurrencyUnit() {
         val tinyGoal = SavingsGoal(goal.id, goal.name, FiatMoney(1, Currencies.LKR), targetDate = today.plusDays(3))
         val result = GoalBackingCalculator.calculate(tinyGoal, emptyList(), emptyList(), today)

@@ -9,6 +9,7 @@ import com.example.zar.core.domain.TestLedger.bank
 import com.example.zar.core.domain.TestLedger.lkr
 import com.example.zar.core.domain.TestLedger.payoneer
 import com.example.zar.core.domain.model.Draft
+import com.example.zar.core.domain.model.UserId
 import com.example.zar.core.domain.model.DraftField
 import com.example.zar.core.domain.model.DraftId
 import com.example.zar.core.domain.model.DraftProposal
@@ -53,6 +54,7 @@ class CaptureTest {
         val drafts = MutableStateFlow<Map<DraftId, Draft>>(emptyMap())
         override fun observePendingDrafts(): Flow<List<Draft>> = drafts.map { it.values.filter { d -> d.status == DraftStatus.PENDING_REVIEW } }
         override fun observeDrafts(): Flow<List<Draft>> = drafts.map { it.values.toList() }
+        override suspend fun saveDraftFor(owner: UserId, draft: Draft): Draft = saveDraft(draft)
         override suspend fun saveDraft(draft: Draft): Draft {
             val existing = drafts.value[draft.id]
             if (existing != null) return existing
