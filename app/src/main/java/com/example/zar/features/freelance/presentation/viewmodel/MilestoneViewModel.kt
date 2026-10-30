@@ -3,7 +3,6 @@ package com.example.zar.features.freelance.presentation.viewmodel
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import androidx.navigation.toRoute
 import com.example.zar.core.domain.calculation.ZarTime
 import com.example.zar.core.domain.model.ExpectedPaymentId
 import com.example.zar.core.domain.model.MatchState
@@ -76,9 +75,8 @@ class MilestoneViewModel @Inject constructor(
     private val linkReceipt: LinkReceiptUseCase,
     private val unlinkReceipt: UnlinkReceiptUseCase,
 ) : ViewModel() {
-    private val route = savedStateHandle.toRoute<MilestoneRoute>()
-    private val projectId = ProjectId(route.projectId)
-    private val editingId = route.milestoneId?.let(::ExpectedPaymentId)
+    private val projectId = ProjectId(savedStateHandle.get<String>(MilestoneRoute::projectId.name).orEmpty())
+    private val editingId = savedStateHandle.get<String>(MilestoneRoute::milestoneId.name)?.let(::ExpectedPaymentId)
 
     // Created once and reused on retry, so a repeated save can't create two milestones.
     private val newMilestoneId = ExpectedPaymentId(RecordIds.newId())
