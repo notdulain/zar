@@ -1,0 +1,19 @@
+transactions: 14
+  26f48aca-811b-48d6-abf6-d2ee9d36e7f2 type=REFUND source=MANUAL account=cash cat=undefined merchant=Keells Super amount={"integerValue":"100000"}
+  c3366c00-4233-4ff3-ad8a-1f9530cbc385 type=ADJUSTMENT_OUT source=RECONCILIATION account=cash cat=undefined merchant=undefined amount={"integerValue":"100000"}
+  client type=INCOME source=MANUAL account=sampath cat=freelance merchant=Client payment amount={"integerValue":"12500000"}
+  dialog type=EXPENSE source=SMS account=sampath cat=bills merchant=Dialog Internet amount={"integerValue":"585000"}
+  f6377821-f9a4-4d4d-97e3-582ddbb35840-in type=TRANSFER_IN source=MANUAL account=cash cat=undefined merchant=undefined amount={"integerValue":"250000"}
+  f6377821-f9a4-4d4d-97e3-582ddbb35840-out type=TRANSFER_OUT source=MANUAL account=sampath cat=undefined merchant=undefined amount={"integerValue":"250000"}
+  hosting type=EXPENSE source=MANUAL account=payoneer cat=bills merchant=Hosting amount={"integerValue":"4000"}
+  keells type=EXPENSE source=MANUAL account=cash cat=groceries merchant=Keells Super amount={"integerValue":"840000"}
+  mystery type=EXPENSE source=MANUAL account=cash cat=undefined merchant=Corner shop amount={"integerValue":"65000"}
+  netflix type=EXPENSE source=MANUAL account=sampath cat=subscriptions merchant=Netflix amount={"integerValue":"219000"}
+  pickme type=EXPENSE source=MANUAL account=cash cat=transport merchant=PickMe amount={"integerValue":"125000"}
+  t1-fee type=EXPENSE source=MANUAL account=sampath cat=transfer-fee merchant=Transfer fee amount={"integerValue":"3000"}
+  t1-in type=TRANSFER_IN source=MANUAL account=cash cat=undefined merchant=undefined amount={"integerValue":"1000000"}
+  t1-out type=TRANSFER_OUT source=MANUAL account=sampath cat=undefined merchant=undefined amount={"integerValue":"1000000"}
+expectedPayments: 0
+drafts: 0
+corrections: 1
+  target=keells changed amount minor=860000 (original transaction document is not rewritten)

@@ -1,0 +1,13 @@
+transactions: 10
+  client type=INCOME source=MANUAL account=sampath cat=freelance merchant=Client payment amount={"integerValue":"12500000"}
+  dialog type=EXPENSE source=SMS account=sampath cat=bills merchant=Dialog Internet amount={"integerValue":"585000"}
+  hosting type=EXPENSE source=MANUAL account=payoneer cat=bills merchant=Hosting amount={"integerValue":"4000"}
+  keells type=EXPENSE source=MANUAL account=cash cat=groceries merchant=Keells Super amount={"integerValue":"840000"}
+  mystery type=EXPENSE source=MANUAL account=cash cat=undefined merchant=Corner shop amount={"integerValue":"65000"}
+  netflix type=EXPENSE source=MANUAL account=sampath cat=subscriptions merchant=Netflix amount={"integerValue":"219000"}
+  pickme type=EXPENSE source=MANUAL account=cash cat=transport merchant=PickMe amount={"integerValue":"125000"}
+  t1-fee type=EXPENSE source=MANUAL account=sampath cat=transfer-fee merchant=Transfer fee amount={"integerValue":"3000"}
+  t1-in type=TRANSFER_IN source=MANUAL account=cash cat=undefined merchant=undefined amount={"integerValue":"1000000"}
+  t1-out type=TRANSFER_OUT source=MANUAL account=sampath cat=undefined merchant=undefined amount={"integerValue":"1000000"}
+expectedPayments: 0
+drafts: 0
