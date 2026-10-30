@@ -33,6 +33,82 @@ const usdIncome = (id) => ({
 });
 const path = (uid, col, id) => `users/${uid}/${col}/${id}`;
 
+// D08: valid owner fixtures make the negative ownership cases meaningful: the exact same
+// create payload is accepted for Alice after Bob and the signed-out client are refused.
+const millis = 1790000000000;
+const ownershipCases = [
+  ['accounts', 'bank', { id: 'bank', name: 'Test bank', type: 'BANK', currency: { code: 'LKR', kind: 'FIAT', digits: 2 }, opening: { status: 'UNKNOWN' }, openingDate: '2026-10-01', archived: false, updatedAt: millis }],
+  ['transactions', 't1', tx('t1')],
+  ['corrections', 'c1', { id: 'c1', transactionId: 't1', changes: { note: 'Corrected' }, correctedAt: millis }],
+  ['voids', 't1', { transactionId: 't1', voidedAt: millis }],
+  ['evidenceLinks', 'e1', { evidenceId: 'e1', transactionId: 't1', linkedAt: millis }],
+  ['expectedPayments', 'p1', { id: 'p1', direction: 'OUT', amount: lkr(1000), dueDate: '2026-10-30', title: 'Test bill', source: { type: 'QUICK_NOTE' }, status: 'OPEN', createdAt: millis }],
+  ['paymentMatches', 'p1_t1', { expectedPaymentId: 'p1', transactionId: 't1', amount: lkr(1000), matchedAt: millis }],
+  ['projects', 'p1', { id: 'p1', name: 'Test project', currency: { code: 'LKR', kind: 'FIAT', digits: 2 }, status: 'ACTIVE', createdAt: millis }],
+  ['goals', 'g1', { id: 'g1', name: 'Test goal', target: lkr(10000), allocations: [], updatedAt: millis }],
+  ['allowance', 'weekly', { id: 'weekly', enabled: false, categoryIds: [], weekStart: 'MONDAY', updatedAt: millis }],
+  ['cryptoOpeningCosts', 'wallet', { accountId: 'wallet', cost: lkr(1000), approximate: false, updatedAt: millis }],
+  ['bills', 'b1', { id: 'b1', name: 'Test bill', accountId: 'bank', amount: lkr(1000), frequency: 'MONTHLY', firstDue: '2026-10-30', status: 'ACTIVE', createdAt: millis }],
+  ['categoryRules', 'r1', { id: 'r1', merchantKey: 'test store', displayName: 'Test store', categoryId: 'groceries', enabled: true, version: 1, createdAt: millis, updatedAt: millis }],
+  ['expenseCategories', 'custom-test-category', { id: 'custom-test-category', name: 'Pets', nameKey: 'pets', source: 'CUSTOM', createdAt: millis }],
+  ['drafts', 'd1', { id: 'd1', source: 'SMS', status: 'PENDING_REVIEW', createdAt: millis, proposals: [{ kind: 'ACTUAL_TRANSACTION', type: 'EXPENSE', amount: lkr(1000), uncertainFields: [] }] }],
+];
+
+for (const [col, id, payload] of ownershipCases) {
+  test(`D08 ownership: ${col} refuses foreign and signed-out create/read/list/update/delete`, async () => {
+    for (const db of [bob(), anon()]) await assertFails(setDoc(doc(db, path('alice', col, id)), payload));
+    await assertSucceeds(setDoc(doc(alice(), path('alice', col, id)), payload));
+    await assertSucceeds(getDoc(doc(alice(), path('alice', col, id))));
+    for (const db of [bob(), anon()]) {
+      const ref = doc(db, path('alice', col, id));
+      await assertFails(getDoc(ref));
+      await assertFails(getDocs(collection(db, `users/alice/${col}`)));
+      await assertFails(updateDoc(ref, payload));
+      await assertFails(deleteDoc(ref));
+    }
+  });
+}
+
+test('D08 evidence links are typed, schema bounded, ID-bound and write-once', async () => {
+  const link = { evidenceId: 'e1', transactionId: 't1', linkedAt: millis };
+  const ref = doc(alice(), path('alice', 'evidenceLinks', 'e1'));
+  await assertSucceeds(setDoc(ref, link));
+  await assertFails(setDoc(ref, link));
+  await assertFails(updateDoc(ref, { transactionId: 't2' }));
+  await assertFails(deleteDoc(ref));
+  for (const over of [{ evidenceId: 'other' }, { transactionId: 5 }, { linkedAt: '1790000000000' }, { rawText: 'private SMS' }]) {
+    await assertFails(setDoc(doc(alice(), path('alice', 'evidenceLinks', 'e2')), { ...link, evidenceId: 'e2', ...over }));
+  }
+});
+
+test('D08 transaction types and raw-message schema pollution are rejected', async () => {
+  const invalid = [{ amount: '1000' }, { amount: { ...lkr(1000), minor: '1000' } }, { date: millis }, { createdAt: '1790000000000' }, { accountId: 5 }, { source: true }, { rawText: 'private SMS' }, { rawMessage: 'private SMS' }];
+  for (const [i, over] of invalid.entries()) {
+    const id = `invalid-${i}`;
+    await assertFails(setDoc(doc(alice(), path('alice', 'transactions', id)), tx(id, over)));
+  }
+});
+
+test('D08 corrections and voids reject malformed values and cannot be changed or deleted', async () => {
+  const c = { id: 'c1', transactionId: 't1', changes: { amount: lkr(1000) }, correctedAt: millis };
+  const ref = doc(alice(), path('alice', 'corrections', 'c1'));
+  await assertSucceeds(setDoc(ref, c));
+  await assertFails(updateDoc(ref, { changes: { amount: lkr(2000) } }));
+  await assertFails(deleteDoc(ref));
+  await assertFails(setDoc(doc(alice(), path('alice', 'corrections', 'bad')), { ...c, id: 'bad', changes: { rawText: 'private SMS' } }));
+  await assertFails(setDoc(doc(alice(), path('alice', 'voids', 't2')), { transactionId: 't1', voidedAt: millis }));
+  await assertFails(setDoc(doc(alice(), path('alice', 'voids', 't2')), { transactionId: 't2', voidedAt: '1790000000000' }));
+});
+
+test('D08 unknown collections, nested paths and root documents remain denied', async () => {
+  for (const db of [alice(), bob(), anon()]) {
+    for (const location of ['users/alice', 'users/alice/unknown/test', 'users/alice/transactions/t1/private/test', 'transactions/t1']) {
+      await assertFails(setDoc(doc(db, location), { fixture: true }));
+      await assertFails(getDoc(doc(db, location)));
+    }
+  }
+});
+
 test('owner can create and read a transaction', async () => {
   await assertSucceeds(setDoc(doc(alice(), path('alice', 'transactions', 't1')), tx('t1')));
   await assertSucceeds(setDoc(doc(alice(), path('alice', 'transactions', 'timed')), tx('timed', { time: '09:05' })));

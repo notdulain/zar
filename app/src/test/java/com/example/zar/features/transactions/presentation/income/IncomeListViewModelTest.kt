@@ -61,6 +61,7 @@ class IncomeListViewModelTest {
         assertFalse(vm.uiState.value.isLoading)
         assertTrue(vm.uiState.value.months.isEmpty())
         assertEquals(lkr(0), vm.uiState.value.receivedThisMonth?.amount)
+        vm.viewModelScope.cancel()
     }
 
     @Test
@@ -82,6 +83,7 @@ class IncomeListViewModelTest {
         assertFalse(rows.getValue("upwork").missingRate)
         assertEquals("Payoneer", rows.getValue("upwork").accountName)
         assertEquals("Shown in its own currency", usd(100), rows.getValue("upwork").amount)
+        vm.viewModelScope.cancel()
     }
 
     @Test
@@ -95,5 +97,6 @@ class IncomeListViewModelTest {
         vm.retry()
         assertFalse(vm.uiState.value.loadFailed)
         assertFalse(vm.uiState.value.isLoading)
+        vm.viewModelScope.cancel()
     }
 }

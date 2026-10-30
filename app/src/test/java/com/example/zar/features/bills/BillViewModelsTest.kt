@@ -59,9 +59,11 @@ class BillViewModelsTest {
         val bills = MutableStateFlow<List<Bill>>(emptyList())
         var offline = false
         var saves = 0
+        val attemptedIds = mutableListOf<BillId>()
         override fun observeBills(): Flow<List<Bill>> = if (failLoad) flow { throw IOException("Permission denied") } else bills
         override suspend fun saveBill(bill: Bill) {
             saves++
+            attemptedIds += bill.id
             if (offline) throw IOException("Offline")
             bills.value = bills.value.filterNot { it.id == bill.id } + bill
         }
@@ -153,6 +155,7 @@ class BillViewModelsTest {
         vm.save()
         vm.save()
         assertEquals("Retrying reuses the same ID: one bill", 1, bills.bills.value.size)
+        assertEquals("Failed attempts and retries keep the same ID", 1, bills.attemptedIds.distinct().size)
         assertEquals(bills.bills.value.single().id.value, vm.uiState.value.savedBillId)
         assertEquals(BillReminder.ONE_DAY_BEFORE, bills.bills.value.single().reminder)
         assertTrue("A reminder due today is checked straight away", scheduler.checks >= 1)
