@@ -117,4 +117,6 @@ OpenSpec plans remain git-ignored. UI PRs include screenshots captured from the 
 
 [Jira backlog](https://03dulain.atlassian.net/jira/software/projects/SCRUM/boards/1/backlog) · [Approved wireframes](https://www.figma.com/design/p5SITMwzIDaa76eHLI3zB0/Places-App?node-id=91-2)
 
+Home, Plans and trust feature submission material: [U10 report section](docs/U10-home-plans-trust-report.md) and [three-minute demo walkthrough](docs/U10-demo.md).
+
 Keep received money separate from expected payments. Transfers are not income or spending. Feature freeze: 22 October 2026. Submission: 30 October 2026.
