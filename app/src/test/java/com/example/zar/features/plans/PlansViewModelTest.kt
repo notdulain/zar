@@ -27,6 +27,8 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
+import com.example.zar.features.plans.domain.model.GoalAllocation
+import com.example.zar.features.plans.domain.model.GoalId
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
@@ -152,12 +154,58 @@ class PlansViewModelTest {
     }
 
     @Test
-    fun createGoalNeverReplacesAnExistingGoal() = runTest {
+    fun createGoalAddsAnotherPlanUnderItsOwnIdAndLeavesTheFirstUntouched() = runTest {
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.uiState.collect {} }
         vm.createGoal("Laptop", "490000", null)
-        assertEquals("Laptop", vm.uiState.value.overview?.goal?.name)
-        vm.createGoal("Other", "1000", null)
-        assertEquals("Laptop", vm.uiState.value.overview?.goal?.name)
-        assertEquals(1, vm.uiState.value.goalCreatedCount)
+        val first = goals.goals.value.single()
+        vm.createGoal("Phone", "1000", null)
+
+        assertEquals(2, goals.goals.value.size)
+        assertEquals(first, goals.goals.value.single { it.id == first.id })
+        assertEquals(2, goals.goals.value.map { it.id }.distinct().size)
+        assertEquals(2, vm.uiState.value.overview?.goals?.size)
+        assertEquals(2, vm.uiState.value.goalCreatedCount)
+    }
+
+    @Test
+    fun aRetriedCreateReusesTheSameIdSoNoDuplicateIsAdded() = runTest {
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.uiState.collect {} }
+        val failing = object : GoalRepository {
+            var fail = true
+            val saved = mutableListOf<SavingsGoal>()
+            override fun observeGoals(): Flow<List<SavingsGoal>> = goals.observeGoals()
+            override suspend fun saveGoal(goal: SavingsGoal) {
+                saved += goal
+                if (fail) throw IllegalStateException("rejected")
+                goals.saveGoal(goal)
+            }
+        }
+        val accounts = FakePlanAccounts(listOf(savings))
+        val retrying = PlansViewModel(
+            ObservePlansOverviewUseCase(goals, accounts, TrackingPlanLedger()),
+            SaveGoalUseCase(failing),
+            SetGoalAllocationUseCase(goals, accounts, TrackingPlanLedger()),
+        )
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { retrying.uiState.collect {} }
+        retrying.createGoal("Laptop", "490000", null)
+        assertEquals(PlansMessage.SAVE_FAILED, retrying.uiState.value.message)
+        failing.fail = false
+        retrying.createGoal("Laptop", "490000", null)
+
+        assertEquals(1, failing.saved.map { it.id }.distinct().size)
+        assertEquals(1, goals.goals.value.size)
+    }
+
+    @Test
+    fun theLegacyMacbookGoalCoexistsWithNewPlansAndStaysMain() = runTest {
+        val legacy = SavingsGoal(GoalId("macbook-fund"), "MacBook fund", lkr(490_000), listOf(GoalAllocation(savings.id, lkr(1_000))))
+        goals.goals.value = listOf(legacy)
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.uiState.collect {} }
+        vm.createGoal("Aardvark", "5000", null)
+
+        val overview = vm.uiState.value.overview!!
+        assertEquals(2, overview.goals.size)
+        assertEquals(legacy, goals.goals.value.single { it.id == legacy.id })
+        assertEquals(legacy.id, overview.goal?.id)
     }
 }

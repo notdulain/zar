@@ -53,4 +53,24 @@ data class SavingsGoal(
         }
 }
 
-const val MACBOOK_GOAL_ID = "macbook-fund"
+/** The ID of the single goal Zar created before multiple plans. It is a normal goal now; it keeps its ID forever. */
+const val LEGACY_GOAL_ID = "macbook-fund"
+
+/** Kept for existing call sites and tests of the legacy record. New goals get a [newGoalId], never this. */
+const val MACBOOK_GOAL_ID = LEGACY_GOAL_ID
+
+/** A fresh opaque ID for a new goal. Generate it once per create attempt and reuse it when the save is retried. */
+fun newGoalId(): GoalId = GoalId(java.util.UUID.randomUUID().toString())
+
+/** Which goal is the user's main one, from a saved choice, the legacy goal, or a stable fallback. */
+object MainGoalResolver {
+    /**
+     * [preferredId] wins when that goal exists. Otherwise the legacy goal stays main so upgraded users see no change,
+     * then the first goal by name and ID so every device resolves the same one. Never changes because another goal was added
+     * while a valid preference exists, and returns null only for an empty catalog.
+     */
+    fun resolve(goals: List<SavingsGoal>, preferredId: GoalId?): GoalId? =
+        goals.firstOrNull { it.id == preferredId }?.id
+            ?: goals.firstOrNull { it.id.value == LEGACY_GOAL_ID }?.id
+            ?: goals.minWithOrNull(compareBy({ it.name.lowercase() }, { it.id.value }))?.id
+}

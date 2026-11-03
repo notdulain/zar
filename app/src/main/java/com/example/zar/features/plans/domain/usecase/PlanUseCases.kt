@@ -1,8 +1,11 @@
 package com.example.zar.features.plans.domain.usecase
 
+import com.example.zar.core.domain.calculation.AccountBalance
 import com.example.zar.core.domain.calculation.AccountBalanceCalculator
 import com.example.zar.core.domain.calculation.ZarTime
+import com.example.zar.core.domain.model.Account
 import com.example.zar.core.domain.model.AccountId
+import com.example.zar.core.domain.model.LedgerEntry
 import com.example.zar.core.domain.model.LedgerError
 import com.example.zar.core.domain.model.money.Money
 import com.example.zar.core.domain.repository.AccountRepository
@@ -11,7 +14,7 @@ import com.example.zar.core.domain.usecase.resultOf
 import com.example.zar.features.plans.domain.model.GoalAllocation
 import com.example.zar.features.plans.domain.model.GoalBackingCalculator
 import com.example.zar.features.plans.domain.model.GoalId
-import com.example.zar.features.plans.domain.model.MACBOOK_GOAL_ID
+import com.example.zar.features.plans.domain.model.MainGoalResolver
 import com.example.zar.features.plans.domain.model.PlansOverview
 import com.example.zar.features.plans.domain.model.SavingsGoal
 import com.example.zar.features.plans.domain.repository.GoalRepository
@@ -31,22 +34,40 @@ class ObservePlansOverviewUseCase @Inject constructor(
         accounts.observeAccounts(),
         ledger.observeLedger(),
     ) { savedGoals, savedAccounts, entries ->
-        val goal = savedGoals.firstOrNull { it.id.value == MACBOOK_GOAL_ID }
-        val currency = goal?.target?.currency
-        val eligible = savedAccounts
-            .asSequence()
-            .filter { account -> !account.isArchived || goal?.allocations?.any { it.accountId == account.id } == true }
-            .filter { currency == null || it.currency == currency }
-            .filter { account -> account.openingDate <= today || goal?.allocations?.any { it.accountId == account.id } == true }
-            .map { AccountBalanceCalculator.calculate(it, entries, today) }
-            .filter { balance ->
-                (balance.current != null && !balance.current.isNegative) ||
-                    goal?.allocations?.any { it.accountId == balance.account.id } == true
-            }
-            .sortedBy { it.account.name.lowercase() }
-            .toList()
-        PlansOverview(goal, eligible, goal?.let { GoalBackingCalculator.calculate(it, savedAccounts, entries, today) })
+        val catalog = savedGoals.sortedWith(compareBy({ it.name.lowercase() }, { it.id.value }))
+        val mainId = MainGoalResolver.resolve(catalog, preferredId = null)
+        val accountsByGoal = catalog.associate { goal -> goal.id to eligibleAccounts(goal, savedAccounts, entries, today) }
+        val progressByGoal = catalog.associate { goal ->
+            goal.id to GoalBackingCalculator.calculate(goal, savedAccounts, entries, today)
+        }
+        val main = catalog.firstOrNull { it.id == mainId }
+        PlansOverview(
+            goal = main,
+            allocationAccounts = main?.let { accountsByGoal[it.id] }.orEmpty(),
+            progress = main?.let { progressByGoal[it.id] },
+            goals = catalog,
+            progressByGoal = progressByGoal,
+            accountsByGoal = accountsByGoal,
+        )
     }
+
+    private fun eligibleAccounts(
+        goal: SavingsGoal,
+        savedAccounts: List<Account>,
+        entries: List<LedgerEntry>,
+        today: LocalDate,
+    ): List<AccountBalance> = savedAccounts
+        .asSequence()
+        .filter { account -> !account.isArchived || goal.allocations.any { it.accountId == account.id } }
+        .filter { it.currency == goal.target.currency }
+        .filter { account -> account.openingDate <= today || goal.allocations.any { it.accountId == account.id } }
+        .map { AccountBalanceCalculator.calculate(it, entries, today) }
+        .filter { balance ->
+            (balance.current != null && !balance.current.isNegative) ||
+                goal.allocations.any { it.accountId == balance.account.id }
+        }
+        .sortedBy { it.account.name.lowercase() }
+        .toList()
 }
 
 class SaveGoalUseCase @Inject constructor(
