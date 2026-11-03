@@ -511,7 +511,9 @@
     <string name="home_activity_undone">Undone</string>
     <string name="activity_filter_all">All</string>
     <string name="activity_filter_review">Needs review</string>
-    <string name="home_received_chart">Daily received income in LKR for %1$s.</string>
+    <string name="home_received_chart">Cumulative received income in LKR for %1$s, one bar per day.</string>
+    <string name="home_received_chart_total">Received so far by %1$s: %2$s.</string>
+    <string name="home_received_chart_unresolved">Some income has no known LKR rate yet.</string>
     <string name="home_received_chart_empty">No income with a known LKR value to chart.</string>
     <string name="activity_amount_pending">—</string>
 

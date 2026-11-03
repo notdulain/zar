@@ -21,6 +21,8 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.click
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import com.example.zar.core.domain.calculation.PeriodSummary
@@ -112,7 +114,7 @@ class HomeScreenUiTest {
     }
 
     @Test
-    fun chartDescribesActualDailyIncomeAndTheSelectedMonth() {
+    fun chartDescribesCumulativeIncomeAndTheSelectedMonth() {
         val paid = ReportingTotal(FiatMoney(125_050, Currencies.LKR))
         val overview = HomeOverview(
             month = month,
@@ -129,11 +131,47 @@ class HomeScreenUiTest {
                 )
             }
         }
-        compose.onNodeWithContentDescription("Daily received income in LKR for September 2026. Sep 10: LKR 1,250.50")
+        compose.onNodeWithContentDescription("Cumulative received income in LKR for September 2026, one bar per day. Received so far by Sep 30: LKR 1,250.50.")
             .performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("received-amount").assertTextContains("LKR 1,250.50")
         saveScreenshot("u02-home-reviewed.png")
     }
+    @Test
+    fun cumulativeBarsCarryIncomeForwardAndTapShowsTheRunningTotal() {
+        val paid = ReportingTotal(FiatMoney(10_000, Currencies.LKR))
+        val overview = HomeOverview(
+            month = month,
+            summary = PeriodSummary(paid, SpendingBreakdown(zero, zero, zero), 0),
+            recent = emptyList(),
+            hasRecordsInMonth = true,
+            receivedByDay = List(month.lengthOfMonth()) { if (it == 0) paid else zero },
+        )
+        compose.setContent {
+            ZarTheme {
+                HomeScreenContent(
+                    state = HomeUiState(month, canGoForward = true, HomeContent.Ready(overview)),
+                    onPreviousMonth = {}, onNextMonth = {}, onRetry = {}, onNavigate = {}, onAddOption = {},
+                )
+            }
+        }
+        compose.onNodeWithTag("received-chart").performScrollTo().performTouchInput { click() }
+        compose.onNodeWithTag("received-chart-caption").assertTextContains("LKR 100", substring = true)
+    }
+
+    @Test
+    fun emptyMonthStillDrawsEverySlotWithAnEmptyCaption() {
+        compose.setContent {
+            ZarTheme {
+                HomeScreenContent(
+                    state = HomeUiState(month, canGoForward = true, HomeContent.Ready(emptyOverview())),
+                    onPreviousMonth = {}, onNextMonth = {}, onRetry = {}, onNavigate = {}, onAddOption = {},
+                )
+            }
+        }
+        compose.onNodeWithTag("received-chart").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("received-chart-caption").assertTextContains("No income", substring = true)
+    }
+
     @Test
     fun clientsOweAndNextBillRowsShowTheirDataAndOpenDetails() {
         var freelanceOpened = 0

@@ -4,6 +4,9 @@ import com.example.zar.core.presentation.privacy.AmountPrivacyViewModel
 import com.example.zar.core.presentation.privacy.AmountMask
 import androidx.annotation.StringRes
 import androidx.compose.foundation.Canvas
+import com.example.zar.core.domain.calculation.ZarTime
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -536,38 +539,69 @@ private fun HeroStatus(overview: HomeOverview) {
 
 @Composable
 private fun ReceivedBarChart(overview: HomeOverview, modifier: Modifier = Modifier) {
-    val days = overview.receivedByDay
-    val maxAmount = days.maxOfOrNull { it.amount.minorUnits } ?: 0L
-    val description = stringResource(R.string.home_received_chart, overview.month.format(MonthFormat)) + " " +
-        if (maxAmount == 0L) stringResource(R.string.home_received_chart_empty) else {
-            days.mapIndexedNotNull { index, total ->
-                if (total.amount.isZero) null else "${overview.month.atDay(index + 1).format(DayFormat)}: ${total.amount.formatWithCode()}"
-            }.joinToString("; ")
+    val today = remember { ZarTime.today() }
+    val series = remember(overview.month, overview.receivedByDay, today) { overview.cumulativeIncome(today) }
+    val slots = series.slots
+    var selected by remember(overview.month) { mutableIntStateOf(-1) }
+    val monthLabel = overview.month.format(MonthFormat)
+    val description = stringResource(R.string.home_received_chart, monthLabel) + " " +
+        if (series.isAllZero) stringResource(R.string.home_received_chart_empty) else {
+            val last = slots.lastOrNull { !it.isFuture } ?: slots.first()
+            stringResource(
+                R.string.home_received_chart_total,
+                last.date.format(DayFormat),
+                last.cumulative.amount.formatWithCode(),
+            ) + if (series.hasUnresolved) " " + stringResource(R.string.home_received_chart_unresolved) else ""
         }
-    Box(modifier.semantics { contentDescription = description }.testTag("received-chart")) {
-        if (maxAmount == 0L || days.isEmpty()) {
+    Box(
+        modifier
+            .semantics { contentDescription = description }
+            .testTag("received-chart")
+            .pointerInput(slots.size) {
+                detectTapGestures { tap ->
+                    val index = (tap.x / (size.width.toFloat() / slots.size)).toInt().coerceIn(0, slots.lastIndex)
+                    selected = if (slots[index].isFuture || index == selected) -1 else index
+                }
+            },
+    ) {
+        Canvas(Modifier.fillMaxSize()) {
+            val slotWidth = size.width / slots.size
+            val barWidth = 5.dp.toPx().coerceAtMost(slotWidth * 0.7f)
+            val markerHeight = barWidth
+            slots.forEachIndexed { index, slot ->
+                val x = index * slotWidth + (slotWidth - barWidth) / 2f
+                val progress = index.toFloat() / slots.lastIndex.coerceAtLeast(1)
+                val opacity = 0.18f + 0.82f * progress * progress * progress
+                val isToday = !slot.isFuture && (index == slots.lastIndex || slots[index + 1].isFuture)
+                val color = when {
+                    slot.isFuture -> Color.White.copy(alpha = 0.12f)
+                    index == selected || isToday -> ZarHighlight
+                    else -> Color.White.copy(alpha = opacity.coerceAtLeast(0.3f))
+                }
+                val height = if (slot.isFuture || slot.isZeroMarker) markerHeight
+                else (size.height * series.fractionOf(slot)).coerceAtLeast(markerHeight)
+                drawRoundRect(
+                    color = color,
+                    topLeft = Offset(x, size.height - height),
+                    size = Size(barWidth, height),
+                    cornerRadius = CornerRadius(barWidth / 2f),
+                )
+            }
+        }
+        val picked = slots.getOrNull(selected)
+        val caption = when {
+            picked != null -> picked.date.format(DayFormat) + ": " + picked.cumulative.amount.formatWithCode() +
+                if (picked.cumulative.unresolvedCount > 0) " + " + stringResource(R.string.home_received_chart_unresolved) else ""
+            series.isAllZero -> stringResource(R.string.home_received_chart_empty)
+            else -> null
+        }
+        if (caption != null) {
             Text(
-                stringResource(R.string.home_received_chart_empty),
+                caption,
                 color = Color.White.copy(alpha = 0.7f),
                 style = ZarType.bodyCaption,
-                modifier = Modifier.align(Alignment.Center),
+                modifier = Modifier.align(if (picked != null) Alignment.TopCenter else Alignment.Center).testTag("received-chart-caption"),
             )
-        } else {
-            Canvas(Modifier.fillMaxSize()) {
-                val slotWidth = size.width / days.size
-                val barWidth = 5.dp.toPx().coerceAtMost(slotWidth * 0.7f)
-                days.forEachIndexed { index, total ->
-                    val barHeight = size.height * (total.amount.minorUnits.toDouble() / maxAmount).toFloat()
-                    val progress = index.toFloat() / days.lastIndex.coerceAtLeast(1)
-                    val opacity = 0.18f + 0.82f * progress * progress * progress
-                    drawRoundRect(
-                        color = if (index == days.lastIndex) ZarHighlight else Color.White.copy(alpha = opacity),
-                        topLeft = Offset(index * slotWidth + (slotWidth - barWidth) / 2f, size.height - barHeight),
-                        size = Size(barWidth, barHeight),
-                        cornerRadius = CornerRadius(barWidth / 2f),
-                    )
-                }
-            }
         }
     }
 }
