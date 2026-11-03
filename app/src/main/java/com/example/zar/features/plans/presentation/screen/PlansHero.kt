@@ -122,6 +122,8 @@ internal fun GoalHero(
     onEditGoal: () -> Unit,
     onAllocate: () -> Unit,
     heroOffset: HeroScrollOffset,
+    onChangeMain: () -> Unit = {},
+    onViewGoal: () -> Unit = {},
 ) {
     val goal = overview.goal
     val progress = overview.progress
@@ -141,8 +143,8 @@ internal fun GoalHero(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(stringResource(R.string.plans_main_goal), style = HeroBody14, color = ZarWhite.copy(alpha = 0.75f))
                             Box(
-                                Modifier.heightIn(min = 48.dp).clickable(role = Role.Button, onClick = onEditGoal)
-                                    .padding(horizontal = 10.dp).testTag("plans-edit-goal"),
+                                Modifier.heightIn(min = 48.dp).clickable(role = Role.Button, onClick = onChangeMain)
+                                    .padding(horizontal = 10.dp).testTag("plans-change-main"),
                                 contentAlignment = Alignment.Center,
                             ) {
                                 Text(
@@ -188,17 +190,24 @@ internal fun GoalHero(
         }
         Spacer(Modifier.height(24.dp))
         val enabled = goal == null || overview.allocationAccounts.isNotEmpty()
-        Box(
-            Modifier.heightIn(min = 48.dp)
-                .clickable(enabled = enabled, role = Role.Button) { if (goal == null) onEditGoal() else onAllocate() }
-                .testTag("plans-set-aside"),
-            contentAlignment = Alignment.CenterStart,
-        ) {
-            Text(
-                stringResource(if (goal == null) R.string.plans_create_action else R.string.plans_allocate_action) + " →",
-                style = HeroMedium15,
-                color = ZarWhite.copy(alpha = if (enabled) 1f else 0.4f),
-            )
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            if (goal != null) {
+                Box(Modifier.heightIn(min = 48.dp).clickable(role = Role.Button, onClick = onViewGoal).testTag("plans-view-goal"), contentAlignment = Alignment.CenterStart) {
+                    Text(stringResource(R.string.plans_view_goal) + " →", style = HeroMedium15, color = ZarWhite)
+                }
+            }
+            Box(
+                Modifier.heightIn(min = 48.dp)
+                    .clickable(enabled = enabled, role = Role.Button) { if (goal == null) onEditGoal() else onAllocate() }
+                    .testTag("plans-set-aside"),
+                contentAlignment = Alignment.CenterStart,
+            ) {
+                Text(
+                    stringResource(if (goal == null) R.string.plans_create_action else R.string.plans_allocate_action) + " →",
+                    style = HeroMedium15,
+                    color = ZarWhite.copy(alpha = if (enabled) 1f else 0.4f),
+                )
+            }
         }
         if (goal != null && overview.allocationAccounts.isEmpty()) {
             Text(stringResource(R.string.plans_no_accounts), style = ZarType.bodyS, color = ZarWhite.copy(alpha = 0.8f))

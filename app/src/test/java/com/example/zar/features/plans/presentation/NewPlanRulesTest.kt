@@ -1,22 +1,12 @@
 package com.example.zar.features.plans.presentation
 
-import com.example.zar.features.plans.presentation.screen.NewPlanType
 import com.example.zar.features.plans.presentation.screen.PlansHeroSpec
-import com.example.zar.features.plans.presentation.screen.defaultNewPlanType
 import com.example.zar.features.plans.presentation.screen.monthsToReach
 import java.time.LocalDate
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class NewPlanRulesTest {
-    @Test
-    fun theSheetOpensOnWhatIsMissing() {
-        assertEquals(NewPlanType.Goal, defaultNewPlanType(hasGoal = false, hasWeeklyLimit = false))
-        assertEquals(NewPlanType.Goal, defaultNewPlanType(hasGoal = false, hasWeeklyLimit = true))
-        assertEquals(NewPlanType.Limit, defaultNewPlanType(hasGoal = true, hasWeeklyLimit = false))
-        assertEquals(NewPlanType.Bill, defaultNewPlanType(hasGoal = true, hasWeeklyLimit = true))
-    }
-
     @Test
     fun monthsToReachIsAtLeastOne() {
         val today = LocalDate.of(2026, 10, 27)

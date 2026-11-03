@@ -134,6 +134,9 @@ fun PlansScreen(
     val allowance by allowanceViewModel.uiState.collectAsStateWithLifecycle()
     val counts by countsViewModel.counts.collectAsStateWithLifecycle()
     var showNewPlan by rememberSaveable { mutableStateOf(false) }
+    var showAllPlans by rememberSaveable { mutableStateOf(false) }
+    // The plan whose detail is open, by ID, so it comes back after the process is recreated.
+    var detailGoalId by rememberSaveable { mutableStateOf<String?>(null) }
     // The sheet closes once the goal it created has been saved.
     LaunchedEffect(state.goalCreatedCount) { if (state.goalCreatedCount > 0) showNewPlan = false }
     PlansScreenContent(
@@ -141,8 +144,12 @@ fun PlansScreen(
         onNavigate = onNavigate,
         onAddOption = onAddOption,
         onRetry = viewModel::retry,
-        onEditGoal = viewModel::openGoalEditor,
-        onAllocate = viewModel::openAllocationEditor,
+        onEditGoal = { viewModel.openGoalEditor() },
+        onAllocate = { viewModel.openAllocationEditor() },
+        onChangeMain = { showAllPlans = true },
+        onViewGoal = { detailGoalId = state.overview?.goal?.id?.value },
+        onSeeAll = { showAllPlans = true },
+        onOpenPlan = { detailGoalId = it.value },
         onNewPlan = { viewModel.clearMessage(); showNewPlan = true },
         counts = counts,
         onOpenBills = onOpenBills,
@@ -164,19 +171,41 @@ fun PlansScreen(
         ) {
             SheetBackHost(onPop = { showNewPlan = false }) { dismiss ->
                 NewPlanSheet(
-                    goalName = state.overview?.goal?.name,
                     hasWeeklyLimit = allowance.overview?.settings?.isEnabled == true,
-                    // Disabled until the plans have loaded: only then is it known that no goal exists to be replaced.
+                    // Disabled until the plans have loaded: nothing is written while the catalog is unknown.
                     isSaving = state.isSaving || state.overview == null,
+                    message = state.message,
                     onDismiss = dismiss,
                     onCreateGoal = viewModel::createGoal,
-                    onEditGoal = { showNewPlan = false; viewModel.openGoalEditor() },
                     onSetLimit = { showNewPlan = false; allowanceViewModel.openEditor() },
                     onAddBill = { showNewPlan = false; onNewBill() },
                     onAddProject = { showNewPlan = false; onNewProject() },
                 )
             }
         }
+    }
+    val overview = state.overview
+    if (showAllPlans && overview != null) {
+        AllPlansSheet(
+            overview = overview,
+            isSaving = state.isSaving,
+            onSelectMain = viewModel::selectMainGoal,
+            onOpen = { showAllPlans = false; detailGoalId = it.value },
+            onDismiss = { showAllPlans = false },
+        )
+    }
+    detailGoalId?.let { id -> overview?.goalById(GoalId(id)) }?.let { goal ->
+        PlanDetailSheet(
+            goal = goal,
+            progress = overview?.progressFor(goal.id),
+            isMain = overview?.goal?.id == goal.id,
+            canAllocate = overview?.allocationAccountsFor(goal.id)?.isNotEmpty() == true,
+            isSaving = state.isSaving,
+            onSetAside = { detailGoalId = null; viewModel.openAllocationEditor(goal.id) },
+            onEdit = { detailGoalId = null; viewModel.openGoalEditor(goal.id) },
+            onMakeMain = { viewModel.selectMainGoal(goal.id) },
+            onDismiss = { detailGoalId = null },
+        )
     }
     allowance.editor?.let { editor ->
         ProvideExpenseCategoryCatalog {
@@ -208,7 +237,7 @@ fun PlansScreen(
     state.allocationEditor?.let { editor ->
         AllocationDialog(
             editor = editor,
-            accounts = state.overview?.allocationAccounts.orEmpty(),
+            accounts = editor.goalId?.let { state.overview?.allocationAccountsFor(it) } ?: state.overview?.allocationAccounts.orEmpty(),
             isSaving = state.isSaving,
             message = state.message,
             onSelectAccount = viewModel::selectAllocationAccount,
@@ -227,6 +256,10 @@ internal fun PlansScreenContent(
     onRetry: () -> Unit,
     onEditGoal: () -> Unit,
     onAllocate: () -> Unit,
+    onChangeMain: () -> Unit = {},
+    onViewGoal: () -> Unit = {},
+    onSeeAll: () -> Unit = {},
+    onOpenPlan: (GoalId) -> Unit = {},
     allowanceSection: (@Composable () -> Unit)? = null,
     weeklyLimitSummary: String? = null,
     onEditWeeklyLimit: () -> Unit = {},
@@ -263,12 +296,16 @@ internal fun PlansScreenContent(
                     onEditGoal = onEditGoal,
                     onAllocate = onAllocate,
                     heroOffset = heroOffset,
+                    onChangeMain = onChangeMain,
+                    onViewGoal = onViewGoal,
                 )
             }
             Column(
                 Modifier.padding(horizontal = ZarDimens.ScreenGutter).padding(top = 18.dp),
                 verticalArrangement = Arrangement.spacedBy(ZarDimens.SpaceMd),
             ) {
+                // Other saved plans beside the main goal. A failed load shows the error hero above, never an empty list.
+                state.overview?.takeIf { !state.isLoading && !state.loadFailed }?.let { YourPlansSection(it, onSeeAll, onOpenPlan) }
                 ZarEyebrow(stringResource(R.string.plans_other_plans).uppercase(), Modifier.padding(start = 12.dp))
                 // One grouped card, a row per plan kind (Figma Z04): each opens its real screen or editor.
                 ZarCard(Modifier.fillMaxWidth(), contentPadding = PaddingValues(vertical = 4.dp)) {
@@ -341,7 +378,7 @@ private fun PlanRow(icon: Int, title: String, subtitle: String, onClick: () -> U
 }
 
 @Composable
-private fun GoalProgressDetails(goal: SavingsGoal, progress: BackedGoalProgress) {
+internal fun GoalProgressDetails(goal: SavingsGoal, progress: BackedGoalProgress) {
     val colors = ZarTheme.colors
     ZarCard(Modifier.fillMaxWidth()) {
         Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -500,7 +537,7 @@ private fun AllocationDialog(
 }
 
 @Composable
-private fun DialogError(message: PlansMessage) {
+internal fun DialogError(message: PlansMessage) {
     val text = when (message) {
         PlansMessage.INVALID_GOAL -> R.string.plans_invalid_goal
         PlansMessage.INVALID_AMOUNT -> R.string.plans_invalid_amount
