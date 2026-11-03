@@ -20,10 +20,15 @@ data class HomeOverview(
     val hasRecordsInMonth: Boolean,
     /** One income total per calendar day, starting on day 1; missing rates remain unresolved. */
     val receivedByDay: List<ReportingTotal> = emptyList(),
+    /** Received per calendar month for the six months ending at [month], oldest first; empty when not loaded. */
+    val receivedByMonth: List<ReportingTotal> = emptyList(),
 ) {
     /** Cumulative Received from day 1, one slot per calendar day; days after [today] are placeholders. */
     fun cumulativeIncome(today: LocalDate): CumulativeIncomeSeries =
         CumulativeIncomeSeries.from(month, receivedByDay, today)
+
+    /** Six monthly totals ending at the selected month, for the trend line. */
+    fun monthlyTrend(today: LocalDate): MonthlyIncomeTrend = MonthlyIncomeTrend.from(month, receivedByMonth, today)
 
     /** Spent / For plans / Still free of this month's Received. */
     val donut: HomeDonut get() = HomeDonut.from(summary)

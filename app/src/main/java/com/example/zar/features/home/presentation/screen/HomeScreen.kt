@@ -69,6 +69,12 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.offset
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.unit.Dp
 import com.example.zar.R
 import com.example.zar.features.home.domain.model.DonutStatus
 import com.example.zar.core.domain.model.money.FiatMoney
@@ -107,6 +113,7 @@ import java.util.Locale
 
 private val MonthFormat = DateTimeFormatter.ofPattern("MMMM yyyy", Locale.ENGLISH)
 private val AxisFormat = DateTimeFormatter.ofPattern("d MMM", Locale.ENGLISH)
+private val ShortMonthFormat = DateTimeFormatter.ofPattern("MMM", Locale.ENGLISH)
 private val DayFormat = DateTimeFormatter.ofPattern("MMM d", Locale.ENGLISH)
 
 @Composable
@@ -371,7 +378,21 @@ private fun ReceivedHero(
                     else -> ReceivedLineChart(overview, chartModifier)
                 }
                 Spacer(Modifier.height(7.dp))
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                if (chartMode == 2 && overview.receivedByMonth.isNotEmpty()) {
+                    Row(Modifier.fillMaxWidth().padding(horizontal = 18.dp)) {
+                        val first = overview.month.minusMonths((overview.receivedByMonth.size - 1).toLong())
+                        overview.receivedByMonth.indices.forEach { i ->
+                            Text(
+                                first.plusMonths(i.toLong()).format(ShortMonthFormat).uppercase(),
+                                style = ZarType.label,
+                                color = colors.textOnInverse,
+                                textAlign = TextAlign.Center,
+                                maxLines = 1,
+                                modifier = Modifier.weight(1f),
+                            )
+                        }
+                    }
+                } else Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     val today = remember { ZarTime.today() }
                     val end = if (today in overview.month.atDay(1)..overview.month.atEndOfMonth()) today else overview.month.atEndOfMonth()
                     Text(
@@ -540,17 +561,75 @@ private fun DonutLegendRow(dot: Color, label: String, value: String) {
 
 @Composable
 private fun ReceivedLineChart(overview: HomeOverview, modifier: Modifier = Modifier) {
-    val days = overview.receivedByDay
-    val maximum = days.maxOfOrNull { it.amount.minorUnits }?.coerceAtLeast(1L) ?: 1L
-    Canvas(modifier) {
-        if (days.size < 2) return@Canvas
-        val line = Path()
-        days.forEachIndexed { index, total ->
-            val x = size.width * index / (days.size - 1)
-            val y = size.height * (1f - total.amount.minorUnits.toFloat() / maximum)
-            if (index == 0) line.moveTo(x, y) else line.lineTo(x, y)
+    val today = remember { ZarTime.today() }
+    val trend = remember(overview.month, overview.receivedByMonth, today) { overview.monthlyTrend(today) }
+    val points = trend.points
+    val colors = ZarTheme.colors
+    val currency = overview.summary.received.amount.currency
+    val average = trend.averageMinor
+    val delta = trend.deltaMinor
+    val averageText = average?.let { FiatMoney(it, currency).formatWithCode() }
+    val deltaText = delta?.let { (if (it < 0) "−" else "+") + FiatMoney(Math.abs(it), currency).formatWithCode() }
+    val previousLabel = trend.previous?.month?.format(ShortMonthFormat)
+    val notes = listOfNotNull(
+        if (trend.hasPartialMonth) stringResource(R.string.home_trend_partial) else null,
+        if (trend.hasUnresolvedMonth) stringResource(R.string.home_trend_unresolved) else null,
+    ).joinToString(" · ")
+    val description = stringResource(
+        R.string.home_trend_description,
+        points.firstOrNull()?.month?.format(ShortMonthFormat) ?: "",
+        points.lastOrNull()?.month?.format(ShortMonthFormat) ?: "",
+    ) + " " + points.joinToString("; ") { "${it.month.format(ShortMonthFormat)}: ${it.received.amount.formatWithCode()}" } +
+        (averageText?.let { ". " + stringResource(R.string.home_trend_average, it) } ?: "") +
+        (if (deltaText != null && previousLabel != null) ". $deltaText " + stringResource(R.string.home_trend_vs, previousLabel) else "") +
+        (if (notes.isNotEmpty()) ". $notes" else "")
+    BoxWithConstraints(modifier.semantics { contentDescription = description }.testTag("trend-chart")) {
+        val plotTop = 30.dp
+        val plotHeight = maxHeight - plotTop - 6.dp
+        fun yOf(minor: Long): Dp = plotTop + plotHeight * (1f - minor.toFloat() / trend.maximumMinor)
+        Canvas(Modifier.fillMaxSize()) {
+            if (points.isEmpty()) return@Canvas
+            val slot = size.width / points.size
+            val xs = points.indices.map { slot * (it + 0.5f) }
+            val ys = points.map { yOf(it.received.amount.minorUnits).toPx() }
+            if (average != null) {
+                val y = yOf(average).toPx()
+                drawLine(
+                    Color.White.copy(alpha = 0.35f), Offset(0f, y), Offset(size.width, y), 1.dp.toPx(),
+                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(3.dp.toPx(), 4.dp.toPx())),
+                )
+            }
+            if (points.size > 1) {
+                val line = Path()
+                xs.forEachIndexed { i, x -> if (i == 0) line.moveTo(x, ys[i]) else line.lineTo(x, ys[i]) }
+                drawPath(line, Color.White, style = Stroke(2.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
+            }
+            xs.forEachIndexed { i, x ->
+                val last = i == points.lastIndex
+                drawCircle(if (last) ZarHighlight else Color.White, if (last) 5.dp.toPx() else 3.5.dp.toPx(), Offset(x, ys[i]))
+            }
         }
-        drawPath(line, Color.White, style = androidx.compose.ui.graphics.drawscope.Stroke(2.dp.toPx()))
+        if (average != null && averageText != null) {
+            Text(
+                stringResource(R.string.home_trend_average, averageText).uppercase(),
+                style = ZarType.axis,
+                color = colors.textOnInverse.copy(alpha = 0.7f),
+                maxLines = 1,
+                modifier = Modifier.align(Alignment.TopStart).offset(y = yOf(average) - 16.dp).testTag("trend-average"),
+            )
+        }
+        if (deltaText != null && previousLabel != null && points.isNotEmpty()) {
+            Text(
+                deltaText.uppercase() + " " + stringResource(R.string.home_trend_vs, previousLabel).uppercase(),
+                style = ZarType.axis,
+                color = colors.textOnInverse,
+                maxLines = 1,
+                modifier = Modifier.align(Alignment.TopEnd).offset(y = (yOf(points.last().received.amount.minorUnits) - 24.dp).coerceAtLeast(0.dp)).testTag("trend-delta"),
+            )
+        }
+        if (notes.isNotEmpty()) {
+            Text(notes, style = ZarType.bodyCaption, color = colors.textOnInverse.copy(alpha = 0.75f), maxLines = 1, modifier = Modifier.align(Alignment.TopStart).testTag("trend-note"))
+        }
     }
 }
 

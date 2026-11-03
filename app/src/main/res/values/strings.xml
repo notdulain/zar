@@ -515,6 +515,11 @@
     <string name="home_received_chart_total">Received so far by %1$s: %2$s.</string>
     <string name="home_received_chart_unresolved">Some income has no known LKR rate yet.</string>
     <string name="home_received_chart_empty">No income with a known LKR value to chart.</string>
+    <string name="home_trend_average">6-mo avg %1$s</string>
+    <string name="home_trend_vs">vs %1$s</string>
+    <string name="home_trend_partial">Latest month in progress</string>
+    <string name="home_trend_unresolved">Some income has no LKR rate</string>
+    <string name="home_trend_description">Monthly received income from %1$s to %2$s.</string>
     <string name="home_donut_axis_range">%1$s → %2$s</string>
     <string name="home_donut_axis_share">Share of received</string>
     <string name="home_donut_spent">Spent</string>

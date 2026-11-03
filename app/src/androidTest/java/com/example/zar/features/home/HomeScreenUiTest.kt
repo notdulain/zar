@@ -199,6 +199,34 @@ class HomeScreenUiTest {
     }
 
     @Test
+    fun trendShowsSixMonthsAverageAndDeltaApartFromTheDailyBars() {
+        fun lkr(major: Long) = ReportingTotal(FiatMoney(major * 100, Currencies.LKR))
+        val overview = HomeOverview(
+            month = month,
+            summary = PeriodSummary(lkr(600), SpendingBreakdown(zero, zero, zero), 0),
+            recent = emptyList(),
+            hasRecordsInMonth = true,
+            receivedByDay = List(month.lengthOfMonth()) { zero },
+            receivedByMonth = listOf(100L, 200L, 300L, 400L, 500L, 600L).map(::lkr),
+        )
+        compose.setContent {
+            ZarTheme {
+                HomeScreenContent(
+                    state = HomeUiState(month, canGoForward = true, HomeContent.Ready(overview)),
+                    onPreviousMonth = {}, onNextMonth = {}, onRetry = {}, onNavigate = {}, onAddOption = {},
+                )
+            }
+        }
+        compose.onNodeWithContentDescription("Received trend").performClick()
+        compose.onNodeWithTag("trend-chart").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("trend-average", useUnmergedTree = true).assertTextContains("LKR 350", substring = true)
+        compose.onNodeWithTag("trend-delta", useUnmergedTree = true).assertTextContains("+LKR 100", substring = true)
+        compose.onNodeWithTag("trend-delta", useUnmergedTree = true).assertTextContains("VS AUG", substring = true)
+        compose.onNodeWithText("APR", useUnmergedTree = true).assertIsDisplayed()
+        compose.onNodeWithText("SEP", useUnmergedTree = true).assertIsDisplayed()
+    }
+
+    @Test
     fun clientsOweAndNextBillRowsShowTheirDataAndOpenDetails() {
         var freelanceOpened = 0
         var openedBill: String? = null
