@@ -1,0 +1,15 @@
+app/src/main/java/com/example/zar/features/quicknote/presentation/screen/QuickNoteScreen.kt:906: tonalElevation = 0.dp,
+app/src/main/java/com/example/zar/features/transactions/presentation/screen/ActivityScreen.kt:830: tonalElevation = 0.dp,
+app/src/main/java/com/example/zar/features/transactions/presentation/manual/screen/ManualDateTimePickerSheets.kt:305: .shadow(14.dp, ZarShapes.sheet, ambientColor = Color(0x1F000000), spotColor = Color(0x1F000000))
+app/src/main/java/com/example/zar/features/transactions/presentation/manual/screen/ManualEntryScreen.kt:735: .shadow(14.dp, ZarShapes.sheet, ambientColor = Color(0x1F000000), spotColor = Color(0x1F000000))
+app/src/main/java/com/example/zar/features/transactions/presentation/manual/screen/ManualEntryScreen.kt:843: .then(if (selected) Modifier.shadow(2.dp, ZarShapes.sm, ambientColor = Color(0x140F1A2B), spotColor = Color(0x140F1A2B)) else Modifier)
+app/src/main/java/com/example/zar/features/transactions/presentation/manual/screen/ManualEntryScreen.kt:981: tonalElevation = 0.dp,
+app/src/main/java/com/example/zar/core/presentation/components/ZarDialogs.kt:68: tonalElevation: Dp = DatePickerDefaults.TonalElevation,
+app/src/main/java/com/example/zar/core/presentation/components/ZarDialogs.kt:77: tonalElevation = tonalElevation,
+app/src/main/java/com/example/zar/core/presentation/components/ZarComponents.kt:243: .shadow(8.dp, ZarShapes.pill, ambientColor = Color(0x0F0F1A2B), spotColor = Color(0x1F0F1A2B))
+app/src/main/java/com/example/zar/core/presentation/components/ZarScreenScaffold.kt:142: elevation = FloatingActionButtonDefaults.elevation(4.dp, 4.dp, 4.dp, 4.dp),
+app/src/main/java/com/example/zar/core/presentation/components/ZarControls.kt:60: if (selected) Modifier.shadow(
+app/src/main/java/com/example/zar/core/presentation/components/ZarControls.kt:146: .shadow(2.dp, CircleShape, ambientColor = Color(0x140F1A2B), spotColor = Color(0x140F1A2B))
+app/src/main/java/com/example/zar/core/presentation/components/ZarBottomNav.kt:135: shadowElevation = 0.dp,
+app/src/main/java/com/example/zar/core/presentation/theme/ZarElevation.kt:24: .shadow(elevation = 3.dp, shape = shape, ambientColor = tight, spotColor = tight)
+app/src/main/java/com/example/zar/core/presentation/theme/ZarElevation.kt:25: .shadow(elevation = 14.dp, shape = shape, ambientColor = tight, spotColor = wide)

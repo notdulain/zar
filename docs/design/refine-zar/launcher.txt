@@ -1,0 +1,15 @@
+app/src/main/AndroidManifest.xml:19: android:icon="@mipmap/ic_launcher"
+app/src/main/AndroidManifest.xml:21: android:roundIcon="@mipmap/ic_launcher_round"
+app/src/main/java/com/example/zar/features/reminders/data/PaymentReminders.kt:167: .setSmallIcon(R.drawable.ic_launcher_foreground)
+app/src/main/java/com/example/zar/features/reminders/data/PaymentReminders.kt:171: .setSmallIcon(R.drawable.ic_launcher_foreground)
+app/src/main/java/com/example/zar/features/catchup/data/ReminderNotifier.kt:42: .setSmallIcon(R.drawable.ic_launcher_foreground)
+app/src/main/java/com/example/zar/features/auth/presentation/screen/SessionLoadingScreen.kt:33: Image(painterResource(R.drawable.zar_mark), contentDescription = stringResource(R.string.app_name),
+app/src/main/res/drawable/zar_splash_animated.xml:1: <animated-vector xmlns:android="http://schemas.android.com/apk/res/android" android:drawable="@drawable/zar_splash_art">
+app/src/main/res/drawable/zar_splash_animated.xml:2: <target android:name="sweep" android:animation="@animator/zar_splash_sweep" />
+app/src/main/res/values-v31/themes.xml:6: <item name="android:windowSplashScreenAnimatedIcon">@drawable/zar_splash_animated</item>
+app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml:3: <background android:drawable="@drawable/ic_launcher_background" />
+app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml:4: <foreground android:drawable="@drawable/ic_launcher_foreground" />
+app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml:5: <monochrome android:drawable="@drawable/ic_launcher_monochrome" />
+app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml:3: <background android:drawable="@drawable/ic_launcher_background" />
+app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml:4: <foreground android:drawable="@drawable/ic_launcher_foreground" />
+app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml:5: <monochrome android:drawable="@drawable/ic_launcher_monochrome" />

@@ -1,0 +1,160 @@
+app/src/main/java/com/example/zar/features/freelance/presentation/screen/FreelanceComponents.kt:12:import com.example.zar.core.presentation.components.ZarDatePickerDialog
+app/src/main/java/com/example/zar/features/freelance/presentation/screen/FreelanceComponents.kt:100:    ZarDatePickerDialog(
+app/src/main/java/com/example/zar/features/freelance/presentation/screen/FreelanceComponents.kt:101:        onDismissRequest = { showPicker = false },
+app/src/main/java/com/example/zar/features/freelance/presentation/screen/MilestoneScreen.kt:237:        ZarAlertDialog(
+app/src/main/java/com/example/zar/features/freelance/presentation/screen/MilestoneScreen.kt:238:            onDismissRequest = { confirming = false },
+app/src/main/java/com/example/zar/features/catchup/presentation/screen/CatchUpScreen.kt:3:import androidx.activity.compose.BackHandler
+app/src/main/java/com/example/zar/features/catchup/presentation/screen/CatchUpScreen.kt:67:    BackHandler(enabled = state.step == CatchUpStep.COUNT || state.step == CatchUpStep.SAVE) { if (!viewModel.back()) onClose() }
+app/src/main/java/com/example/zar/features/catchup/presentation/screen/ReminderSettingsScreen.kt:261:    ZarModalSheet(
+app/src/main/java/com/example/zar/features/catchup/presentation/screen/ReminderSettingsScreen.kt:262:        onDismissRequest = onDismiss,
+app/src/main/java/com/example/zar/features/catchup/presentation/screen/ReminderSettingsScreen.kt:311:        TimeDialog(
+app/src/main/java/com/example/zar/features/catchup/presentation/screen/ReminderSettingsScreen.kt:324:private fun TimeDialog(initial: LocalTime, onDismiss: () -> Unit, onConfirm: (LocalTime) -> Unit) {
+app/src/main/java/com/example/zar/features/catchup/presentation/screen/ReminderSettingsScreen.kt:326:    ZarAlertDialog(
+app/src/main/java/com/example/zar/features/catchup/presentation/screen/ReminderSettingsScreen.kt:327:        onDismissRequest = onDismiss,
+app/src/main/java/com/example/zar/features/transactions/presentation/screen/ActivityScreen.kt:43:import com.example.zar.core.presentation.components.ZarDatePickerDialog
+app/src/main/java/com/example/zar/features/transactions/presentation/screen/ActivityScreen.kt:696:    ZarModalSheet(
+app/src/main/java/com/example/zar/features/transactions/presentation/screen/ActivityScreen.kt:697:        onDismissRequest = onDismiss,
+app/src/main/java/com/example/zar/features/transactions/presentation/screen/ActivityScreen.kt:828:    ZarDatePickerDialog(
+app/src/main/java/com/example/zar/features/transactions/presentation/screen/ActivityScreen.kt:830:        tonalElevation = 0.dp,
+app/src/main/java/com/example/zar/features/transactions/presentation/screen/ActivityScreen.kt:831:        onDismissRequest = { open = false },
+app/src/main/res/values/themes.xml:15:        <!-- Every Compose Dialog, AlertDialog and DatePickerDialog window resolves this, so none zooms or fades on Back. -->
+app/src/main/java/com/example/zar/features/plans/presentation/screen/PlansScreen.kt:28:import com.example.zar.core.presentation.components.ZarDatePickerDialog
+app/src/main/java/com/example/zar/features/plans/presentation/screen/PlansScreen.kt:175:        Dialog(
+app/src/main/java/com/example/zar/features/plans/presentation/screen/PlansScreen.kt:176:            onDismissRequest = {},
+app/src/main/java/com/example/zar/features/plans/presentation/screen/PlansScreen.kt:219:            AllowanceEditorDialog(
+app/src/main/java/com/example/zar/features/plans/presentation/screen/PlansScreen.kt:233:        GoalEditorDialog(
+app/src/main/java/com/example/zar/features/plans/presentation/screen/PlansScreen.kt:245:        AllocationDialog(
+app/src/main/java/com/example/zar/features/plans/presentation/screen/PlansScreen.kt:436:    ZarDialog(onDismissRequest = { if (!isSaving) onDismiss() }) {
+app/src/main/java/com/example/zar/features/plans/presentation/screen/PlansScreen.kt:449:internal fun GoalEditorDialog(
+app/src/main/java/com/example/zar/features/plans/presentation/screen/PlansScreen.kt:491:        ZarDatePickerDialog(
+app/src/main/java/com/example/zar/features/plans/presentation/screen/PlansScreen.kt:493:            onDismissRequest = { showPicker = false },
+app/src/main/java/com/example/zar/features/plans/presentation/screen/PlansScreen.kt:506:private fun AllocationDialog(
+app/src/main/java/com/example/zar/features/transactions/presentation/manual/screen/ManualEntryScreen.kt:8:import androidx.activity.compose.BackHandler
+app/src/main/java/com/example/zar/features/transactions/presentation/manual/screen/ManualEntryScreen.kt:12:import com.example.zar.core.presentation.components.ZarDatePickerDialog
+app/src/main/java/com/example/zar/features/transactions/presentation/manual/screen/ManualEntryScreen.kt:157:    BackHandler(enabled = openPicker != null) { openPicker = null }
+app/src/main/java/com/example/zar/features/transactions/presentation/manual/screen/ManualEntryScreen.kt:735:            .shadow(14.dp, ZarShapes.sheet, ambientColor = Color(0x1F000000), spotColor = Color(0x1F000000))
+app/src/main/java/com/example/zar/features/transactions/presentation/manual/screen/ManualEntryScreen.kt:843:                    .then(if (selected) Modifier.shadow(2.dp, ZarShapes.sm, ambientColor = Color(0x140F1A2B), spotColor = Color(0x140F1A2B)) else Modifier)
+app/src/main/java/com/example/zar/features/transactions/presentation/manual/screen/ManualEntryScreen.kt:979:    ZarDatePickerDialog(
+app/src/main/java/com/example/zar/features/transactions/presentation/manual/screen/ManualEntryScreen.kt:981:        tonalElevation = 0.dp,
+app/src/main/java/com/example/zar/features/transactions/presentation/manual/screen/ManualEntryScreen.kt:982:        onDismissRequest = { showPicker = false },
+app/src/main/java/com/example/zar/features/crypto/presentation/screen/CryptoScreens.kt:134:    uiState.editingCostFor?.let { wallet -> OpeningCostDialog(wallet, uiState, viewModel) }
+app/src/main/java/com/example/zar/features/crypto/presentation/screen/CryptoScreens.kt:136:        ZarAlertDialog(
+app/src/main/java/com/example/zar/features/crypto/presentation/screen/CryptoScreens.kt:137:            onDismissRequest = { undoing = null },
+app/src/main/java/com/example/zar/features/crypto/presentation/screen/CryptoScreens.kt:307:private fun OpeningCostDialog(wallet: Account, uiState: CryptoUiState, viewModel: CryptoViewModel) {
+app/src/main/java/com/example/zar/features/crypto/presentation/screen/CryptoScreens.kt:308:    ZarAlertDialog(
+app/src/main/java/com/example/zar/features/crypto/presentation/screen/CryptoScreens.kt:309:        onDismissRequest = viewModel::dismissCost,
+app/src/main/java/com/example/zar/features/transactions/presentation/manual/screen/ManualDateTimePickerSheets.kt:305:            .shadow(14.dp, ZarShapes.sheet, ambientColor = Color(0x1F000000), spotColor = Color(0x1F000000))
+app/src/main/java/com/example/zar/features/plans/presentation/screen/PlansCatalog.kt:136:    ZarModalSheet(onDismissRequest = onDismiss) { dismiss ->
+app/src/main/java/com/example/zar/features/plans/presentation/screen/PlansCatalog.kt:194:    ZarModalSheet(onDismissRequest = onDismiss) { dismiss ->
+app/src/main/java/com/example/zar/features/settings/presentation/screen/SettingsScreen.kt:234:    ZarModalSheet(
+app/src/main/java/com/example/zar/features/settings/presentation/screen/SettingsScreen.kt:235:        onDismissRequest = onDismiss,
+app/src/main/java/com/example/zar/features/settings/presentation/screen/SettingsScreen.kt:336:    ZarModalSheet(
+app/src/main/java/com/example/zar/features/settings/presentation/screen/SettingsScreen.kt:337:        onDismissRequest = onCancel,
+app/src/main/java/com/example/zar/core/navigation/ZarRoot.kt:78:            RegisterScreen(onSignIn = { navController.popBackStack() })
+app/src/main/java/com/example/zar/features/quicknote/presentation/screen/QuickNoteScreen.kt:9:import androidx.activity.compose.BackHandler
+app/src/main/java/com/example/zar/features/quicknote/presentation/screen/QuickNoteScreen.kt:38:import com.example.zar.core.presentation.components.ZarDatePickerDialog
+app/src/main/java/com/example/zar/features/quicknote/presentation/screen/QuickNoteScreen.kt:165:    BackHandler(enabled = editing != null || state.isSaving) { if (!state.isSaving) actions.onCloseEditor() }
+app/src/main/java/com/example/zar/features/quicknote/presentation/screen/QuickNoteScreen.kt:904:    ZarDatePickerDialog(
+app/src/main/java/com/example/zar/features/quicknote/presentation/screen/QuickNoteScreen.kt:906:        tonalElevation = 0.dp,
+app/src/main/java/com/example/zar/features/quicknote/presentation/screen/QuickNoteScreen.kt:907:        onDismissRequest = { showPicker = false },
+app/src/main/java/com/example/zar/core/presentation/components/TransactionTimeField.kt:48:        ZarAlertDialog(
+app/src/main/java/com/example/zar/core/presentation/components/TransactionTimeField.kt:49:            onDismissRequest = { open = false },
+app/src/main/java/com/example/zar/features/allowance/presentation/screen/AllowanceUi.kt:205:fun AllowanceEditorDialog(
+app/src/main/java/com/example/zar/core/presentation/theme/ZarElevation.kt:24:        .shadow(elevation = 3.dp, shape = shape, ambientColor = tight, spotColor = tight)
+app/src/main/java/com/example/zar/core/presentation/theme/ZarElevation.kt:25:        .shadow(elevation = 14.dp, shape = shape, ambientColor = tight, spotColor = wide)
+app/src/main/java/com/example/zar/core/presentation/components/ZarBottomNav.kt:135:        shadowElevation = 0.dp,
+app/src/main/java/com/example/zar/core/navigation/ZarNavHost.kt:55:import com.example.zar.core.presentation.components.TabPagerBackHandler
+app/src/main/java/com/example/zar/core/navigation/ZarNavHost.kt:144:        if (navController.currentBackStackEntry?.destination?.hasRoute<HomeRoute>() != true) navController.popBackStack(HomeRoute, inclusive = false)
+app/src/main/java/com/example/zar/core/navigation/ZarNavHost.kt:254:                onBack = { navController.popBackStack() },
+app/src/main/java/com/example/zar/core/navigation/ZarNavHost.kt:261:                onClose = { navController.popBackStack() },
+app/src/main/java/com/example/zar/core/navigation/ZarNavHost.kt:262:                onGoHome = { navController.popBackStack(HomeRoute, inclusive = false) },
+app/src/main/java/com/example/zar/core/navigation/ZarNavHost.kt:268:            CategoryRulesScreen(onBack = { navController.popBackStack() })
+app/src/main/java/com/example/zar/core/navigation/ZarNavHost.kt:271:            ReminderSettingsScreen(onBack = { navController.popBackStack() })
+app/src/main/java/com/example/zar/core/navigation/ZarNavHost.kt:274:            ExportScreen(onBack = { navController.popBackStack() })
+app/src/main/java/com/example/zar/core/navigation/ZarNavHost.kt:277:            SettingsScreen(onBack = { navController.popBackStack() })
+app/src/main/java/com/example/zar/core/navigation/ZarNavHost.kt:281:                onBack = { navController.popBackStack() },
+app/src/main/java/com/example/zar/core/navigation/ZarNavHost.kt:291:            SheetBackHost(onPop = { navController.popBackStack() }) { dismiss -> IncomeFormScreen(onDone = dismiss) }
+app/src/main/java/com/example/zar/core/navigation/ZarNavHost.kt:297:            SheetBackHost(onPop = { navController.popBackStack() }) { dismiss ->
+app/src/main/java/com/example/zar/core/navigation/ZarNavHost.kt:309:            SheetBackHost(onPop = { navController.popBackStack() }) { dismiss ->
+app/src/main/java/com/example/zar/core/navigation/ZarNavHost.kt:323:                onBack = { navController.popBackStack() },
+app/src/main/java/com/example/zar/core/navigation/ZarNavHost.kt:330:                onBack = { navController.popBackStack() },
+app/src/main/java/com/example/zar/core/navigation/ZarNavHost.kt:336:                onBack = { navController.popBackStack() },
+app/src/main/java/com/example/zar/core/navigation/ZarNavHost.kt:346:            EditEntryScreen(onDone = { navController.popBackStack() })
+app/src/main/java/com/example/zar/core/navigation/ZarNavHost.kt:349:            RefundFormScreen(onDone = { navController.popBackStack() })
+app/src/main/java/com/example/zar/core/navigation/ZarNavHost.kt:353:                onBack = { navController.popBackStack() },
+app/src/main/java/com/example/zar/core/navigation/ZarNavHost.kt:359:            CaptureReviewScreen(onDone = { navController.popBackStack() })
+app/src/main/java/com/example/zar/core/navigation/ZarNavHost.kt:363:                onBack = { navController.popBackStack() },
+app/src/main/java/com/example/zar/core/navigation/ZarNavHost.kt:371:                onBack = { navController.popBackStack() },
+app/src/main/java/com/example/zar/core/navigation/ZarNavHost.kt:373:                    navController.popBackStack()
+app/src/main/java/com/example/zar/core/navigation/ZarNavHost.kt:380:                onBack = { navController.popBackStack() },
+app/src/main/java/com/example/zar/core/navigation/ZarNavHost.kt:386:            BillPaymentScreen(onBack = { navController.popBackStack() })
+app/src/main/java/com/example/zar/core/navigation/ZarNavHost.kt:390:                onBack = { navController.popBackStack() },
+app/src/main/java/com/example/zar/core/navigation/ZarNavHost.kt:395:            CryptoMovementScreen(onDone = { navController.popBackStack() })
+app/src/main/java/com/example/zar/core/navigation/ZarNavHost.kt:399:                onBack = { navController.popBackStack() },
+app/src/main/java/com/example/zar/core/navigation/ZarNavHost.kt:406:                onBack = { navController.popBackStack() },
+app/src/main/java/com/example/zar/core/navigation/ZarNavHost.kt:408:                    navController.popBackStack()
+app/src/main/java/com/example/zar/core/navigation/ZarNavHost.kt:416:                onBack = { navController.popBackStack() },
+app/src/main/java/com/example/zar/core/navigation/ZarNavHost.kt:423:            MilestoneScreen(onDone = { navController.popBackStack() })
+app/src/main/java/com/example/zar/core/navigation/ZarNavHost.kt:427:                onBack = { navController.popBackStack() },
+app/src/main/java/com/example/zar/core/navigation/ZarNavHost.kt:434:                onBack = { navController.popBackStack() },
+app/src/main/java/com/example/zar/core/navigation/ZarNavHost.kt:442:            AccountFormScreen(onDone = { navController.popBackStack() })
+app/src/main/java/com/example/zar/core/navigation/ZarNavHost.kt:480:        TabPagerBackHandler(tabs, enabled = !scrollLocked)
+app/src/main/java/com/example/zar/features/transactions/presentation/income/screen/IncomeFormScreen.kt:35:import androidx.activity.compose.BackHandler
+app/src/main/java/com/example/zar/features/transactions/presentation/income/screen/IncomeFormScreen.kt:150:    BackHandler(enabled = openPicker != null) { openPicker = null }
+app/src/main/java/com/example/zar/features/transactions/presentation/income/screen/IncomeFormScreen.kt:388:        DropdownMenu(expanded = open, onDismissRequest = { open = false }, containerColor = colors.surface) {
+app/src/main/java/com/example/zar/core/presentation/components/AddEntrySheet.kt:33:    ZarModalSheet(
+app/src/main/java/com/example/zar/core/presentation/components/AddEntrySheet.kt:34:        onDismissRequest = onDismiss,
+app/src/main/java/com/example/zar/core/presentation/components/TabPager.kt:3:import androidx.activity.compose.PredictiveBackHandler
+app/src/main/java/com/example/zar/core/presentation/components/TabPager.kt:383:fun TabPagerBackHandler(controller: TabPagerController, enabled: Boolean) {
+app/src/main/java/com/example/zar/core/presentation/components/TabPager.kt:385:    PredictiveBackHandler(enabled = enabled && controller.selectedIndex != TopLevelDestination.Home.ordinal) { events ->
+app/src/main/java/com/example/zar/core/presentation/components/ZarDialogs.kt:8:import androidx.compose.material3.DatePickerDialog
+app/src/main/java/com/example/zar/core/presentation/components/ZarDialogs.kt:38:fun ZarAlertDialog(
+app/src/main/java/com/example/zar/core/presentation/components/ZarDialogs.kt:39:    onDismissRequest: () -> Unit,
+app/src/main/java/com/example/zar/core/presentation/components/ZarDialogs.kt:48:    AlertDialog(
+app/src/main/java/com/example/zar/core/presentation/components/ZarDialogs.kt:49:        onDismissRequest = onDismissRequest,
+app/src/main/java/com/example/zar/core/presentation/components/ZarDialogs.kt:60:/** Material [DatePickerDialog] with the same rightward Back as every other app-owned window. */
+app/src/main/java/com/example/zar/core/presentation/components/ZarDialogs.kt:63:fun ZarDatePickerDialog(
+app/src/main/java/com/example/zar/core/presentation/components/ZarDialogs.kt:64:    onDismissRequest: () -> Unit,
+app/src/main/java/com/example/zar/core/presentation/components/ZarDialogs.kt:68:    tonalElevation: Dp = DatePickerDefaults.TonalElevation,
+app/src/main/java/com/example/zar/core/presentation/components/ZarDialogs.kt:72:    DatePickerDialog(
+app/src/main/java/com/example/zar/core/presentation/components/ZarDialogs.kt:73:        onDismissRequest = onDismissRequest,
+app/src/main/java/com/example/zar/core/presentation/components/ZarDialogs.kt:77:        tonalElevation = tonalElevation,
+app/src/main/java/com/example/zar/core/presentation/components/ZarDialogs.kt:85:fun ZarDialog(
+app/src/main/java/com/example/zar/core/presentation/components/ZarDialogs.kt:86:    onDismissRequest: () -> Unit,
+app/src/main/java/com/example/zar/core/presentation/components/ZarDialogs.kt:90:    Dialog(onDismissRequest = onDismissRequest, properties = properties) {
+app/src/main/java/com/example/zar/core/presentation/components/ZarControls.kt:60:                        if (selected) Modifier.shadow(
+app/src/main/java/com/example/zar/core/presentation/components/ZarControls.kt:146:                .shadow(2.dp, CircleShape, ambientColor = Color(0x140F1A2B), spotColor = Color(0x140F1A2B))
+app/src/main/java/com/example/zar/core/presentation/components/SheetBack.kt:3:import androidx.activity.compose.PredictiveBackHandler
+app/src/main/java/com/example/zar/core/presentation/components/SheetBack.kt:79:    PredictiveBackHandler(enabled = !dismissing[0]) { events ->
+app/src/main/java/com/example/zar/features/capture/presentation/screen/CaptureScreens.kt:3:import androidx.activity.compose.BackHandler
+app/src/main/java/com/example/zar/features/capture/presentation/screen/CaptureScreens.kt:234:    BackHandler(state.isSaving || state.settlement?.stage == SettleStage.SAVING) { }
+app/src/main/java/com/example/zar/features/capture/presentation/screen/CaptureScreens.kt:236:    BackHandler(state.settlement != null && state.settlement.stage != SettleStage.SAVING) { settle.onFinish() }
+app/src/main/java/com/example/zar/features/home/presentation/screen/HomeScreen.kt:453:            DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+app/src/main/java/com/example/zar/core/presentation/components/ZarComponents.kt:243:            .shadow(8.dp, ZarShapes.pill, ambientColor = Color(0x0F0F1A2B), spotColor = Color(0x1F0F1A2B))
+app/src/main/java/com/example/zar/features/transactions/presentation/activity/screen/EntryDetailScreen.kt:772:    ZarModalSheet(
+app/src/main/java/com/example/zar/features/transactions/presentation/activity/screen/EntryDetailScreen.kt:773:        onDismissRequest = actions.onDismissVoid,
+app/src/main/java/com/example/zar/core/presentation/components/ZarScreenScaffold.kt:142:        elevation = FloatingActionButtonDefaults.elevation(4.dp, 4.dp, 4.dp, 4.dp),
+app/src/main/java/com/example/zar/core/presentation/components/ZarModalSheet.kt:3:import androidx.activity.compose.PredictiveBackHandler
+app/src/main/java/com/example/zar/core/presentation/components/ZarModalSheet.kt:53: * sheet's own close and Cancel buttons; it plays the departure and then calls [onDismissRequest]. Dragging the sheet down
+app/src/main/java/com/example/zar/core/presentation/components/ZarModalSheet.kt:59:fun ZarModalSheet(
+app/src/main/java/com/example/zar/core/presentation/components/ZarModalSheet.kt:60:    onDismissRequest: () -> Unit,
+app/src/main/java/com/example/zar/core/presentation/components/ZarModalSheet.kt:73:    val currentDismiss = rememberUpdatedState(onDismissRequest)
+app/src/main/java/com/example/zar/core/presentation/components/ZarModalSheet.kt:90:        onDismissRequest = onDismissRequest,
+app/src/main/java/com/example/zar/core/presentation/components/ZarModalSheet.kt:100:        PredictiveBackHandler(enabled = !dismissing[0]) { events ->
+app/src/main/java/com/example/zar/features/rules/presentation/screen/CategoryRulesScreen.kt:168:    ZarModalSheet(
+app/src/main/java/com/example/zar/features/rules/presentation/screen/CategoryRulesScreen.kt:169:        onDismissRequest = onDismiss,
+app/src/main/java/com/example/zar/features/rules/presentation/screen/RuleOfferHost.kt:146:    ZarModalSheet(
+app/src/main/java/com/example/zar/features/rules/presentation/screen/RuleOfferHost.kt:147:        onDismissRequest = onDismiss,
+app/src/main/java/com/example/zar/features/accounts/presentation/screen/AccountFormScreen.kt:27:import com.example.zar.core.presentation.components.ZarDatePickerDialog
+app/src/main/java/com/example/zar/features/accounts/presentation/screen/AccountFormScreen.kt:279:    ZarDatePickerDialog(
+app/src/main/java/com/example/zar/features/accounts/presentation/screen/AccountFormScreen.kt:280:        onDismissRequest = { showPicker = false },
+app/src/main/java/com/example/zar/features/bills/presentation/screen/BillFormScreen.kt:23:import com.example.zar.core.presentation.components.ZarDatePickerDialog
+app/src/main/java/com/example/zar/features/bills/presentation/screen/BillFormScreen.kt:264:    ZarDatePickerDialog(
+app/src/main/java/com/example/zar/features/bills/presentation/screen/BillFormScreen.kt:265:        onDismissRequest = { showPicker = false },
+app/src/main/java/com/example/zar/features/accounts/presentation/screen/CheckBalanceSheet.kt:107:    ZarModalSheet(
+app/src/main/java/com/example/zar/features/accounts/presentation/screen/CheckBalanceSheet.kt:108:        onDismissRequest = actions.onDismiss,
+app/src/main/java/com/example/zar/features/bills/presentation/screen/BillDetailScreen.kt:25:import com.example.zar.core.presentation.components.ZarDatePickerDialog
+app/src/main/java/com/example/zar/features/bills/presentation/screen/BillDetailScreen.kt:383:    ZarModalSheet(
+app/src/main/java/com/example/zar/features/bills/presentation/screen/BillDetailScreen.kt:384:        onDismissRequest = onDismiss,
+app/src/main/java/com/example/zar/features/bills/presentation/screen/BillDetailScreen.kt:443:        ZarDatePickerDialog(
+app/src/main/java/com/example/zar/features/bills/presentation/screen/BillDetailScreen.kt:444:            onDismissRequest = { showPicker = false },
