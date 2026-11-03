@@ -623,7 +623,7 @@ private fun RangeLine(state: ActivityUiState, list: ActivityList?, onClear: () -
 // --- Rows -------------------------------------------------------------------------------------
 
 @Composable
-private fun EntryRow(row: ActivityRow, onClick: () -> Unit, modifier: Modifier = Modifier) {
+internal fun EntryRow(row: ActivityRow, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val tx = row.entry.current
     val colors = ZarTheme.colors
     val voided = row.entry.isVoided

@@ -72,6 +72,8 @@ import com.example.zar.features.accounts.presentation.screen.AccountFormScreen
 import com.example.zar.features.accounts.presentation.screen.AccountsScreen
 import com.example.zar.features.catchup.presentation.screen.CatchUpScreen
 import com.example.zar.features.catchup.presentation.screen.NeedsReviewScreen
+import com.example.zar.features.spending.presentation.screen.SpendingEntriesScreen
+import com.example.zar.features.spending.presentation.screen.SpendingScreen
 import com.example.zar.features.catchup.presentation.screen.ReminderSettingsScreen
 import com.example.zar.features.capture.presentation.screen.CaptureReviewScreen
 import com.example.zar.features.capture.presentation.screen.CaptureScreen
@@ -172,6 +174,7 @@ fun ZarNavHost(
                             onOpenFreelance = { navController.navigate(FreelanceRoute) },
                             onOpenBills = { navController.navigate(BillsRoute) },
                             onOpenBill = { id -> navController.navigate(BillRoute(id)) },
+                            onOpenSpending = { month -> navController.navigate(SpendingRoute(month.toString())) },
                         )
                         TopLevelDestination.Activity -> ActivityScreen(
                             onNavigate = onNavigate,
@@ -314,6 +317,19 @@ fun ZarNavHost(
                 },
             )
             }
+        }
+        composable<SpendingRoute> {
+            SpendingScreen(
+                onBack = { navController.popBackStack() },
+                onOpenEntries = { month, cls, key -> navController.navigate(SpendingEntriesRoute(month.toString(), cls.name, key)) },
+                onOpenReview = { navController.navigate(NeedsReviewRoute) },
+            )
+        }
+        composable<SpendingEntriesRoute> {
+            SpendingEntriesScreen(
+                onBack = { navController.popBackStack() },
+                onOpenEntry = { id -> navController.navigate(EntryDetailRoute(id)) },
+            )
         }
         composable<EntryDetailRoute> {
             EntryDetailScreen(

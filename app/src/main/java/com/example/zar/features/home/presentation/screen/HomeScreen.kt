@@ -129,6 +129,7 @@ fun HomeScreen(
     onOpenFreelance: () -> Unit,
     onOpenBills: () -> Unit,
     onOpenBill: (String) -> Unit,
+    onOpenSpending: (YearMonth) -> Unit,
     viewModel: HomeViewModel = hiltViewModel(),
     privacyViewModel: AmountPrivacyViewModel = hiltViewModel(),
 ) {
@@ -144,6 +145,7 @@ fun HomeScreen(
         onOpenFreelance = onOpenFreelance,
         onOpenBills = onOpenBills,
         onOpenBill = onOpenBill,
+        onOpenSpending = onOpenSpending,
         onOpenGoal = { id ->
             viewModel.openGoal(id)
             onNavigate(TopLevelDestination.Plans)
@@ -164,6 +166,7 @@ internal fun HomeScreenContent(
     onOpenFreelance: () -> Unit = {},
     onOpenBills: () -> Unit = {},
     onOpenBill: (String) -> Unit = {},
+    onOpenSpending: (YearMonth) -> Unit = {},
     onOpenGoal: (GoalId) -> Unit = {},
     onToggleAmounts: () -> Unit = {},
 ) {
@@ -215,6 +218,7 @@ internal fun HomeScreenContent(
                     onOpenFreelance = onOpenFreelance,
                     onOpenBills = onOpenBills,
                     onOpenBill = onOpenBill,
+                    onOpenSpending = onOpenSpending,
                     onOpenGoal = onOpenGoal,
                     onToggleAmounts = onToggleAmounts,
                     scrollState = scrollState,
@@ -266,6 +270,7 @@ private fun OverviewBlock(
     onOpenFreelance: () -> Unit,
     onOpenBills: () -> Unit,
     onOpenBill: (String) -> Unit,
+    onOpenSpending: (YearMonth) -> Unit,
     onOpenGoal: (GoalId) -> Unit,
     onToggleAmounts: () -> Unit,
     scrollState: ScrollState,
@@ -280,7 +285,7 @@ private fun OverviewBlock(
         if (overview.hasIncompleteData) {
             ReviewPrompt(overview, onClick = onOpenReview)
         }
-        SpendingCard(overview, onClick = { onNavigate(TopLevelDestination.Activity) })
+        SpendingCard(overview, onClick = { onOpenSpending(overview.month) })
         GoalCard(goal, onOpenGoal = onOpenGoal, onOpenPlans = { onNavigate(TopLevelDestination.Plans) }, onRetry = onRetry)
         RecentActivity(overview.recent)
         ClientsOweRow(commitments, onClick = onOpenFreelance, onRetry = onRetry)

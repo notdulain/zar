@@ -542,6 +542,34 @@
     <string name="home_donut_unresolved">Some amounts have no known LKR rate.</string>
     <string name="home_donut_description">Where income went. Spent %1$s, for plans %2$s, still free %3$s.</string>
     <string name="home_donut_percent_description">%1$d percent of received income is still free.</string>
+    <string name="spending_title">Spending</string>
+    <string name="spending_subtitle_current">Recorded so far this month</string>
+    <string name="spending_subtitle_past">Recorded in %1$s</string>
+    <string name="spending_hint">Tap a category to see its entries.</string>
+    <string name="spending_committed">Committed</string>
+    <string name="spending_discretionary">Discretionary</string>
+    <string name="spending_unknown">Unknown</string>
+    <string name="spending_committed_hint">Bars show each category\'s share of committed spending</string>
+    <string name="spending_discretionary_hint">Bars show each category\'s share of discretionary spending</string>
+    <string name="spending_unknown_hint">These still need a class or a category</string>
+    <string name="spending_row_amount_share">%1$s · %2$d%%</string>
+    <string name="spending_row_rate_missing">%1$s · rate missing</string>
+    <string name="spending_uncategorised">No category</string>
+    <string name="spending_adjustments">Cash adjustments</string>
+    <string name="spending_empty">Nothing spent in %1$s.</string>
+    <string name="spending_error">Couldn\'t load your spending.</string>
+    <string name="spending_unresolved">Some entries have no LKR rate yet and are left out of these totals.</string>
+    <plurals name="spending_review_count">
+        <item quantity="one">%1$d entry needs review</item>
+        <item quantity="other">%1$d entries need review</item>
+    </plurals>
+    <string name="spending_fix_now">Fix now →</string>
+    <string name="spending_previous_month">Previous month</string>
+    <string name="spending_next_month">Next month</string>
+    <string name="spending_entries_subtitle">%1$s · %2$s</string>
+    <string name="spending_entries_empty">No entries match.</string>
+    <string name="spending_entries_error">Couldn\'t load these entries.</string>
+    <string name="spending_entries_count">%1$d entries</string>
     <string name="activity_amount_pending">—</string>
 
     <!-- Plans and explicit savings allocations -->

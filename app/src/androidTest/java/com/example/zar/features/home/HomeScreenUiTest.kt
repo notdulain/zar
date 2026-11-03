@@ -63,6 +63,7 @@ class HomeScreenUiTest {
     @Test
     fun narrowScreenAndLargeTextKeepWarningsAndNavigationReachable() {
         var destination: TopLevelDestination? = null
+        var spendingMonth: YearMonth? = null
         val overview = HomeOverview(
             month = month,
             summary = PeriodSummary(zero.copy(unresolvedCount = 1), SpendingBreakdown(zero, zero, zero), 0),
@@ -79,6 +80,7 @@ class HomeScreenUiTest {
                             state = HomeUiState(month, canGoForward = false, HomeContent.Ready(overview)),
                             onPreviousMonth = {}, onNextMonth = {}, onRetry = {},
                             onNavigate = { destination = it }, onAddOption = {},
+                            onOpenSpending = { spendingMonth = it },
                         )
                     }
                 }
@@ -93,7 +95,8 @@ class HomeScreenUiTest {
         compose.onNodeWithTag("nav-more").performScrollTo().assertIsDisplayed().performClick()
         assertEquals(TopLevelDestination.More, destination)
         compose.onNodeWithTag("spent-card").performScrollTo().performClick()
-        assertEquals(TopLevelDestination.Activity, destination)
+        assertEquals("See breakdown opens the spending page for the shown month", month, spendingMonth)
+        assertEquals("and does not redirect to an unfiltered Activity list", TopLevelDestination.More, destination)
     }
 
     @Test
