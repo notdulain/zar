@@ -3,6 +3,7 @@ package com.example.zar.features.home.domain.model
 import com.example.zar.core.domain.calculation.PeriodSummary
 import com.example.zar.core.domain.calculation.ReportingTotal
 import com.example.zar.core.domain.model.LedgerEntry
+import java.time.LocalDate
 import java.time.YearMonth
 
 /**
@@ -20,6 +21,10 @@ data class HomeOverview(
     /** One income total per calendar day, starting on day 1; missing rates remain unresolved. */
     val receivedByDay: List<ReportingTotal> = emptyList(),
 ) {
+    /** Cumulative Received from day 1, one slot per calendar day; days after [today] are placeholders. */
+    fun cumulativeIncome(today: LocalDate): CumulativeIncomeSeries =
+        CumulativeIncomeSeries.from(month, receivedByDay, today)
+
     /** Records in this month that could not be converted to LKR and so are missing from totals. */
     val missingRateCount: Int
         get() = summary.received.unresolvedCount + summary.spent.total.unresolvedCount
