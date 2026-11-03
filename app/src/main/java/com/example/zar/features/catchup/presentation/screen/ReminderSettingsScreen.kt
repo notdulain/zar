@@ -20,14 +20,13 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
+import com.example.zar.core.presentation.components.ZarAlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ModalBottomSheet
+import com.example.zar.core.presentation.components.ZarModalSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TimePicker
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.material3.TimePickerDefaults
 import androidx.compose.ui.text.style.TextAlign
@@ -66,9 +65,7 @@ import com.example.zar.core.presentation.theme.ZarTheme
 import com.example.zar.core.presentation.theme.ZarType
 import com.example.zar.features.catchup.presentation.viewmodel.ReminderSettingsViewModel
 import com.example.zar.features.catchup.presentation.viewmodel.ReminderUiState
-import com.example.zar.features.transactions.presentation.activity.screen.SheetGrabber
 import com.example.zar.features.transactions.presentation.activity.screen.SheetHeader
-import com.example.zar.features.transactions.presentation.activity.screen.SheetScrim
 import java.time.DayOfWeek
 import java.time.LocalTime
 
@@ -261,14 +258,9 @@ internal fun ReminderTimeSheet(day: DayOfWeek, time: LocalTime, onDismiss: () ->
     var pickedDay by rememberSaveable { mutableStateOf(day) }
     var pickedTime by rememberSaveable { mutableStateOf(time) }
     var pickerOpen by rememberSaveable { mutableStateOf(false) }
-    ModalBottomSheet(
+    ZarModalSheet(
         onDismissRequest = onDismiss,
-        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-        shape = ZarShapes.sheet,
-        containerColor = colors.surface,
-        scrimColor = SheetScrim,
-        dragHandle = { SheetGrabber() },
-    ) {
+    ) { dismiss ->
         Column(
             Modifier
                 .navigationBarsPadding()
@@ -278,7 +270,7 @@ internal fun ReminderTimeSheet(day: DayOfWeek, time: LocalTime, onDismiss: () ->
                 .testTag("reminder-sheet"),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            SheetHeader(stringResource(R.string.reminder_sheet_title), onClose = onDismiss)
+            SheetHeader(stringResource(R.string.reminder_sheet_title), onClose = dismiss)
             ZarEyebrow(stringResource(R.string.reminder_sheet_day))
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 DayOfWeek.entries.forEach { option ->
@@ -310,7 +302,7 @@ internal fun ReminderTimeSheet(day: DayOfWeek, time: LocalTime, onDismiss: () ->
             }
             Text(stringResource(R.string.reminder_sheet_note), style = ZarType.bodyS, color = colors.textSecondary)
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                ZarButton(stringResource(R.string.action_cancel), onDismiss, Modifier.weight(1f).testTag("reminder-sheet-cancel"), style = ZarButtonStyle.Soft)
+                ZarButton(stringResource(R.string.action_cancel), dismiss, Modifier.weight(1f).testTag("reminder-sheet-cancel"), style = ZarButtonStyle.Soft)
                 ZarButton(stringResource(R.string.action_save), { onSave(pickedDay, pickedTime) }, Modifier.weight(1f).testTag("reminder-sheet-save"))
             }
         }
@@ -331,7 +323,7 @@ internal fun ReminderTimeSheet(day: DayOfWeek, time: LocalTime, onDismiss: () ->
 @Composable
 private fun TimeDialog(initial: LocalTime, onDismiss: () -> Unit, onConfirm: (LocalTime) -> Unit) {
     val state = rememberTimePickerState(initialHour = initial.hour, initialMinute = initial.minute, is24Hour = false)
-    AlertDialog(
+    ZarAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.reminder_time_dialog_title)) },
         containerColor = ZarTheme.colors.surface,

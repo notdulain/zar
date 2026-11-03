@@ -111,7 +111,7 @@ class SheetBackHostTest {
     }
 
     @Test
-    fun reducedMotionCrossfadesInsteadOfTranslating() {
+    fun reducedMotionDismissesAtOnceWithoutTranslatingOrFading() {
         show(reduced)
 
         compose.runOnUiThread { dismiss!!.invoke() }
@@ -119,6 +119,6 @@ class SheetBackHostTest {
         repeat(12) { frame(); lefts += sheetLeft() }
 
         assertTrue("no translation under reduced motion: $lefts", lefts.all { kotlin.math.abs(it) < 0.5f })
-        assertEquals("pops once the short fade is done", 1, pops)
+        assertEquals("pops once, immediately, with no fade first", 1, pops)
     }
 }

@@ -29,9 +29,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ModalBottomSheet
+import com.example.zar.core.presentation.components.ZarModalSheet
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -770,14 +769,9 @@ private fun DetailActionsBar(detail: EntryDetail, actions: DetailActions, modifi
 private fun VoidSheet(state: EntryDetailUiState, detail: EntryDetail, actions: DetailActions) {
     val colors = ZarTheme.colors
     val tx = detail.entry.current
-    ModalBottomSheet(
+    ZarModalSheet(
         onDismissRequest = actions.onDismissVoid,
-        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-        shape = ZarShapes.sheet,
-        containerColor = colors.surface,
-        scrimColor = SheetScrim,
-        dragHandle = { SheetGrabber() },
-    ) {
+    ) { dismiss ->
         Column(
             Modifier.navigationBarsPadding().padding(horizontal = ZarDimens.SheetGutter).padding(bottom = 14.dp).testTag("void-sheet"),
             verticalArrangement = Arrangement.spacedBy(20.dp),
@@ -790,7 +784,7 @@ private fun VoidSheet(state: EntryDetailUiState, detail: EntryDetail, actions: D
                         else -> R.string.activity_void_title
                     },
                 ),
-                onClose = actions.onDismissVoid,
+                onClose = dismiss,
             )
             Row(
                 Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(colors.subtle).padding(horizontal = 14.dp, vertical = 12.dp),
@@ -847,7 +841,7 @@ private fun VoidSheet(state: EntryDetailUiState, detail: EntryDetail, actions: D
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 ZarButton(
                     text = stringResource(R.string.activity_void_keep),
-                    onClick = actions.onDismissVoid,
+                    onClick = dismiss,
                     style = ZarButtonStyle.Soft,
                     enabled = !state.isVoiding,
                     modifier = Modifier.weight(1f).testTag("void-keep"),

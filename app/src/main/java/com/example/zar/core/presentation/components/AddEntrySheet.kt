@@ -10,7 +10,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.BottomSheetDefaults
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -29,11 +30,13 @@ fun AddEntrySheet(
     onDismiss: () -> Unit,
     onOption: (AddEntryOption) -> Unit,
 ) {
-    ModalBottomSheet(
+    ZarModalSheet(
         onDismissRequest = onDismiss,
+        sheetState = rememberModalBottomSheetState(),
         shape = RoundedCornerShape(topStart = ZarDimens.SheetRadius, topEnd = ZarDimens.SheetRadius),
         containerColor = MaterialTheme.colorScheme.surface,
-    ) {
+        dragHandle = { BottomSheetDefaults.DragHandle() },
+    ) { dismiss ->
         Column(
             modifier = Modifier
                 .navigationBarsPadding()
@@ -46,7 +49,7 @@ fun AddEntrySheet(
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
                 Text(stringResource(R.string.add_sheet_title).uppercase(), style = MaterialTheme.typography.titleLarge)
-                TextButton(onClick = onDismiss) {
+                TextButton(onClick = dismiss) {
                     Text(stringResource(R.string.action_close), style = MaterialTheme.typography.labelLarge)
                 }
             }

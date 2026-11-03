@@ -40,13 +40,12 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDefaults
-import androidx.compose.material3.DatePickerDialog
+import com.example.zar.core.presentation.components.ZarDatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ModalBottomSheet
+import com.example.zar.core.presentation.components.ZarModalSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDatePickerState
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -110,9 +109,7 @@ import com.example.zar.features.transactions.presentation.activity.screen.Banner
 import com.example.zar.features.transactions.presentation.activity.screen.EmptyCard
 import com.example.zar.features.transactions.presentation.activity.screen.FilterPill
 import com.example.zar.features.transactions.presentation.activity.screen.InfoBanner
-import com.example.zar.features.transactions.presentation.activity.screen.SheetGrabber
 import com.example.zar.features.transactions.presentation.activity.screen.SheetHeader
-import com.example.zar.features.transactions.presentation.activity.screen.SheetScrim
 import com.example.zar.features.transactions.presentation.activity.screen.TagPill
 import com.example.zar.features.transactions.presentation.activity.viewmodel.ActivityContent
 import com.example.zar.features.transactions.presentation.activity.viewmodel.ActivityUiState
@@ -696,14 +693,9 @@ private fun ActivityFilterSheet(
     var draft by remember { mutableStateOf(filter) }
     val count = previewCount(draft)
     val close = stringResource(R.string.action_close)
-    ModalBottomSheet(
+    ZarModalSheet(
         onDismissRequest = onDismiss,
-        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-        shape = ZarShapes.sheet,
-        containerColor = ZarTheme.colors.surface,
-        scrimColor = SheetScrim,
-        dragHandle = { SheetGrabber() },
-    ) {
+    ) { dismiss ->
         // Figma Z45: 24dp margins, 20dp between blocks, 12dp from a label to its chips, 8dp between chip rows.
         Column(
             Modifier
@@ -714,7 +706,7 @@ private fun ActivityFilterSheet(
                 .testTag("activity-filter-sheet"),
             verticalArrangement = Arrangement.spacedBy(20.dp),
         ) {
-            SheetHeader(stringResource(R.string.activity_filter_title), onClose = onDismiss)
+            SheetHeader(stringResource(R.string.activity_filter_title), onClose = dismiss)
 
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 SheetLabel(stringResource(R.string.manual_field_account))
@@ -833,7 +825,7 @@ private fun DateField(label: String, date: LocalDate, onPick: (LocalDate) -> Uni
     if (!open) return
     val state = rememberDatePickerState(initialSelectedDateMillis = date.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli())
     val pickerColors = DatePickerDefaults.colors(containerColor = ZarTheme.colors.surface, selectedDayContainerColor = ZarTheme.colors.accentSelected)
-    DatePickerDialog(
+    ZarDatePickerDialog(
         colors = pickerColors,
         tonalElevation = 0.dp,
         onDismissRequest = { open = false },

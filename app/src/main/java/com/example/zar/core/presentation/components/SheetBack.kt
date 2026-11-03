@@ -1,9 +1,14 @@
 package com.example.zar.core.presentation.components
 
 import androidx.activity.compose.PredictiveBackHandler
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.ui.Alignment
 import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.SideEffect
@@ -14,9 +19,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalView
-import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.window.DialogWindowProvider
 import com.example.zar.R
 import com.example.zar.core.presentation.motion.LocalZarMotion
@@ -28,17 +31,16 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
 /**
- * The state of a sheet that is dismissed by sliding to the right (the logical end), as Back does everywhere in the app.
- * [slide] is the sheet's travel as a fraction of its width and [fade] its opacity; the backdrop never moves, and the scrim
- * fades as the sheet leaves. Reduced motion never translates: the sheet crossfades out in at most 100 ms.
+ * The state of a sheet that is dismissed by sliding to the physical right, as Back does everywhere in the app, in both
+ * layout directions. [slide] is the sheet's travel as a fraction of its width; the backdrop never moves, and the scrim
+ * fades as the sheet leaves. With motion reduced or off nothing translates or fades: the sheet is dismissed at once.
  */
 @Stable
 class SheetBackState internal constructor(
     internal val slide: Animatable<Float, androidx.compose.animation.core.AnimationVector1D>,
-    internal val fade: Animatable<Float, androidx.compose.animation.core.AnimationVector1D>,
 ) {
-    /** 0 at rest, 1 once the sheet has left. Used by the scrim, so it fades with the sheet whichever way it leaves. */
-    internal fun leaving(): Float = maxOf(slide.value, 1f - fade.value).coerceIn(0f, 1f)
+    /** 0 at rest, 1 once the sheet has left. Used by the scrim, so it fades with the sheet. */
+    internal fun leaving(): Float = slide.value.coerceIn(0f, 1f)
 }
 
 val LocalSheetBack = compositionLocalOf<SheetBackState?> { null }
@@ -56,7 +58,7 @@ val LocalSheetBack = compositionLocalOf<SheetBackState?> { null }
 fun SheetBackHost(onPop: () -> Unit, content: @Composable (dismiss: () -> Unit) -> Unit) {
     val policy = LocalZarMotion.current
     val scope = rememberCoroutineScope()
-    val state = remember { SheetBackState(Animatable(0f), Animatable(1f)) }
+    val state = remember { SheetBackState(Animatable(0f)) }
     val dismissing = remember { booleanArrayOf(false) }
     val window = (LocalView.current.parent as? DialogWindowProvider)?.window
     SideEffect {
@@ -87,13 +89,12 @@ fun SheetBackHost(onPop: () -> Unit, content: @Composable (dismiss: () -> Unit) 
     CompositionLocalProvider(LocalSheetBack provides state) { content(::dismiss) }
 }
 
-/** Commits the slide (or the reduced-motion crossfade) and then pops. Shared with tests. */
+/** Commits the slide (or, with motion reduced or off, nothing at all) and then pops. Shared with tests. */
 internal fun CoroutineScope.leave(state: SheetBackState, policy: MotionPolicy, onPop: () -> Unit) {
     launch {
         when (policy.level) {
             MotionLevel.Full -> state.slide.animateTo(1f, spring(ZarSprings.Route.dampingRatio, ZarSprings.Route.stiffness))
-            MotionLevel.Reduced -> state.fade.animateTo(0f, tween(MotionPolicy.REDUCED_FADE_MAX_MILLIS))
-            MotionLevel.Instant -> Unit
+            MotionLevel.Reduced, MotionLevel.Instant -> Unit
         }
         onPop()
     }
@@ -105,15 +106,33 @@ const val PREVIEW_FACTOR = 0.5f
 /** Moves the sheet with Back. A no-op outside [SheetBackHost]. Read in the layer phase only. */
 fun Modifier.sheetBackSlide(): Modifier = composed {
     val state = LocalSheetBack.current ?: return@composed this
-    val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
-    graphicsLayer {
-        translationX = state.slide.value * size.width * if (rtl) -1f else 1f
-        alpha = state.fade.value
-    }
+    // Physical right, whatever the layout direction: translationX is not mirrored by RTL.
+    graphicsLayer { translationX = state.slide.value * size.width }
 }
 
 /** Fades the dialog's scrim as its sheet leaves. A no-op outside [SheetBackHost]. */
 fun Modifier.sheetBackScrim(): Modifier = composed {
     val state = LocalSheetBack.current ?: return@composed this
     graphicsLayer { alpha = 1f - state.leaving() }
+}
+
+/**
+ * A sub-surface of a Back-hosted sheet (a date or time picker, the new-category sheet) at the bottom of the enclosing Box.
+ * Opening shows it at once; Back or Cancel clears [visible] and it leaves toward the physical right with no fade or scale.
+ * Keep whatever it displays alive until the exit ends, and compose it after (above) the surface it covers. With motion
+ * reduced or off it disappears immediately.
+ */
+@Composable
+fun BoxScope.SheetSubSurface(visible: Boolean, content: @Composable () -> Unit) {
+    val policy = LocalZarMotion.current
+    AnimatedVisibility(
+        visible = visible,
+        modifier = Modifier.align(Alignment.BottomCenter),
+        enter = EnterTransition.None,
+        exit = if (policy.allowsSpatialMotion) {
+            slideOutHorizontally(spring(ZarSprings.Route.dampingRatio, ZarSprings.Route.stiffness)) { it }
+        } else {
+            ExitTransition.None
+        },
+    ) { content() }
 }

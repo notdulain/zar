@@ -47,9 +47,9 @@ private fun buildRouteTransitions(policy: MotionPolicy): ZarRouteTransitions {
 
     fun AnimatedContentTransitionScope<NavBackStackEntry>.into(move: NavRouteMotion.Move): EnterTransition = when (move) {
         NavRouteMotion.Move.Fade -> fadeIn(fade)
-        NavRouteMotion.Move.PushIn -> slideIntoContainer(SlideDirection.Start, spec)
-        // The parent returns from a little behind the start edge while the child leaves toward the end: no scale, no fade.
-        NavRouteMotion.Move.PopIn -> slideIntoContainer(SlideDirection.End, popSpec) { (it * ZarMotion.ROUTE_PARENT_RECEDE).toInt() }
+        NavRouteMotion.Move.PushIn -> slideIntoContainer(SlideDirection.Left, spec)
+        // The parent returns from a little behind the left edge while the child leaves toward the right: no scale, no fade. These are physical directions, so Back goes right in RTL too.
+        NavRouteMotion.Move.PopIn -> slideIntoContainer(SlideDirection.Right, popSpec) { (it * ZarMotion.ROUTE_PARENT_RECEDE).toInt() }
         NavRouteMotion.Move.ModalUp -> slideIntoContainer(SlideDirection.Up, spec)
         else -> EnterTransition.None
     }
@@ -57,8 +57,8 @@ private fun buildRouteTransitions(policy: MotionPolicy): ZarRouteTransitions {
     fun AnimatedContentTransitionScope<NavBackStackEntry>.out(move: NavRouteMotion.Move): ExitTransition = when (move) {
         NavRouteMotion.Move.Fade -> fadeOut(fade)
         // The parent recedes only a little; the child covers the rest.
-        NavRouteMotion.Move.Recede -> slideOutOfContainer(SlideDirection.Start, spec) { (it * ZarMotion.ROUTE_PARENT_RECEDE).toInt() }
-        NavRouteMotion.Move.PopOut -> slideOutOfContainer(SlideDirection.End, popSpec)
+        NavRouteMotion.Move.Recede -> slideOutOfContainer(SlideDirection.Left, spec) { (it * ZarMotion.ROUTE_PARENT_RECEDE).toInt() }
+        NavRouteMotion.Move.PopOut -> slideOutOfContainer(SlideDirection.Right, popSpec)
         else -> ExitTransition.None
     }
 
@@ -72,6 +72,6 @@ private fun buildRouteTransitions(policy: MotionPolicy): ZarRouteTransitions {
 
 /**
  * Compose routes that present the Add-transaction sheet shell (grabber, close): they rise from below. Dialog routes
- * (Add transaction, Quick note) are platform windows driven by `SheetBackHost`. Any Back, a sheet's included, slides right.
+ * (Add transaction, Quick note) are platform windows driven by `SheetBackHost`. Any Back, a sheet's included, slides physically right.
  */
 internal fun NavDestination.isModalRoute(): Boolean = hasRoute<IncomeFormRoute>()

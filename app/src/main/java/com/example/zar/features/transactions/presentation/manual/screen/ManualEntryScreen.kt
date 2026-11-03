@@ -1,5 +1,6 @@
 package com.example.zar.features.transactions.presentation.manual.screen
 
+import com.example.zar.core.presentation.components.SheetSubSurface
 import com.example.zar.core.presentation.components.sheetBackScrim
 import com.example.zar.core.presentation.components.sheetBackSlide
 import androidx.compose.ui.text.input.VisualTransformation
@@ -8,7 +9,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDefaults
-import androidx.compose.material3.DatePickerDialog
+import com.example.zar.core.presentation.components.ZarDatePickerDialog
 import androidx.compose.material3.SelectableDates
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.TextButton
@@ -166,21 +167,7 @@ internal fun ManualEntryContent(uiState: ManualEntryUiState, focusNote: Boolean,
 
     BoxWithConstraints(Modifier.fillMaxSize().imePadding()) {
         Box(Modifier.fillMaxSize().sheetBackScrim().background(colors.scrim.copy(alpha = 0.64f)).clickable(onClick = actions.onClose))
-        if (openPicker == "date") {
-            ManualDatePickerSheet(
-                date = uiState.date,
-                onCancel = { openPicker = null },
-                onSetDate = { actions.onDate(it); openPicker = null },
-                modifier = Modifier.align(Alignment.BottomCenter).sheetBackSlide(),
-            )
-        } else if (openPicker == "time") {
-            ManualTimePickerSheet(
-                time = uiState.time,
-                onCancel = { openPicker = null },
-                onSetTime = { actions.onTime(it); openPicker = null },
-                modifier = Modifier.align(Alignment.BottomCenter).sheetBackSlide(),
-            )
-        } else {
+        if (openPicker == null) {
         Column(
             Modifier.align(Alignment.BottomCenter).sheetBackSlide().fillMaxWidth().heightIn(max = maxHeight - 48.dp)
                 .clip(ZarShapes.sheet).background(colors.surface).pointerInput(Unit) { detectTapGestures {} }.padding(top = 10.dp),
@@ -263,15 +250,37 @@ internal fun ManualEntryContent(uiState: ManualEntryUiState, focusNote: Boolean,
             )
         }
         }
+        SheetSubSurface(visible = openPicker == "date") {
+            ManualDatePickerSheet(
+                date = uiState.date,
+                onCancel = { openPicker = null },
+                onSetDate = { actions.onDate(it); openPicker = null },
+                modifier = Modifier.sheetBackSlide(),
+            )
+        }
+        SheetSubSurface(visible = openPicker == "time") {
+            ManualTimePickerSheet(
+                time = uiState.time,
+                onCancel = { openPicker = null },
+                onSetTime = { actions.onTime(it); openPicker = null },
+                modifier = Modifier.sheetBackSlide(),
+            )
+        }
+        // Kept after the state clears so the sheet can finish leaving to the right.
+        val shownNewCategory = remember { arrayOfNulls<NewCategoryState>(1) }
+        uiState.newCategory?.let { shownNewCategory[0] = it }
         if (uiState.newCategory != null) {
             Box(Modifier.fillMaxSize().background(colors.scrim.copy(alpha = 0.64f)).clickable(onClick = actions.onAddCategoryCancel))
-            AddCategorySheet(
-                state = uiState.newCategory,
-                onName = actions.onNewCategoryName,
-                onCancel = actions.onAddCategoryCancel,
-                onSave = actions.onAddCategorySave,
-                modifier = Modifier.align(Alignment.BottomCenter),
-            )
+        }
+        SheetSubSurface(visible = uiState.newCategory != null) {
+            shownNewCategory[0]?.let { state ->
+                AddCategorySheet(
+                    state = state,
+                    onName = actions.onNewCategoryName,
+                    onCancel = actions.onAddCategoryCancel,
+                    onSave = actions.onAddCategorySave,
+                )
+            }
         }
     }
 }
@@ -967,7 +976,7 @@ internal fun DateRow(date: LocalDate, onSelect: (LocalDate) -> Unit) {
         },
     )
     val pickerColors = DatePickerDefaults.colors(containerColor = ZarTheme.colors.surface, selectedDayContainerColor = ZarTheme.colors.accentSelected)
-    DatePickerDialog(
+    ZarDatePickerDialog(
         colors = pickerColors,
         tonalElevation = 0.dp,
         onDismissRequest = { showPicker = false },

@@ -134,21 +134,6 @@ internal fun FilterPill(
     }
 }
 
-/** The navy scrim Figma puts behind a bottom sheet (#05070B at 55%). */
-internal val SheetScrim = Color(0x8C05070B)
-
-/** The light 36x4 grabber, 10dp below the sheet top and 14dp above the title. */
-@Composable
-internal fun SheetGrabber() {
-    Box(
-        Modifier
-            .padding(top = 10.dp, bottom = 14.dp)
-            .size(width = 36.dp, height = 4.dp)
-            .clip(RoundedCornerShape(2.dp))
-            .background(ZarPrimitives.gray300),
-    )
-}
-
 /** Sheet title with the 20dp cross at the right edge of the 24dp margin. */
 @Composable
 internal fun SheetHeader(title: String, onClose: () -> Unit, modifier: Modifier = Modifier) {

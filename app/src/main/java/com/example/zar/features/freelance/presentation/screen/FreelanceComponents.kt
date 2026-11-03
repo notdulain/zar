@@ -9,7 +9,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
-import androidx.compose.material3.DatePickerDialog
+import com.example.zar.core.presentation.components.ZarDatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -97,7 +97,7 @@ internal fun DateField(label: String, date: LocalDate, enabled: Boolean, onSelec
     }
     if (!showPicker) return
     val state = rememberDatePickerState(initialSelectedDateMillis = date.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli())
-    DatePickerDialog(
+    ZarDatePickerDialog(
         onDismissRequest = { showPicker = false },
         confirmButton = {
             TextButton(onClick = {

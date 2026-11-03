@@ -14,7 +14,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
+import com.example.zar.core.presentation.components.ZarAlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -234,7 +234,7 @@ private fun CancelMilestoneButton(enabled: Boolean, onConfirm: () -> Unit) {
         Text(stringResource(R.string.milestone_cancel), color = MaterialTheme.colorScheme.error)
     }
     if (confirming) {
-        AlertDialog(
+        ZarAlertDialog(
             onDismissRequest = { confirming = false },
             title = { Text(stringResource(R.string.milestone_cancel_title)) },
             text = { Text(stringResource(R.string.milestone_cancel_body)) },

@@ -21,7 +21,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
+import com.example.zar.core.presentation.components.ZarAlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -133,7 +133,7 @@ fun CryptoScreen(
 
     uiState.editingCostFor?.let { wallet -> OpeningCostDialog(wallet, uiState, viewModel) }
     undoing?.let { row ->
-        AlertDialog(
+        ZarAlertDialog(
             onDismissRequest = { undoing = null },
             title = { Text(stringResource(R.string.crypto_undo_title)) },
             text = { Text(stringResource(R.string.crypto_undo_body)) },
@@ -305,7 +305,7 @@ private fun Detail(text: String, warning: Boolean = false) {
 
 @Composable
 private fun OpeningCostDialog(wallet: Account, uiState: CryptoUiState, viewModel: CryptoViewModel) {
-    AlertDialog(
+    ZarAlertDialog(
         onDismissRequest = viewModel::dismissCost,
         title = { Text(stringResource(R.string.crypto_cost_title, wallet.name)) },
         text = {

@@ -32,11 +32,22 @@ class NavRouteMotionTest {
     }
 
     @Test
-    fun reducedMotionFadesEveryKindOfChangeIncludingSheets() {
+    fun reducedMotionFadesForwardChangesIncludingSheets() {
         assertEquals(NavRouteMotion.Move.Fade, NavRouteMotion.enter(false, targetModal = false))
         assertEquals(NavRouteMotion.Move.Fade, NavRouteMotion.enter(false, targetModal = true))
         assertEquals(NavRouteMotion.Move.Fade, NavRouteMotion.exit(false, targetModal = true))
-        assertEquals(NavRouteMotion.Move.Fade, NavRouteMotion.popExit(false))
-        assertEquals(NavRouteMotion.Move.Fade, NavRouteMotion.popEnter(false, initialModal = false))
+    }
+
+    @Test
+    fun backWithMotionReducedOrOffLandsAtOnceWithNoFade() {
+        assertEquals(NavRouteMotion.Move.Instant, NavRouteMotion.popExit(false))
+        assertEquals(NavRouteMotion.Move.Instant, NavRouteMotion.popEnter(false, initialModal = false))
+        assertEquals(NavRouteMotion.Move.Instant, NavRouteMotion.popEnter(false, initialModal = true))
+        val backMoves = listOf(
+            NavRouteMotion.popExit(false),
+            NavRouteMotion.popEnter(false, initialModal = false),
+            NavRouteMotion.popExit(true),
+        )
+        assertEquals(false, backMoves.contains(NavRouteMotion.Move.Fade))
     }
 }

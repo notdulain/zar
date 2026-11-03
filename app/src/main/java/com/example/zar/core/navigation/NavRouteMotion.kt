@@ -6,8 +6,9 @@ package com.example.zar.core.navigation
  *
  * The four tabs are pages of one pager inside a single destination (see `TabPagerHost`), so there is no peer-tab route
  * change any more: every change here is a hierarchical push/pop or a sheet. A child enters from the logical end and the
- * parent may recede; every Back, whatever surface it dismisses, slides the departing surface toward the logical end
- * (the right in LTR) with no zoom or fade. Reduced motion collapses every case to a short crossfade.
+ * parent may recede; every Back, whatever surface it dismisses, slides the departing surface toward the physical right
+ * in both layout directions, with no zoom or fade. Reduced motion crossfades forward changes in at most 100 ms, but
+ * Back lands at once: there is no fade-only Back.
  */
 internal object NavRouteMotion {
 
@@ -16,17 +17,20 @@ internal object NavRouteMotion {
         /** Reduced motion: a crossfade of at most 100 ms, or nothing when system animations are off. */
         Fade,
 
-        /** A child enters from the logical end. */
+        /** A child enters from the physical right. */
         PushIn,
 
-        /** The parent recedes a little toward the logical start while a child covers it. */
+        /** The parent recedes a little toward the left while a child covers it. */
         Recede,
 
-        /** Back/Up reveals the parent, coming in from a little behind the logical start as the child leaves. */
+        /** Back/Up reveals the parent, coming in from a little behind the left edge as the child leaves. */
         PopIn,
 
-        /** The child leaves toward the logical end. Every Back uses this, sheets included. */
+        /** The child leaves toward the physical right. Every Back uses this, sheets included. */
         PopOut,
+
+        /** Back with motion reduced or off: the change lands at once, with no fade, slide or scale. */
+        Instant,
 
         /** A sheet-style route enters from below. */
         ModalUp,
@@ -51,11 +55,11 @@ internal object NavRouteMotion {
 
     /** The screen revealed by Back. Under a sheet it was never moved, so it holds. */
     fun popEnter(spatial: Boolean, initialModal: Boolean): Move = when {
-        !spatial -> Move.Fade
+        !spatial -> Move.Instant
         initialModal -> Move.Hold
         else -> Move.PopIn
     }
 
-    /** The screen Back dismisses. A sheet leaves the same way a page does: toward the logical end. */
-    fun popExit(spatial: Boolean): Move = if (spatial) Move.PopOut else Move.Fade
+    /** The screen Back dismisses. A sheet leaves the same way a page does: toward the physical right. */
+    fun popExit(spatial: Boolean): Move = if (spatial) Move.PopOut else Move.Instant
 }

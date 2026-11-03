@@ -25,7 +25,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDefaults
-import androidx.compose.material3.DatePickerDialog
+import com.example.zar.core.presentation.components.ZarDatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.OutlinedTextField
@@ -63,6 +63,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import com.example.zar.core.presentation.components.ZarDialog
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.zar.R
@@ -388,7 +389,7 @@ private fun PlanShellCard(label: Int, value: Int) {
 /** Bounded, scrollable form so the actions remain reachable with large text or an IME. */
 @Composable
 internal fun PlanEditor(title: String, isSaving: Boolean, onDismiss: () -> Unit, onSave: () -> Unit, content: @Composable ColumnScope.() -> Unit) {
-    Dialog(onDismissRequest = { if (!isSaving) onDismiss() }) {
+    ZarDialog(onDismissRequest = { if (!isSaving) onDismiss() }) {
         Surface(modifier = Modifier.testTag("plans-editor"), shape = ZarShapes.xl, color = ZarTheme.colors.surface) {
             Column(Modifier.imePadding().verticalScroll(rememberScrollState()).padding(24.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
                 Text(title, style = ZarType.headingSheet, color = ZarTheme.colors.textPrimary)
@@ -443,7 +444,7 @@ internal fun GoalDateField(date: LocalDate?, onDateChange: (LocalDate?) -> Unit,
             initialSelectedDateMillis = initial.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli(),
         )
         val pickerColors = DatePickerDefaults.colors(containerColor = ZarTheme.colors.surface, selectedDayContainerColor = ZarTheme.colors.accentSelected)
-        DatePickerDialog(
+        ZarDatePickerDialog(
             colors = pickerColors,
             onDismissRequest = { showPicker = false },
             confirmButton = {

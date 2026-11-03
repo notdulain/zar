@@ -14,9 +14,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ModalBottomSheet
+import com.example.zar.core.presentation.components.ZarModalSheet
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -50,9 +49,7 @@ import com.example.zar.features.accounts.presentation.viewmodel.BalanceCheckView
 import com.example.zar.features.accounts.presentation.viewmodel.CheckMessage
 import com.example.zar.features.accounts.presentation.viewmodel.GapChoice
 import com.example.zar.features.transactions.presentation.activity.screen.InfoBanner
-import com.example.zar.features.transactions.presentation.activity.screen.SheetGrabber
 import com.example.zar.features.transactions.presentation.activity.screen.SheetHeader
-import com.example.zar.features.transactions.presentation.activity.screen.SheetScrim
 import com.example.zar.features.transactions.presentation.income.IncomeFormat
 import com.example.zar.features.transactions.presentation.manual.screen.FieldError
 import com.example.zar.features.transactions.presentation.manual.screen.TextInput
@@ -107,14 +104,10 @@ internal class CheckActions(
 internal fun CheckBalanceBody(state: BalanceCheckUiState, actions: CheckActions) {
     val colors = ZarTheme.colors
     val isCash = state.balance?.account?.type == AccountType.CASH
-    ModalBottomSheet(
-        onDismissRequest = { if (!state.isSaving) actions.onDismiss() },
-        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-        shape = ZarShapes.sheet,
-        containerColor = colors.surface,
-        scrimColor = SheetScrim,
-        dragHandle = { SheetGrabber() },
-    ) {
+    ZarModalSheet(
+        onDismissRequest = actions.onDismiss,
+        canDismiss = !state.isSaving,
+    ) { dismiss ->
         Column(
             Modifier
                 .navigationBarsPadding()
@@ -126,7 +119,7 @@ internal fun CheckBalanceBody(state: BalanceCheckUiState, actions: CheckActions)
         ) {
             SheetHeader(
                 stringResource(if (isCash) R.string.balance_check_title_cash else R.string.balance_check_title),
-                onClose = { if (!state.isSaving) actions.onDismiss() },
+                onClose = dismiss,
             )
             when {
                 state.isLoading -> Box(Modifier.fillMaxWidth().padding(vertical = 32.dp), Alignment.Center) {
@@ -138,7 +131,7 @@ internal fun CheckBalanceBody(state: BalanceCheckUiState, actions: CheckActions)
                     color = colors.textSecondary,
                     modifier = Modifier.testTag("check-unavailable"),
                 )
-                state.availability != CheckAvailability.AVAILABLE -> Unavailable(state.availability, actions.onDismiss)
+                state.availability != CheckAvailability.AVAILABLE -> Unavailable(state.availability, dismiss)
                 else -> CheckForm(state, isCash, actions)
             }
         }

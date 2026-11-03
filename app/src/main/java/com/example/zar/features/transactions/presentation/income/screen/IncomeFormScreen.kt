@@ -1,5 +1,6 @@
 package com.example.zar.features.transactions.presentation.income.screen
 
+import com.example.zar.core.presentation.components.SheetSubSurface
 import com.example.zar.core.presentation.components.sheetBackScrim
 import com.example.zar.core.presentation.components.sheetBackSlide
 import com.example.zar.core.presentation.privacy.amountFieldTransformation
@@ -150,23 +151,25 @@ internal fun IncomeFormContent(uiState: IncomeFormUiState, actions: IncomeFormAc
 
     BoxWithConstraints(Modifier.fillMaxSize().imePadding()) {
         Box(Modifier.fillMaxSize().sheetBackScrim().background(colors.scrim.copy(alpha = 0.64f)).clickable(onClick = actions.onBack))
-        if (openPicker == "date") {
+        if (openPicker == null) {
+            IncomeSheet(uiState, actions, onOpenDate = { openPicker = "date" }, onOpenTime = { openPicker = "time" }, modifier = Modifier.align(Alignment.BottomCenter).sheetBackSlide(), maxSheetHeight = maxHeight - 48.dp)
+        }
+        SheetSubSurface(visible = openPicker == "date") {
             ManualDatePickerSheet(
                 date = uiState.date,
                 onCancel = { openPicker = null },
                 onSetDate = { actions.onDateSelect(it); openPicker = null },
-                modifier = Modifier.align(Alignment.BottomCenter).sheetBackSlide(),
+                modifier = Modifier.sheetBackSlide(),
             )
-        } else if (openPicker == "time") {
+        }
+        SheetSubSurface(visible = openPicker == "time") {
             ManualTimePickerSheet(
                 time = uiState.time ?: LocalTime.now(ZarTime.ZONE).withSecond(0).withNano(0),
                 onCancel = { openPicker = null },
                 onSetTime = { actions.onTimeSelect(it); openPicker = null },
-                modifier = Modifier.align(Alignment.BottomCenter).sheetBackSlide(),
+                modifier = Modifier.sheetBackSlide(),
                 onClear = if (uiState.time != null) ({ actions.onTimeSelect(null); openPicker = null }) else null,
             )
-        } else {
-            IncomeSheet(uiState, actions, onOpenDate = { openPicker = "date" }, onOpenTime = { openPicker = "time" }, modifier = Modifier.align(Alignment.BottomCenter).sheetBackSlide(), maxSheetHeight = maxHeight - 48.dp)
         }
     }
 }

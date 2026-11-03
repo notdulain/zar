@@ -35,7 +35,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDefaults
-import androidx.compose.material3.DatePickerDialog
+import com.example.zar.core.presentation.components.ZarDatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.SelectableDates
@@ -901,7 +901,7 @@ private fun DateField(date: LocalDate?, label: String, allowFuture: Boolean, gue
         },
     )
     val pickerColors = DatePickerDefaults.colors(containerColor = colors.surface, selectedDayContainerColor = colors.accentSelected)
-    DatePickerDialog(
+    ZarDatePickerDialog(
         colors = pickerColors,
         tonalElevation = 0.dp,
         onDismissRequest = { showPicker = false },
