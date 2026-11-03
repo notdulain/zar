@@ -209,3 +209,23 @@ internal fun errorText(error: AuthError): String = stringResource(
         is AuthError.Unknown -> R.string.auth_error_unknown
     },
 )
+
+/** Pill action shared by the two dusk auth forms. */
+@Composable
+internal fun AuthSubmitButton(text: String, busy: Boolean, onClick: () -> Unit) {
+    val light = ZarTheme.colors.canvas == com.example.zar.core.presentation.theme.ZarLightColors.canvas
+    Button(
+        onClick = onClick,
+        enabled = !busy,
+        shape = androidx.compose.foundation.shape.CircleShape,
+        colors = ButtonDefaults.buttonColors(
+            containerColor = if (light) androidx.compose.ui.graphics.Color.White else ZarTheme.colors.accentPrimary,
+            contentColor = if (light) androidx.compose.ui.graphics.Color(0xFF0E0F12) else androidx.compose.ui.graphics.Color.White,
+            disabledContainerColor = if (light) androidx.compose.ui.graphics.Color.White else ZarTheme.colors.accentPrimary,
+            disabledContentColor = if (light) androidx.compose.ui.graphics.Color(0xFF0E0F12) else androidx.compose.ui.graphics.Color.White,
+        ),
+        modifier = Modifier.fillMaxWidth().height(54.dp).testTag("submit"),
+    ) {
+        Text(text, style = com.example.zar.core.presentation.theme.ZarType.labelButton)
+    }
+}

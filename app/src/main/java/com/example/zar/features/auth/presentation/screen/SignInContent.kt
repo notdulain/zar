@@ -207,7 +207,7 @@ internal fun SignInContent(
  * password transformation, IME actions) are the platform's.
  */
 @Composable
-private fun UnderlineField(
+internal fun UnderlineField(
     value: String,
     onValueChange: (String) -> Unit,
     label: String,
@@ -218,11 +218,14 @@ private fun UnderlineField(
     keyboardActions: KeyboardActions,
     contentType: ContentType,
     visualTransformation: VisualTransformation = VisualTransformation.None,
+    problem: CredentialProblem? = null,
+    modifier: Modifier = Modifier,
     trailing: @Composable () -> Unit = {},
 ) {
     val source = remember { MutableInteractionSource() }
     val focused by source.collectIsFocusedAsState()
     val dim = if (enabled) 1f else 0.5f
+    Column {
     Box(Modifier.fillMaxWidth().height(40.dp)) {
         if (value.isNotEmpty()) {
             Text(label.uppercase(), style = FieldLabel, color = White.copy(alpha = 0.5f * dim), modifier = Modifier.offset(y = (-10).dp))
@@ -236,14 +239,20 @@ private fun UnderlineField(
                     cursorBrush = SolidColor(White),
                     keyboardOptions = keyboardOptions, keyboardActions = keyboardActions,
                     visualTransformation = visualTransformation, interactionSource = source,
-                    modifier = Modifier.fillMaxWidth().testTag(testTag).semantics { this.contentType = contentType },
+                    modifier = Modifier.fillMaxWidth().then(modifier).testTag(testTag).semantics { this.contentType = contentType; contentDescription = label },
                 )
             }
             trailing()
         }
         Box(
             Modifier.align(Alignment.BottomStart).fillMaxWidth().height(if (focused) 2.dp else 1.dp)
-                .background(if (focused) White else White.copy(alpha = 0.25f)),
+                .background(if (problem != null) ErrorDot else if (focused) White else White.copy(alpha = 0.25f)),
         )
+    }
+    if (problem != null) {
+        Text(problemText(problem), style = com.example.zar.core.presentation.theme.ZarType.bodyCaption,
+            color = ErrorDot, modifier = Modifier.padding(top = 6.dp)
+                .semantics { liveRegion = LiveRegionMode.Polite }.testTag("$testTag-error"))
+    }
     }
 }

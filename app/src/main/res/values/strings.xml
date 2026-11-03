@@ -1573,4 +1573,8 @@
     <string name="entry_account_same_currency">Choose an account in the same currency. Both account balances update when you save.</string>
     <string name="entry_account_linked">Undo linked refunds or the transfer before changing this account.</string>
     <string name="entry_account_unavailable">That account is unavailable. Choose an active account in the same currency.</string>
+    <string name="auth_register_headline">Create your\naccount</string>
+    <string name="auth_registration_password_placeholder">Password (at least %1$d characters)</string>
+    <string name="auth_already_have_account">Already have an account?</string>
+    <string name="auth_registering">Creating account…</string>
 </resources>
