@@ -39,6 +39,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
@@ -826,7 +827,7 @@ private fun QuickNavigation(onNavigate: (TopLevelDestination) -> Unit) {
 @Composable
 private fun QuickCard(title: String, detail: String, icon: Int, modifier: Modifier, onClick: () -> Unit) {
     val colors = ZarTheme.colors
-    ZarCard(modifier.height(114.dp), onClick = onClick, contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp)) {
+    ZarCard(modifier.height(114.dp + 60.dp * (LocalDensity.current.fontScale - 1f).coerceAtLeast(0f)), onClick = onClick, contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(30.dp).background(colors.subtle, CircleShape), contentAlignment = Alignment.Center) {
                 Icon(painterResource(icon), contentDescription = null, modifier = Modifier.size(16.dp), tint = colors.textPrimary)
@@ -899,7 +900,18 @@ private fun SpendingCard(overview: HomeOverview, onClick: () -> Unit) {
 @Composable
 private fun SplitLine(@StringRes label: Int, total: ReportingTotal, tag: String, dotColor: Color) {
     val colors = ZarTheme.colors
-    Row(Modifier.fillMaxWidth().height(17.dp).testTag(tag), verticalAlignment = Alignment.CenterVertically) {
+    if (LocalDensity.current.fontScale > 1.3f) {
+        Column(Modifier.fillMaxWidth().padding(vertical = 3.dp).testTag(tag)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Box(Modifier.size(6.dp).background(dotColor, CircleShape))
+                Text(stringResource(label).uppercase(), style = ZarType.label, color = colors.textTertiary)
+            }
+            Text(total.amount.formatWithCode(), style = ZarType.label, color = colors.textPrimary,
+                modifier = Modifier.padding(start = 14.dp))
+        }
+        return
+    }
+    Row(Modifier.fillMaxWidth().heightIn(min = 17.dp).testTag(tag), verticalAlignment = Alignment.CenterVertically) {
         Box(Modifier.size(6.dp).background(dotColor, CircleShape))
         Spacer(Modifier.width(8.dp))
         Text(stringResource(label).uppercase(), style = ZarType.label, color = colors.textTertiary)
