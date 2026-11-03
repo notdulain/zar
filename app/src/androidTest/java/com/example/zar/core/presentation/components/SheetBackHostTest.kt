@@ -3,6 +3,18 @@ package com.example.zar.core.presentation.components
 import androidx.activity.BackEventCompat
 import androidx.activity.ComponentActivity
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.ScrollState
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.height
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipe
+import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.runBlocking
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.CompositionLocalProvider
@@ -32,24 +44,35 @@ class SheetBackHostTest {
     @get:Rule
     val compose = createAndroidComposeRule<ComponentActivity>()
 
+    private var bodyScroll: ScrollState? = null
+    private var entranceReady = false
     private var pops = 0
     private var dismiss: (() -> Unit)? = null
     private var widthDp = 0f
     private val full = MotionPolicy(reduceMotionSetting = false, systemAnimationsEnabled = true)
     private val reduced = MotionPolicy(reduceMotionSetting = true, systemAnimationsEnabled = true)
 
-    private fun show(policy: MotionPolicy) {
+    private fun show(policy: MotionPolicy, slideUpOnEnter: Boolean = false, scrollable: Boolean = false) {
         pops = 0
         compose.mainClock.autoAdvance = false
         compose.setContent {
             ZarTheme {
                 CompositionLocalProvider(LocalZarMotion provides policy) {
                     widthDp = LocalConfiguration.current.screenWidthDp.toFloat()
-                    SheetBackHost(onPop = { pops++ }) { close ->
+                    SheetBackHost(onPop = { pops++ }, slideUpOnEnter = slideUpOnEnter) { close ->
                         dismiss = close
+                        val sheet = LocalSheetBack.current
+                        androidx.compose.runtime.LaunchedEffect(sheet) { sheet?.awaitEntrance(); entranceReady = true }
                         Box(Modifier.fillMaxSize()) {
                             Box(Modifier.fillMaxSize().sheetBackScrim().background(Color.Black.copy(alpha = 0.64f)).testTag("scrim"))
-                            Box(Modifier.align(Alignment.BottomCenter).fillMaxSize().sheetBackSlide().background(Color.White).testTag("sheet"))
+                            Box(Modifier.align(Alignment.BottomCenter).fillMaxSize().sheetBackSlide().background(Color.White)
+                                .pointerInput(Unit) { detectTapGestures { } }.testTag("sheet")) {
+                                if (scrollable) {
+                                    val scroll = androidx.compose.foundation.rememberScrollState()
+                                    bodyScroll = scroll
+                                    Column(Modifier.fillMaxSize().verticalScroll(scroll)) { Box(Modifier.height(3000.dp)) }
+                                }
+                            }
                         }
                     }
                 }
@@ -61,6 +84,71 @@ class SheetBackHostTest {
     private fun frame(count: Int = 1) = repeat(count) { compose.mainClock.advanceTimeByFrame() }
     private fun sheetLeft() = compose.onNodeWithTag("sheet").getUnclippedBoundsInRoot().left.value
     private fun scrimLeft() = compose.onNodeWithTag("scrim").getUnclippedBoundsInRoot().left.value
+
+    @Test
+    fun entryRisesFromBelowWithoutMovingTheBackdrop() {
+        show(full, slideUpOnEnter = true)
+        org.junit.Assert.assertFalse("IME focus waits while the sheet is rising", entranceReady)
+        val tops = ArrayList<Float>()
+        repeat(35) {
+            tops += compose.onNodeWithTag("sheet").getUnclippedBoundsInRoot().top.value
+            assertEquals("the scrim stays stationary", 0f, compose.onNodeWithTag("scrim").getUnclippedBoundsInRoot().top.value, .5f)
+            frame()
+        }
+        assertTrue("starts below its final position: $tops", tops.first() > 20f)
+        assertTrue("continuous upward entrance: $tops", tops.zipWithNext().all { (a, b) -> b <= a + .1f })
+        assertEquals(0f, tops.last(), .5f)
+        assertTrue("automatic focus is released after arrival", entranceReady)
+        assertEquals(0, pops)
+    }
+
+    @Test
+    fun shortPullReturnsAndLongPullDismissesDownExactlyOnce() {
+        show(full, slideUpOnEnter = true)
+        frame(50)
+        val sheet = compose.onNodeWithTag("sheet")
+        sheet.performTouchInput { swipe(Offset(centerX, 200f), Offset(centerX, 240f), 500) }
+        frame(60)
+        assertEquals("a short pull returns without closing", 0, pops)
+        assertEquals(0f, sheet.getUnclippedBoundsInRoot().top.value, .5f)
+        sheet.performTouchInput { swipe(Offset(centerX, 200f), Offset(centerX, 700f), 500) }
+        frame(80)
+        assertEquals("one downward dismissal", 1, pops)
+        assertTrue("leaves below the window", sheet.getUnclippedBoundsInRoot().top.value > 300f)
+        assertEquals("does not slide sideways", 0f, sheetLeft(), .5f)
+        assertEquals("backdrop stays stationary", 0f, compose.onNodeWithTag("scrim").getUnclippedBoundsInRoot().top.value, .5f)
+    }
+
+    @Test
+    fun touchingAgainDuringDownwardExitStillPopsExactlyOnce() {
+        show(full, slideUpOnEnter = true)
+        frame(50)
+        val sheet = compose.onNodeWithTag("sheet")
+        sheet.performTouchInput { swipe(Offset(centerX, 200f), Offset(centerX, 700f), 500) }
+        frame(2)
+        sheet.performTouchInput { down(Offset(centerX, 100f)) }
+        frame(2)
+        sheet.performTouchInput { up() }
+        frame(100)
+        assertEquals("a new touch must not cancel an already committed dismissal", 1, pops)
+    }
+
+    @Test
+    fun contentScrollsFirstAndPullingDownAtItsTopDismisses() {
+        show(full, slideUpOnEnter = true, scrollable = true)
+        frame(50)
+        compose.runOnIdle { runBlocking { bodyScroll!!.scrollTo(500) } }
+        val sheet = compose.onNodeWithTag("sheet")
+        sheet.performTouchInput { swipe(Offset(centerX, 200f), Offset(centerX, 300f), 500) }
+        frame(20)
+        assertEquals("content scrolling does not close the sheet", 0, pops)
+        assertTrue("the content scrolled toward its top", bodyScroll!!.value in 1..499)
+        assertEquals(0f, sheet.getUnclippedBoundsInRoot().top.value, .5f)
+        compose.runOnIdle { runBlocking { bodyScroll!!.scrollTo(0) } }
+        sheet.performTouchInput { swipe(Offset(centerX, 200f), Offset(centerX, 700f), 500) }
+        frame(80)
+        assertEquals("unconsumed downward pull dismisses", 1, pops)
+    }
 
     @Test
     fun theCloseButtonSlidesTheSheetRightAndPopsOnce() {

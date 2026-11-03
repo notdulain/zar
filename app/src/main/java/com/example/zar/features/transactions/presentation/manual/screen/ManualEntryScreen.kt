@@ -149,6 +149,7 @@ internal fun ManualEntryContent(uiState: ManualEntryUiState, focusNote: Boolean,
     val colors = ZarTheme.colors
     val closeLabel = stringResource(R.string.manual_close)
     val noteFocus = remember { FocusRequester() }
+    val sheet = com.example.zar.core.presentation.components.LocalSheetBack.current
     var quickNoteTaps by remember { mutableIntStateOf(0) }
     var openedWithFocus by rememberSaveable { mutableStateOf(false) }
     var openPicker by rememberSaveable { mutableStateOf<String?>(null) }
@@ -160,6 +161,7 @@ internal fun ManualEntryContent(uiState: ManualEntryUiState, focusNote: Boolean,
     LaunchedEffect(uiState.isLoading, uiState.kind, quickNoteTaps) {
         val wanted = quickNoteTaps > 0 || (focusNote && !openedWithFocus)
         if (wanted && !uiState.isLoading && uiState.kind == ManualEntryKind.EXPENSE) {
+            sheet?.awaitEntrance()
             runCatching { noteFocus.requestFocus() }
             openedWithFocus = true
         }
@@ -169,7 +171,7 @@ internal fun ManualEntryContent(uiState: ManualEntryUiState, focusNote: Boolean,
         Box(Modifier.fillMaxSize().sheetBackScrim().background(colors.scrim.copy(alpha = 0.64f)).clickable(onClick = actions.onClose))
         if (openPicker == null) {
         Column(
-            Modifier.align(Alignment.BottomCenter).sheetBackSlide().fillMaxWidth().heightIn(max = maxHeight - 48.dp)
+            Modifier.align(Alignment.BottomCenter).sheetBackSlide(swipeEnabled = !uiState.isSaving).fillMaxWidth().heightIn(max = maxHeight - 48.dp)
                 .clip(ZarShapes.sheet).background(colors.surface).pointerInput(Unit) { detectTapGestures {} }.padding(top = 10.dp),
         ) {
             Box(Modifier.fillMaxWidth(), Alignment.Center) {
@@ -255,7 +257,7 @@ internal fun ManualEntryContent(uiState: ManualEntryUiState, focusNote: Boolean,
                 date = uiState.date,
                 onCancel = { openPicker = null },
                 onSetDate = { actions.onDate(it); openPicker = null },
-                modifier = Modifier.sheetBackSlide(),
+                modifier = Modifier.sheetBackSlide(swipeEnabled = false),
             )
         }
         SheetSubSurface(visible = openPicker == "time") {
@@ -263,7 +265,7 @@ internal fun ManualEntryContent(uiState: ManualEntryUiState, focusNote: Boolean,
                 time = uiState.time,
                 onCancel = { openPicker = null },
                 onSetTime = { actions.onTime(it); openPicker = null },
-                modifier = Modifier.sheetBackSlide(),
+                modifier = Modifier.sheetBackSlide(swipeEnabled = false),
             )
         }
         // Kept after the state clears so the sheet can finish leaving to the right.

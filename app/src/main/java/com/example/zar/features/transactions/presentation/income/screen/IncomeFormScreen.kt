@@ -152,14 +152,14 @@ internal fun IncomeFormContent(uiState: IncomeFormUiState, actions: IncomeFormAc
     BoxWithConstraints(Modifier.fillMaxSize().imePadding()) {
         Box(Modifier.fillMaxSize().sheetBackScrim().background(colors.scrim.copy(alpha = 0.64f)).clickable(onClick = actions.onBack))
         if (openPicker == null) {
-            IncomeSheet(uiState, actions, onOpenDate = { openPicker = "date" }, onOpenTime = { openPicker = "time" }, modifier = Modifier.align(Alignment.BottomCenter).sheetBackSlide(), maxSheetHeight = maxHeight - 48.dp)
+            IncomeSheet(uiState, actions, onOpenDate = { openPicker = "date" }, onOpenTime = { openPicker = "time" }, modifier = Modifier.align(Alignment.BottomCenter).sheetBackSlide(swipeEnabled = !uiState.isSaving), maxSheetHeight = maxHeight - 48.dp)
         }
         SheetSubSurface(visible = openPicker == "date") {
             ManualDatePickerSheet(
                 date = uiState.date,
                 onCancel = { openPicker = null },
                 onSetDate = { actions.onDateSelect(it); openPicker = null },
-                modifier = Modifier.sheetBackSlide(),
+                modifier = Modifier.sheetBackSlide(swipeEnabled = false),
             )
         }
         SheetSubSurface(visible = openPicker == "time") {
@@ -167,7 +167,7 @@ internal fun IncomeFormContent(uiState: IncomeFormUiState, actions: IncomeFormAc
                 time = uiState.time ?: LocalTime.now(ZarTime.ZONE).withSecond(0).withNano(0),
                 onCancel = { openPicker = null },
                 onSetTime = { actions.onTimeSelect(it); openPicker = null },
-                modifier = Modifier.sheetBackSlide(),
+                modifier = Modifier.sheetBackSlide(swipeEnabled = false),
                 onClear = if (uiState.time != null) ({ actions.onTimeSelect(null); openPicker = null }) else null,
             )
         }

@@ -37,4 +37,10 @@
         <item name="android:windowEnterAnimation">@anim/zar_sheet_enter</item>
         <item name="android:windowExitAnimation">@anim/zar_sheet_exit_none</item>
     </style>
+
+    <!-- Quick note / Manual entry animate their content layers; the platform window must stay stationary. -->
+    <style name="ZarSheetContentAnimation">
+        <item name="android:windowEnterAnimation">@anim/zar_sheet_exit_none</item>
+        <item name="android:windowExitAnimation">@anim/zar_sheet_exit_none</item>
+    </style>
 </resources>

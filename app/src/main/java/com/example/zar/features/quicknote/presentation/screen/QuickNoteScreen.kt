@@ -2,6 +2,7 @@ package com.example.zar.features.quicknote.presentation.screen
 
 import com.example.zar.core.presentation.components.sheetBackScrim
 import com.example.zar.core.presentation.components.sheetBackSlide
+import com.example.zar.core.presentation.components.LocalSheetBack
 import com.example.zar.features.transactions.presentation.category.LocalExpenseCategoryCatalog
 import com.example.zar.features.transactions.presentation.category.ProvideExpenseCategoryCatalog
 import com.example.zar.features.transactions.presentation.category.categoryDisplayName
@@ -167,7 +168,7 @@ internal fun QuickNoteContent(state: QuickNoteUiState, actions: QuickNoteActions
     BoxWithConstraints(Modifier.fillMaxSize().imePadding()) {
         Box(Modifier.fillMaxSize().sheetBackScrim().background(colors.scrim.copy(alpha = 0.64f)).clickable(enabled = !state.isSaving, onClick = actions.onClose))
         Column(
-            Modifier.align(Alignment.BottomCenter).sheetBackSlide().fillMaxWidth().heightIn(max = maxHeight - 48.dp)
+            Modifier.align(Alignment.BottomCenter).sheetBackSlide(swipeEnabled = !state.isSaving).fillMaxWidth().heightIn(max = maxHeight - 48.dp)
                 .clip(ZarShapes.sheet).background(colors.surface).pointerInput(Unit) { detectTapGestures {} }.padding(top = 10.dp),
         ) {
             Box(Modifier.fillMaxWidth(), Alignment.Center) {
@@ -228,7 +229,13 @@ private fun SheetButtons(content: @Composable RowScope.() -> Unit) {
 @Composable
 private fun ColumnScope.WritingStage(state: QuickNoteUiState, actions: QuickNoteActions) {
     val focus = remember { FocusRequester() }
-    LaunchedEffect(Unit) { if (state.note.isEmpty()) runCatching { focus.requestFocus() } }
+    val sheet = LocalSheetBack.current
+    LaunchedEffect(Unit) {
+        if (state.note.isEmpty()) {
+            sheet?.awaitEntrance()
+            runCatching { focus.requestFocus() }
+        }
+    }
     val failure = state.failure
     SheetBody(Modifier.weight(1f, fill = false)) {
         NoteBox(state.note, actions.onNote, enabled = true, dim = false, focus = focus)
