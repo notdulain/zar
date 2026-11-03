@@ -58,7 +58,7 @@ fun ZarRoot(
 private fun AuthNavHost() {
     val navController = rememberNavController()
     // Sign in -> Register is a hierarchical push and Back reverses it, by the same policy as the signed-in graph.
-    val transitions = rememberZarRouteTransitions()
+    val transitions = rememberZarRouteTransitions(navController)
     NavHost(
         navController = navController,
         startDestination = SignInRoute,

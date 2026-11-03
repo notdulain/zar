@@ -154,11 +154,14 @@ fun ZarNavHost(
     val capsuleController = LocalNavCapsuleController.current ?: remember { NavCapsuleController() }
     // Route motion (see RouteTransitions): hierarchy pushes/pops from the logical end, peer tabs a short directional travel,
     // sheet-style routes from below, reduced motion a crossfade of at most 100ms. Root Android Back is never intercepted here.
-    val transitions = rememberZarRouteTransitions()
+    val transitions = rememberZarRouteTransitions(navController)
     val tabsRecede = remember { mutableStateOf<State<Float>?>(null) }
     // A child that fills the screen covers the tabs (they stay composed beneath it); a dialog route does not.
     val childCovers = visibleEntries.any { !it.destination.hasRoute<HomeRoute>() && it.destination.navigatorName != "dialog" }
-    val tabsHidden = visibleEntries.isNotEmpty() && visibleEntries.none { it.destination.hasRoute<HomeRoute>() }
+    // Navigation leaves the entry a Back gesture is revealing out of visibleEntries, so the tabs also count as showing for as
+    // long as the NavHost has their destination composed. Otherwise a held gesture shows blank canvas behind the child.
+    val tabsAnchorComposed = remember { mutableStateOf(false) }
+    val tabsHidden = visibleEntries.isNotEmpty() && visibleEntries.none { it.destination.hasRoute<HomeRoute>() } && !tabsAnchorComposed.value
     val onHomeTop = navController.currentBackStackEntryAsState().value?.destination?.hasRoute<HomeRoute>() != false
     val tabPage: @Composable (TopLevelDestination) -> Unit = { destination ->
                     when (destination) {
@@ -237,6 +240,10 @@ fun ZarNavHost(
         composable<HomeRoute> {
             // The tabs are not drawn here: they live under the NavHost so they stay composed while a child covers them
             // (see TabsLayer). This destination only reports how far the NavHost has receded it.
+            DisposableEffect(Unit) {
+                tabsAnchorComposed.value = true
+                onDispose { tabsAnchorComposed.value = false }
+            }
             TabsAnchor(transition, tabsRecede)
         }
         composable<NeedsReviewRoute> {

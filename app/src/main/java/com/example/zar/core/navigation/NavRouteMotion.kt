@@ -39,6 +39,17 @@ internal object NavRouteMotion {
         Hold,
     }
 
+    /**
+     * True when a forward transition callback is really being asked about a Back gesture still in progress: the stack has
+     * not popped yet, and the change runs from the top entry to the one beneath it. A real push always targets the top.
+     *
+     * NavHost picks its predictive callbacks from a value captured when the spec lambda was made, and AnimatedContent keeps
+     * calling the lambda it stored for a page until the page set changes. A gesture during a push that has not settled (the
+     * transition outlasts what the eye sees by hundreds of ms) keeps the parent in that set, so it gets the push's lambda.
+     */
+    fun isBackInProgress(initialId: String, targetId: String, topId: String?, belowTopId: String?): Boolean =
+        initialId == topId && targetId == belowTopId
+
     /** The incoming screen of a forward navigation. [targetModal] is true for a sheet-style destination. */
     fun enter(spatial: Boolean, targetModal: Boolean): Move = when {
         !spatial -> Move.Fade

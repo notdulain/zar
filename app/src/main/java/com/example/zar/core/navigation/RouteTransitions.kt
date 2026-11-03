@@ -12,6 +12,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.unit.IntOffset
 import androidx.navigation.NavBackStackEntry
+import androidx.navigation.NavController
 import androidx.navigation.NavDestination
 import androidx.navigation.NavDestination.Companion.hasRoute
 import com.example.zar.core.presentation.motion.LocalZarMotion
@@ -33,12 +34,12 @@ internal class ZarRouteTransitions(
 )
 
 @Composable
-internal fun rememberZarRouteTransitions(): ZarRouteTransitions {
+internal fun rememberZarRouteTransitions(navController: NavController): ZarRouteTransitions {
     val policy = LocalZarMotion.current
-    return remember(policy) { buildRouteTransitions(policy) }
+    return remember(policy, navController) { buildRouteTransitions(policy, navController) }
 }
 
-private fun buildRouteTransitions(policy: MotionPolicy): ZarRouteTransitions {
+private fun buildRouteTransitions(policy: MotionPolicy, navController: NavController): ZarRouteTransitions {
     val spatial = policy.allowsSpatialMotion
     val spec = policy.spring<IntOffset>(ZarSprings.Route)
     // Back must be seekable for the predictive gesture (a spring has no fixed length to scrub), so pops use a tween.
@@ -62,11 +63,20 @@ private fun buildRouteTransitions(policy: MotionPolicy): ZarRouteTransitions {
         else -> ExitTransition.None
     }
 
+    fun AnimatedContentTransitionScope<NavBackStackEntry>.popEnterMove() = into(NavRouteMotion.popEnter(spatial, initialState.destination.isModalRoute()))
+    fun AnimatedContentTransitionScope<NavBackStackEntry>.popExitMove() = out(NavRouteMotion.popExit(spatial))
+    fun AnimatedContentTransitionScope<NavBackStackEntry>.isBackInProgress() = NavRouteMotion.isBackInProgress(
+        initialId = initialState.id,
+        targetId = targetState.id,
+        topId = navController.currentBackStackEntry?.id,
+        belowTopId = navController.previousBackStackEntry?.id,
+    )
+
     return ZarRouteTransitions(
-        enter = { into(NavRouteMotion.enter(spatial, targetState.destination.isModalRoute())) },
-        exit = { out(NavRouteMotion.exit(spatial, targetState.destination.isModalRoute())) },
-        popEnter = { into(NavRouteMotion.popEnter(spatial, initialState.destination.isModalRoute())) },
-        popExit = { out(NavRouteMotion.popExit(spatial)) },
+        enter = { if (isBackInProgress()) popEnterMove() else into(NavRouteMotion.enter(spatial, targetState.destination.isModalRoute())) },
+        exit = { if (isBackInProgress()) popExitMove() else out(NavRouteMotion.exit(spatial, targetState.destination.isModalRoute())) },
+        popEnter = { popEnterMove() },
+        popExit = { popExitMove() },
     )
 }
 

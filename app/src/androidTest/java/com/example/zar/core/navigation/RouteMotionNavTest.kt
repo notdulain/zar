@@ -22,6 +22,7 @@ import com.example.zar.core.presentation.motion.MotionPolicy
 import com.example.zar.core.presentation.theme.ZarTheme
 import androidx.compose.ui.unit.width
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -53,7 +54,7 @@ class RouteMotionNavTest {
                     val config = LocalConfiguration.current
                     windowWidthDp = config.screenWidthDp.toFloat()
                     windowHeightDp = config.screenHeightDp.toFloat()
-                    val transitions = rememberZarRouteTransitions()
+                    val transitions = rememberZarRouteTransitions(nav)
                     NavHost(
                         navController = nav,
                         startDestination = SignInRoute,
@@ -267,5 +268,31 @@ class RouteMotionNavTest {
         assertTrue("signed-out start is shown again", exists("parent"))
         assertNull("only one entry was popped; Register is gone", nav.previousBackStackEntry?.destination?.route)
         assertEquals(1, nav.currentBackStack.value.count { it.destination.route != null })
+    }
+
+    @Test
+    fun aBackGestureDuringAnUnsettledPushStillLeavesToTheRight() {
+        show(full)
+        compose.runOnIdle { nav.navigate(RegisterRoute) }
+        // The push looks finished long before its transition ends. The parent is still composed here, which is what made
+        // AnimatedContent reuse the transition spec it captured for the push instead of asking for a Back one.
+        frame(20)
+        assertTrue("the push is still in flight, with the parent composed", exists("parent"))
+        val dispatcher = compose.activity.onBackPressedDispatcher
+
+        compose.runOnUiThread { dispatcher.dispatchOnBackStarted(BackEventCompat(0f, 400f, 0.0f, BackEventCompat.EDGE_LEFT)) }
+        frame(2)
+        compose.runOnUiThread { dispatcher.dispatchOnBackProgressed(BackEventCompat(300f, 400f, 0.5f, BackEventCompat.EDGE_LEFT)) }
+        val lefts = ArrayList<Float>()
+        repeat(6) { frame(); if (exists("child")) lefts += left("child") }
+        compose.runOnUiThread { dispatcher.onBackPressed() }
+        repeat(40) { frame(); if (exists("child")) lefts += left("child") }
+
+        Log.i("ZarRouteMotion", "back during an unsettled push, child left dp: $lefts")
+        assertTrue("the child never recedes to the left: $lefts", lefts.all { it >= -1f })
+        assertTrue("the child travels right as it leaves: $lefts", lefts.any { it > windowWidthDp * 0.2f })
+        frame(40)
+        assertFalse("the child is gone", exists("child"))
+        assertTrue("the parent is back", exists("parent"))
     }
 }
