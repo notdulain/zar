@@ -180,7 +180,7 @@ internal fun EmptyCard(
 ) {
     val colors = ZarTheme.colors
     // Figma Z48: 32dp above the 56dp icon chip, 28dp below the button, 10dp between the lines.
-    ZarCard(modifier.fillMaxWidth(), contentPadding = PaddingValues(start = 24.dp, end = 24.dp, top = 32.dp, bottom = 28.dp), soft = true) {
+    ZarCard(modifier.fillMaxWidth(), contentPadding = PaddingValues(start = 24.dp, end = 24.dp, top = 32.dp, bottom = 28.dp)) {
         Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Column(
                 Modifier.size(56.dp).clip(CircleShape).background(colors.subtle),

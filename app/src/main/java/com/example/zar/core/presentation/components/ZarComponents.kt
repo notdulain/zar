@@ -47,11 +47,10 @@ import com.example.zar.core.presentation.theme.ZarType
 
 // Shared building blocks from the Zar-UI Figma design system (Components page).
 
-/** White card with the card elevation (Elevation/Card) and a hairline border. */
+/** Flat white card: surface and hairline border, no shadow. */
 fun Modifier.zarCard(shape: Shape = ZarShapes.lg): Modifier = composed {
     val colors = ZarTheme.colors
     this
-        .shadow(6.dp, shape, ambientColor = Color(0x0A0F1A2B), spotColor = Color(0x1F0F1A2B))
         .background(colors.surface, shape)
         .border(1.dp, colors.borderDefault, shape)
         .clip(shape)

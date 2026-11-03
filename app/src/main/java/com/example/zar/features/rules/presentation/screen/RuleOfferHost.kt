@@ -33,7 +33,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -115,9 +114,9 @@ private fun OfferCard(offer: RuleOffer, onOpen: () -> Unit, onDismiss: () -> Uni
         Modifier
             .padding(horizontal = 10.dp)
             .fillMaxWidth()
-            .shadow(12.dp, ZarShapes.lg)
             .clip(ZarShapes.lg)
             .background(colors.surface)
+            .border(ZarDimens.Hairline, colors.borderDefault, ZarShapes.lg)
             .padding(start = 20.dp, end = 8.dp, top = 12.dp, bottom = 12.dp)
             .testTag("rule-offer-card"),
         horizontalArrangement = Arrangement.spacedBy(8.dp),

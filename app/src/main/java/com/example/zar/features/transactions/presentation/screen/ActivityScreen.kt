@@ -640,7 +640,6 @@ private fun EntryRow(row: ActivityRow, onClick: () -> Unit, modifier: Modifier =
         onClick = onClick,
         radius = 24.dp,
         contentPadding = PaddingValues(start = 15.dp, end = 19.dp, top = 15.dp, bottom = 15.dp),
-        soft = true,
     ) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
             ZarIconChip(

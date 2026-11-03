@@ -367,7 +367,7 @@ private fun DetailsCard(state: EntryDetailUiState, detail: EntryDetail, modifier
             ValueRow(stringResource(R.string.activity_field_status), stringResource(status), dot = if (entry.isVoided) colors.textAttention else colors.fresh)
         }
     }
-    ZarCard(modifier.fillMaxWidth(), contentPadding = PaddingValues(horizontal = 20.dp, vertical = 4.dp), soft = true) {
+    ZarCard(modifier.fillMaxWidth(), contentPadding = PaddingValues(horizontal = 20.dp, vertical = 4.dp)) {
         rows.forEachIndexed { index, row ->
             if (index > 0) ZarDivider()
             Box(Modifier.padding(vertical = 14.dp)) { row() }
@@ -402,7 +402,7 @@ private fun ClassRow(spendingClass: SpendingClass?) {
 private fun LinkedEntriesCard(detail: EntryDetail, modifier: Modifier = Modifier) {
     val colors = ZarTheme.colors
     val legs = listOfNotNull(detail.entry, detail.counterpart).sortedBy { if (it.original.type == TransactionType.TRANSFER_OUT) 0 else 1 }
-    ZarCard(modifier.fillMaxWidth().testTag("detail-linked"), contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp), soft = true) {
+    ZarCard(modifier.fillMaxWidth().testTag("detail-linked"), contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp)) {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             ZarEyebrow(stringResource(R.string.activity_linked_title))
             legs.forEach { leg ->
@@ -442,7 +442,7 @@ private fun HistoryCard(detail: EntryDetail, modifier: Modifier = Modifier) {
     val entry = detail.entry
     // Newest first, one line per field a correction changed, then the original record at the bottom.
     val lines = detail.history.reversed().flatMap { event -> event.changes.map { it to event.correction.correctedAt } }
-    ZarCard(modifier.fillMaxWidth().testTag("detail-history"), contentPadding = PaddingValues(horizontal = 20.dp, vertical = 18.dp), soft = true) {
+    ZarCard(modifier.fillMaxWidth().testTag("detail-history"), contentPadding = PaddingValues(horizontal = 20.dp, vertical = 18.dp)) {
         Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
             ZarEyebrow(stringResource(R.string.activity_history_title))
             lines.forEach { (change, at) ->
@@ -562,7 +562,6 @@ private fun RuleCardView(card: RuleCard, actions: DetailActions, modifier: Modif
         modifier.fillMaxWidth().testTag(tag),
         onClick = onClick,
         contentPadding = PaddingValues(horizontal = 20.dp, vertical = 17.dp),
-        soft = true,
     ) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -585,7 +584,6 @@ private fun RefundsCard(detail: EntryDetail, actions: DetailActions, modifier: M
             modifier.fillMaxWidth().testTag("detail-refund-prompt"),
             onClick = { actions.onRefund(detail.entry.id.value) },
             contentPadding = PaddingValues(horizontal = 20.dp, vertical = 17.dp),
-            soft = true,
         ) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -597,7 +595,7 @@ private fun RefundsCard(detail: EntryDetail, actions: DetailActions, modifier: M
         }
         return
     }
-    ZarCard(modifier.fillMaxWidth().testTag("detail-refunds"), contentPadding = PaddingValues(horizontal = 20.dp, vertical = 18.dp), soft = true) {
+    ZarCard(modifier.fillMaxWidth().testTag("detail-refunds"), contentPadding = PaddingValues(horizontal = 20.dp, vertical = 18.dp)) {
         Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
             ZarEyebrow(stringResource(R.string.activity_refunds_title))
             summary.refunds.forEach { refund ->
@@ -649,7 +647,6 @@ private fun LinkedPurchaseCard(detail: EntryDetail, actions: DetailActions, modi
         modifier.fillMaxWidth().testTag("detail-linked-purchase"),
         onClick = purchase?.let { { actions.onOpenEntry(it.id.value) } },
         contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp),
-        soft = true,
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             ZarEyebrow(stringResource(R.string.activity_linked_purchase_title))
@@ -688,7 +685,7 @@ private fun LinkedPurchaseCard(detail: EntryDetail, actions: DetailActions, modi
 private fun AdjustmentCard(detail: EntryDetail, modifier: Modifier = Modifier) {
     val colors = ZarTheme.colors
     val outgoing = detail.entry.current.type == TransactionType.ADJUSTMENT_OUT
-    ZarCard(modifier.fillMaxWidth().testTag("detail-adjustment"), contentPadding = PaddingValues(horizontal = 20.dp, vertical = 18.dp), soft = true) {
+    ZarCard(modifier.fillMaxWidth().testTag("detail-adjustment"), contentPadding = PaddingValues(horizontal = 20.dp, vertical = 18.dp)) {
         Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
             ZarEyebrow(stringResource(if (outgoing) R.string.activity_adjustment_out_card_title else R.string.activity_adjustment_in_card_title))
             if (outgoing) {

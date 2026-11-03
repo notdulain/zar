@@ -64,7 +64,7 @@ New primitives: navy/300 `#5A86A6`, navy/400 `#41799C`, teal/300 `#5FB3B9`, teal
 
 `ZarGradients.dusk`, `received`, `spent`, and `goal` preserve Figma's exact color stops, including stops past 100%, so the visible lower edge stays dark. Use them only for hero money surfaces. The `statusBarScrim` brush is the separate dark status bar overlay.
 
-Figma elevation is neutral: card shadows are `#0F1A2B0A` (0, 1, blur 2) and `#0F1A2B0F` (0, 10, blur 28, spread -10); floating nav shadows are `#0F1A2B0F` (0, 2, blur 6) and `#0F1A2B1A` (0, 14, blur 34, spread -4), with 12 dp background blur.
+Cards have no shadow or elevation anywhere (`ZarCard`, `zarCard`, rows, hero blocks, error and empty cards, pressed and disabled states): grouping comes from the surface, hairline border and spacing. The only depth token is the floating navigation shadow (`zarFloatingNavShadow`): `#0F1A2B0F` (0, 2, blur 6) and `#0F1A2B1A` (0, 14, blur 34, spread -4) on Light, stacked as two Android shadow layers, with darker black tones on Dark. Floating buttons keep their own reviewed values and never read a card default.
 
 ## Screen coverage
 
