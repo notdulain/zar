@@ -66,6 +66,9 @@ private fun AuthNavHost() {
         exitTransition = transitions.exit,
         popEnterTransition = transitions.popEnter,
         popExitTransition = transitions.popExit,
+        // The Back gesture previews the same rightward slide as the toolbar Back button, never the default scale-down.
+        predictivePopEnterTransition = { transitions.popEnter(this) },
+        predictivePopExitTransition = { transitions.popExit(this) },
     ) {
         composable<SignInRoute> {
             SignInScreen(onCreateAccount = { navController.navigate(RegisterRoute) })

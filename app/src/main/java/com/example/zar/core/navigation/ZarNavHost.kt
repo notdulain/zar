@@ -230,6 +230,9 @@ fun ZarNavHost(
                 exitTransition = transitions.exit,
                 popEnterTransition = transitions.popEnter,
                 popExitTransition = transitions.popExit,
+                // The Back gesture previews the same rightward slide as the toolbar Back button, never the default scale-down.
+                predictivePopEnterTransition = { transitions.popEnter(this) },
+                predictivePopExitTransition = { transitions.popExit(this) },
             ) {
         composable<HomeRoute> {
             // The tabs are not drawn here: they live under the NavHost so they stay composed while a child covers them
