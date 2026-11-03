@@ -11,6 +11,7 @@ import com.example.zar.features.plans.domain.repository.GoalRepository
 import com.example.zar.features.plans.domain.usecase.ObservePlansOverviewUseCase
 import com.example.zar.features.plans.domain.usecase.SaveGoalUseCase
 import com.example.zar.features.plans.domain.usecase.SetGoalAllocationUseCase
+import com.example.zar.features.plans.domain.usecase.SetMainGoalUseCase
 import com.example.zar.features.plans.presentation.viewmodel.PlansMessage
 import com.example.zar.features.plans.presentation.viewmodel.PlansViewModel
 import java.time.LocalDate
@@ -44,6 +45,7 @@ class PlansViewModelTest {
     )
     private lateinit var goals: FakeGoalRepository
     private lateinit var vm: PlansViewModel
+    private lateinit var prefs: FakePlanPreferences
 
     @Before
     fun setUp() {
@@ -51,10 +53,12 @@ class PlansViewModelTest {
         goals = FakeGoalRepository()
         val accounts = FakePlanAccounts(listOf(savings))
         val ledger = TrackingPlanLedger()
+        prefs = FakePlanPreferences()
         vm = PlansViewModel(
-            ObservePlansOverviewUseCase(goals, accounts, ledger),
+            ObservePlansOverviewUseCase(goals, accounts, ledger, prefs),
             SaveGoalUseCase(goals),
             SetGoalAllocationUseCase(goals, accounts, ledger),
+            SetMainGoalUseCase(goals, prefs),
         )
     }
 
@@ -143,9 +147,10 @@ class PlansViewModelTest {
         }
         val accounts = FakePlanAccounts(listOf(savings))
         val unloaded = PlansViewModel(
-            ObservePlansOverviewUseCase(neverLoads, accounts, TrackingPlanLedger()),
+            ObservePlansOverviewUseCase(neverLoads, accounts, TrackingPlanLedger(), FakePlanPreferences()),
             SaveGoalUseCase(neverLoads),
             SetGoalAllocationUseCase(neverLoads, accounts, TrackingPlanLedger()),
+            SetMainGoalUseCase(neverLoads, FakePlanPreferences()),
         )
         unloaded.createGoal("Laptop", "490000", null)
         assertTrue(unloaded.uiState.value.overview == null)
@@ -182,9 +187,10 @@ class PlansViewModelTest {
         }
         val accounts = FakePlanAccounts(listOf(savings))
         val retrying = PlansViewModel(
-            ObservePlansOverviewUseCase(goals, accounts, TrackingPlanLedger()),
+            ObservePlansOverviewUseCase(goals, accounts, TrackingPlanLedger(), prefs),
             SaveGoalUseCase(failing),
             SetGoalAllocationUseCase(goals, accounts, TrackingPlanLedger()),
+            SetMainGoalUseCase(goals, prefs),
         )
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { retrying.uiState.collect {} }
         retrying.createGoal("Laptop", "490000", null)
@@ -207,5 +213,49 @@ class PlansViewModelTest {
         assertEquals(2, overview.goals.size)
         assertEquals(legacy, goals.goals.value.single { it.id == legacy.id })
         assertEquals(legacy.id, overview.goal?.id)
+    }
+
+    @Test
+    fun selectingAMainPlanMovesThePointerAndNeverChangesAnyPlan() = runTest {
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.uiState.collect {} }
+        vm.createGoal("Laptop", "490000", null)
+        vm.createGoal("Phone", "1000", null)
+        val before = goals.goals.value.toSet()
+        val laptop = goals.goals.value.single { it.name == "Laptop" }
+        val phone = goals.goals.value.single { it.name == "Phone" }
+        assertEquals(laptop.id, vm.uiState.value.overview?.mainGoalId)
+
+        vm.selectMainGoal(phone.id)
+        assertEquals(phone.id, vm.uiState.value.overview?.mainGoalId)
+        assertEquals(phone.id, vm.uiState.value.overview?.goal?.id)
+        assertEquals(before, goals.goals.value.toSet())
+        assertEquals(2, vm.uiState.value.overview?.goals?.size)
+    }
+
+    @Test
+    fun theFirstPlanBecomesMainExplicitlyAndLaterPlansDoNotMoveIt() = runTest {
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.uiState.collect {} }
+        vm.createGoal("Zebra fund", "1000", null)
+        val zebra = goals.goals.value.single()
+        assertEquals(zebra.id, prefs.mainGoalId.value)
+        vm.createGoal("Aardvark fund", "1000", null)
+        assertEquals(zebra.id, vm.uiState.value.overview?.mainGoalId)
+        assertEquals(1, prefs.writeCount)
+    }
+
+    @Test
+    fun aPointerAtAMissingPlanFallsBackWithoutHidingAnyPlan() = runTest {
+        prefs.mainGoalId.value = GoalId("gone")
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.uiState.collect {} }
+        vm.createGoal("Phone", "1000", null)
+        assertEquals(1, vm.uiState.value.overview?.goals?.size)
+        assertNotNull(vm.uiState.value.overview?.goal)
+    }
+
+    @Test
+    fun anUnknownGoalCannotBeSelectedAsMain() = runTest {
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.uiState.collect {} }
+        vm.selectMainGoal(GoalId("missing"))
+        assertEquals(0, prefs.writeCount)
     }
 }

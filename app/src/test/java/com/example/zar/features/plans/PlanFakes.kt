@@ -10,7 +10,9 @@ import com.example.zar.core.domain.model.VoidMarker
 import com.example.zar.core.domain.repository.AccountRepository
 import com.example.zar.core.domain.repository.LedgerRepository
 import com.example.zar.features.plans.domain.model.SavingsGoal
+import com.example.zar.features.plans.domain.model.GoalId
 import com.example.zar.features.plans.domain.repository.GoalRepository
+import com.example.zar.features.plans.domain.repository.PlanPreferencesRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 
@@ -39,4 +41,11 @@ class TrackingPlanLedger(initial: List<LedgerEntry> = emptyList()) : LedgerRepos
     override suspend fun addCorrection(correction: Correction) { writeCount++ }
     override suspend fun void(markers: List<VoidMarker>) { writeCount++ }
     override suspend fun linkEvidence(link: EvidenceLink) { writeCount++ }
+}
+
+class FakePlanPreferences(initial: GoalId? = null) : PlanPreferencesRepository {
+    val mainGoalId = MutableStateFlow(initial)
+    var writeCount = 0
+    override fun observeMainGoalId(): Flow<GoalId?> = mainGoalId
+    override suspend fun setMainGoalId(id: GoalId) { writeCount++; mainGoalId.value = id }
 }

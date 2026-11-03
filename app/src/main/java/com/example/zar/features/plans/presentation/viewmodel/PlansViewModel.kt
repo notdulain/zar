@@ -11,6 +11,7 @@ import com.example.zar.features.plans.domain.model.PlansOverview
 import com.example.zar.features.plans.domain.usecase.ObservePlansOverviewUseCase
 import com.example.zar.features.plans.domain.usecase.SaveGoalUseCase
 import com.example.zar.features.plans.domain.usecase.SetGoalAllocationUseCase
+import com.example.zar.features.plans.domain.usecase.SetMainGoalUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import java.time.LocalDate
@@ -54,6 +55,7 @@ class PlansViewModel @Inject constructor(
     private val observePlans: ObservePlansOverviewUseCase,
     private val saveGoal: SaveGoalUseCase,
     private val setAllocation: SetGoalAllocationUseCase,
+    private val setMainGoal: SetMainGoalUseCase,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(PlansUiState())
@@ -124,12 +126,21 @@ class PlansViewModel @Inject constructor(
             return
         }
         val id = _uiState.value.pendingGoalId ?: newGoalId().also { fresh -> _uiState.update { it.copy(pendingGoalId = fresh) } }
+        // With no plan yet the new one becomes main explicitly, so adding more later can never move it by ordering.
+        val firstPlan = _uiState.value.overview?.goals.isNullOrEmpty()
         launchSave {
             saveGoal(id, name.trim(), amount, date)
+                .onSuccess { if (firstPlan) setMainGoal(id) }
                 .onSuccess {
                     _uiState.update { it.copy(goalCreatedCount = it.goalCreatedCount + 1, pendingGoalId = null, message = null) }
                 }
         }
+    }
+
+    /** Makes [goalId] the main plan shown on Plans and Home. Nothing else changes. */
+    fun selectMainGoal(goalId: GoalId) {
+        if (_uiState.value.overview?.mainGoalId == goalId) return
+        launchSave { setMainGoal(goalId) }
     }
 
     fun clearMessage() = _uiState.update { it.copy(message = null) }

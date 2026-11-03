@@ -18,6 +18,7 @@ import com.example.zar.features.plans.domain.model.MainGoalResolver
 import com.example.zar.features.plans.domain.model.PlansOverview
 import com.example.zar.features.plans.domain.model.SavingsGoal
 import com.example.zar.features.plans.domain.repository.GoalRepository
+import com.example.zar.features.plans.domain.repository.PlanPreferencesRepository
 import javax.inject.Inject
 import java.time.LocalDate
 import kotlinx.coroutines.flow.Flow
@@ -28,14 +29,16 @@ class ObservePlansOverviewUseCase @Inject constructor(
     private val goals: GoalRepository,
     private val accounts: AccountRepository,
     private val ledger: LedgerRepository,
+    private val preferences: PlanPreferencesRepository,
 ) {
     operator fun invoke(today: LocalDate = ZarTime.today()): Flow<PlansOverview> = combine(
         goals.observeGoals(),
         accounts.observeAccounts(),
         ledger.observeLedger(),
-    ) { savedGoals, savedAccounts, entries ->
+        preferences.observeMainGoalId(),
+    ) { savedGoals, savedAccounts, entries, preferredId ->
         val catalog = savedGoals.sortedWith(compareBy({ it.name.lowercase() }, { it.id.value }))
-        val mainId = MainGoalResolver.resolve(catalog, preferredId = null)
+        val mainId = MainGoalResolver.resolve(catalog, preferredId)
         val accountsByGoal = catalog.associate { goal -> goal.id to eligibleAccounts(goal, savedAccounts, entries, today) }
         val progressByGoal = catalog.associate { goal ->
             goal.id to GoalBackingCalculator.calculate(goal, savedAccounts, entries, today)
@@ -118,5 +121,16 @@ class SetGoalAllocationUseCase @Inject constructor(
             updatedAllocations += GoalAllocation(accountId, amount)
         }
         goals.saveGoal(goal.copy(allocations = updatedAllocations))
+    }
+}
+
+/** Makes an existing plan the main one. It only moves the pointer: no plan or allocation is written. */
+class SetMainGoalUseCase @Inject constructor(
+    private val goals: GoalRepository,
+    private val preferences: PlanPreferencesRepository,
+) {
+    suspend operator fun invoke(id: GoalId): Result<Unit> = resultOf {
+        if (goals.observeGoals().first().none { it.id == id }) throw LedgerError.InvalidRecord("Goal not found")
+        preferences.setMainGoalId(id)
     }
 }
