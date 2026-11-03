@@ -40,9 +40,7 @@ class ObservePlansOverviewUseCase @Inject constructor(
         val catalog = savedGoals.sortedWith(compareBy({ it.name.lowercase() }, { it.id.value }))
         val mainId = MainGoalResolver.resolve(catalog, preferredId)
         val accountsByGoal = catalog.associate { goal -> goal.id to eligibleAccounts(goal, savedAccounts, entries, today) }
-        val progressByGoal = catalog.associate { goal ->
-            goal.id to GoalBackingCalculator.calculate(goal, savedAccounts, entries, today)
-        }
+        val progressByGoal = GoalBackingCalculator.calculateAll(catalog, savedAccounts, entries, today)
         val main = catalog.firstOrNull { it.id == mainId }
         PlansOverview(
             goal = main,
