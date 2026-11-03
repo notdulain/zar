@@ -24,6 +24,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
@@ -32,7 +33,6 @@ import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.Velocity
@@ -71,18 +71,6 @@ class TabPagerController internal constructor(
     /** The tab whose page and capsule have both arrived after the latest tap. */
     internal var arrived by mutableStateOf<Int?>(null)
 
-    /** Incremented for each long jump or reduced/instant tap, so the incoming page can play its arrival effect once. */
-    var arrivalNonce by mutableIntStateOf(0)
-        private set
-    var arrivalTarget by mutableIntStateOf(-1)
-        private set
-
-    /** +1 when the arrival comes from the logical end (a jump toward the end of the tab order), -1 from the start. */
-    var arrivalDirection by mutableIntStateOf(1)
-        private set
-    var arrivalFadeOnly by mutableStateOf(false)
-        private set
-
     private var job: Job? = null
 
     /**
@@ -93,19 +81,32 @@ class TabPagerController internal constructor(
     var backFrom by mutableIntStateOf(-1)
         internal set
 
+    internal var tabFrom by mutableIntStateOf(-1)
+    internal var tabTo by mutableIntStateOf(-1)
+    internal val tabSlide = Animatable(0f)
+
     /** How many pages beside the current one the host has composed. A Back slide needs Home composed, so it checks this. */
+    internal var backWarmReach by mutableIntStateOf(0)
     internal var warmedReach by mutableIntStateOf(0)
 
     val currentIndex: Int get() = pagerState.currentPage
 
-    /** True when Home is composed and nothing is mid-flight, so Back can slide the page right over it. */
-    internal fun canSlideBack(): Boolean =
-        pagerState.currentPage > 0 && pagerState.currentPageOffsetFraction == 0f && warmedReach >= pagerState.currentPage
+    private suspend fun prepareBack(from: Int) {
+        // Finish any pager travel before applying our independent Back translation.
+        // An old arrival fade/offset must never be added to a Back slide.
+        tabFrom = -1
+        tabTo = -1
+        pagerState.scrollToPage(from)
+        backSlide.snapTo(0f)
+        backWarmReach = maxOf(backWarmReach, from)
+        snapshotFlow { warmedReach }.first { it >= from }
+        backFrom = from
+    }
 
     internal suspend fun beginBack() {
+        val from = selectedIndex
         job?.cancel()
-        backSlide.snapTo(0f)
-        backFrom = pagerState.currentPage
+        prepareBack(from)
     }
 
     internal fun cancelBack() {
@@ -118,29 +119,24 @@ class TabPagerController internal constructor(
     /**
      * Completes Back to Home. With Home composed and full motion, the current page slides right over Home (which comes in
      * from 0.2 of the width behind) and the pager then switches pages unseen; the capsule springs home meanwhile. Reduced
-     * motion switches at once with the short crossfade, and a Home that is not composed yet falls back to a pager scroll.
+     * motion switches at once. Home is composed on demand before any departure, so Back never falls back to a tab arrival.
      */
     internal fun commitBack(policy: MotionPolicy) {
-        val from = pagerState.currentPage
+        val from = backFrom.takeIf { it >= 0 } ?: selectedIndex
         if (from == 0) return
-        tapTarget = 0
-        arrived = null
         job?.cancel()
+        arrived = null
         job = scope.launch {
-            if (policy.level == MotionLevel.Full && (backFrom == from || canSlideBack())) {
-                if (backFrom != from) { backSlide.snapTo(0f); backFrom = from }
+            if (policy.allowsSpatialMotion) {
+                if (backFrom != from) prepareBack(from)
+                tapTarget = 0
                 backSlide.animateTo(1f, spring(ZarSprings.Route.dampingRatio, ZarSprings.Route.stiffness))
                 pagerState.scrollToPage(0)
                 backFrom = -1
             } else {
                 backFrom = -1
+                tapTarget = 0
                 pagerState.scrollToPage(0)
-                if (policy.level != MotionLevel.Instant) {
-                    arrivalDirection = -1
-                    arrivalFadeOnly = policy.level == MotionLevel.Reduced
-                    arrivalTarget = 0
-                    arrivalNonce += 1
-                }
             }
             arrived = 0
         }
@@ -152,9 +148,8 @@ class TabPagerController internal constructor(
     val selected: TopLevelDestination get() = TopLevelDestination.entries[selectedIndex.coerceIn(0, TopLevelDestination.entries.size - 1)]
 
     /**
-     * Brings [destination] on screen. An adjacent tab animates with the Route spring; a jump over one or more pages
-     * lands at once and the incoming page plays the short TabTravel slide and fade, so no middle page ever flashes by.
-     * Reduced motion switches at once with a crossfade of at most 100 ms; with system animations off nothing plays.
+     * Brings [destination] on screen with the same push/pop for every tab distance.
+     * Only the source and destination are drawn during travel. Reduced motion resolves instantly.
      */
     fun select(destination: TopLevelDestination, policy: MotionPolicy) = select(destination.ordinal, policy)
 
@@ -166,20 +161,24 @@ class TabPagerController internal constructor(
         arrived = null
         job?.cancel()
         backFrom = -1
+        tabFrom = -1
         job = scope.launch {
-            val distance = abs(target - from)
-            when {
-                policy.level == MotionLevel.Full && distance == 1 && pagerState.currentPageOffsetFraction == 0f ->
-                    pagerState.animateScrollToPage(target, animationSpec = spring(ZarSprings.Route.dampingRatio, ZarSprings.Route.stiffness))
-                else -> {
-                    pagerState.scrollToPage(target)
-                    if (policy.level != MotionLevel.Instant && target != from) {
-                        arrivalDirection = if (target >= from) 1 else -1
-                        arrivalFadeOnly = policy.level == MotionLevel.Reduced
-                        arrivalTarget = target
-                        arrivalNonce += 1
-                    }
-                }
+            pagerState.scrollToPage(from)
+            if (policy.allowsSpatialMotion && target != from) {
+                // Keep exactly the source and destination visible, regardless of tab distance.
+                // Compose the destination before the first animated frame; intermediate tabs
+                // may be warmed but never appear during this transition.
+                backWarmReach = maxOf(backWarmReach, abs(target - from))
+                snapshotFlow { warmedReach }.first { it >= abs(target - from) }
+                tabSlide.snapTo(0f)
+                tabTo = target
+                tabFrom = from
+                tabSlide.animateTo(1f, tween(ZarMotion.POP_MILLIS))
+                pagerState.scrollToPage(target)
+                tabFrom = -1
+                tabTo = -1
+            } else {
+                pagerState.scrollToPage(target)
             }
             arrived = target
         }
@@ -255,8 +254,8 @@ fun TabPagerHost(
 ) {
     val policy = LocalZarMotion.current
     val warm = rememberPageWarmUp(enabled = warmUpPages) { userScrollEnabled && !controller.pagerState.isScrollInProgress }
-    SideEffect { controller.warmedReach = warm.pageCount }
-    val tabTravelPx = with(LocalDensity.current) { ZarMotion.TabTravel.toPx() }
+    val composedReach = maxOf(warm.pageCount, controller.backWarmReach)
+    SideEffect { controller.warmedReach = composedReach }
     val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
     val snapSpec = if (policy.allowsSpatialMotion) {
         spring<Float>(ZarSprings.Route.dampingRatio, ZarSprings.Route.stiffness)
@@ -272,21 +271,31 @@ fun TabPagerHost(
     HorizontalPager(
         state = controller.pagerState,
         modifier = modifier.fillMaxSize().then(warm.touchObserver),
-        beyondViewportPageCount = warm.pageCount,
-        userScrollEnabled = userScrollEnabled && controller.backFrom < 0,
+        beyondViewportPageCount = composedReach,
+        userScrollEnabled = userScrollEnabled && controller.backFrom < 0 && controller.tabFrom < 0,
         key = { it },
         flingBehavior = fling,
     ) { index ->
-        val arrival = remember { Animatable(1f) }
         val pageIndex = index
-        LaunchedEffect(controller.arrivalNonce) {
-            if (controller.arrivalNonce > 0 && controller.arrivalTarget == index) {
-                arrival.snapTo(0f)
-                arrival.animateTo(1f, tween(if (controller.arrivalFadeOnly) MotionPolicy.REDUCED_FADE_MAX_MILLIS else ZarMotion.TAB_ARRIVAL_MILLIS))
-            }
-        }
         Box(
-            Modifier.fillMaxSize().graphicsLayer {
+            Modifier.fillMaxSize()
+                .zIndex(if (controller.tabFrom >= 0 && index == maxOf(controller.tabFrom, controller.tabTo)) 1f else 0f)
+                .graphicsLayer {
+                val tabSource = controller.tabFrom
+                if (tabSource >= 0) {
+                    val target = controller.tabTo
+                    val f = controller.tabSlide.value
+                    val w = size.width
+                    val laidOutAt = (index - controller.pagerState.currentPage) * w * if (rtl) -1f else 1f
+                    val forward = target > tabSource
+                    val wantedAt = when (index) {
+                        tabSource -> if (forward) -ZarMotion.ROUTE_PARENT_RECEDE * f * w else f * w
+                        target -> if (forward) (1f - f) * w else -ZarMotion.ROUTE_PARENT_RECEDE * (1f - f) * w
+                        else -> laidOutAt
+                    }
+                    translationX = wantedAt - laidOutAt
+                    alpha = if (index == tabSource || index == target) 1f else 0f
+                }
                 val departing = controller.backFrom
                 if (departing >= 0) {
                     // Back to Home: the departing page slides right over Home, which comes in from 0.2 of the width behind.
@@ -297,19 +306,11 @@ fun TabPagerHost(
                     val dir = if (rtl) -1f else 1f
                     val laidOutAt = (pageIndex - controller.pagerState.currentPage) * w * dir
                     val wantedAt = when (pageIndex) {
-                        departing -> f * w * dir
-                        0 -> -ZarMotion.ROUTE_PARENT_RECEDE * (1f - f) * w * dir
+                        departing -> f * w
+                        0 -> -ZarMotion.ROUTE_PARENT_RECEDE * (1f - f) * w
                         else -> laidOutAt
                     }
                     translationX = wantedAt - laidOutAt
-                }
-                val remaining = 1f - arrival.value
-                if (remaining > 0f) {
-                    alpha = arrival.value
-                    if (!controller.arrivalFadeOnly) {
-                        // The page arrives from the logical end of the tab order for a jump toward the end (mirrored in RTL).
-                        translationX += remaining * tabTravelPx * controller.arrivalDirection * if (rtl) -1f else 1f
-                    }
                 }
             },
         ) {
@@ -382,7 +383,7 @@ private const val WARM_IDLE_MILLIS = 600L
 fun TabPagerBackHandler(controller: TabPagerController, enabled: Boolean) {
     val policy = LocalZarMotion.current
     PredictiveBackHandler(enabled = enabled && controller.selectedIndex != TopLevelDestination.Home.ordinal) { events ->
-        val slide = policy.allowsSpatialMotion && controller.canSlideBack()
+        val slide = policy.allowsSpatialMotion && controller.selectedIndex > 0
         try {
             if (slide) {
                 controller.beginBack()
