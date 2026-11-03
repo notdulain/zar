@@ -82,7 +82,7 @@ import com.example.zar.core.presentation.components.ZarButtonSize
 import com.example.zar.core.presentation.components.ZarButtonStyle
 import com.example.zar.core.presentation.components.ZarCard
 import com.example.zar.core.presentation.components.ZarDivider
-import com.example.zar.core.presentation.components.ZarMonoLabel
+import com.example.zar.core.presentation.components.ZarEyebrow
 import com.example.zar.core.presentation.components.ZarScreenScaffold
 import com.example.zar.core.presentation.components.heroDisplacement
 import com.example.zar.core.presentation.components.heroParallax
@@ -268,7 +268,7 @@ internal fun PlansScreenContent(
                 Modifier.padding(horizontal = ZarDimens.ScreenGutter).padding(top = 18.dp),
                 verticalArrangement = Arrangement.spacedBy(ZarDimens.SpaceMd),
             ) {
-                ZarMonoLabel(stringResource(R.string.plans_other_plans).uppercase(), Modifier.padding(start = 12.dp))
+                ZarEyebrow(stringResource(R.string.plans_other_plans).uppercase(), Modifier.padding(start = 12.dp))
                 // One grouped card, a row per plan kind (Figma Z04): each opens its real screen or editor.
                 ZarCard(Modifier.fillMaxWidth(), contentPadding = PaddingValues(vertical = 4.dp)) {
                     PlanRow(
@@ -344,7 +344,7 @@ private fun GoalProgressDetails(goal: SavingsGoal, progress: BackedGoalProgress)
     val colors = ZarTheme.colors
     ZarCard(Modifier.fillMaxWidth()) {
         Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            ZarMonoLabel(stringResource(R.string.plans_progress_heading))
+            ZarEyebrow(stringResource(R.string.plans_progress_heading))
             if (progress.hasUnknownBalance) {
                 Text(
                     stringResource(if (progress.hasMismatchedEntries) R.string.plans_mismatched_balance else R.string.plans_unknown_balance),
@@ -352,7 +352,7 @@ private fun GoalProgressDetails(goal: SavingsGoal, progress: BackedGoalProgress)
                 )
             } else {
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.testTag("plans-shortfall")) {
-                    ZarMonoLabel(stringResource(R.string.plans_remaining_heading))
+                    ZarEyebrow(stringResource(R.string.plans_remaining_heading))
                     Text(progress.targetShortfall!!.formatWithCode(), style = ZarType.amountM, color = colors.textPrimary)
                 }
                 Text(stringResource(R.string.plans_allocation_gap, progress.allocationGap!!.formatWithCode()), style = ZarType.bodyS, color = colors.textSecondary)
@@ -361,7 +361,7 @@ private fun GoalProgressDetails(goal: SavingsGoal, progress: BackedGoalProgress)
                 }
             }
             ZarDivider()
-            ZarMonoLabel(stringResource(R.string.plans_pace_heading))
+            ZarEyebrow(stringResource(R.string.plans_pace_heading))
             val paceText = when {
                 progress.targetShortfall?.isZero == true -> stringResource(R.string.plans_goal_backed)
                 goal.targetDate == null -> stringResource(R.string.plans_set_date_hint)
@@ -380,7 +380,7 @@ private fun LocalDate.displayDate(): String = format(DateTimeFormatter.ofPattern
 @Composable
 private fun PlanShellCard(label: Int, value: Int) {
     ZarCard(Modifier.fillMaxWidth()) {
-        ZarMonoLabel(stringResource(label))
+        ZarEyebrow(stringResource(label))
         Text(stringResource(value), style = ZarType.bodyL, color = ZarTheme.colors.textPrimary, modifier = Modifier.padding(top = 12.dp))
     }
 }

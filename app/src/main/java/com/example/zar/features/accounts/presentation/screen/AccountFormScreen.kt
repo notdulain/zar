@@ -57,7 +57,7 @@ import com.example.zar.core.presentation.components.ZarChip
 import com.example.zar.core.presentation.components.ZarDivider
 import com.example.zar.core.presentation.components.ZarFormRow
 import com.example.zar.core.presentation.components.ZarIcon
-import com.example.zar.core.presentation.components.ZarMonoLabel
+import com.example.zar.core.presentation.components.ZarEyebrow
 import com.example.zar.core.presentation.theme.ZarTheme
 import com.example.zar.core.presentation.theme.ZarType
 import com.example.zar.features.accounts.domain.model.OpeningKind
@@ -69,7 +69,7 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
 
-/** Add or edit an account. Laid out like the Figma sheets (Z21, Z29): mono labels, chips, 58dp actions. */
+/** Add or edit an account. Laid out like the Figma sheets (Z21, Z29): labels, chips, 58dp actions. */
 @Composable
 fun AccountFormScreen(
     onDone: () -> Unit,
@@ -172,7 +172,7 @@ private fun FormBody(state: AccountFormUiState, vm: AccountFormViewModel, modifi
                         keyboardType = KeyboardType.Decimal,
                         modifier = Modifier.weight(1f),
                     )
-                    ZarMonoLabel(state.currency.code, Modifier.padding(start = 8.dp))
+                    ZarEyebrow(state.currency.code, Modifier.padding(start = 8.dp))
                 }
             }
             FieldError(state.problems.openingErrorRes())
@@ -201,7 +201,7 @@ private fun FormBody(state: AccountFormUiState, vm: AccountFormViewModel, modifi
 @Composable
 private fun Section(label: String, error: Int? = null, content: @Composable () -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        ZarMonoLabel(label)
+        ZarEyebrow(label)
         content()
         FieldError(error)
     }

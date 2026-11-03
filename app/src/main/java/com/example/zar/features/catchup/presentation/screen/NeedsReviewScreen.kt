@@ -27,7 +27,7 @@ import com.example.zar.core.presentation.components.ZarButtonStyle
 import com.example.zar.core.presentation.components.ZarCard
 import com.example.zar.core.presentation.components.ZarDivider
 import com.example.zar.core.presentation.components.ZarIconChip
-import com.example.zar.core.presentation.components.ZarMonoLabel
+import com.example.zar.core.presentation.components.ZarEyebrow
 import com.example.zar.core.presentation.theme.ZarTheme
 import com.example.zar.core.presentation.theme.ZarType
 import com.example.zar.features.catchup.presentation.viewmodel.NeedsReviewUiState
@@ -120,7 +120,7 @@ private fun WeeklyCatchUpCard(state: NeedsReviewUiState, onStart: () -> Unit) {
     val days = state.daysSinceCatchUp
     val count = state.items.size
     CatchUpCard(Modifier.testTag("review-catch-up")) {
-        ZarMonoLabel(stringResource(R.string.review_catch_up_label))
+        ZarEyebrow(stringResource(R.string.review_catch_up_label))
         Text(
             when (days) {
                 null -> stringResource(R.string.review_catch_up_never)

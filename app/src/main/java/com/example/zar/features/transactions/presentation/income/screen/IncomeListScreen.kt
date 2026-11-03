@@ -47,7 +47,7 @@ import com.example.zar.core.presentation.components.ZarDivider
 import com.example.zar.core.presentation.components.ZarHeroItemKey
 import com.example.zar.core.presentation.components.ZarIcon
 import com.example.zar.core.presentation.components.ZarIconChip
-import com.example.zar.core.presentation.components.ZarMonoLabel
+import com.example.zar.core.presentation.components.ZarEyebrow
 import com.example.zar.core.presentation.components.ZarSectionHeader
 import com.example.zar.core.presentation.components.ZarTitleBlock
 import com.example.zar.core.presentation.components.heroDisplacement
@@ -144,7 +144,7 @@ internal fun IncomeListContent(
 private fun ReceivedSummary(total: ReportingTotal, modifier: Modifier = Modifier) {
     val colors = ZarTheme.colors
     ZarCard(modifier.padding(horizontal = 10.dp).fillMaxWidth(), contentPadding = PaddingValues(horizontal = 18.dp, vertical = 20.dp)) {
-        ZarMonoLabel(stringResource(R.string.income_header_label))
+        ZarEyebrow(stringResource(R.string.income_header_label))
         Text(
             IncomeFormat.withCode(total.amount),
             style = ZarType.amountL,

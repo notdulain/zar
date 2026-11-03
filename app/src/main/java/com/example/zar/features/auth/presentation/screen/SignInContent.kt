@@ -59,7 +59,6 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.material3.Icon
 import com.example.zar.R
 import com.example.zar.core.presentation.theme.GeistFamily
-import com.example.zar.core.presentation.theme.GeistMonoFamily
 import com.example.zar.core.presentation.theme.ZarGradients
 import com.example.zar.core.presentation.theme.ZarLightColors
 import com.example.zar.core.presentation.theme.ZarTheme
@@ -69,13 +68,13 @@ import com.example.zar.features.auth.presentation.viewmodel.SignInUiState
 private val White = Color.White
 private val Title = TextStyle(fontFamily = GeistFamily, fontWeight = FontWeight.Light, fontSize = 32.sp, lineHeight = 38.sp, letterSpacing = (-0.64).sp, color = White)
 private val FieldText = TextStyle(fontFamily = GeistFamily, fontWeight = FontWeight.Normal, fontSize = 16.sp, lineHeight = 22.sp, letterSpacing = (-0.16).sp, color = White)
-private val FieldLabel = TextStyle(fontFamily = GeistMonoFamily, fontWeight = FontWeight.Normal, fontSize = 11.sp, lineHeight = 14.sp, letterSpacing = 0.44.sp)
+private val FieldLabel = TextStyle(fontFamily = GeistFamily, fontWeight = FontWeight.Medium, fontSize = 11.sp, lineHeight = 14.sp, letterSpacing = 0.66.sp)
 private val Message = TextStyle(fontFamily = GeistFamily, fontWeight = FontWeight.Normal, fontSize = 14.sp, lineHeight = 18.sp, letterSpacing = (-0.14).sp)
 private val ErrorDot = Color(0xFFDD8468)
 
 /**
  * The Figma sign-in (Z39–Z42, Z188) on the dusk gradient, both themes alike: big headline, two underlined fields with a
- * floating mono label once filled, an eye toggle and Forgot? on the password row, one message row (an error, a field
+ * floating label once filled, an eye toggle and Forgot? on the password row, one message row (an error, a field
  * problem or the reset confirmation, announced as a live region), a full-width pill button and the sign-up link at the
  * foot. The form scrolls and lifts with the keyboard; the footer stays where it is and the keyboard covers it.
  * The state, validation and actions are the existing view model's.
@@ -204,7 +203,7 @@ internal fun SignInContent(
 
 /**
  * A 40dp field: 16sp white text on a 1dp white-at-25% underline (2dp white while focused), a placeholder at 45% while empty
- * and, once filled, a mono label 10dp above. Not a Material outlined field; the semantics (content type for autofill, a
+ * and, once filled, a label 10dp above. Not a Material outlined field; the semantics (content type for autofill, a
  * password transformation, IME actions) are the platform's.
  */
 @Composable

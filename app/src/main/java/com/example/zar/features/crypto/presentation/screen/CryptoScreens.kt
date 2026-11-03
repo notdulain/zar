@@ -78,7 +78,7 @@ import com.example.zar.features.freelance.presentation.screen.display
 import com.example.zar.features.transactions.presentation.income.IncomeFormat
 import com.example.zar.core.presentation.theme.ZarGradients
 import com.example.zar.features.transactions.presentation.income.screen.SummaryHeaderCard
-import com.example.zar.features.transactions.presentation.income.screen.ZarMono
+import com.example.zar.core.presentation.theme.ZarSansFont
 
 /** "+ LKR 40,000", "− LKR 10,000" or "LKR 0". */
 private fun FiatMoney.signed(): String = when {
@@ -177,7 +177,7 @@ private fun CryptoContent(
                 brush = ZarGradients.crypto,
             )
         }
-        uiState.message?.let { item { Text(stringResource(it.textRes()), color = MaterialTheme.colorScheme.error, fontFamily = ZarMono) } }
+        uiState.message?.let { item { Text(stringResource(it.textRes()), color = MaterialTheme.colorScheme.error, fontFamily = ZarSansFont) } }
         if (portfolio.wallets.isEmpty()) {
             item { CenteredText(stringResource(R.string.crypto_no_wallets), Modifier.padding(top = 32.dp)) }
             return@LazyColumn
@@ -202,12 +202,12 @@ private fun AssetCard(position: AssetPosition) {
     OutlinedCard(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(horizontal = 16.dp, vertical = 14.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(position.currency.code, style = MaterialTheme.typography.bodyLarge, fontFamily = ZarMono, modifier = Modifier.weight(1f))
+                Text(position.currency.code, style = MaterialTheme.typography.bodyLarge, fontFamily = ZarSansFont, modifier = Modifier.weight(1f))
                 val quantity = position.quantity.display()
                 Text(
                     if (position.isQuantityComplete) quantity else stringResource(R.string.crypto_at_least, quantity),
                     style = MaterialTheme.typography.bodyMedium,
-                    fontFamily = ZarMono,
+                    fontFamily = ZarSansFont,
                 )
             }
             val costLine = listOfNotNull(
@@ -229,7 +229,7 @@ private fun WalletCard(wallet: Account, cost: Pair<FiatMoney, Boolean>?, onSetCo
     OutlinedCard(Modifier.fillMaxWidth()) {
         Row(Modifier.padding(start = 16.dp, end = 8.dp, top = 10.dp, bottom = 10.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
-                Text(wallet.name, style = MaterialTheme.typography.bodyLarge, fontFamily = ZarMono)
+                Text(wallet.name, style = MaterialTheme.typography.bodyLarge, fontFamily = ZarSansFont)
                 val opening = when (val balance = wallet.openingBalance) {
                     is OpeningBalance.Known -> stringResource(R.string.crypto_opening, balance.amount.display())
                     is OpeningBalance.Approximate -> stringResource(R.string.crypto_opening, balance.amount.display()) + " (" + stringResource(R.string.crypto_approximate) + ")"
@@ -266,14 +266,14 @@ private fun MovementCard(row: CryptoMovementRow, onClick: () -> Unit) {
     OutlinedCard(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
         Row(Modifier.padding(horizontal = 16.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
-                Text(title, style = MaterialTheme.typography.bodyLarge, fontFamily = ZarMono)
+                Text(title, style = MaterialTheme.typography.bodyLarge, fontFamily = ZarSansFont)
                 Detail("${row.fromName} → ${row.toName} · ${IncomeFormat.shortDate(row.date)}")
                 Detail(value?.display() ?: stringResource(R.string.crypto_no_value), warning = value == null && row.kind != CryptoMovementKind.MOVE)
             }
             Spacer(Modifier.width(12.dp))
             Column(horizontalAlignment = Alignment.End) {
-                Text("− ${out.amount.display()}", style = MaterialTheme.typography.bodySmall, fontFamily = ZarMono)
-                Text("+ ${inTx.amount.display()}", style = MaterialTheme.typography.bodySmall, fontFamily = ZarMono)
+                Text("− ${out.amount.display()}", style = MaterialTheme.typography.bodySmall, fontFamily = ZarSansFont)
+                Text("+ ${inTx.amount.display()}", style = MaterialTheme.typography.bodySmall, fontFamily = ZarSansFont)
                 row.result?.let { result ->
                     val amount = result.amount
                     val text = when {
@@ -284,7 +284,7 @@ private fun MovementCard(row: CryptoMovementRow, onClick: () -> Unit) {
                     Text(
                         text,
                         style = MaterialTheme.typography.labelSmall,
-                        fontFamily = ZarMono,
+                        fontFamily = ZarSansFont,
                         color = if (amount == null || amount.isNegative) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
@@ -298,7 +298,7 @@ private fun Detail(text: String, warning: Boolean = false) {
     Text(
         text,
         style = MaterialTheme.typography.bodySmall,
-        fontFamily = ZarMono,
+        fontFamily = ZarSansFont,
         color = if (warning) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
     )
 }
@@ -315,7 +315,7 @@ private fun OpeningCostDialog(wallet: Account, uiState: CryptoUiState, viewModel
                     value = uiState.costText,
                     onValueChange = viewModel::onCostChange,
                     label = { Text(stringResource(R.string.crypto_cost_field)) },
-                    prefix = { Text("LKR ", fontFamily = ZarMono) },
+                    prefix = { Text("LKR ", fontFamily = ZarSansFont) },
                     isError = uiState.costInvalid,
                     supportingText = if (uiState.costInvalid) {
                         { Text(stringResource(R.string.crypto_cost_invalid)) }
@@ -438,7 +438,7 @@ fun CryptoMovementScreen(
                 } else null,
                 modifier = Modifier.fillMaxWidth(),
             )
-            uiState.message?.let { Text(stringResource(it.textRes()), color = MaterialTheme.colorScheme.error, fontFamily = ZarMono) }
+            uiState.message?.let { Text(stringResource(it.textRes()), color = MaterialTheme.colorScheme.error, fontFamily = ZarSansFont) }
             Button(onClick = viewModel::save, enabled = !uiState.isSaving, modifier = Modifier.fillMaxWidth().height(52.dp)) {
                 Text(stringResource(R.string.income_save))
             }
@@ -463,7 +463,7 @@ private fun AccountChooser(label: String, accounts: List<Account>, selected: Acc
                 FilterChip(
                     selected = account.id == selected,
                     onClick = { onSelect(account.id) },
-                    label = { Text("${account.name} · ${account.currency.code}", fontFamily = ZarMono) },
+                    label = { Text("${account.name} · ${account.currency.code}", fontFamily = ZarSansFont) },
                 )
             }
         }
@@ -477,7 +477,7 @@ private fun AmountField(label: String, value: String, code: String?, error: Stri
         value = value,
         onValueChange = onChange,
         label = { Text(label) },
-        prefix = code?.let { { Text("$it ", fontFamily = ZarMono) } },
+        prefix = code?.let { { Text("$it ", fontFamily = ZarSansFont) } },
         isError = error != null,
         supportingText = (error ?: hint)?.let { { Text(it) } },
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),

@@ -49,7 +49,7 @@ internal fun ClientsOweRow(commitments: HomeCommitmentsContent, onClick: () -> U
         onClick = if (commitments is HomeCommitmentsContent.Error) onRetry else onClick,
         contentPadding = PaddingValues(horizontal = 19.dp, vertical = 14.dp),
     ) {
-        Text(stringResource(R.string.freelance_owed_label), style = ZarType.monoLabel, color = colors.textTertiary)
+        Text(stringResource(R.string.freelance_owed_label), style = ZarType.label, color = colors.textTertiary)
         Spacer(Modifier.height(8.dp))
         when {
             commitments is HomeCommitmentsContent.Error -> {
@@ -142,7 +142,7 @@ internal fun NextBillCard(
         onClick = onClick,
         contentPadding = PaddingValues(16.dp),
     ) {
-        Text(stringResource(R.string.home_next_bill_label).uppercase(), style = ZarType.monoLabel, color = colors.textTertiary)
+        Text(stringResource(R.string.home_next_bill_label).uppercase(), style = ZarType.label, color = colors.textTertiary)
         Spacer(Modifier.height(10.dp))
         when {
             commitments is HomeCommitmentsContent.Error ->

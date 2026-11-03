@@ -7,7 +7,7 @@ Source: [Zar UI Figma](https://www.figma.com/design/bBBJuQz1Cg8N34FcisKBs9/Zar-U
 - Wrap screens in `ZarTheme`; read semantic colors from `ZarTheme.colors`.
 - Use `ZarType` for exact named text styles. `ZarTypography` maps the same styles to Material typography slots.
 - Use `ZarDimens` and `ZarShapes` for spacing and corners; `ZarGradients` for the four hero paint styles.
-- Geist variable and Geist Mono variable are bundled in `res/font`. Amounts use Geist Light (300); labels use Geist Mono Regular (400), uppercase, with 4% tracking.
+- The Geist variable font is the only bundled design family (`res/font`). Amounts use Geist Light (300); labels use Geist Medium (500), uppercase, with 6% tracking and tabular figures (`tnum`). Geist Mono and monospace system fonts are not used.
 
 ## Main geometry
 
@@ -35,7 +35,7 @@ Source: [Zar UI Figma](https://www.figma.com/design/bBBJuQz1Cg8N34FcisKBs9/Zar-U
 | Heading/Sheet | Geist Medium | 18 sp | -1% |
 | Body/L, Body/M, Body/S | Geist Regular | 16, 15, 14 sp | -1%, 0%, -1% |
 | Label/Button, Label/Chip, Label/Tab | Geist Medium, Medium, Regular | 15, 13, 8 sp | 0%, 0%, 1% |
-| Mono/Label, Mono/Caption, Mono/Axis | Geist Mono Regular | 11, 10, 10 sp | 4%, 0%, 2% |
+| Label, Caption, Axis (`ZarType.label/caption/axis`) | Geist Medium, Regular, Regular (tabular figures) | 11, 10, 10 sp | 6%, 0%, 2% |
 
 Figma line height is 100% for named text styles. Currency prefixes beside amounts use 55% opacity.
 

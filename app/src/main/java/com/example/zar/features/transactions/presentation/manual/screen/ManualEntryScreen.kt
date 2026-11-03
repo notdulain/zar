@@ -86,7 +86,7 @@ import com.example.zar.core.presentation.components.ZarChip
 import com.example.zar.core.presentation.components.ZarDivider
 import com.example.zar.core.presentation.components.ZarFormRow
 import com.example.zar.core.presentation.components.ZarIcon
-import com.example.zar.core.presentation.components.ZarMonoLabel
+import com.example.zar.core.presentation.components.ZarEyebrow
 import com.example.zar.core.presentation.format.formatForRow
 import com.example.zar.core.presentation.format.formatWithCode
 import com.example.zar.core.presentation.theme.ZarShapes
@@ -349,7 +349,7 @@ private fun ExpenseFields(state: ManualEntryUiState, actions: ManualEntryActions
 
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            ZarMonoLabel(stringResource(R.string.manual_field_counts_as))
+            ZarEyebrow(stringResource(R.string.manual_field_counts_as))
             state.category?.takeIf { it.usualClass != null }?.let {
                 Text(
                     stringResource(R.string.manual_counts_as_hint, it.labelText()),
@@ -430,8 +430,8 @@ private fun Suggestions(state: ManualEntryUiState, onSelect: (EntrySuggestion) -
             Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 8.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            ZarMonoLabel(stringResource(R.string.manual_suggestions_header))
-            ZarMonoLabel(stringResource(R.string.manual_suggestions_fills), color = colors.textPlaceholder)
+            ZarEyebrow(stringResource(R.string.manual_suggestions_header))
+            ZarEyebrow(stringResource(R.string.manual_suggestions_fills), color = colors.textPlaceholder)
         }
         state.suggestions.forEach { suggestion ->
             val account = state.accounts.firstOrNull { it.id == suggestion.accountId }
@@ -465,7 +465,7 @@ private fun TransferFields(state: ManualEntryUiState, actions: ManualEntryAction
 
     ZarFormRow(stringResource(R.string.manual_field_fees)) {
         Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-            ZarMonoLabel(state.currency.code)
+            ZarEyebrow(state.currency.code)
             TextInput(
                 value = state.fee,
                 onValueChange = actions.onFee,
@@ -620,7 +620,7 @@ internal fun Section(label: String, action: String? = null, onAction: (() -> Uni
     // Expanding "All categories" / "All accounts" settles to its new height instead of jumping.
     Column(Modifier.settleSize(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            ZarMonoLabel(label)
+            ZarEyebrow(label)
             if (action != null && onAction != null) {
                 Text(action, style = ZarType.labelAction, color = ZarTheme.colors.textSelected,
                     modifier = Modifier.clickable(role = Role.Button, onClick = onAction))
@@ -931,12 +931,12 @@ internal fun DateTimeRow(
     }
     if (stacked) {
         Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            ZarMonoLabel(stringResource(R.string.manual_field_date))
+            ZarEyebrow(stringResource(R.string.manual_field_date))
             values(Modifier.fillMaxWidth())
         }
     } else {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            ZarMonoLabel(stringResource(R.string.manual_field_date), modifier = Modifier.size(width = 96.dp, height = 16.dp))
+            ZarEyebrow(stringResource(R.string.manual_field_date), modifier = Modifier.size(width = 96.dp, height = 16.dp))
             values(Modifier.weight(1f))
         }
     }

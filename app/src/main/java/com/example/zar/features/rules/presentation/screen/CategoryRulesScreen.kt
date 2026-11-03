@@ -39,7 +39,7 @@ import com.example.zar.core.presentation.components.ZarButtonStyle
 import com.example.zar.core.presentation.components.ZarCard
 import com.example.zar.core.presentation.components.ZarChip
 import com.example.zar.core.presentation.components.ZarDivider
-import com.example.zar.core.presentation.components.ZarMonoLabel
+import com.example.zar.core.presentation.components.ZarEyebrow
 import com.example.zar.core.presentation.components.ZarSwitch
 import com.example.zar.core.presentation.theme.ZarDimens
 import com.example.zar.core.presentation.theme.ZarShapes
@@ -186,7 +186,7 @@ private fun EditRuleSheet(
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             SheetHeader(stringResource(R.string.rules_edit_title, rule.displayName), onClose = onDismiss)
-            ZarMonoLabel(stringResource(R.string.rules_edit_category))
+            ZarEyebrow(stringResource(R.string.rules_edit_category))
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 LocalExpenseCategoryCatalog.current.choices.forEach { category ->
                     ZarChip(
@@ -197,7 +197,7 @@ private fun EditRuleSheet(
                     )
                 }
             }
-            ZarMonoLabel(stringResource(R.string.rules_edit_account))
+            ZarEyebrow(stringResource(R.string.rules_edit_account))
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 ZarChip(
                     label = stringResource(R.string.rules_scope_any),

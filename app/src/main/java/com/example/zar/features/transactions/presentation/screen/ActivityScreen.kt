@@ -452,7 +452,7 @@ private fun ActivityHero(
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(rangeLabel.uppercase(), style = ZarType.monoLabel.copy(lineHeight = 14.sp), color = ZarWhite)
+                Text(rangeLabel.uppercase(), style = ZarType.label.copy(lineHeight = 14.sp), color = ZarWhite)
                 ZarIcon(R.drawable.ic_ph_caret_down, size = 12.dp, tint = ZarWhite)
             }
         }
@@ -484,7 +484,7 @@ private fun HeroTotal(amount: String, label: String, align: Alignment.Horizontal
         )
         Text(
             label.uppercase(),
-            style = ZarType.monoCaption.copy(lineHeight = 13.sp, letterSpacing = 1.sp),
+            style = ZarType.caption.copy(lineHeight = 13.sp, letterSpacing = 1.sp),
             color = ZarWhite,
             modifier = Modifier.padding(horizontal = 3.dp),
         )
@@ -599,7 +599,7 @@ private fun RangeLine(state: ActivityUiState, list: ActivityList?, onClear: () -
     Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
         Text(
             rangeLabel(state).uppercase(),
-            style = ZarType.monoLabel.copy(lineHeight = 14.sp),
+            style = ZarType.label.copy(lineHeight = 14.sp),
             color = ZarTheme.colors.textPrimary,
         )
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.Top) {
@@ -813,10 +813,10 @@ private fun ActivityFilterSheet(
     }
 }
 
-/** The small mono caption above a group of chips, with Figma's 14dp line. */
+/** The small caption above a group of chips, with Figma's 14dp line. */
 @Composable
 private fun SheetLabel(text: String) {
-    Text(text.uppercase(), style = ZarType.monoLabel.copy(lineHeight = 14.sp), color = ZarTheme.colors.textTertiary)
+    Text(text.uppercase(), style = ZarType.label.copy(lineHeight = 14.sp), color = ZarTheme.colors.textTertiary)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -828,7 +828,7 @@ private fun DateField(label: String, date: LocalDate, onPick: (LocalDate) -> Uni
         modifier.clip(RoundedCornerShape(14.dp)).background(colors.subtle).clickable(role = Role.Button) { open = true }.padding(horizontal = 14.dp, vertical = 10.dp),
         verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
-        Text(label.uppercase(), style = ZarType.monoLabel.copy(lineHeight = 14.sp), color = colors.textTertiary)
+        Text(label.uppercase(), style = ZarType.label.copy(lineHeight = 14.sp), color = colors.textTertiary)
         Text(EntryDisplay.dayMonth(date), style = ZarType.bodyM.copy(lineHeight = 20.sp), color = colors.textPrimary, maxLines = 1)
     }
     if (!open) return

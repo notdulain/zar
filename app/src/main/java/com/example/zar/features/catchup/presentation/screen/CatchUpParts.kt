@@ -36,7 +36,7 @@ import com.example.zar.core.presentation.components.ZarBackButton
 import com.example.zar.core.presentation.components.ZarCard
 import com.example.zar.core.presentation.components.ZarIconChip
 import com.example.zar.core.presentation.components.ZarIcon
-import com.example.zar.core.presentation.components.ZarMonoLabel
+import com.example.zar.core.presentation.components.ZarEyebrow
 import com.example.zar.core.presentation.components.ZarTitleBlock
 import com.example.zar.core.presentation.theme.ZarTheme
 import com.example.zar.core.presentation.theme.ZarType
@@ -112,7 +112,7 @@ internal fun CatchUpCard(modifier: Modifier = Modifier, content: @Composable Col
 
 @Composable
 internal fun StepLabel(text: String, modifier: Modifier = Modifier) {
-    ZarMonoLabel(text, modifier.padding(start = 12.dp), color = ZarTheme.colors.textAttention)
+    ZarEyebrow(text, modifier.padding(start = 12.dp), color = ZarTheme.colors.textAttention)
 }
 
 /** A label on the left and its value on the right. */
@@ -150,7 +150,7 @@ internal fun UnresolvedRow(item: UnresolvedItem, modifier: Modifier = Modifier, 
             UnresolvedKind.MISSING_RATE -> EntryDisplay.icon(tx)
         })
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            if (!compact) ZarMonoLabel(stringResource(item.kind.labelRes()), color = colors.textAttention)
+            if (!compact) ZarEyebrow(stringResource(item.kind.labelRes()), color = colors.textAttention)
             Text(entryTitle(tx, item.account?.type), style = ZarType.bodyM, color = colors.textPrimary)
             Text(
                 "${EntryDisplay.signed(tx)} · ${entrySubtitle(tx, item.account?.name)}" +

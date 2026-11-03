@@ -15,14 +15,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import com.example.zar.R
+import com.example.zar.core.presentation.theme.ZarSansFont
 import com.example.zar.core.presentation.theme.ZarWhite
 import com.example.zar.features.transactions.domain.income.model.IncomeCategory
 
-/** Wireframe style: monospace labels and amounts. */
-val ZarMono = FontFamily.Monospace
+/** Wireframe style: Geist labels and amounts. */
 
 @StringRes
 fun IncomeCategory.labelRes(): Int = when (this) {
@@ -50,11 +49,11 @@ fun SummaryHeaderCard(
         contentColor = if (brush == null) MaterialTheme.colorScheme.inverseOnSurface else ZarWhite,
     ) {
         Column(modifier = (if (brush != null) Modifier.background(brush) else Modifier).padding(horizontal = 24.dp, vertical = 28.dp)) {
-            Text(label, style = MaterialTheme.typography.labelMedium, fontFamily = ZarMono)
+            Text(label, style = MaterialTheme.typography.labelMedium, fontFamily = ZarSansFont)
             Spacer(Modifier.height(12.dp))
-            Text(amount, style = MaterialTheme.typography.headlineLarge, fontFamily = ZarMono)
+            Text(amount, style = MaterialTheme.typography.headlineLarge, fontFamily = ZarSansFont)
             Spacer(Modifier.height(8.dp))
-            Text(caption, style = MaterialTheme.typography.bodySmall, fontFamily = ZarMono)
+            Text(caption, style = MaterialTheme.typography.bodySmall, fontFamily = ZarSansFont)
         }
     }
 }

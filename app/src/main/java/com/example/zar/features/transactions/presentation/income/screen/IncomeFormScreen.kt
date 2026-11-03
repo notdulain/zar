@@ -69,7 +69,7 @@ import com.example.zar.core.presentation.components.ZarChip
 import com.example.zar.core.presentation.components.ZarDivider
 import com.example.zar.core.presentation.components.ZarFormRow
 import com.example.zar.core.presentation.components.ZarIcon
-import com.example.zar.core.presentation.components.ZarMonoLabel
+import com.example.zar.core.presentation.components.ZarEyebrow
 import com.example.zar.core.presentation.theme.ZarShapes
 import com.example.zar.core.presentation.theme.ZarTheme
 import com.example.zar.core.presentation.theme.ZarType
@@ -329,7 +329,7 @@ private fun IncomeSheet(
 private fun FormRow(label: String, content: @Composable RowScope.() -> Unit) {
     if (LocalDensity.current.fontScale >= LARGE_TEXT) {
         Column(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            ZarMonoLabel(label)
+            ZarEyebrow(label)
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, content = content)
         }
     } else {
@@ -379,7 +379,7 @@ private fun CurrencySelect(uiState: IncomeFormUiState, current: Currency, onAcco
             horizontalArrangement = Arrangement.spacedBy(6.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(current.code, style = ZarType.monoLabel, color = colors.textPrimary)
+            Text(current.code, style = ZarType.label, color = colors.textPrimary)
             if (interactive) ZarIcon(R.drawable.ic_ph_caret_down, size = 12.dp, tint = colors.iconMuted)
         }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }, containerColor = colors.surface) {
@@ -482,7 +482,7 @@ private fun CategorySection(selected: IncomeCategory?, onSelect: (IncomeCategory
 private fun RateField(uiState: IncomeFormUiState, onRateChange: (String) -> Unit) {
     val colors = ZarTheme.colors
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        ZarMonoLabel(stringResource(R.string.income_field_rate, uiState.currency?.code.orEmpty()))
+        ZarEyebrow(stringResource(R.string.income_field_rate, uiState.currency?.code.orEmpty()))
         TextInput(
             value = uiState.rate,
             onValueChange = onRateChange,

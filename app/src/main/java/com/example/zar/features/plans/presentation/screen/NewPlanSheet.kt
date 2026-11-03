@@ -48,7 +48,7 @@ import com.example.zar.core.presentation.components.ZarButton
 import com.example.zar.core.presentation.components.ZarButtonStyle
 import com.example.zar.core.presentation.components.ZarChip
 import com.example.zar.core.presentation.components.ZarIcon
-import com.example.zar.core.presentation.components.ZarMonoLabel
+import com.example.zar.core.presentation.components.ZarEyebrow
 import com.example.zar.core.presentation.components.sheetBackScrim
 import com.example.zar.core.presentation.components.sheetBackSlide
 import com.example.zar.core.presentation.format.formatWithCode
@@ -118,7 +118,7 @@ fun NewPlanSheet(
                 Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState()).padding(horizontal = 24.dp).padding(bottom = 24.dp),
                 verticalArrangement = Arrangement.spacedBy(18.dp),
             ) {
-                ZarMonoLabel(stringResource(R.string.new_plan_type))
+                ZarEyebrow(stringResource(R.string.new_plan_type))
                 Column(Modifier.selectableGroup(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         ZarChip(stringResource(R.string.new_plan_type_goal), type == NewPlanType.Goal, { type = NewPlanType.Goal }, Modifier.testTag("new-plan-type-goal"))

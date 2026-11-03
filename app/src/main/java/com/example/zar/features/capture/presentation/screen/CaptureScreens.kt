@@ -46,7 +46,7 @@ import com.example.zar.core.presentation.components.ZarButtonSize
 import com.example.zar.core.presentation.components.ZarButtonStyle
 import com.example.zar.core.presentation.components.ZarCard
 import com.example.zar.core.presentation.components.ZarFormRow
-import com.example.zar.core.presentation.components.ZarMonoLabel
+import com.example.zar.core.presentation.components.ZarEyebrow
 import com.example.zar.core.presentation.theme.ZarTheme
 import com.example.zar.core.presentation.theme.ZarType
 import com.example.zar.features.capture.domain.BankCompatibility
@@ -114,7 +114,7 @@ internal fun CaptureContent(
     CatchUpScaffold(stringResource(R.string.capture_title), null, onBack, stringResource(R.string.action_back), Modifier.imePadding()) {
         ZarCard(Modifier.fillMaxWidth()) {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                ZarMonoLabel(stringResource(R.string.capture_health_label))
+                ZarEyebrow(stringResource(R.string.capture_health_label))
                 Text(state.health?.lastCapturedAt?.let { stringResource(R.string.capture_health_last, CAPTURED_AT.format(it)) }
                     ?: stringResource(R.string.capture_health_never), style = ZarType.headingSheet)
                 Detail(pluralStringResource(R.plurals.capture_waiting, state.health?.waitingForReview ?: 0, state.health?.waitingForReview ?: 0))
@@ -124,7 +124,7 @@ internal fun CaptureContent(
         autoCapture()
         ZarCard(Modifier.fillMaxWidth()) {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                ZarMonoLabel(stringResource(R.string.capture_paste_label))
+                ZarEyebrow(stringResource(R.string.capture_paste_label))
                 if (state.cameFromShare) Detail(stringResource(R.string.capture_from_share))
                 OutlinedTextField(
                     value = state.text, onValueChange = onTextChange, enabled = !state.isReading,
@@ -143,10 +143,10 @@ internal fun CaptureContent(
         }
         ZarButton(stringResource(R.string.capture_add_manually), onAddManually, Modifier.fillMaxWidth(), style = ZarButtonStyle.Outline)
         if (state.pending.isNotEmpty()) {
-            ZarMonoLabel(stringResource(R.string.capture_waiting_label), Modifier.padding(start = 12.dp, top = 8.dp))
+            ZarEyebrow(stringResource(R.string.capture_waiting_label), Modifier.padding(start = 12.dp, top = 8.dp))
             state.pending.forEach { draft -> PendingDraftCard(draft) { onReview(draft.id.value) } }
         }
-        ZarMonoLabel(stringResource(R.string.capture_supported_label), Modifier.padding(start = 12.dp, top = 8.dp))
+        ZarEyebrow(stringResource(R.string.capture_supported_label), Modifier.padding(start = 12.dp, top = 8.dp))
         Detail(stringResource(R.string.capture_supported_intro))
         BankCompatibility.formats.forEach { format ->
             ZarCard(Modifier.fillMaxWidth()) {
@@ -271,7 +271,7 @@ internal fun CaptureReviewContent(
         if (state.draft == null || proposal == null) { Detail(stringResource(R.string.capture_review_gone)); return@CatchUpScaffold }
         ZarCard(Modifier.fillMaxWidth()) {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                ZarMonoLabel(proposal.date?.let(IncomeFormat::fullDate).orEmpty())
+                ZarEyebrow(proposal.date?.let(IncomeFormat::fullDate).orEmpty())
                 Text(proposal.amount?.display().orEmpty(), style = ZarType.amountL)
                 Text(proposal.merchant.orEmpty(), style = ZarType.bodyM)
                 Detail(stringResource(R.string.capture_review_intro))
@@ -290,7 +290,7 @@ internal fun CaptureReviewContent(
         }
         ZarCard(Modifier.fillMaxWidth()) {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                ZarMonoLabel(stringResource(R.string.capture_review_account))
+                ZarEyebrow(stringResource(R.string.capture_review_account))
                 if (state.matchingAccounts.isEmpty()) Detail(stringResource(R.string.capture_review_no_account, proposal.amount?.currency?.code.orEmpty()), true)
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     state.matchingAccounts.forEach { account ->
@@ -298,7 +298,7 @@ internal fun CaptureReviewContent(
                     }
                 }
                 if (state.showErrors && state.accountId == null) Detail(stringResource(R.string.capture_review_pick_account), true)
-                ZarMonoLabel(stringResource(R.string.capture_review_type))
+                ZarEyebrow(stringResource(R.string.capture_review_type))
                 if (proposal.type == null || DraftField.TYPE in proposal.uncertainFields) Detail(stringResource(R.string.capture_review_type_hint))
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     CaptureChip(stringResource(R.string.capture_type_expense), !state.asTransfer && state.type == TransactionType.EXPENSE, editable, Modifier.testTag("capture-type-expense")) { onType(TransactionType.EXPENSE) }
@@ -308,7 +308,7 @@ internal fun CaptureReviewContent(
                 Detail(stringResource(R.string.capture_review_other_type))
                 if (state.showErrors && state.type == null && !state.asTransfer) Detail(stringResource(R.string.capture_review_pick_type), true)
                 if (!state.asTransfer && state.type == TransactionType.EXPENSE) {
-                    ZarMonoLabel(stringResource(R.string.capture_review_counts_as))
+                    ZarEyebrow(stringResource(R.string.capture_review_counts_as))
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         listOf(SpendingClass.COMMITTED to R.string.capture_class_committed,
                             SpendingClass.DISCRETIONARY to R.string.capture_class_discretionary,
@@ -338,7 +338,7 @@ private fun DuplicateCard(match: DuplicateMatch, state: CaptureReviewUiState) {
     val saved = match.entry.current
     ZarCard(Modifier.fillMaxWidth().testTag("capture-duplicate")) {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            ZarMonoLabel(
+            ZarEyebrow(
                 stringResource(if (match.strength == MatchStrength.LIKELY) R.string.capture_dup_label_likely else R.string.capture_dup_label_possible),
                 color = ZarTheme.colors.textAttention,
             )
@@ -368,7 +368,7 @@ private fun transferTitle(match: TransferMatch, state: CaptureReviewUiState): St
 @Composable
 private fun TransferPicker(state: CaptureReviewUiState, editable: Boolean, onChoice: (TransactionId) -> Unit) {
     val matches = state.transferMatches
-    ZarMonoLabel(stringResource(R.string.capture_transfer_which), Modifier.padding(start = 12.dp, top = 4.dp))
+    ZarEyebrow(stringResource(R.string.capture_transfer_which), Modifier.padding(start = 12.dp, top = 4.dp))
     if (matches.isEmpty()) {
         Detail(stringResource(R.string.capture_transfer_none), true)
         return
@@ -426,7 +426,7 @@ private fun SettledReview(state: CaptureReviewUiState, settlement: CaptureSettle
     ) {
         ZarCard(Modifier.fillMaxWidth().testTag("capture-settled")) {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                ZarMonoLabel(stringResource(if (transfer) R.string.capture_settled_linked_title else R.string.capture_settled_same_title))
+                ZarEyebrow(stringResource(if (transfer) R.string.capture_settled_linked_title else R.string.capture_settled_same_title))
                 if (transfer) {
                     val match = TransferMatch(settlement.target, settlement.other)
                     ZarFormRow(stringResource(R.string.capture_settled_transfer), labelWidth = 112.dp) { Text(transferTitle(match, state), style = ZarType.bodyM) }

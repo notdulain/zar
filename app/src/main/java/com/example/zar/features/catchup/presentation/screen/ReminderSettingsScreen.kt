@@ -58,7 +58,7 @@ import com.example.zar.core.presentation.components.ZarChip
 import com.example.zar.core.presentation.components.ZarDivider
 import com.example.zar.core.presentation.components.ZarIcon
 import com.example.zar.core.presentation.components.ZarIconChip
-import com.example.zar.core.presentation.components.ZarMonoLabel
+import com.example.zar.core.presentation.components.ZarEyebrow
 import com.example.zar.core.presentation.components.ZarSwitch
 import com.example.zar.core.presentation.theme.ZarDimens
 import com.example.zar.core.presentation.theme.ZarShapes
@@ -279,7 +279,7 @@ internal fun ReminderTimeSheet(day: DayOfWeek, time: LocalTime, onDismiss: () ->
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             SheetHeader(stringResource(R.string.reminder_sheet_title), onClose = onDismiss)
-            ZarMonoLabel(stringResource(R.string.reminder_sheet_day))
+            ZarEyebrow(stringResource(R.string.reminder_sheet_day))
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 DayOfWeek.entries.forEach { option ->
                     ZarChip(
@@ -290,7 +290,7 @@ internal fun ReminderTimeSheet(day: DayOfWeek, time: LocalTime, onDismiss: () ->
                     )
                 }
             }
-            ZarMonoLabel(stringResource(R.string.reminder_sheet_time))
+            ZarEyebrow(stringResource(R.string.reminder_sheet_time))
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 PRESET_TIMES.forEach { option ->
                     ZarChip(

@@ -50,7 +50,7 @@ import com.example.zar.features.freelance.presentation.viewmodel.MilestoneUiStat
 import com.example.zar.features.freelance.presentation.viewmodel.MilestoneViewModel
 import com.example.zar.features.transactions.presentation.income.IncomeFormat
 import com.example.zar.features.transactions.presentation.income.screen.SummaryHeaderCard
-import com.example.zar.features.transactions.presentation.income.screen.ZarMono
+import com.example.zar.core.presentation.theme.ZarSansFont
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -94,12 +94,12 @@ fun MilestoneScreen(
                     modifier = Modifier.heroParallax(milestoneHeroOffset, ZarMotion.PARALLAX_TEXT, ZarMotion.ParallaxTextCap),
                 )
             }
-            if (uiState.isCancelled) Text(stringResource(R.string.milestone_cancelled_note), color = MaterialTheme.colorScheme.error, fontFamily = ZarMono)
-            if (uiState.project?.isArchived == true) Text(stringResource(R.string.project_archived_note), color = MaterialTheme.colorScheme.error, fontFamily = ZarMono)
+            if (uiState.isCancelled) Text(stringResource(R.string.milestone_cancelled_note), color = MaterialTheme.colorScheme.error, fontFamily = ZarSansFont)
+            if (uiState.project?.isArchived == true) Text(stringResource(R.string.project_archived_note), color = MaterialTheme.colorScheme.error, fontFamily = ZarSansFont)
 
             MilestoneFields(uiState, viewModel)
 
-            uiState.message?.let { Text(stringResource(it.textRes()), color = MaterialTheme.colorScheme.error, fontFamily = ZarMono) }
+            uiState.message?.let { Text(stringResource(it.textRes()), color = MaterialTheme.colorScheme.error, fontFamily = ZarSansFont) }
 
             if (uiState.canEdit) {
                 Button(onClick = viewModel::save, enabled = !uiState.isSaving, modifier = Modifier.fillMaxWidth().height(52.dp)) {
@@ -135,7 +135,7 @@ private fun MilestoneFields(uiState: MilestoneUiState, viewModel: MilestoneViewM
         value = uiState.amount,
         onValueChange = viewModel::onAmountChange,
         label = { Text(stringResource(R.string.milestone_amount)) },
-        prefix = { Text("${currency.code} ", fontFamily = ZarMono) },
+        prefix = { Text("${currency.code} ", fontFamily = ZarSansFont) },
         enabled = uiState.canEdit,
         isError = uiState.problems.amountErrorRes() != null,
         supportingText = uiState.problems.amountErrorRes()?.let { { Text(stringResource(it)) } },
@@ -157,11 +157,11 @@ private fun LinkedReceipts(receipts: List<LinkedReceipt>, canEdit: Boolean, onUn
             OutlinedCard(Modifier.fillMaxWidth()) {
                 Row(Modifier.padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
-                        Text(receipt.counted.display(), style = MaterialTheme.typography.bodyLarge, fontFamily = ZarMono)
+                        Text(receipt.counted.display(), style = MaterialTheme.typography.bodyLarge, fontFamily = ZarSansFont)
                         Text(
                             listOfNotNull(receipt.entry.current.merchant, IncomeFormat.shortDate(receipt.entry.current.date)).joinToString(" · "),
                             style = MaterialTheme.typography.bodySmall,
-                            fontFamily = ZarMono,
+                            fontFamily = ZarSansFont,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
@@ -179,7 +179,7 @@ private fun LinkCandidates(uiState: MilestoneUiState, viewModel: MilestoneViewMo
         HorizontalDivider()
         SectionLabel(stringResource(R.string.milestone_link_title), Modifier.padding(top = 8.dp))
         if (uiState.candidates.isEmpty()) {
-            Text(stringResource(R.string.milestone_no_candidates, currencyCode), style = MaterialTheme.typography.bodySmall, fontFamily = ZarMono)
+            Text(stringResource(R.string.milestone_no_candidates, currencyCode), style = MaterialTheme.typography.bodySmall, fontFamily = ZarSansFont)
             return@Column
         }
         Text(stringResource(R.string.milestone_link_hint, currencyCode), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -198,19 +198,19 @@ private fun CandidateCard(uiState: MilestoneUiState, candidate: ReceiptCandidate
             Text(
                 listOfNotNull(tx.merchant, IncomeFormat.shortDate(tx.date), IncomeFormat.received(tx.amount)).joinToString(" · "),
                 style = MaterialTheme.typography.bodyMedium,
-                fontFamily = ZarMono,
+                fontFamily = ZarSansFont,
             )
             Text(
                 stringResource(R.string.milestone_available, candidate.available.display()),
                 style = MaterialTheme.typography.bodySmall,
-                fontFamily = ZarMono,
+                fontFamily = ZarSansFont,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Row(verticalAlignment = Alignment.CenterVertically) {
                 OutlinedTextField(
                     value = typed,
                     onValueChange = { viewModel.onLinkAmountChange(key, it) },
-                    prefix = { Text("${tx.amount.currency.code} ", fontFamily = ZarMono) },
+                    prefix = { Text("${tx.amount.currency.code} ", fontFamily = ZarSansFont) },
                     isError = problems.amountErrorRes() != null,
                     supportingText = problems.amountErrorRes()?.let { { Text(stringResource(it)) } },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),

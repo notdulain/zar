@@ -37,7 +37,7 @@ import com.example.zar.core.presentation.components.ZarButtonStyle
 import com.example.zar.core.presentation.components.ZarChip
 import com.example.zar.core.presentation.components.ZarDivider
 import com.example.zar.core.presentation.components.ZarFormRow
-import com.example.zar.core.presentation.components.ZarMonoLabel
+import com.example.zar.core.presentation.components.ZarEyebrow
 import com.example.zar.core.presentation.theme.ZarDimens
 import com.example.zar.core.presentation.theme.ZarShapes
 import com.example.zar.core.presentation.theme.ZarTheme
@@ -226,7 +226,7 @@ private fun CheckForm(state: BalanceCheckUiState, isCash: Boolean, actions: Chec
 
     if (check != null && check.outcome != CheckOutcome.MATCHES) {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            ZarMonoLabel(stringResource(R.string.balance_check_the_gap, IncomeFormat.withCode(check.gap)))
+            ZarEyebrow(stringResource(R.string.balance_check_the_gap, IncomeFormat.withCode(check.gap)))
             if (state.canFindMissing) {
                 // Wraps onto a second line on a narrow phone instead of cutting the second choice off.
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {

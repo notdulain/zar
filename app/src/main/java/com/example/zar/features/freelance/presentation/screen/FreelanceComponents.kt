@@ -31,7 +31,7 @@ import com.example.zar.core.domain.model.money.Money
 import com.example.zar.features.freelance.domain.FreelanceProblem
 import com.example.zar.features.freelance.presentation.viewmodel.FreelanceMessage
 import com.example.zar.features.transactions.presentation.income.IncomeFormat
-import com.example.zar.features.transactions.presentation.income.screen.ZarMono
+import com.example.zar.core.presentation.theme.ZarSansFont
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
@@ -75,13 +75,13 @@ internal fun Loading(modifier: Modifier = Modifier) {
 @Composable
 internal fun CenteredText(text: String, modifier: Modifier = Modifier) {
     Box(modifier.fillMaxWidth().padding(24.dp), Alignment.Center) {
-        Text(text, textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyMedium, fontFamily = ZarMono)
+        Text(text, textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyMedium, fontFamily = ZarSansFont)
     }
 }
 
 @Composable
 internal fun SectionLabel(text: String, modifier: Modifier = Modifier) {
-    Text(text, style = MaterialTheme.typography.labelMedium, fontFamily = ZarMono, modifier = modifier)
+    Text(text, style = MaterialTheme.typography.labelMedium, fontFamily = ZarSansFont, modifier = modifier)
 }
 
 /** A date button that opens Material's picker. Any date can be picked (milestones may be overdue). */
@@ -92,7 +92,7 @@ internal fun DateField(label: String, date: LocalDate, enabled: Boolean, onSelec
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         SectionLabel(label)
         OutlinedButton(onClick = { showPicker = true }, enabled = enabled, modifier = Modifier.fillMaxWidth()) {
-            Text(IncomeFormat.fullDate(date), fontFamily = ZarMono)
+            Text(IncomeFormat.fullDate(date), fontFamily = ZarSansFont)
         }
     }
     if (!showPicker) return

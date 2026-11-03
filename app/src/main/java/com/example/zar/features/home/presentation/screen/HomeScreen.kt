@@ -337,7 +337,7 @@ private fun ReceivedHero(
                 Box(Modifier.collapseLine(spec, labelLine)) {
                     Text(
                         stringResource(R.string.home_received_this_month).uppercase(),
-                        style = ZarType.monoLabel,
+                        style = ZarType.label,
                         color = colors.textOnInverse,
                     )
                 }
@@ -366,8 +366,8 @@ private fun ReceivedHero(
                 }
                 Spacer(Modifier.height(7.dp))
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text(overview.month.atDay(1).format(AxisFormat).uppercase(), style = ZarType.monoLabel, color = colors.textOnInverse)
-                    Text(overview.month.atEndOfMonth().format(AxisFormat).uppercase(), style = ZarType.monoLabel, color = colors.textOnInverse)
+                    Text(overview.month.atDay(1).format(AxisFormat).uppercase(), style = ZarType.label, color = colors.textOnInverse)
+                    Text(overview.month.atEndOfMonth().format(AxisFormat).uppercase(), style = ZarType.label, color = colors.textOnInverse)
                 }
                 Spacer(Modifier.height(22.dp))
             }
@@ -497,7 +497,7 @@ private fun MonthPicker(
             month.format(MonthFormat).uppercase(),
             modifier = Modifier.width(154.dp).testTag("month-label"),
             textAlign = TextAlign.Center,
-            style = ZarType.monoLabel,
+            style = ZarType.label,
             color = color,
             maxLines = 1,
         )
@@ -626,8 +626,8 @@ private fun SpendingCard(overview: HomeOverview, onClick: () -> Unit) {
     ZarCard(Modifier.fillMaxWidth().testTag("spent-card"), onClick = onClick, contentPadding = androidx.compose.foundation.layout.PaddingValues(19.dp)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
             Column {
-                Text(stringResource(R.string.home_spent).uppercase(), style = ZarType.monoLabel, color = colors.textPrimary)
-                Text(stringResource(R.string.home_this_month).uppercase(), style = ZarType.monoLabel, color = colors.textTertiary)
+                Text(stringResource(R.string.home_spent).uppercase(), style = ZarType.label, color = colors.textPrimary)
+                Text(stringResource(R.string.home_this_month).uppercase(), style = ZarType.label, color = colors.textTertiary)
             }
             Text(summary.total.amount.formatWithCode(), style = ZarType.amountM, color = colors.textPrimary, modifier = Modifier.testTag("spent-amount"))
         }
@@ -666,9 +666,9 @@ private fun SplitLine(@StringRes label: Int, total: ReportingTotal, tag: String,
     Row(Modifier.fillMaxWidth().height(17.dp).testTag(tag), verticalAlignment = Alignment.CenterVertically) {
         Box(Modifier.size(6.dp).background(dotColor, CircleShape))
         Spacer(Modifier.width(8.dp))
-        Text(stringResource(label).uppercase(), style = ZarType.monoLabel, color = colors.textTertiary)
+        Text(stringResource(label).uppercase(), style = ZarType.label, color = colors.textTertiary)
         Spacer(Modifier.width(8.dp))
-        Text(total.amount.formatWithCode(), style = ZarType.monoLabel, color = colors.textPrimary, maxLines = 1)
+        Text(total.amount.formatWithCode(), style = ZarType.label, color = colors.textPrimary, maxLines = 1)
     }
 }
 
@@ -676,7 +676,7 @@ private fun SplitLine(@StringRes label: Int, total: ReportingTotal, tag: String,
 private fun GoalLinkCard(onClick: () -> Unit) {
     val colors = ZarTheme.colors
     ZarCard(Modifier.fillMaxWidth(), onClick = onClick, contentPadding = androidx.compose.foundation.layout.PaddingValues(19.dp)) {
-        Text(stringResource(R.string.home_goal).uppercase(), style = ZarType.monoLabel, color = colors.textTertiary)
+        Text(stringResource(R.string.home_goal).uppercase(), style = ZarType.label, color = colors.textTertiary)
         Spacer(Modifier.height(6.dp))
         Text(stringResource(R.string.home_goal_preview), style = ZarType.bodyM, color = colors.textPrimary)
         Spacer(Modifier.height(8.dp))
@@ -690,7 +690,7 @@ private fun GoalLinkCard(onClick: () -> Unit) {
 private fun RecentActivity(recent: List<LedgerEntry>) {
     val colors = ZarTheme.colors
     Column(Modifier.fillMaxWidth().padding(horizontal = 9.dp).padding(top = 2.dp)) {
-        Text(stringResource(R.string.home_recent_activity).uppercase(), style = ZarType.monoLabel, color = colors.textPrimary)
+        Text(stringResource(R.string.home_recent_activity).uppercase(), style = ZarType.label, color = colors.textPrimary)
         Spacer(Modifier.height(10.dp))
         if (recent.isEmpty()) {
             Text(stringResource(R.string.home_recent_empty), style = ZarType.bodyCaption, color = colors.textSecondary)

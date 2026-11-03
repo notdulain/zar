@@ -83,7 +83,7 @@ import com.example.zar.core.presentation.components.ZarButtonStyle
 import com.example.zar.core.presentation.components.ZarChip
 import com.example.zar.core.presentation.components.ZarFormRow
 import com.example.zar.core.presentation.components.ZarIcon
-import com.example.zar.core.presentation.components.ZarMonoLabel
+import com.example.zar.core.presentation.components.ZarEyebrow
 import com.example.zar.core.presentation.privacy.AmountMask
 import com.example.zar.core.presentation.theme.ZarShapes
 import com.example.zar.core.presentation.theme.ZarTheme
@@ -305,7 +305,7 @@ private fun NoteBox(value: String, onChange: (String) -> Unit, enabled: Boolean,
         )
         Text(
             stringResource(R.string.quicknote_counter, value.length, QuickNoteLimits.MAX_NOTE_LENGTH),
-            style = ZarType.monoCaption,
+            style = ZarType.caption,
             color = colors.textTertiary,
             textAlign = TextAlign.End,
             modifier = Modifier.fillMaxWidth().testTag("quicknote-counter"),
@@ -428,7 +428,7 @@ private fun ProposalRows(item: ProposalState, accounts: List<Account>, actions: 
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                ZarMonoLabel(row.label, Modifier.width(86.dp))
+                ZarEyebrow(row.label, Modifier.width(86.dp))
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text(row.value, style = ZarType.bodyM, color = if (row.missing) colors.textAttention else colors.textPrimary)
                     if (row.missing) FieldTag(stringResource(if (row.key == "purchase") R.string.quicknote_tag_needed else R.string.quicknote_tag_missing), "quicknote-missing-${row.key}")
@@ -445,7 +445,7 @@ private fun FieldTag(text: String, tag: String) {
     val colors = ZarTheme.colors
     Text(
         text.uppercase(),
-        style = ZarType.monoCaption,
+        style = ZarType.caption,
         color = colors.textAttention,
         modifier = Modifier.clip(ZarShapes.xs).background(colors.textAttention.copy(alpha = 0.14f)).padding(horizontal = 8.dp, vertical = 3.dp).testTag(tag),
     )
@@ -586,15 +586,15 @@ private fun ProposalCard(item: ProposalState, accounts: List<Account>, actions: 
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Text(
                 stringResource(tag).uppercase(),
-                style = ZarType.monoCaption,
+                style = ZarType.caption,
                 color = if (input is ProposalInput.Expected) colors.textAttention else colors.textSecondary,
                 modifier = Modifier.clip(ZarShapes.xs)
                     .background((if (input is ProposalInput.Expected) colors.textAttention else colors.textSecondary).copy(alpha = 0.14f))
                     .padding(horizontal = 8.dp, vertical = 3.dp),
             )
             when (item.status) {
-                ProposalStatus.SAVED -> Text(stringResource(R.string.quicknote_tag_saved).uppercase(), style = ZarType.monoCaption, color = colors.textIncome, modifier = Modifier.testTag("quicknote-saved-${item.index}"))
-                ProposalStatus.DISCARDED -> Text(stringResource(R.string.quicknote_tag_discarded).uppercase(), style = ZarType.monoCaption, color = colors.textTertiary)
+                ProposalStatus.SAVED -> Text(stringResource(R.string.quicknote_tag_saved).uppercase(), style = ZarType.caption, color = colors.textIncome, modifier = Modifier.testTag("quicknote-saved-${item.index}"))
+                ProposalStatus.DISCARDED -> Text(stringResource(R.string.quicknote_tag_discarded).uppercase(), style = ZarType.caption, color = colors.textTertiary)
                 else -> Text(
                     stringResource(R.string.quicknote_edit),
                     style = ZarType.labelAction,
@@ -831,7 +831,7 @@ private fun TransferFields(index: Int, input: ProposalInput.Transfer, accounts: 
 private fun FieldGroup(label: String, guessed: Boolean, content: @Composable () -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            ZarMonoLabel(label)
+            ZarEyebrow(label)
             if (guessed) FieldTag(stringResource(R.string.quicknote_tag_guessed), "quicknote-guessed-group")
         }
         content()

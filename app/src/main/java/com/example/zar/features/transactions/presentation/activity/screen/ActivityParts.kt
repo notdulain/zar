@@ -88,13 +88,13 @@ internal fun BannerAction(text: String, onClick: () -> Unit, modifier: Modifier 
     }
 }
 
-/** Small mono tag such as EDITED or VOID. */
+/** Small tag such as EDITED or VOID. */
 @Composable
 internal fun TagPill(text: String, modifier: Modifier = Modifier, attention: Boolean = false) {
     val colors = ZarTheme.colors
     Text(
         text.uppercase(),
-        style = ZarType.monoCaption,
+        style = ZarType.caption,
         color = if (attention) colors.textAttention else colors.textTertiary,
         modifier = modifier.clip(CircleShape).background(colors.subtle).padding(horizontal = 8.dp, vertical = 3.dp),
     )

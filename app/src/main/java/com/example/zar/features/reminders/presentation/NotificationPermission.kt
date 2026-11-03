@@ -19,7 +19,7 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import com.example.zar.R
-import com.example.zar.features.transactions.presentation.income.screen.ZarMono
+import com.example.zar.core.presentation.theme.ZarSansFont
 
 /** Whether Zar may show notifications, kept current when the person returns from settings. */
 class NotificationAccess(val enabled: Boolean, val request: () -> Unit)
@@ -48,5 +48,5 @@ fun rememberNotificationAccess(): NotificationAccess {
 
 @Composable
 fun NotificationsOffNote() {
-    Text(stringResource(R.string.reminders_notifications_off), style = MaterialTheme.typography.bodySmall, fontFamily = ZarMono, color = MaterialTheme.colorScheme.error)
+    Text(stringResource(R.string.reminders_notifications_off), style = MaterialTheme.typography.bodySmall, fontFamily = ZarSansFont, color = MaterialTheme.colorScheme.error)
 }

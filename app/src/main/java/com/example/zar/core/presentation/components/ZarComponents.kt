@@ -111,7 +111,7 @@ fun ZarTitleBlock(title: String, subtitle: String?, modifier: Modifier = Modifie
     }
 }
 
-/** Mono/Label section header with an optional trailing action (Label/Action). */
+/** Label section header with an optional trailing action (Label/Action). */
 @Composable
 fun ZarSectionHeader(label: String, modifier: Modifier = Modifier, action: String? = null, onAction: (() -> Unit)? = null) {
     Row(
@@ -119,7 +119,7 @@ fun ZarSectionHeader(label: String, modifier: Modifier = Modifier, action: Strin
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        ZarMonoLabel(label)
+        ZarEyebrow(label)
         if (action != null) {
             Text(
                 action,
@@ -132,8 +132,8 @@ fun ZarSectionHeader(label: String, modifier: Modifier = Modifier, action: Strin
 }
 
 @Composable
-fun ZarMonoLabel(text: String, modifier: Modifier = Modifier, color: Color = ZarTheme.colors.textTertiary) {
-    Text(text.uppercase(), style = ZarType.monoLabel, color = color, modifier = modifier)
+fun ZarEyebrow(text: String, modifier: Modifier = Modifier, color: Color = ZarTheme.colors.textTertiary) {
+    Text(text.uppercase(), style = ZarType.label, color = color, modifier = modifier)
 }
 
 private const val ICON_MAX_FONT_SCALE = 1.2f
@@ -247,7 +247,7 @@ fun ZarAddPill(text: String, onClick: () -> Unit, modifier: Modifier = Modifier)
     }
 }
 
-/** A label (Mono/Label, fixed width) beside its value, as in Figma's form rows. */
+/** A label (Label, fixed width) beside its value, as in Figma's form rows. */
 @Composable
 fun ZarFormRow(
     label: String,
@@ -256,7 +256,7 @@ fun ZarFormRow(
     content: @Composable RowScope.() -> Unit,
 ) {
     Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.width(labelWidth).height(16.dp), Alignment.CenterStart) { ZarMonoLabel(label) }
+        Box(Modifier.width(labelWidth).height(16.dp), Alignment.CenterStart) { ZarEyebrow(label) }
         content()
     }
 }

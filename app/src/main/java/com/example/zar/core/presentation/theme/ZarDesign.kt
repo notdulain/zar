@@ -237,14 +237,6 @@ private fun geist(weight: Int) = Font(
 
 val GeistFamily = FontFamily(geist(300), geist(400), geist(500))
 
-val GeistMonoFamily = FontFamily(
-    Font(
-        resId = R.font.geist_mono,
-        weight = FontWeight.Normal,
-        variationSettings = FontVariation.Settings(FontVariation.weight(400)),
-    ),
-)
-
 /** Figma text styles. Percentage tracking is converted to sp at each size. */
 object ZarType {
     val amountXL = TextStyle(fontFamily = GeistFamily, fontWeight = FontWeight.Light, fontSize = 52.sp, lineHeight = 52.sp, letterSpacing = (-1.04).sp)
@@ -261,9 +253,9 @@ object ZarType {
     val labelChip = TextStyle(fontFamily = GeistFamily, fontWeight = FontWeight.Medium, fontSize = 13.sp, lineHeight = 13.sp)
     val labelAction = labelChip
     val labelTab = TextStyle(fontFamily = GeistFamily, fontWeight = FontWeight.Medium, fontSize = 10.sp, lineHeight = 12.sp, letterSpacing = 0.sp)
-    val monoLabel = TextStyle(fontFamily = GeistMonoFamily, fontWeight = FontWeight.Normal, fontSize = 11.sp, lineHeight = 11.sp, letterSpacing = 0.44.sp)
-    val monoCaption = TextStyle(fontFamily = GeistMonoFamily, fontWeight = FontWeight.Normal, fontSize = 10.sp, lineHeight = 10.sp)
-    val monoAxis = TextStyle(fontFamily = GeistMonoFamily, fontWeight = FontWeight.Normal, fontSize = 10.sp, lineHeight = 10.sp, letterSpacing = 0.2.sp)
+    val label = TextStyle(fontFamily = GeistFamily, fontWeight = FontWeight.Medium, fontSize = 11.sp, lineHeight = 12.sp, letterSpacing = 0.66.sp, fontFeatureSettings = "tnum")
+    val caption = TextStyle(fontFamily = GeistFamily, fontWeight = FontWeight.Normal, fontSize = 10.sp, lineHeight = 12.sp, fontFeatureSettings = "tnum")
+    val axis = TextStyle(fontFamily = GeistFamily, fontWeight = FontWeight.Normal, fontSize = 10.sp, lineHeight = 12.sp, letterSpacing = 0.2.sp, fontFeatureSettings = "tnum")
 }
 
 object ZarTheme {

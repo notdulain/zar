@@ -48,7 +48,7 @@ import com.example.zar.core.presentation.components.ZarButtonStyle
 import com.example.zar.core.presentation.components.ZarDivider
 import com.example.zar.core.presentation.components.ZarIcon
 import com.example.zar.core.presentation.components.ZarIconChip
-import com.example.zar.core.presentation.components.ZarMonoLabel
+import com.example.zar.core.presentation.components.ZarEyebrow
 import com.example.zar.core.presentation.theme.ZarDimens
 import com.example.zar.core.presentation.theme.ZarShapes
 import com.example.zar.core.presentation.theme.ZarTheme
@@ -195,7 +195,7 @@ private fun RememberSheet(state: RuleOfferUiState, offer: RuleOffer, onDismiss: 
                     )
                 }
             }
-            ZarMonoLabel(stringResource(R.string.rules_sheet_the_rule))
+            ZarEyebrow(stringResource(R.string.rules_sheet_the_rule))
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 KeyValueRow(stringResource(R.string.rules_matches), stringResource(R.string.rules_matches_value, offer.displayName))
                 KeyValueRow(stringResource(R.string.rules_sets), stringResource(R.string.rules_sets_value, category))
