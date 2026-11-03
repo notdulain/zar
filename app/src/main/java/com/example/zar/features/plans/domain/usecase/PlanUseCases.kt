@@ -20,8 +20,10 @@ import com.example.zar.features.plans.domain.model.SavingsGoal
 import com.example.zar.features.plans.domain.repository.GoalRepository
 import com.example.zar.features.plans.domain.repository.PlanPreferencesRepository
 import javax.inject.Inject
+import kotlin.coroutines.cancellation.CancellationException
 import java.time.LocalDate
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 
@@ -35,7 +37,9 @@ class ObservePlansOverviewUseCase @Inject constructor(
         goals.observeGoals(),
         accounts.observeAccounts(),
         ledger.observeLedger(),
-        preferences.observeMainGoalId(),
+        // The pointer is a convenience: if it cannot be read (offline rules gap, permission), plans still load and the
+        // legacy/fallback main applies. A read failure must never look like an empty or failed catalog.
+        preferences.observeMainGoalId().catch { if (it is CancellationException) throw it else emit(null) },
     ) { savedGoals, savedAccounts, entries, preferredId ->
         val catalog = savedGoals.sortedWith(compareBy({ it.name.lowercase() }, { it.id.value }))
         val mainId = MainGoalResolver.resolve(catalog, preferredId)

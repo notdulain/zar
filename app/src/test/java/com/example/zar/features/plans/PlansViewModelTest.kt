@@ -258,4 +258,26 @@ class PlansViewModelTest {
         vm.selectMainGoal(GoalId("missing"))
         assertEquals(0, prefs.writeCount)
     }
+
+    @Test
+    fun plansStillLoadWhenTheMainPlanPointerCannotBeRead() = runTest {
+        goals.goals.value = listOf(SavingsGoal(GoalId("macbook-fund"), "MacBook fund", lkr(490_000)))
+        val denied = object : com.example.zar.features.plans.domain.repository.PlanPreferencesRepository {
+            override fun observeMainGoalId(): Flow<GoalId?> = kotlinx.coroutines.flow.flow { throw IllegalStateException("PERMISSION_DENIED") }
+            override suspend fun setMainGoalId(id: GoalId) = Unit
+        }
+        val accounts = FakePlanAccounts(listOf(savings))
+        val ledger = TrackingPlanLedger()
+        val tolerant = PlansViewModel(
+            ObservePlansOverviewUseCase(goals, accounts, ledger, denied),
+            SaveGoalUseCase(goals),
+            SetGoalAllocationUseCase(goals, accounts, ledger),
+            SetMainGoalUseCase(goals, denied),
+        )
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { tolerant.uiState.collect {} }
+
+        assertFalse(tolerant.uiState.value.loadFailed)
+        assertEquals(1, tolerant.uiState.value.overview?.goals?.size)
+        assertEquals(GoalId("macbook-fund"), tolerant.uiState.value.overview?.mainGoalId)
+    }
 }
