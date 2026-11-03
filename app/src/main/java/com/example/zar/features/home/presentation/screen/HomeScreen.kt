@@ -244,7 +244,7 @@ internal fun HomeScreenContent(
         val collapse = rememberHomeCollapse(scrollState, cardHeight = 507.dp, fadeMargin = 8.dp)
         Box(
             Modifier.align(Alignment.TopCenter).fillMaxWidth().windowInsetsTopHeight(WindowInsets.statusBars)
-                .graphicsLayer { alpha = HomeCollapse.bandAlpha(collapse.p()) }
+                .graphicsLayer { alpha = if (state.content is HomeContent.Ready) HomeCollapse.bandAlpha(collapse.p()) else 1f }
                 .background(Color(0xFF05070B))
                 .testTag("home-status-band"),
         )
