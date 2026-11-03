@@ -163,7 +163,7 @@ internal fun SettingsContent(
                 text = stringResource(R.string.settings_sign_out),
                 onClick = onSignOut,
                 modifier = Modifier.fillMaxWidth().testTag("sign-out"),
-                style = ZarButtonStyle.Soft,
+                style = ZarButtonStyle.Bounded,
                 enabled = !uiState.isSigningOut,
             )
         }

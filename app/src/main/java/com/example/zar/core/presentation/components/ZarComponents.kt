@@ -43,6 +43,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.example.zar.core.presentation.theme.ZarShapes
 import com.example.zar.core.presentation.theme.ZarTheme
+import com.example.zar.core.presentation.theme.borderControl
 import com.example.zar.core.presentation.theme.ZarType
 
 // Shared building blocks from the Zar-UI Figma design system (Components page).
@@ -137,7 +138,8 @@ fun ZarEyebrow(text: String, modifier: Modifier = Modifier, color: Color = ZarTh
 
 private const val ICON_MAX_FONT_SCALE = 1.2f
 
-enum class ZarButtonStyle { Primary, Soft, Outline }
+/** [Bounded] is a surface-filled button with a 3:1 outline, for an action that must stay visibly a button on the canvas. */
+enum class ZarButtonStyle { Primary, Soft, Outline, Bounded }
 enum class ZarButtonSize { Large, Medium }
 
 /** Figma button variants: Large (58dp) for sheets, Medium (44dp) inside cards. */
@@ -159,7 +161,7 @@ fun ZarButton(
     val container = when (style) {
         ZarButtonStyle.Primary -> colors.accentPrimary
         ZarButtonStyle.Soft -> colors.subtle
-        ZarButtonStyle.Outline -> colors.surface
+        ZarButtonStyle.Outline, ZarButtonStyle.Bounded -> colors.surface
     }
     val content = contentColor ?: if (style == ZarButtonStyle.Primary) colors.textOnInverse else colors.textPrimary
     val press = remember { MutableInteractionSource() }
@@ -170,7 +172,13 @@ fun ZarButton(
             .alpha(if (enabled) 1f else 0.4f)
             .clip(shape)
             .background(container)
-            .then(if (style == ZarButtonStyle.Outline) Modifier.border(BorderStroke(1.dp, colors.borderDefault), shape) else Modifier)
+            .then(
+                when (style) {
+                    ZarButtonStyle.Outline -> Modifier.border(BorderStroke(1.dp, colors.borderDefault), shape)
+                    ZarButtonStyle.Bounded -> Modifier.border(BorderStroke(1.dp, colors.borderControl), shape)
+                    else -> Modifier
+                },
+            )
             .clickable(interactionSource = press, indication = LocalIndication.current, enabled = enabled, role = Role.Button, onClick = onClick)
             .padding(horizontal = horizontalPadding),
         Alignment.Center,

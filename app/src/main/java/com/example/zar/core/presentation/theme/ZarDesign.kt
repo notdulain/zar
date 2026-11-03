@@ -214,6 +214,9 @@ val ZarDarkColors = ZarColors(
     fresh = Color(0xFF8FD6C4),
 )
 
+/** Outline of a control that must read as a control on the canvas; at least 3:1 against canvas and surface in both themes. */
+val ZarColors.borderControl: Color get() = iconMuted
+
 val LocalZarColors = staticCompositionLocalOf { ZarLightColors }
 
 /** Radius tokens from the Figma variable collection. */
