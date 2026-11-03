@@ -2,6 +2,14 @@ package com.example.zar.features.home.presentation.screen
 
 import com.example.zar.core.presentation.privacy.AmountPrivacyViewModel
 import com.example.zar.core.presentation.privacy.AmountMask
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.animateIntOffsetAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
 import androidx.annotation.StringRes
 import androidx.compose.foundation.Canvas
 import com.example.zar.core.domain.calculation.ZarTime
@@ -39,6 +47,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.unit.sp
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -331,7 +342,6 @@ private fun ReceivedHero(
     val labelLine = remember { CollapseLine() }
     val amountLine = remember { CollapseLine() }
     val statusLine = remember { CollapseLine() }
-    val toggleLine = remember { CollapseLine() }
     Box(
         Modifier.fillMaxWidth().height(507.dp)
             .graphicsLayer {
@@ -356,17 +366,7 @@ private fun ReceivedHero(
             Column(Modifier.collapseShift(spec, HomeCollapse.TEXT_RATE)) {
                 Spacer(Modifier.height(54.dp))
                 Box(Modifier.collapseLine(spec, tabsLine)) { ChartModeTabs(selected = chartMode, onSelect = { chartMode = it }) }
-                Spacer(Modifier.height(4.dp))
-                Box(Modifier.collapseLine(spec, monthLine)) {
-                    MonthPicker(
-                        month = overview.month,
-                        canGoForward = canGoForward,
-                        onPrevious = onPreviousMonth,
-                        onNext = onNextMonth,
-                        onDark = true,
-                    )
-                }
-                Spacer(Modifier.height(2.dp))
+                Spacer(Modifier.height(38.dp))
                 Box(Modifier.collapseLine(spec, labelLine)) {
                     Text(
                         stringResource(R.string.home_received_this_month).uppercase(),
@@ -429,30 +429,33 @@ private fun ReceivedHero(
                 Spacer(Modifier.height(22.dp))
             }
         }
-        HideAmountsToggle(
-            onToggleAmounts,
-            Modifier.align(Alignment.TopEnd).padding(top = 48.dp, end = 14.dp)
+        Box(
+            Modifier.align(Alignment.TopEnd).padding(top = 54.dp, end = 22.dp)
                 .collapseShift(spec, HomeCollapse.TEXT_RATE)
-                .collapseLine(spec, toggleLine),
-        )
-    }
-}
-
-/** The labelled control that hides or shows every amount in the app. */
-@Composable
-private fun HideAmountsToggle(onToggle: () -> Unit, modifier: Modifier = Modifier) {
-    val hidden = AmountMask.isHidden
-    val label = stringResource(if (hidden) R.string.amounts_show else R.string.amounts_hide)
-    IconButton(
-        onClick = onToggle,
-        modifier = modifier.size(48.dp).testTag("hide-amounts-toggle").semantics { contentDescription = label },
-    ) {
-        Icon(
-            painterResource(if (hidden) R.drawable.ic_ph_eye_slash else R.drawable.ic_ph_eye),
-            contentDescription = null,
-            modifier = Modifier.size(22.dp),
-            tint = Color.White,
-        )
+                .collapseLine(spec, monthLine),
+        ) {
+            var expanded by remember { mutableStateOf(false) }
+            val changeRange = stringResource(R.string.activity_change_range)
+            Row(
+                Modifier.clip(CircleShape)
+                    .clickable(role = Role.Button, onClickLabel = changeRange) { expanded = true }
+                    .padding(horizontal = 8.dp, vertical = 8.dp)
+                    .testTag("home-month-selector"),
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                val format = if (overview.month.year == ZarTime.today().year) ShortMonthFormat
+                    else DateTimeFormatter.ofPattern("MMM yy", Locale.ENGLISH)
+                Text(overview.month.format(format).uppercase(), style = ZarType.label.copy(lineHeight = 14.sp), color = Color.White)
+                Icon(painterResource(R.drawable.ic_ph_caret_down), contentDescription = null,
+                    modifier = Modifier.size(12.dp), tint = Color.White)
+            }
+            DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                Box(Modifier.width(280.dp)) {
+                    MonthPicker(overview.month, canGoForward, onPreviousMonth, onNextMonth, onDark = false)
+                }
+            }
+        }
     }
 }
 
@@ -472,7 +475,7 @@ private fun HiddenChart(modifier: Modifier = Modifier) {
 @Composable
 private fun ChartModeTabs(selected: Int, onSelect: (Int) -> Unit) {
     val icons = listOf(R.drawable.ic_ph_chartbar, R.drawable.ic_ph_chartdonut, R.drawable.ic_ph_chartlineup)
-    Row(Modifier.fillMaxWidth().height(40.dp), horizontalArrangement = Arrangement.Center) {
+    Row(Modifier.fillMaxWidth().height(48.dp), horizontalArrangement = Arrangement.Center) {
         icons.forEachIndexed { index, icon ->
             Column(
                 Modifier.width(48.dp).height(40.dp).clip(RoundedCornerShape(8.dp))
@@ -507,7 +510,7 @@ private fun SpendingDonutChart(overview: HomeOverview, modifier: Modifier = Modi
         DonutStatus.OVERSPENT -> R.string.home_donut_overspent
         DonutStatus.NO_INCOME -> R.string.home_donut_no_income
         DonutStatus.UNRESOLVED_RATES -> R.string.home_donut_unresolved
-        DonutStatus.PLANS_UNAVAILABLE -> R.string.home_donut_plans_unavailable
+        DonutStatus.PLANS_UNAVAILABLE -> null
     }?.let { stringResource(it) }
     val percent = donut.stillFreePercent
     val description = stringResource(R.string.home_donut_description, spentText, plansText, freeText) +
@@ -669,21 +672,21 @@ private fun MonthPicker(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Center,
     ) {
-        IconButton(onClick = onPrevious, modifier = Modifier.size(40.dp).testTag("month-previous").semantics { contentDescription = previous }) {
+        IconButton(onClick = onPrevious, modifier = Modifier.size(48.dp).testTag("month-previous").semantics { contentDescription = previous }) {
             Text("‹", style = ZarType.headingSheet, color = color)
         }
         Text(
-            month.format(MonthFormat).uppercase(),
-            modifier = Modifier.width(154.dp).testTag("month-label"),
+            month.format(MonthFormat),
+            modifier = Modifier.width(130.dp).testTag("month-label"),
             textAlign = TextAlign.Center,
-            style = ZarType.label,
+            style = ZarType.labelAction,
             color = color,
             maxLines = 1,
         )
         IconButton(
             onClick = onNext,
             enabled = canGoForward,
-            modifier = Modifier.size(40.dp).testTag("month-next").semantics { contentDescription = next },
+            modifier = Modifier.size(48.dp).testTag("month-next").semantics { contentDescription = next },
         ) {
             Text("›", style = ZarType.headingSheet, color = color.copy(alpha = if (canGoForward) 1f else 0.35f))
         }
@@ -729,18 +732,19 @@ private fun ReceivedBarChart(overview: HomeOverview, modifier: Modifier = Modifi
                 last.cumulative.amount.formatWithCode(),
             ) + if (series.hasUnresolved) " " + stringResource(R.string.home_received_chart_unresolved) else ""
         }
-    Box(
+    BoxWithConstraints(
         modifier
             .semantics { contentDescription = description }
             .testTag("received-chart")
-            .pointerInput(slots.size) {
+            .pointerInput(slots) {
                 detectTapGestures { tap ->
                     val index = (tap.x / (size.width.toFloat() / slots.size)).toInt().coerceIn(0, slots.lastIndex)
                     selected = if (slots[index].isFuture || index == selected) -1 else index
                 }
             },
     ) {
-        Canvas(Modifier.fillMaxSize()) {
+        val tooltipSpace = 44.dp
+        Canvas(Modifier.fillMaxSize().padding(top = tooltipSpace)) {
             val slotWidth = size.width / slots.size
             val barWidth = 5.dp.toPx().coerceAtMost(slotWidth * 0.7f)
             val markerHeight = barWidth
@@ -764,20 +768,39 @@ private fun ReceivedBarChart(overview: HomeOverview, modifier: Modifier = Modifi
                 )
             }
         }
-        val picked = slots.getOrNull(selected)
-        val caption = when {
-            picked != null -> picked.date.format(DayFormat) + ": " + picked.cumulative.amount.formatWithCode() +
-                if (picked.cumulative.unresolvedCount > 0) " + " + stringResource(R.string.home_received_chart_unresolved) else ""
-            series.isAllZero -> stringResource(R.string.home_received_chart_empty)
-            else -> null
-        }
-        if (caption != null) {
-            Text(
-                caption,
-                color = Color.White.copy(alpha = 0.7f),
-                style = ZarType.bodyCaption,
-                modifier = Modifier.align(if (picked != null) Alignment.TopCenter else Alignment.Center).testTag("received-chart-caption"),
-            )
+        // Keep the last anchor during fade-out; selection changes retarget the spring in flight.
+        var lastSelected by remember(overview.month) { mutableIntStateOf(0) }
+        if (selected >= 0) lastSelected = selected
+        val picked = slots[lastSelected]
+        var tooltipSize by remember { mutableStateOf(IntSize.Zero) }
+        val density = LocalDensity.current
+        val widthPx = with(density) { maxWidth.toPx() }
+        val heightPx = with(density) { maxHeight.toPx() }
+        val reservedPx = with(density) { tooltipSpace.toPx() }
+        val barHeight = ((heightPx - reservedPx) * series.fractionOf(picked)).coerceAtLeast(with(density) { 5.dp.toPx() })
+        val anchorX = widthPx * (lastSelected + 0.5f) / slots.size
+        val target = IntOffset(
+            (anchorX - tooltipSize.width / 2f).toInt().coerceIn(0, (widthPx - tooltipSize.width).toInt().coerceAtLeast(0)),
+            (heightPx - barHeight - tooltipSize.height - with(density) { 8.dp.toPx() }).toInt().coerceAtLeast(0),
+        )
+        val tooltipOffset by animateIntOffsetAsState(target, spring(dampingRatio = 1f, stiffness = 350f), label = "income tooltip position")
+        val tooltipAlpha by animateFloatAsState(if (selected >= 0) 1f else 0f, tween(180), label = "income tooltip visibility")
+        Text(
+            picked.date.format(DayFormat) + ": " + picked.cumulative.amount.formatWithCode() +
+                if (picked.cumulative.unresolvedCount > 0) " + " + stringResource(R.string.home_received_chart_unresolved) else "",
+            color = Color.White,
+            style = ZarType.bodyCaption,
+            maxLines = 2,
+            modifier = Modifier.offset { tooltipOffset }
+                .onSizeChanged { tooltipSize = it }
+                .graphicsLayer { alpha = tooltipAlpha }
+                .background(Color(0xFF202229), RoundedCornerShape(8.dp))
+                .padding(horizontal = 10.dp, vertical = 6.dp)
+                .testTag("received-chart-caption"),
+        )
+        if (series.isAllZero && selected < 0) {
+            Text(stringResource(R.string.home_received_chart_empty), color = Color.White.copy(alpha = 0.7f),
+                style = ZarType.bodyCaption, modifier = Modifier.align(Alignment.Center))
         }
     }
 }
