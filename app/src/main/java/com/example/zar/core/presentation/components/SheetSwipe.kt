@@ -85,7 +85,8 @@ internal fun Modifier.sheetSwipeToDismiss(state: SheetBackState, enabled: Boolea
             orientation = Orientation.Vertical,
             enabled = active,
             startDragImmediately = state.swipeSettling,
-            onDragStarted = { state.swipeJob?.cancel() },
+            // A returning spring can be interrupted; an exit must finish and pop its route.
+            onDragStarted = { if (!state.closing) state.swipeJob?.cancel() },
             onDragStopped = { release(it) },
         )
 }

@@ -7,6 +7,16 @@ import org.junit.Test
 
 class SpeedDialPoseTest {
     @Test
+    fun homeRowKeepsLogicalStartDespitePixelRoundingWhileFullNavOpensInward() {
+        for (center in listOf(499.5f, 500f, 500.5f)) {
+            assertEquals(-1f, speedDialRowDirection(true, false, center, 500f), 0f)
+            assertEquals(1f, speedDialRowDirection(true, true, center, 500f), 0f)
+        }
+        assertEquals(-1f, speedDialRowDirection(false, false, 900f, 500f), 0f)
+        assertEquals(1f, speedDialRowDirection(false, true, 100f, 500f), 0f)
+    }
+
+    @Test
     fun matchesTheDesignFixtureAcrossOpeningClosingAndReversal() {
         // rotation, Quick travel/scale/alpha, Manual travel/scale/alpha (verification.md).
         val rows = listOf(

@@ -147,9 +147,12 @@ fun ZarTopLevelChrome(
         val overlayVisible by remember(progress) { derivedStateOf { open || progress.value != 0f } }
         val safeTop = WindowInsets.safeDrawing.getTop(density)
         val row = speedDialUsesRow(with(density) { (anchor.top - safeTop).toDp().value })
-        val towardCenter = if (anchor.center.x > origin.x + constraints.maxWidth / 2f) -1f
-            else if (anchor.center.x < origin.x + constraints.maxWidth / 2f) 1f
-            else if (rtl) 1f else -1f
+        val towardCenter = speedDialRowDirection(
+            centered = chrome == NavChrome.AddOnly,
+            rtl = rtl,
+            anchorCenter = anchor.center.x,
+            windowCenter = origin.x + constraints.maxWidth / 2f,
+        )
 
         Box(Modifier.fillMaxSize().onGloballyPositioned { origin = it.positionInWindow() }) {
             if (overlayVisible) {

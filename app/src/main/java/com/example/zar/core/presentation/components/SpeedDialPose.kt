@@ -51,3 +51,10 @@ internal fun speedDialPose(progress: Float, level: MotionLevel, expanded: Boolea
 }
 
 internal fun speedDialUsesRow(clearHeightDp: Float): Boolean = clearHeightDp < ZarDimens.SpeedDialStackClearance.value
+
+/** The Home row opens toward logical start even when pixel rounding puts its anchor off centre. */
+internal fun speedDialRowDirection(centered: Boolean, rtl: Boolean, anchorCenter: Float, windowCenter: Float): Float = when {
+    centered || anchorCenter == windowCenter -> if (rtl) 1f else -1f
+    anchorCenter > windowCenter -> -1f
+    else -> 1f
+}

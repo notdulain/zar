@@ -120,6 +120,20 @@ class SheetBackHostTest {
     }
 
     @Test
+    fun touchingAgainDuringDownwardExitStillPopsExactlyOnce() {
+        show(full, slideUpOnEnter = true)
+        frame(50)
+        val sheet = compose.onNodeWithTag("sheet")
+        sheet.performTouchInput { swipe(Offset(centerX, 200f), Offset(centerX, 700f), 500) }
+        frame(2)
+        sheet.performTouchInput { down(Offset(centerX, 100f)) }
+        frame(2)
+        sheet.performTouchInput { up() }
+        frame(100)
+        assertEquals("a new touch must not cancel an already committed dismissal", 1, pops)
+    }
+
+    @Test
     fun contentScrollsFirstAndPullingDownAtItsTopDismisses() {
         show(full, slideUpOnEnter = true, scrollable = true)
         frame(50)
