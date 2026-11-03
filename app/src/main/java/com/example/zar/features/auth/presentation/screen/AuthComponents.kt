@@ -1,5 +1,8 @@
 package com.example.zar.features.auth.presentation.screen
 
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.runtime.remember
+import com.example.zar.core.presentation.motion.pressScale
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -213,18 +216,20 @@ internal fun errorText(error: AuthError): String = stringResource(
 /** Pill action shared by the two dusk auth forms. */
 @Composable
 internal fun AuthSubmitButton(text: String, busy: Boolean, onClick: () -> Unit) {
+    val interaction = remember { MutableInteractionSource() }
     val light = ZarTheme.colors.canvas == com.example.zar.core.presentation.theme.ZarLightColors.canvas
     Button(
         onClick = onClick,
         enabled = !busy,
         shape = androidx.compose.foundation.shape.CircleShape,
+        interactionSource = interaction,
         colors = ButtonDefaults.buttonColors(
             containerColor = if (light) androidx.compose.ui.graphics.Color.White else ZarTheme.colors.accentPrimary,
             contentColor = if (light) androidx.compose.ui.graphics.Color(0xFF0E0F12) else androidx.compose.ui.graphics.Color.White,
             disabledContainerColor = if (light) androidx.compose.ui.graphics.Color.White else ZarTheme.colors.accentPrimary,
             disabledContentColor = if (light) androidx.compose.ui.graphics.Color(0xFF0E0F12) else androidx.compose.ui.graphics.Color.White,
         ),
-        modifier = Modifier.fillMaxWidth().height(54.dp).testTag("submit"),
+        modifier = Modifier.fillMaxWidth().height(54.dp).pressScale(interaction).testTag("submit"),
     ) {
         Text(text, style = com.example.zar.core.presentation.theme.ZarType.labelButton)
     }

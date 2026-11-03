@@ -83,15 +83,15 @@ internal fun RegisterContent(
     val imeVisible = WindowInsets.isImeVisible
     BoxWithConstraints(Modifier.fillMaxSize().background(ZarGradients.dusk)) {
         val topSpace = minOf(if (imeVisible) 192.dp else 232.dp, maxHeight * .254f)
-        Column(Modifier.fillMaxSize().imePadding().verticalScroll(rememberScrollState()).padding(horizontal = 32.dp)) {
+        Column(Modifier.fillMaxSize().authEntrance().imePadding().verticalScroll(rememberScrollState()).padding(horizontal = 32.dp)) {
             Spacer(Modifier.height(topSpace))
             Text(stringResource(R.string.auth_register_headline), style = ZarType.displayTitle.copy(lineHeight = 38.sp), color = Color.White)
-            Spacer(Modifier.height(64.dp))
+            Spacer(Modifier.height(54.dp))
             UnderlineField(state.email, onEmailChange, stringResource(R.string.auth_email), stringResource(R.string.auth_email),
                 !busy, "email", KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Next),
                 KeyboardActions(onNext = { passwordFocus.requestFocus() }), ContentType.EmailAddress,
                 problem = state.emailProblem)
-            Spacer(Modifier.height(20.dp))
+            Spacer(Modifier.height(10.dp))
             UnderlineField(state.password, onPasswordChange, stringResource(R.string.auth_password),
                 stringResource(R.string.auth_registration_password_placeholder, CredentialsValidator.MIN_PASSWORD_LENGTH),
                 !busy, "password", KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Next),
@@ -99,7 +99,7 @@ internal fun RegisterContent(
                 visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                 problem = state.passwordProblem, modifier = Modifier.focusRequester(passwordFocus),
                 trailing = { PasswordVisibility(passwordVisible, !busy, "password-toggle") { passwordVisible = !passwordVisible } })
-            Spacer(Modifier.height(20.dp))
+            Spacer(Modifier.height(10.dp))
             UnderlineField(state.confirmation, onConfirmationChange, stringResource(R.string.auth_confirm_password),
                 stringResource(R.string.auth_confirm_password), !busy, "confirm-password",
                 KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),

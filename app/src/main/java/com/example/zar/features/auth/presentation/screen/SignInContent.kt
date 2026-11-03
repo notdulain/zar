@@ -1,5 +1,9 @@
 package com.example.zar.features.auth.presentation.screen
 
+import androidx.compose.animation.core.animateDpAsState
+import com.example.zar.core.presentation.motion.LocalZarMotion
+import com.example.zar.core.presentation.motion.ZarSprings
+import com.example.zar.core.presentation.motion.settleSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -88,6 +92,7 @@ internal fun SignInContent(
     onForgotPassword: () -> Unit,
     onCreateAccount: () -> Unit,
 ) {
+    AuthSystemBars()
     val busy = state.isSubmitting
     val colors = ZarTheme.colors
     val isLight = colors.canvas == ZarLightColors.canvas
@@ -101,11 +106,11 @@ internal fun SignInContent(
     }
     Box(Modifier.fillMaxSize().background(ZarGradients.dusk)) {
         Column(
-            Modifier.fillMaxSize().imePadding().verticalScroll(rememberScrollState()).padding(horizontal = 32.dp),
+            Modifier.fillMaxSize().authEntrance().imePadding().verticalScroll(rememberScrollState()).padding(horizontal = 32.dp),
         ) {
             Spacer(Modifier.height(232.dp))
             Text(stringResource(R.string.auth_sign_in_headline), style = Title)
-            Spacer(Modifier.height(64.dp))
+            Spacer(Modifier.height(54.dp))
             UnderlineField(
                 value = state.email, onValueChange = onEmailChange, label = stringResource(R.string.auth_email),
                 placeholder = stringResource(R.string.auth_email), enabled = !busy, testTag = "email",
@@ -113,7 +118,7 @@ internal fun SignInContent(
                 keyboardActions = KeyboardActions(),
                 contentType = ContentType.EmailAddress,
             )
-            Spacer(Modifier.height(20.dp))
+            Spacer(Modifier.height(10.dp))
             var visible by rememberSaveable { mutableStateOf(false) }
             UnderlineField(
                 value = state.password, onValueChange = onPasswordChange, label = stringResource(R.string.auth_password),
@@ -163,20 +168,7 @@ internal fun SignInContent(
                 }
                 Spacer(Modifier.height(28.dp))
             }
-            Box(
-                Modifier.fillMaxWidth().height(54.dp).clip(CircleShape)
-                    // Light: white on the dark gradient. Dark: the accent blue with a white label.
-                    .background(if (isLight) White else colors.accentPrimary)
-                    .clickable(enabled = !busy, role = Role.Button, onClick = onSubmit)
-                    .testTag("submit"),
-                Alignment.Center,
-            ) {
-                Text(
-                    stringResource(if (busy) R.string.auth_signing_in else R.string.auth_sign_in_action),
-                    style = TextStyle(fontFamily = GeistFamily, fontWeight = FontWeight.Medium, fontSize = 15.sp, lineHeight = 20.sp),
-                    color = if (isLight) Color(0xFF0E0F12) else White,
-                )
-            }
+            AuthSubmitButton(stringResource(if (busy) R.string.auth_signing_in else R.string.auth_sign_in_action), busy, onSubmit)
             Spacer(Modifier.height(240.dp))
         }
         Row(
@@ -225,7 +217,10 @@ internal fun UnderlineField(
     val source = remember { MutableInteractionSource() }
     val focused by source.collectIsFocusedAsState()
     val dim = if (enabled) 1f else 0.5f
-    Column {
+    val policy = LocalZarMotion.current
+    val underlineHeight by animateDpAsState(if (focused) 2.dp else 1.dp,
+        animationSpec = policy.spring(ZarSprings.Settle), label = "auth focus underline")
+    Column(Modifier.settleSize().padding(top = 10.dp)) {
     Box(Modifier.fillMaxWidth().height(40.dp)) {
         if (value.isNotEmpty()) {
             Text(label.uppercase(), style = FieldLabel, color = White.copy(alpha = 0.5f * dim), modifier = Modifier.offset(y = (-10).dp))
@@ -245,7 +240,7 @@ internal fun UnderlineField(
             trailing()
         }
         Box(
-            Modifier.align(Alignment.BottomStart).fillMaxWidth().height(if (focused) 2.dp else 1.dp)
+            Modifier.align(Alignment.BottomStart).fillMaxWidth().height(underlineHeight)
                 .background(if (problem != null) ErrorDot else if (focused) White else White.copy(alpha = 0.25f)),
         )
     }
