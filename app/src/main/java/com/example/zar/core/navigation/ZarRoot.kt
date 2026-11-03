@@ -12,6 +12,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.zar.core.presentation.components.LocalNavCapsuleController
+import com.example.zar.core.presentation.components.LocalNavContextActions
+import com.example.zar.core.presentation.components.NavContextActions
 import com.example.zar.core.presentation.components.LocalNavSession
 import com.example.zar.core.presentation.components.NavCapsuleController
 import com.example.zar.core.presentation.components.rememberNavSession
@@ -43,6 +45,7 @@ fun ZarRoot(
             // The selected-capsule mover lives here too, so it is retained across every top-level route composition.
             CompositionLocalProvider(
                 LocalNavSession provides rememberNavSession(),
+                LocalNavContextActions provides remember { NavContextActions() },
                 LocalNavCapsuleController provides remember { NavCapsuleController() },
             ) {
                 Box {

@@ -275,8 +275,15 @@ internal fun PlansScreenContent(
     onOpenBills: () -> Unit = {},
     onOpenFreelance: () -> Unit = {},
 ) {
+    val chromeActions = com.example.zar.core.presentation.components.LocalNavContextActions.current
+    val currentNewPlan = androidx.compose.runtime.rememberUpdatedState(onNewPlan)
+    androidx.compose.runtime.DisposableEffect(chromeActions) {
+        chromeActions?.newPlan = { currentNewPlan.value() }
+        onDispose { chromeActions?.newPlan = null }
+    }
     ZarScreenScaffold(
         destination = TopLevelDestination.Plans,
+        onNewPlan = onNewPlan,
         onNavigate = onNavigate,
         onAddOption = onAddOption,
         heroUnderStatusBar = true,

@@ -7,6 +7,8 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -25,13 +27,17 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.Stable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.example.zar.R
@@ -46,6 +52,13 @@ import com.example.zar.core.presentation.theme.ZarDimens
  * the chrome itself.
  */
 val LocalNavChromeHost = compositionLocalOf { false }
+
+@Stable
+class NavContextActions {
+    var newPlan: (() -> Unit)? by mutableStateOf(null)
+    var clearance: Dp by mutableStateOf(188.dp)
+}
+val LocalNavContextActions = compositionLocalOf<NavContextActions?> { null }
 
 /**
  * The retained selected-capsule mover for the signed-in session. It is provided once beside [LocalNavSession] so it
@@ -66,9 +79,11 @@ fun ZarTopLevelChrome(
     controller: NavCapsuleController,
     modifier: Modifier = Modifier,
     driveCapsule: Boolean = true,
+    onNewPlan: (() -> Unit)? = LocalNavContextActions.current?.newPlan,
 ) {
     val policy = LocalZarMotion.current
     val density = LocalDensity.current
+    val contextActions = LocalNavContextActions.current
     val addDescription = stringResource(R.string.add_entry)
     var showAddSheet by rememberSaveable { mutableStateOf(false) }
     // Figma Z190: with the keyboard open the navbar and Add button step out of the way, so the field being typed in and
@@ -77,6 +92,7 @@ fun ZarTopLevelChrome(
 
     if (!keyboardOpen) Box(
         modifier = modifier
+            .onSizeChanged { size -> contextActions?.clearance = with(density) { size.height.toDp() } + ZarDimens.NavContentGap }
             .fillMaxWidth()
             .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom))
             .padding(
@@ -101,20 +117,27 @@ fun ZarTopLevelChrome(
                     enter = fadeIn(policy.fade<Float>(ZarMotion.NAV_REVEAL_MILLIS)) +
                         slideInVertically(policy.fade<IntOffset>(ZarMotion.NAV_REVEAL_MILLIS)) { rise },
                 ) {
-                    // Figma's floating group is 293 + 8 + 68 = 369dp. Keep it centred and let the tab bar contract.
-                    val navWidth = (maxWidth - ZarDimens.AddButtonSize - ZarDimens.SpaceXs).coerceAtMost(293.dp)
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(ZarDimens.SpaceXs),
-                        verticalAlignment = Alignment.CenterVertically,
+                    val navWidth = maxWidth.coerceAtMost(380.dp)
+                    Column(
+                        Modifier.width(navWidth),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                        horizontalAlignment = Alignment.End,
                     ) {
+                        if (destination == TopLevelDestination.Plans) {
+                            ZarButton(
+                                stringResource(R.string.plans_new_plan),
+                                { onNewPlan?.invoke() },
+                                Modifier.heightIn(min = 48.dp).testTag("plans-new-plan"),
+                                enabled = onNewPlan != null,
+                            )
+                        } else {
+                            ZarAddButton(addDescription) { showAddSheet = true }
+                        }
                         ZarBottomNav(
-                            selected = destination,
-                            onNavigate = onNavigate,
-                            controller = controller,
-                            driveCapsule = driveCapsule,
+                            selected = destination, onNavigate = onNavigate,
+                            controller = controller, driveCapsule = driveCapsule,
                             modifier = Modifier.width(navWidth),
                         )
-                        ZarAddButton(addDescription) { showAddSheet = true }
                     }
                 }
             }
