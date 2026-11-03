@@ -155,18 +155,18 @@ internal fun IncomeFormContent(uiState: IncomeFormUiState, actions: IncomeFormAc
                 date = uiState.date,
                 onCancel = { openPicker = null },
                 onSetDate = { actions.onDateSelect(it); openPicker = null },
-                modifier = Modifier.align(Alignment.BottomCenter).sheetBackSlide(),
+                modifier = Modifier.align(Alignment.BottomCenter).sheetBackSlide(swipeEnabled = false),
             )
         } else if (openPicker == "time") {
             ManualTimePickerSheet(
                 time = uiState.time ?: LocalTime.now(ZarTime.ZONE).withSecond(0).withNano(0),
                 onCancel = { openPicker = null },
                 onSetTime = { actions.onTimeSelect(it); openPicker = null },
-                modifier = Modifier.align(Alignment.BottomCenter).sheetBackSlide(),
+                modifier = Modifier.align(Alignment.BottomCenter).sheetBackSlide(swipeEnabled = false),
                 onClear = if (uiState.time != null) ({ actions.onTimeSelect(null); openPicker = null }) else null,
             )
         } else {
-            IncomeSheet(uiState, actions, onOpenDate = { openPicker = "date" }, onOpenTime = { openPicker = "time" }, modifier = Modifier.align(Alignment.BottomCenter).sheetBackSlide(), maxSheetHeight = maxHeight - 48.dp)
+            IncomeSheet(uiState, actions, onOpenDate = { openPicker = "date" }, onOpenTime = { openPicker = "time" }, modifier = Modifier.align(Alignment.BottomCenter).sheetBackSlide(swipeEnabled = !uiState.isSaving), maxSheetHeight = maxHeight - 48.dp)
         }
     }
 }

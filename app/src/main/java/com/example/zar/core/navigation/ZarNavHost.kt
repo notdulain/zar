@@ -4,6 +4,7 @@ import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.State
@@ -208,7 +209,7 @@ fun ZarNavHost(
             hidden = tabsHidden,
             onHomeTop = onHomeTop,
             recede = { tabsRecede.value?.value ?: 0f },
-            chrome = {
+            chrome = { onMenuOpenChange ->
                 tabs.DriveCapsule(capsuleController)
                 ZarTopLevelChrome(
                     destination = tabs.selected,
@@ -217,6 +218,8 @@ fun ZarNavHost(
                     onAddOption = onAddOption,
                     controller = capsuleController,
                     driveCapsule = false,
+                    enabled = !childCovers && onHomeTop,
+                    onMenuOpenChange = onMenuOpenChange,
                     modifier = Modifier.align(Alignment.BottomCenter),
                 )
             },
@@ -281,7 +284,7 @@ fun ZarNavHost(
             dialogProperties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
         ) { entry ->
             val route = entry.toRoute<ManualEntryRoute>()
-            SheetBackHost(onPop = { navController.popBackStack() }) { dismiss ->
+            SheetBackHost(onPop = { navController.popBackStack() }, slideUpOnEnter = true) { dismiss ->
                 AddTransactionScreen(
                     focusNote = route.focusNote,
                     initialKind = route.initialKind,
@@ -293,7 +296,7 @@ fun ZarNavHost(
         dialog<QuickNoteRoute>(
             dialogProperties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
         ) {
-            SheetBackHost(onPop = { navController.popBackStack() }) { dismiss ->
+            SheetBackHost(onPop = { navController.popBackStack() }, slideUpOnEnter = true) { dismiss ->
             QuickNoteScreen(
                 onDone = dismiss,
                 // The note comes along as the title, so nothing typed is lost when reading is not wanted or not possible.
@@ -436,9 +439,10 @@ private fun TabsLayer(
     hidden: Boolean,
     onHomeTop: Boolean,
     recede: () -> Float,
-    chrome: @Composable BoxScope.() -> Unit,
+    chrome: @Composable BoxScope.((Boolean) -> Unit) -> Unit,
     page: @Composable (TopLevelDestination) -> Unit,
 ) {
+    var addMenuOpen by remember { mutableStateOf(false) }
     val lock = remember { PagerGestureLock() }
     val keyboardOpen = WindowInsets.isImeVisible
     // All four tabs open on a dark hero under the status bar, so the glyphs are light whenever the tabs are the screen.
@@ -462,7 +466,9 @@ private fun TabsLayer(
             // logical start (and back as it leaves). The pages follow that; the chrome stays put and is covered or uncovered
             // by the child's edge.
             Box(
-                Modifier.fillMaxSize().graphicsLayer {
+                Modifier.fillMaxSize()
+                    .then(if (addMenuOpen) Modifier.clearAndSetSemantics { } else Modifier)
+                    .graphicsLayer {
                     translationX = if (!spatial) 0f else -recede() * ZarMotion.ROUTE_PARENT_RECEDE * size.width * if (rtl) -1f else 1f
                 },
             ) {
@@ -472,7 +478,7 @@ private fun TabsLayer(
                     page = page,
                 )
             }
-            chrome()
+            chrome { addMenuOpen = it }
         }
     }
 }

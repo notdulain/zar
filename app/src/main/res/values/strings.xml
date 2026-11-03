@@ -301,13 +301,11 @@
     <string name="nav_more">More</string>
     <string name="action_close">Close</string>
     <string name="add_entry">Add an entry</string>
-    <string name="add_sheet_title">Add an entry</string>
-    <string name="add_voice">Voice</string>
-    <string name="add_voice_hint">Say an income or expense</string>
+    <string name="add_menu_close">Close add menu</string>
+    <string name="add_menu_expanded">Expanded</string>
+    <string name="add_menu_collapsed">Collapsed</string>
     <string name="add_quick_note">Quick note</string>
-    <string name="add_quick_note_hint">Type in your own words</string>
     <string name="add_manual">Manual entry</string>
-    <string name="add_manual_hint">Enter amount and details</string>
     <string name="home_spent">Spent</string>
     <string name="home_this_month">This month</string>
     <string name="home_spent_this_month">Spent this month</string>

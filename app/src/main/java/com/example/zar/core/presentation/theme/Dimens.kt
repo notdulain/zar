@@ -37,6 +37,11 @@ object ZarDimens {
     val Hairline = 1.dp
     val CardPadding = 20.dp
     val AddButtonSize = 68.dp
+    val SpeedDialAction = 52.dp
+    val SpeedDialIcon = 24.dp
+    val SpeedDialManualOffset = AddButtonSize / 2 + SpaceSm + SpeedDialAction / 2
+    val SpeedDialQuickOffset = SpeedDialManualOffset + SpeedDialAction + SpaceSm
+    val SpeedDialStackClearance = 144.dp
     val NavHeight = 68.dp
     /** The four tab slots are equal, stationary 56dp columns; only the 59dp capsule moves behind them. */
     val NavSlotHeight = 56.dp
