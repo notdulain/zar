@@ -43,6 +43,14 @@ import com.example.zar.features.home.presentation.viewmodel.HomeContent
 import com.example.zar.features.home.presentation.viewmodel.HomeUiState
 import java.time.LocalDate
 import java.time.YearMonth
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import com.example.zar.features.home.presentation.viewmodel.HomeGoalContent
+import com.example.zar.features.plans.domain.model.BackedGoalProgress
+import com.example.zar.features.plans.domain.model.GoalId
+import com.example.zar.features.plans.domain.model.SavingsGoal
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -352,6 +360,82 @@ class HomeScreenUiTest {
             node.assertIsDisplayed().performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(layouts) }
             org.junit.Assert.assertFalse("Bill amount and action must fit without clipping or ellipsis", layouts.single().hasVisualOverflow)
         }
+    }
+
+    @Test fun billAndWeeklyLimitCardsShareBoundsAtDefaultText() = assertPairedCardsShareBounds(fontScale = 1f)
+
+    @Test fun billAndWeeklyLimitCardsShareBoundsAtEnlargedText() = assertPairedCardsShareBounds(fontScale = 2f)
+
+    private fun assertPairedCardsShareBounds(fontScale: Float) {
+        compose.setContent {
+            val density = LocalDensity.current
+            CompositionLocalProvider(LocalDensity provides Density(density.density, fontScale = fontScale)) {
+                ZarTheme {
+                    Box(Modifier.width(360.dp)) {
+                        HomeScreenContent(
+                            state = HomeUiState(month, true, HomeContent.Ready(emptyOverview()),
+                                HomeCommitmentsContent.Ready(HomeCommitments(
+                                    Outstanding(emptyList(), emptyList(), 0),
+                                    NextBill(BillId("b1"), "Quarterly professional indemnity insurance renewal", LocalDate.now().plusDays(3), FiatMoney(245_000, Currencies.LKR)),
+                                ))),
+                            onPreviousMonth = {}, onNextMonth = {}, onRetry = {}, onNavigate = {}, onAddOption = {},
+                        )
+                    }
+                }
+            }
+        }
+        compose.onNodeWithTag("next-bill-card").performScrollTo()
+        scrollHomeToBottom()
+        val bill = compose.onNodeWithTag("next-bill-card").getUnclippedBoundsInRoot()
+        val limit = compose.onNodeWithTag("weekly-limit-card").getUnclippedBoundsInRoot()
+        // The halves are split in whole pixels, so allow the sub-dp rounding of one pixel and nothing more.
+        assertEquals("widths at font scale $fontScale", (bill.right - bill.left).value, (limit.right - limit.left).value, 1f)
+        assertEquals("heights at font scale $fontScale", (bill.bottom - bill.top).value, (limit.bottom - limit.top).value, 1f)
+    }
+
+    @Test
+    fun goalCardShowsTheRealMainPlanAndOpensIt() {
+        val goal = SavingsGoal(GoalId("trip"), "Japan trip", FiatMoney(400_000, Currencies.LKR), targetDate = LocalDate.of(2027, 3, 1))
+        val zeroMoney = FiatMoney(0, Currencies.LKR)
+        val progress = BackedGoalProgress(
+            allocated = FiatMoney(100_000, Currencies.LKR), backed = FiatMoney(100_000, Currencies.LKR),
+            allocationGap = zeroMoney, targetShortfall = FiatMoney(300_000, Currencies.LKR), weeklyPace = null,
+            daysRemaining = 120, balanceAsOf = null, hasUnknownBalance = false, isApproximate = false, hasMismatchedEntries = false,
+        )
+        var opened: GoalId? = null
+        compose.setContent {
+            ZarTheme {
+                HomeScreenContent(
+                    state = HomeUiState(month, true, HomeContent.Ready(emptyOverview()), goal = HomeGoalContent.Ready(goal, progress)),
+                    onPreviousMonth = {}, onNextMonth = {}, onRetry = {}, onNavigate = {}, onAddOption = {},
+                    onOpenGoal = { opened = it },
+                )
+            }
+        }
+        compose.onNodeWithTag("home-goal-name", useUnmergedTree = true).performScrollTo().assertTextContains("Japan trip")
+        compose.onNodeWithTag("home-goal-amounts", useUnmergedTree = true).assertTextContains("LKR 1,000 backed of LKR 4,000")
+        compose.onNodeWithTag("home-goal-detail", useUnmergedTree = true).assertTextContains("25% backed", substring = true)
+        compose.onNodeWithTag("home-goal").performSemanticsAction(SemanticsActions.OnClick)
+        assertEquals(GoalId("trip"), opened)
+    }
+
+    @Test
+    fun goalCardExplainsEmptyAndFailedStatesAndRetries() {
+        var retries = 0
+        var goalState by mutableStateOf<HomeGoalContent>(HomeGoalContent.Empty)
+        compose.setContent {
+            ZarTheme {
+                HomeScreenContent(
+                    state = HomeUiState(month, true, HomeContent.Ready(emptyOverview()), goal = goalState),
+                    onPreviousMonth = {}, onNextMonth = {}, onRetry = { retries++ }, onNavigate = {}, onAddOption = {},
+                )
+            }
+        }
+        compose.onNodeWithTag("home-goal-empty", useUnmergedTree = true).performScrollTo().assertIsDisplayed()
+        goalState = HomeGoalContent.Error
+        compose.onNodeWithTag("home-goal-error", useUnmergedTree = true).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("home-goal-retry").performClick()
+        assertEquals(1, retries)
     }
 
     private fun scrollHomeToBottom() {

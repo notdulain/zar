@@ -75,6 +75,11 @@ import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.unit.Dp
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.fillMaxHeight
+import com.example.zar.features.home.presentation.viewmodel.HomeGoalContent
+import com.example.zar.features.plans.domain.model.GoalId
+import com.example.zar.core.domain.model.money.Money
 import com.example.zar.R
 import com.example.zar.features.home.domain.model.DonutStatus
 import com.example.zar.core.domain.model.money.FiatMoney
@@ -139,6 +144,10 @@ fun HomeScreen(
         onOpenFreelance = onOpenFreelance,
         onOpenBills = onOpenBills,
         onOpenBill = onOpenBill,
+        onOpenGoal = { id ->
+            viewModel.openGoal(id)
+            onNavigate(TopLevelDestination.Plans)
+        },
         onToggleAmounts = privacyViewModel::toggle,
     )
 }
@@ -155,6 +164,7 @@ internal fun HomeScreenContent(
     onOpenFreelance: () -> Unit = {},
     onOpenBills: () -> Unit = {},
     onOpenBill: (String) -> Unit = {},
+    onOpenGoal: (GoalId) -> Unit = {},
     onToggleAmounts: () -> Unit = {},
 ) {
     ZarScreenScaffold(
@@ -200,10 +210,12 @@ internal fun HomeScreenContent(
                     onOpenReview = onOpenReview,
                     commitments = state.commitments,
                     allowance = state.allowance,
+                    goal = state.goal,
                     onRetry = onRetry,
                     onOpenFreelance = onOpenFreelance,
                     onOpenBills = onOpenBills,
                     onOpenBill = onOpenBill,
+                    onOpenGoal = onOpenGoal,
                     onToggleAmounts = onToggleAmounts,
                     scrollState = scrollState,
                 )
@@ -249,10 +261,12 @@ private fun OverviewBlock(
     onOpenReview: () -> Unit,
     commitments: HomeCommitmentsContent,
     allowance: HomeAllowanceContent,
+    goal: HomeGoalContent,
     onRetry: () -> Unit,
     onOpenFreelance: () -> Unit,
     onOpenBills: () -> Unit,
     onOpenBill: (String) -> Unit,
+    onOpenGoal: (GoalId) -> Unit,
     onToggleAmounts: () -> Unit,
     scrollState: ScrollState,
 ) {
@@ -267,22 +281,23 @@ private fun OverviewBlock(
             ReviewPrompt(overview, onClick = onOpenReview)
         }
         SpendingCard(overview, onClick = { onNavigate(TopLevelDestination.Activity) })
-        GoalLinkCard(onClick = { onNavigate(TopLevelDestination.Plans) })
+        GoalCard(goal, onOpenGoal = onOpenGoal, onOpenPlans = { onNavigate(TopLevelDestination.Plans) }, onRetry = onRetry)
         RecentActivity(overview.recent)
         ClientsOweRow(commitments, onClick = onOpenFreelance, onRetry = onRetry)
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        // Both cards measure to the taller one, so long or empty content in either never leaves them mismatched.
+        Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             NextBillCard(
                 commitments = commitments,
                 onOpenBill = onOpenBill,
                 onOpenBills = onOpenBills,
                 onRetry = onRetry,
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(1f).fillMaxHeight(),
             )
             WeeklyLimitCard(
                 allowance = allowance,
                 onOpenPlans = { onNavigate(TopLevelDestination.Plans) },
                 onRetry = onRetry,
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(1f).fillMaxHeight(),
             )
         }
     }
@@ -863,16 +878,73 @@ private fun SplitLine(@StringRes label: Int, total: ReportingTotal, tag: String,
 }
 
 @Composable
-private fun GoalLinkCard(onClick: () -> Unit) {
+private fun GoalCard(
+    goal: HomeGoalContent,
+    onOpenGoal: (GoalId) -> Unit,
+    onOpenPlans: () -> Unit,
+    onRetry: () -> Unit,
+) {
     val colors = ZarTheme.colors
-    ZarCard(Modifier.fillMaxWidth(), onClick = onClick, contentPadding = androidx.compose.foundation.layout.PaddingValues(19.dp)) {
+    val onClick: (() -> Unit)? = when (goal) {
+        is HomeGoalContent.Ready -> { { onOpenGoal(goal.goal.id) } }
+        HomeGoalContent.Empty -> onOpenPlans
+        else -> null
+    }
+    ZarCard(
+        Modifier.fillMaxWidth().testTag("home-goal"),
+        onClick = onClick,
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(19.dp),
+    ) {
         Text(stringResource(R.string.home_goal).uppercase(), style = ZarType.label, color = colors.textTertiary)
         Spacer(Modifier.height(6.dp))
-        Text(stringResource(R.string.home_goal_preview), style = ZarType.bodyM, color = colors.textPrimary)
-        Spacer(Modifier.height(8.dp))
-        Box(Modifier.fillMaxWidth().height(5.dp).background(colors.borderHairline, RoundedCornerShape(3.dp)))
-        Spacer(Modifier.height(8.dp))
-        Text(stringResource(R.string.home_view_goal), style = ZarType.labelAction, color = colors.textSelected, modifier = Modifier.align(Alignment.End))
+        when (goal) {
+            HomeGoalContent.Loading -> {
+                Text(stringResource(R.string.home_goal_loading), style = ZarType.bodyM, color = colors.textSecondary, modifier = Modifier.testTag("home-goal-loading"))
+                Spacer(Modifier.height(8.dp))
+                Box(Modifier.fillMaxWidth().height(5.dp).background(colors.borderHairline, RoundedCornerShape(3.dp)))
+            }
+            HomeGoalContent.Error -> {
+                Text(stringResource(R.string.home_goal_error), style = ZarType.bodyM, color = colors.textPrimary, modifier = Modifier.testTag("home-goal-error"))
+                TextButton(onClick = onRetry, modifier = Modifier.testTag("home-goal-retry")) { Text(stringResource(R.string.home_retry)) }
+            }
+            HomeGoalContent.Empty -> {
+                Text(stringResource(R.string.home_goal_empty), style = ZarType.bodyM, color = colors.textPrimary, modifier = Modifier.testTag("home-goal-empty"))
+                Spacer(Modifier.height(8.dp))
+                Text(stringResource(R.string.home_goal_create), style = ZarType.labelAction, color = colors.textSelected, modifier = Modifier.align(Alignment.End))
+            }
+            is HomeGoalContent.Ready -> {
+                val target = goal.goal.target
+                val progress = goal.progress
+                val hidden = AmountMask.isHidden
+                val backed = progress?.backed ?: Money.zero(target.currency)
+                val fraction = if (hidden || progress == null) 0f else progress.backedFraction(target)
+                Text(goal.goal.name, style = ZarType.bodyM, color = colors.textPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.testTag("home-goal-name"))
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    stringResource(R.string.home_goal_backed_of, backed.formatWithCode(), target.formatWithCode()),
+                    style = ZarType.bodyS,
+                    color = colors.textSecondary,
+                    modifier = Modifier.testTag("home-goal-amounts"),
+                )
+                Spacer(Modifier.height(8.dp))
+                Box(Modifier.fillMaxWidth().height(5.dp).background(colors.borderHairline, RoundedCornerShape(3.dp))) {
+                    if (fraction > 0f) Box(Modifier.fillMaxWidth(fraction).height(5.dp).background(colors.textSelected, RoundedCornerShape(3.dp)))
+                }
+                Spacer(Modifier.height(8.dp))
+                val detail = listOfNotNull(
+                    when {
+                        hidden -> stringResource(R.string.home_goal_hidden)
+                        progress == null || progress.hasUnknownBalance -> stringResource(R.string.home_goal_backing_unknown)
+                        else -> stringResource(R.string.home_goal_percent, (fraction * 100).toInt())
+                    },
+                    goal.goal.targetDate?.let { stringResource(R.string.home_goal_by, it.format(AxisFormat)) },
+                ).joinToString(" · ")
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Text(detail, style = ZarType.bodyCaption, color = colors.textTertiary, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f).testTag("home-goal-detail"))
+                    Text(stringResource(R.string.home_view_goal_one), style = ZarType.labelAction, color = colors.textSelected)
+                }
+            }
+        }
     }
 }
 

@@ -110,6 +110,7 @@ import com.example.zar.features.plans.presentation.viewmodel.AllocationEditorSta
 import com.example.zar.features.plans.presentation.viewmodel.GoalEditorState
 import com.example.zar.features.plans.presentation.viewmodel.PlansMessage
 import com.example.zar.features.plans.presentation.viewmodel.PlansUiState
+import com.example.zar.features.plans.presentation.viewmodel.PlanDetailRequestViewModel
 import com.example.zar.features.plans.presentation.viewmodel.PlansViewModel
 import java.time.Instant
 import java.time.LocalDate
@@ -129,6 +130,7 @@ fun PlansScreen(
     viewModel: PlansViewModel = hiltViewModel(),
     allowanceViewModel: AllowanceViewModel = hiltViewModel(),
     countsViewModel: PlansCountsViewModel = hiltViewModel(),
+    detailRequests: PlanDetailRequestViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val allowance by allowanceViewModel.uiState.collectAsStateWithLifecycle()
@@ -137,6 +139,11 @@ fun PlansScreen(
     var showAllPlans by rememberSaveable { mutableStateOf(false) }
     // The plan whose detail is open, by ID, so it comes back after the process is recreated.
     var detailGoalId by rememberSaveable { mutableStateOf<String?>(null) }
+    // A request from Home to open one plan: moved into the saved detail ID so it survives recreation, then cleared.
+    val requestedGoal by detailRequests.pending.collectAsStateWithLifecycle()
+    LaunchedEffect(requestedGoal) {
+        requestedGoal?.let { detailGoalId = it.value; detailRequests.consume(it) }
+    }
     // The sheet closes once the goal it created has been saved.
     LaunchedEffect(state.goalCreatedCount) { if (state.goalCreatedCount > 0) showNewPlan = false }
     PlansScreenContent(

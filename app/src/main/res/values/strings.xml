@@ -315,6 +315,15 @@
     <string name="home_goal">Goal</string>
     <string name="home_goal_preview">View your goals in Plans</string>
     <string name="home_goal_empty">No goal set</string>
+    <string name="home_goal_create">Create a plan →</string>
+    <string name="home_goal_loading">Loading your goal…</string>
+    <string name="home_goal_error">Couldn\'t load your goal.</string>
+    <string name="home_goal_backed_of">%1$s backed of %2$s</string>
+    <string name="home_goal_percent">%1$d%% backed</string>
+    <string name="home_goal_hidden">Progress hidden</string>
+    <string name="home_goal_backing_unknown">Backing not fully known</string>
+    <string name="home_goal_by">by %1$s</string>
+    <string name="home_view_goal_one">View goal →</string>
     <string name="home_recent_activity">Recent activity</string>
     <string name="home_activity_summary">Your records</string>
     <string name="home_plans_summary">Goals and bills</string>

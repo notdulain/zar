@@ -9,6 +9,12 @@ import com.example.zar.features.home.domain.model.HomeCommitments
 import com.example.zar.features.home.domain.model.HomeOverview
 import com.example.zar.features.home.domain.usecase.ObserveHomeCommitmentsUseCase
 import com.example.zar.features.home.domain.usecase.ObserveHomeOverviewUseCase
+import com.example.zar.features.plans.domain.model.BackedGoalProgress
+import com.example.zar.features.plans.domain.model.GoalId
+import com.example.zar.features.plans.domain.model.PlansOverview
+import com.example.zar.features.plans.domain.model.SavingsGoal
+import com.example.zar.features.plans.domain.usecase.ObservePlansOverviewUseCase
+import com.example.zar.features.plans.domain.usecase.PlanDetailRequests
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.time.YearMonth
 import javax.inject.Inject
@@ -45,6 +51,14 @@ sealed interface HomeAllowanceContent {
     data class Ready(val overview: AllowanceOverview) : HomeAllowanceContent
 }
 
+/** The selected main plan, loaded on its own so a failure here never hides the totals. [Empty] means no plan exists yet. */
+sealed interface HomeGoalContent {
+    data object Loading : HomeGoalContent
+    data object Error : HomeGoalContent
+    data object Empty : HomeGoalContent
+    data class Ready(val goal: SavingsGoal, val progress: BackedGoalProgress?) : HomeGoalContent
+}
+
 data class HomeUiState(
     val month: YearMonth,
     /** False on the current month: Home never shows a future month. */
@@ -52,6 +66,7 @@ data class HomeUiState(
     val content: HomeContent,
     val commitments: HomeCommitmentsContent = HomeCommitmentsContent.Loading,
     val allowance: HomeAllowanceContent = HomeAllowanceContent.Loading,
+    val goal: HomeGoalContent = HomeGoalContent.Loading,
 )
 
 @HiltViewModel
@@ -59,6 +74,8 @@ class HomeViewModel @Inject constructor(
     observeOverview: ObserveHomeOverviewUseCase,
     observeCommitments: ObserveHomeCommitmentsUseCase,
     observeAllowance: ObserveAllowanceUseCase,
+    observePlans: ObservePlansOverviewUseCase,
+    private val planDetailRequests: PlanDetailRequests,
 ) : ViewModel() {
 
     private val month = MutableStateFlow(currentMonth())
@@ -92,8 +109,19 @@ class HomeViewModel @Inject constructor(
             .catch { emit(HomeAllowanceContent.Error) }
     }
 
-    val uiState: StateFlow<HomeUiState> = combine(overviewState, commitmentsState, allowanceState) { overview, commitments, allowance ->
-        overview.copy(commitments = commitments, allowance = allowance)
+    // The same selected main plan the Plans tab shows, from the same use case.
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private val goalState: Flow<HomeGoalContent> = attempt.flatMapLatest {
+        observePlans()
+            .map<PlansOverview, HomeGoalContent> { plans ->
+                plans.goal?.let { HomeGoalContent.Ready(it, plans.progress) } ?: HomeGoalContent.Empty
+            }
+            .onStart { emit(HomeGoalContent.Loading) }
+            .catch { emit(HomeGoalContent.Error) }
+    }
+
+    val uiState: StateFlow<HomeUiState> = combine(overviewState, commitmentsState, allowanceState, goalState) { overview, commitments, allowance, goal ->
+        overview.copy(commitments = commitments, allowance = allowance, goal = goal)
     }
         .stateIn(
             viewModelScope,
@@ -104,6 +132,9 @@ class HomeViewModel @Inject constructor(
     fun showPreviousMonth() = month.update { it.minusMonths(1) }
 
     fun showNextMonth() = month.update { if (it < currentMonth()) it.plusMonths(1) else it }
+
+    /** Asks the Plans tab to open this plan's detail once Home switches to it. */
+    fun openGoal(id: GoalId) = planDetailRequests.request(id)
 
     /** Tries again after a loading error. */
     fun retry() = attempt.update { it + 1 }

@@ -18,7 +18,10 @@ import kotlinx.coroutines.flow.MutableStateFlow
 
 class FakeGoalRepository(initial: List<SavingsGoal> = emptyList()) : GoalRepository {
     val goals = MutableStateFlow(initial)
-    override fun observeGoals(): Flow<List<SavingsGoal>> = goals
+    /** Set to make the next collection fail, to check a broken catalog read is an error and not an empty list. */
+    var failing = false
+    override fun observeGoals(): Flow<List<SavingsGoal>> =
+        if (failing) kotlinx.coroutines.flow.flow { throw java.io.IOException("goals unavailable") } else goals
     override suspend fun saveGoal(goal: SavingsGoal) {
         goals.value = goals.value.filterNot { it.id == goal.id } + goal
     }

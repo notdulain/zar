@@ -27,6 +27,9 @@ import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import com.example.zar.features.plans.domain.model.GoalId
+import com.example.zar.features.plans.domain.model.SavingsGoal
+import com.example.zar.features.home.presentation.viewmodel.HomeGoalContent
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -44,7 +47,7 @@ class HomeViewModelTest {
     @Before fun setUp() = Dispatchers.setMain(UnconfinedTestDispatcher())
     @After fun tearDown() = Dispatchers.resetMain()
 
-    private fun viewModel() = HomeViewModel(rig.overview, rig.commitments, rig.allowance)
+    private fun viewModel() = HomeViewModel(rig.overview, rig.commitments, rig.allowance, rig.plans, rig.detailRequests)
 
     @Test
     fun startsOnTheCurrentMonthWithTotalsFromSavedRecords() = runTest {
@@ -174,5 +177,49 @@ class HomeViewModelTest {
         rig.allowanceSettings.failReads = false
         vm.retry()
         assertTrue(vm.uiState.value.allowance is HomeAllowanceContent.Ready)
+    }
+
+    @Test
+    fun goalCardFollowsTheSelectedMainPlanNotTheFirstOrOnlyOne() = runTest {
+        val a = SavingsGoal(GoalId("a"), "Alpha", lkr(1_000))
+        val b = SavingsGoal(GoalId("b"), "Bravo", lkr(2_000))
+        rig.goals.goals.value = listOf(a, b)
+        val vm = viewModel()
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.uiState.collect {} }
+        assertEquals("Alpha", (vm.uiState.value.goal as HomeGoalContent.Ready).goal.name)
+
+        rig.planPreferences.mainGoalId.value = GoalId("b")
+        assertEquals("Bravo", (vm.uiState.value.goal as HomeGoalContent.Ready).goal.name)
+
+        // Creating another plan never changes the saved main plan.
+        rig.goals.goals.value = rig.goals.goals.value + SavingsGoal(GoalId("c"), "Charlie", lkr(500))
+        assertEquals("Bravo", (vm.uiState.value.goal as HomeGoalContent.Ready).goal.name)
+    }
+
+    @Test
+    fun goalCardIsEmptyWithoutPlansAndOpeningAPlanAsksPlansToShowIt() = runTest {
+        val vm = viewModel()
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.uiState.collect {} }
+        assertEquals(HomeGoalContent.Empty, vm.uiState.value.goal)
+
+        vm.openGoal(GoalId("b"))
+        assertEquals(GoalId("b"), rig.detailRequests.pending.value)
+        rig.detailRequests.consume(GoalId("other"))
+        assertEquals(GoalId("b"), rig.detailRequests.pending.value)
+        rig.detailRequests.consume(GoalId("b"))
+        assertEquals(null, rig.detailRequests.pending.value)
+    }
+
+    @Test
+    fun goalFailureShowsAnErrorWithoutHidingTheTotalsAndRetryRecovers() = runTest {
+        rig.goals.failing = true
+        val vm = viewModel()
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.uiState.collect {} }
+        assertEquals(HomeGoalContent.Error, vm.uiState.value.goal)
+        assertTrue(vm.uiState.value.content is HomeContent.Ready)
+
+        rig.goals.failing = false
+        vm.retry()
+        assertEquals(HomeGoalContent.Empty, vm.uiState.value.goal)
     }
 }
