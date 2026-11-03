@@ -10,6 +10,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
+import com.example.zar.core.presentation.motion.LocalZarMotion
+import com.example.zar.core.presentation.motion.ZarSprings
 import androidx.annotation.StringRes
 import androidx.compose.foundation.Canvas
 import com.example.zar.core.domain.calculation.ZarTime
@@ -446,7 +448,7 @@ private fun ReceivedHero(
             ) {
                 val format = if (overview.month.year == ZarTime.today().year) ShortMonthFormat
                     else DateTimeFormatter.ofPattern("MMM yy", Locale.ENGLISH)
-                Text(overview.month.format(format).uppercase(), style = ZarType.label.copy(lineHeight = 14.sp), color = Color.White)
+                Text(overview.month.format(format).uppercase(), modifier = Modifier.testTag("home-month-label"), style = ZarType.label.copy(lineHeight = 14.sp), color = Color.White)
                 Icon(painterResource(R.drawable.ic_ph_caret_down), contentDescription = null,
                     modifier = Modifier.size(12.dp), tint = Color.White)
             }
@@ -783,8 +785,9 @@ private fun ReceivedBarChart(overview: HomeOverview, modifier: Modifier = Modifi
             (anchorX - tooltipSize.width / 2f).toInt().coerceIn(0, (widthPx - tooltipSize.width).toInt().coerceAtLeast(0)),
             (heightPx - barHeight - tooltipSize.height - with(density) { 8.dp.toPx() }).toInt().coerceAtLeast(0),
         )
-        val tooltipOffset by animateIntOffsetAsState(target, spring(dampingRatio = 1f, stiffness = 350f), label = "income tooltip position")
-        val tooltipAlpha by animateFloatAsState(if (selected >= 0) 1f else 0f, tween(180), label = "income tooltip visibility")
+        val policy = LocalZarMotion.current
+        val tooltipOffset by animateIntOffsetAsState(target, policy.spring(ZarSprings.Settle), label = "income tooltip position")
+        val tooltipAlpha by animateFloatAsState(if (selected >= 0) 1f else 0f, policy.fade(180), label = "income tooltip visibility")
         Text(
             picked.date.format(DayFormat) + ": " + picked.cumulative.amount.formatWithCode() +
                 if (picked.cumulative.unresolvedCount > 0) " + " + stringResource(R.string.home_received_chart_unresolved) else "",
@@ -800,7 +803,7 @@ private fun ReceivedBarChart(overview: HomeOverview, modifier: Modifier = Modifi
         )
         if (series.isAllZero && selected < 0) {
             Text(stringResource(R.string.home_received_chart_empty), color = Color.White.copy(alpha = 0.7f),
-                style = ZarType.bodyCaption, modifier = Modifier.align(Alignment.Center))
+                style = ZarType.bodyCaption, modifier = Modifier.align(Alignment.Center).testTag("received-chart-empty"))
         }
     }
 }

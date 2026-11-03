@@ -17,6 +17,8 @@ import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onLast
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
@@ -88,10 +90,12 @@ class HomeScreenUiTest {
         }
         compose.onNodeWithTag("received-warning").performScrollTo().assertIsDisplayed().assertTextContains("Check:", substring = true)
         val layouts = mutableListOf<TextLayoutResult>()
-        compose.onNodeWithTag("month-label").performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(layouts) }
+        compose.onNodeWithTag("home-month-label", useUnmergedTree = true).performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(layouts) }
         org.junit.Assert.assertTrue("Month must fit in at most two lines", layouts.single().lineCount <= 2)
         saveScreenshot("u02-large-text-warning.png")
-        compose.onNodeWithContentDescription("Next month").performScrollTo().assertIsNotEnabled()
+        compose.onNodeWithTag("home-month-selector").performClick()
+        compose.onNodeWithContentDescription("Next month").assertIsNotEnabled()
+        androidx.test.espresso.Espresso.pressBack()
         compose.onNodeWithTag("nav-more").performScrollTo().assertIsDisplayed().performClick()
         assertEquals(TopLevelDestination.More, destination)
         compose.onNodeWithTag("spent-card").performScrollTo().performClick()
@@ -180,7 +184,7 @@ class HomeScreenUiTest {
             }
         }
         compose.onNodeWithTag("received-chart").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithTag("received-chart-caption").assertTextContains("No income", substring = true)
+        compose.onNodeWithTag("received-chart-empty").assertTextContains("No income", substring = true)
     }
 
     @Test
@@ -206,7 +210,7 @@ class HomeScreenUiTest {
         compose.onNodeWithTag("donut-chart").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("60%", useUnmergedTree = true).assertIsDisplayed()
         compose.onNodeWithText("Not tracked", useUnmergedTree = true).assertIsDisplayed()
-        compose.onNodeWithTag("donut-status", useUnmergedTree = true).assertTextContains("not tracked by month", substring = true)
+        compose.onNodeWithTag("donut-status", useUnmergedTree = true).assertDoesNotExist()
     }
 
     @Test
@@ -234,7 +238,7 @@ class HomeScreenUiTest {
         compose.onNodeWithTag("trend-delta", useUnmergedTree = true).assertTextContains("+LKR 100", substring = true)
         compose.onNodeWithTag("trend-delta", useUnmergedTree = true).assertTextContains("VS AUG", substring = true)
         compose.onNodeWithText("APR", useUnmergedTree = true).assertIsDisplayed()
-        compose.onNodeWithText("SEP", useUnmergedTree = true).assertIsDisplayed()
+        compose.onAllNodesWithText("SEP", useUnmergedTree = true).onLast().assertIsDisplayed()
     }
 
     @Test

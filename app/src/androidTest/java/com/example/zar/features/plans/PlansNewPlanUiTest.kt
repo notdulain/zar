@@ -10,6 +10,7 @@ import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.unit.dp
@@ -57,8 +58,9 @@ class PlansNewPlanUiTest {
 
         compose.onNodeWithTag("new-plan-name").performTextInput("New phone")
         compose.onNodeWithTag("new-plan-target").performTextInput("150000")
-        compose.onNodeWithTag("new-plan-create").assertIsEnabled().performClick()
+        compose.onNodeWithTag("new-plan-create").performScrollTo().assertIsEnabled().performClick()
 
+        compose.waitForIdle()
         assertEquals("New phone", created?.first)
         assertEquals("150000", created?.second)
     }
@@ -71,7 +73,8 @@ class PlansNewPlanUiTest {
 
         compose.onNodeWithTag("new-plan-error").assertIsDisplayed()
         compose.onNodeWithText("Could not save. Please try again.").assertIsDisplayed()
-        compose.onNodeWithTag("new-plan-create").assertIsEnabled().performClick()
+        compose.onNodeWithTag("new-plan-create").performScrollTo().assertIsEnabled().performClick()
+        compose.waitForIdle()
         assertEquals("New phone", created?.first)
     }
 
