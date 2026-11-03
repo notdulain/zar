@@ -2,6 +2,7 @@ package com.example.zar.core.presentation.components
 
 import com.example.zar.core.presentation.motion.pressScale
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
@@ -22,6 +23,13 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -82,10 +90,11 @@ fun ZarScreenScaffold(
     }
 
     val keyboardOpen = rememberKeyboardOpen()
+    var addMenuOpen by remember { mutableStateOf(false) }
 
     Box(modifier) {
     Scaffold(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier.fillMaxSize().then(if (addMenuOpen) Modifier.clearAndSetSemantics { } else Modifier),
         containerColor = MaterialTheme.colorScheme.background,
         contentWindowInsets = if (heroUnderStatusBar) {
             WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom)
@@ -113,6 +122,7 @@ fun ZarScreenScaffold(
             onAddOption = onAddOption,
             controller = LocalNavCapsuleController.current ?: remember { NavCapsuleController() },
             modifier = Modifier.align(Alignment.BottomCenter),
+            onMenuOpenChange = { addMenuOpen = it },
         )
     }
     }
@@ -125,13 +135,17 @@ internal fun Context.findActivity(): Activity? = when (this) {
 }
 
 @Composable
-internal fun ZarAddButton(description: String, onClick: () -> Unit) {
+internal fun ZarAddButton(description: String, modifier: Modifier = Modifier, rotation: () -> Float = { 0f }, onClick: () -> Unit) {
     val colors = ZarTheme.colors
     val press = remember { MutableInteractionSource() }
+    val focused by press.collectIsFocusedAsState()
     FloatingActionButton(
         onClick = onClick,
         interactionSource = press,
-        modifier = Modifier
+        modifier = modifier
+            .drawBehind {
+                if (focused) drawCircle(colors.borderSelected, radius = size.minDimension / 2 + 4.dp.toPx(), style = Stroke(2.dp.toPx()))
+            }
             .pressScale(press)
             .size(ZarDimens.AddButtonSize)
             .testTag("add-entry")
@@ -141,6 +155,6 @@ internal fun ZarAddButton(description: String, onClick: () -> Unit) {
         contentColor = colors.textOnInverse,
         elevation = FloatingActionButtonDefaults.elevation(4.dp, 4.dp, 4.dp, 4.dp),
     ) {
-        PlusIcon(tint = colors.textOnInverse)
+        PlusIcon(tint = colors.textOnInverse, modifier = Modifier.graphicsLayer { rotationZ = rotation() })
     }
 }

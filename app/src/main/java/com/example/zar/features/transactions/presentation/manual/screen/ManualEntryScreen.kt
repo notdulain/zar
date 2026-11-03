@@ -2,6 +2,7 @@ package com.example.zar.features.transactions.presentation.manual.screen
 
 import com.example.zar.core.presentation.components.sheetBackScrim
 import com.example.zar.core.presentation.components.sheetBackSlide
+import com.example.zar.core.presentation.components.LocalSheetBack
 import androidx.compose.ui.text.input.VisualTransformation
 import com.example.zar.core.presentation.privacy.amountFieldTransformation
 import androidx.activity.compose.BackHandler
@@ -156,9 +157,11 @@ internal fun ManualEntryContent(uiState: ManualEntryUiState, focusNote: Boolean,
     BackHandler(enabled = openPicker != null) { openPicker = null }
 
     // "Quick note" focuses the note once; the field may not exist yet if the form was on Transfer.
+    val sheet = LocalSheetBack.current
     LaunchedEffect(uiState.isLoading, uiState.kind, quickNoteTaps) {
         val wanted = quickNoteTaps > 0 || (focusNote && !openedWithFocus)
         if (wanted && !uiState.isLoading && uiState.kind == ManualEntryKind.EXPENSE) {
+            sheet?.awaitEntrance()
             runCatching { noteFocus.requestFocus() }
             openedWithFocus = true
         }
@@ -171,18 +174,18 @@ internal fun ManualEntryContent(uiState: ManualEntryUiState, focusNote: Boolean,
                 date = uiState.date,
                 onCancel = { openPicker = null },
                 onSetDate = { actions.onDate(it); openPicker = null },
-                modifier = Modifier.align(Alignment.BottomCenter).sheetBackSlide(),
+                modifier = Modifier.align(Alignment.BottomCenter).sheetBackSlide(swipeEnabled = false),
             )
         } else if (openPicker == "time") {
             ManualTimePickerSheet(
                 time = uiState.time,
                 onCancel = { openPicker = null },
                 onSetTime = { actions.onTime(it); openPicker = null },
-                modifier = Modifier.align(Alignment.BottomCenter).sheetBackSlide(),
+                modifier = Modifier.align(Alignment.BottomCenter).sheetBackSlide(swipeEnabled = false),
             )
         } else {
         Column(
-            Modifier.align(Alignment.BottomCenter).sheetBackSlide().fillMaxWidth().heightIn(max = maxHeight - 48.dp)
+            Modifier.align(Alignment.BottomCenter).sheetBackSlide(swipeEnabled = !uiState.isSaving).fillMaxWidth().heightIn(max = maxHeight - 48.dp)
                 .clip(ZarShapes.sheet).background(colors.surface).pointerInput(Unit) { detectTapGestures {} }.padding(top = 10.dp),
         ) {
             Box(Modifier.fillMaxWidth(), Alignment.Center) {

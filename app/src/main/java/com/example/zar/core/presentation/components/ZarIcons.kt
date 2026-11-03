@@ -9,6 +9,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import com.example.zar.R
+import com.example.zar.core.presentation.theme.ZarDimens
 
 /** The original Phosphor paths exported from the Zar Figma navigation component. */
 @Composable
@@ -38,6 +39,17 @@ fun PlusIcon(tint: Color, modifier: Modifier = Modifier) {
         painter = painterResource(R.drawable.ic_ph_plus_nav),
         contentDescription = null,
         modifier = modifier.size(26.dp),
+        tint = tint,
+    )
+}
+
+/** Phosphor 2.1.1 Regular (MIT); original paths, see docs/licenses/phosphor-icons.txt. */
+@Composable
+internal fun AddActionIcon(option: AddEntryOption, tint: Color) {
+    Icon(
+        painter = painterResource(if (option == AddEntryOption.QuickNote) R.drawable.ic_ph_note_pencil else R.drawable.ic_ph_calculator),
+        contentDescription = null,
+        modifier = Modifier.size(ZarDimens.SpeedDialIcon),
         tint = tint,
     )
 }

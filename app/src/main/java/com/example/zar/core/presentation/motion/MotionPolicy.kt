@@ -27,6 +27,7 @@ class SpringToken(val dampingRatio: Float, val stiffness: Float)
 
 /** The shared spring tokens. They are starting values to tune in the interactive prototype, not measured shipping values. */
 object ZarSprings {
+    val SpeedDialOpen = SpringToken(dampingRatio = 0.72f, stiffness = 320f)
     /** Panel reflow, ordinary content expansion and reversible state settling. */
     val Settle = SpringToken(dampingRatio = 1f, stiffness = 400f)
 
@@ -46,6 +47,11 @@ object ZarSprings {
  * so they collapse to zero when motion is reduced.
  */
 object ZarMotion {
+    const val SPEED_DIAL_PHASE_LAG = 0.18f
+    const val SPEED_DIAL_START_SCALE = 0.72f
+    const val SPEED_DIAL_FADE_END = 0.35f
+    const val SPEED_DIAL_ROTATION = 45f
+    const val SPEED_DIAL_MAX_OVERSHOOT_DP = 6f
     /** Peer-tab content travel between Home / Activity / Plans / More. */
     val TabTravel = 24.dp
 
