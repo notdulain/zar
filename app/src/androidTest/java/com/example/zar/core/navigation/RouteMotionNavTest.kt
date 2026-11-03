@@ -61,6 +61,8 @@ class RouteMotionNavTest {
                         exitTransition = transitions.exit,
                         popEnterTransition = transitions.popEnter,
                         popExitTransition = transitions.popExit,
+                        predictivePopEnterTransition = { transitions.popEnter(this) },
+                        predictivePopExitTransition = { transitions.popExit(this) },
                     ) {
                         composable<SignInRoute> { Box(Modifier.fillMaxSize().testTag("parent")) }
                         composable<RegisterRoute> { Box(Modifier.fillMaxSize().testTag("child")) }
@@ -80,6 +82,25 @@ class RouteMotionNavTest {
         onAllNodes(androidx.compose.ui.test.hasTestTag(tag)).fetchSemanticsNodes().size
 
     private fun route(): String? = nav.currentBackStackEntry?.destination?.route
+
+    @Test
+    fun repeatedPushAndBackAlwaysLeavesRightIncludingInterruptedPushes() {
+        show(full)
+        repeat(10) { iteration ->
+            compose.runOnIdle { nav.navigate(RegisterRoute) }
+            frame(if (iteration % 2 == 0) 60 else 5)
+            compose.runOnIdle { nav.popBackStack() }
+            val positions = ArrayList<Float>()
+            repeat(30) {
+                frame()
+                if (exists("child")) positions += left("child")
+            }
+            assertTrue("Back $iteration must have visible animation samples: $positions", positions.size >= 2)
+            assertTrue("Back $iteration must move right: $positions",
+                positions.zipWithNext().all { (a, b) -> b >= a - 0.6f })
+            frame(60)
+        }
+    }
 
     @Test
     fun aPushEntersFromTheEndAndTheParentRecedesAtMostTwentyPercent() {
