@@ -23,3 +23,7 @@ The initial Gradle `connectedDebugAndroidTest` run uninstalled the primary app d
 ## Acceptance still pending
 
 Full launcher/app-info/themed-mask checks across launchers, authenticated data recovery after the incident, cold/warm launch recordings across saved appearances, actual system animator-scale-zero/large-font/landscape runs and human motion review remain pending. Unit/UI policy checks are not a claim of those device checks or of complete task-5 acceptance. No physical-phone screenshots or raw private traces are committed.
+
+## Splash loading-bar follow-up
+
+The session indicator is a 120×3dp Material indeterminate bar, white over a muted track with rounded ends and no segment gap. Android 12+ uses the same exported Zar mark with a clipped animated-vector sweep in its native launch icon. The OS controls native splash lifetime and system animation scaling; Compose additionally honors Zar's Reduce motion setting with a static track. No keep-on-screen condition or minimum loading timer was added. Updated debug build installed with `adb install -r`; Pixel 6a cold launch succeeded (1,171ms) without AndroidRuntime errors.

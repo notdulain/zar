@@ -10,6 +10,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -34,11 +35,12 @@ fun SessionLoadingScreen(error: AuthError? = null, onRetry: () -> Unit = {}) {
             Spacer(Modifier.height(34.dp))
             if (error == null) {
                 if (LocalZarMotion.current.allowsSpatialMotion) {
-                    LinearProgressIndicator(modifier = Modifier.width(48.dp).height(2.dp).semantics { contentDescription = checking },
-                        color = Color.White, trackColor = Color.White.copy(alpha = .2f))
+                    LinearProgressIndicator(modifier = Modifier.width(120.dp).height(3.dp).semantics { contentDescription = checking },
+                        color = Color.White, trackColor = Color.White.copy(alpha = .2f),
+                        strokeCap = StrokeCap.Round, gapSize = 0.dp)
                 } else {
                     // Reduced motion has no looping indicator, but still announces truthful pending work.
-                    Box(Modifier.width(48.dp).height(2.dp).background(Color.White.copy(alpha = .5f))
+                    Box(Modifier.width(120.dp).height(3.dp).background(Color.White.copy(alpha = .5f))
                         .semantics { contentDescription = checking })
                 }
             } else {
