@@ -35,6 +35,7 @@ fun ZarRoot(
     val session by viewModel.session.collectAsStateWithLifecycle()
     when (val current = session) {
         SessionState.Loading -> SessionLoadingScreen()
+        is SessionState.Error -> SessionLoadingScreen(current.error, viewModel::retry)
         SessionState.SignedOut -> AuthNavHost()
         // A different user gets a brand-new graph.
         is SessionState.SignedIn -> key(current.user.id) {
