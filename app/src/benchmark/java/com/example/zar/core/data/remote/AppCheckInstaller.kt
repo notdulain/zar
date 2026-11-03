@@ -1,6 +1,7 @@
 package com.example.zar.core.data.remote
 
 import android.content.Context
+import com.example.zar.BuildConfig
 import com.google.firebase.FirebaseApp
 import com.google.firebase.appcheck.FirebaseAppCheck
 import com.google.firebase.appcheck.playintegrity.PlayIntegrityAppCheckProviderFactory
@@ -13,6 +14,11 @@ import com.google.firebase.appcheck.playintegrity.PlayIntegrityAppCheckProviderF
 object AppCheckInstaller {
     fun install(context: Context) {
         if (FirebaseApp.getApps(context).isEmpty()) return // built without google-services.json
+        if (BuildConfig.USE_FIREBASE_EMULATORS) {
+            // Local emulator traffic must not wait for, or exchange tokens with, the live attestation service.
+            FirebaseAppCheck.getInstance().setTokenAutoRefreshEnabled(false)
+            return
+        }
         FirebaseAppCheck.getInstance().installAppCheckProviderFactory(PlayIntegrityAppCheckProviderFactory.getInstance())
     }
 }
