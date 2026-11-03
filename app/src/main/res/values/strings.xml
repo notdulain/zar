@@ -515,6 +515,19 @@
     <string name="home_received_chart_total">Received so far by %1$s: %2$s.</string>
     <string name="home_received_chart_unresolved">Some income has no known LKR rate yet.</string>
     <string name="home_received_chart_empty">No income with a known LKR value to chart.</string>
+    <string name="home_donut_axis_range">%1$s → %2$s</string>
+    <string name="home_donut_axis_share">Share of received</string>
+    <string name="home_donut_spent">Spent</string>
+    <string name="home_donut_plans">For plans</string>
+    <string name="home_donut_free">Still free</string>
+    <string name="home_donut_over">Over</string>
+    <string name="home_donut_unavailable">Not tracked</string>
+    <string name="home_donut_plans_unavailable">Plans are not tracked by month yet, so Still free is before plans.</string>
+    <string name="home_donut_overspent">Spent and plans are more than you received.</string>
+    <string name="home_donut_no_income">No income received this month.</string>
+    <string name="home_donut_unresolved">Some amounts have no known LKR rate.</string>
+    <string name="home_donut_description">Where income went. Spent %1$s, for plans %2$s, still free %3$s.</string>
+    <string name="home_donut_percent_description">%1$d percent of received income is still free.</string>
     <string name="activity_amount_pending">—</string>
 
     <!-- Plans and explicit savings allocations -->

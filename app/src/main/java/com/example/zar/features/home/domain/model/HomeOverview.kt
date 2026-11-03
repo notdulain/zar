@@ -25,6 +25,9 @@ data class HomeOverview(
     fun cumulativeIncome(today: LocalDate): CumulativeIncomeSeries =
         CumulativeIncomeSeries.from(month, receivedByDay, today)
 
+    /** Spent / For plans / Still free of this month's Received. */
+    val donut: HomeDonut get() = HomeDonut.from(summary)
+
     /** Records in this month that could not be converted to LKR and so are missing from totals. */
     val missingRateCount: Int
         get() = summary.received.unresolvedCount + summary.spent.total.unresolvedCount

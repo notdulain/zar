@@ -70,6 +70,9 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.zar.R
+import com.example.zar.features.home.domain.model.DonutStatus
+import com.example.zar.core.domain.model.money.FiatMoney
+import androidx.compose.ui.graphics.drawscope.Stroke
 import com.example.zar.core.domain.calculation.PeriodSummary
 import com.example.zar.core.domain.calculation.ReportingTotal
 import com.example.zar.core.domain.calculation.SpendingBreakdown
@@ -369,8 +372,18 @@ private fun ReceivedHero(
                 }
                 Spacer(Modifier.height(7.dp))
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text(overview.month.atDay(1).format(AxisFormat).uppercase(), style = ZarType.label, color = colors.textOnInverse)
-                    Text(overview.month.atEndOfMonth().format(AxisFormat).uppercase(), style = ZarType.label, color = colors.textOnInverse)
+                    val today = remember { ZarTime.today() }
+                    val end = if (today in overview.month.atDay(1)..overview.month.atEndOfMonth()) today else overview.month.atEndOfMonth()
+                    Text(
+                        if (chartMode == 1) stringResource(R.string.home_donut_axis_range, overview.month.atDay(1).format(AxisFormat), end.format(AxisFormat)).uppercase()
+                        else overview.month.atDay(1).format(AxisFormat).uppercase(),
+                        style = ZarType.label, color = colors.textOnInverse,
+                    )
+                    Text(
+                        if (chartMode == 1) stringResource(R.string.home_donut_axis_share).uppercase()
+                        else overview.month.atEndOfMonth().format(AxisFormat).uppercase(),
+                        style = ZarType.label, color = colors.textOnInverse,
+                    )
                 }
                 Spacer(Modifier.height(22.dp))
             }
@@ -440,24 +453,88 @@ private fun ChartModeTabs(selected: Int, onSelect: (Int) -> Unit) {
 
 @Composable
 private fun SpendingDonutChart(overview: HomeOverview, modifier: Modifier = Modifier) {
-    val spent = overview.summary.spent
-    val values = listOf(
-        spent.committed.amount.minorUnits.coerceAtLeast(0),
-        spent.discretionary.amount.minorUnits.coerceAtLeast(0),
-        spent.unknown.amount.minorUnits.coerceAtLeast(0),
-    )
-    val total = values.sum().coerceAtLeast(1L).toFloat()
-    val colors = listOf(ZarTheme.colors.accentSelected, ZarTheme.colors.attention, Color(0xFFE6E6EA))
-    Box(modifier, contentAlignment = Alignment.Center) {
-        Canvas(Modifier.size(148.dp)) {
-            var start = -90f
-            values.forEachIndexed { index, value ->
-                val sweep = value / total * 360f
-                drawArc(colors[index], start, sweep, false, style = androidx.compose.ui.graphics.drawscope.Stroke(18.dp.toPx()))
-                start += sweep
+    val donut = overview.donut
+    val colors = ZarTheme.colors
+    val spentColor = Color.White
+    val planColor = ZarHighlight
+    val freeColor = Color.White.copy(alpha = 0.28f)
+    val spentText = donut.spent.amount.formatWithCode()
+    val plansText = donut.forPlans?.amount?.formatWithCode() ?: stringResource(R.string.home_donut_unavailable)
+    val freeText = FiatMoney(donut.stillFreeMinor, donut.received.amount.currency).formatWithCode()
+    val status = when (donut.status) {
+        DonutStatus.COMPLETE -> null
+        DonutStatus.OVERSPENT -> R.string.home_donut_overspent
+        DonutStatus.NO_INCOME -> R.string.home_donut_no_income
+        DonutStatus.UNRESOLVED_RATES -> R.string.home_donut_unresolved
+        DonutStatus.PLANS_UNAVAILABLE -> R.string.home_donut_plans_unavailable
+    }?.let { stringResource(it) }
+    val percent = donut.stillFreePercent
+    val description = stringResource(R.string.home_donut_description, spentText, plansText, freeText) +
+        (percent?.let { " " + stringResource(R.string.home_donut_percent_description, it) } ?: "") +
+        (status?.let { " $it" } ?: "")
+    Row(
+        modifier.semantics(mergeDescendants = true) { contentDescription = description }.testTag("donut-chart"),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(28.dp),
+    ) {
+        Box(Modifier.size(148.dp), contentAlignment = Alignment.Center) {
+            Canvas(Modifier.fillMaxSize()) {
+                val stroke = 14.dp.toPx()
+                val inset = stroke / 2f
+                val arcSize = Size(size.width - stroke, size.height - stroke)
+                val topLeft = Offset(inset, inset)
+                val arcs = donut.arcFractions
+                if (arcs == null) {
+                    drawArc(freeColor, 0f, 360f, false, topLeft, arcSize, style = Stroke(stroke))
+                } else {
+                    val shown = arcs.filter { it > 0f }
+                    val gap = if (shown.size > 1) 3f else 0f
+                    var start = -90f
+                    listOf(spentColor, planColor, freeColor).forEachIndexed { index, color ->
+                        val sweep = arcs[index] * 360f
+                        if (sweep > 0f) {
+                            drawArc(color, start + gap / 2f, (sweep - gap).coerceAtLeast(0.5f), false, topLeft, arcSize, style = Stroke(stroke))
+                            start += sweep
+                        }
+                    }
+                }
+            }
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(percent?.let { "$it%" } ?: "—", style = ZarType.amountM, color = Color.White, maxLines = 1)
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    stringResource(if (donut.status == DonutStatus.OVERSPENT) R.string.home_donut_over else R.string.home_donut_free).uppercase(),
+                    style = ZarType.label,
+                    color = colors.textOnInverse.copy(alpha = 0.7f),
+                    maxLines = 1,
+                )
             }
         }
-        Text(spent.total.amount.formatWithCode(), style = ZarType.bodyS, color = Color.White)
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            DonutLegendRow(spentColor, stringResource(R.string.home_donut_spent), spentText)
+            DonutLegendRow(planColor, stringResource(R.string.home_donut_plans), plansText)
+            DonutLegendRow(freeColor, stringResource(R.string.home_donut_free), freeText)
+            if (status != null) {
+                Text(
+                    status,
+                    style = ZarType.bodyCaption,
+                    color = colors.textOnInverse.copy(alpha = 0.75f),
+                    modifier = Modifier.testTag("donut-status"),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun DonutLegendRow(dot: Color, label: String, value: String) {
+    Column {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+            Box(Modifier.size(6.dp).background(dot, CircleShape))
+            Text(label.uppercase(), style = ZarType.label, color = ZarTheme.colors.textOnInverse.copy(alpha = 0.7f), maxLines = 1)
+        }
+        Spacer(Modifier.height(3.dp))
+        Text(value, style = ZarType.bodyL, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 

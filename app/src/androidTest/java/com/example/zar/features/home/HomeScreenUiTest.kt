@@ -173,6 +173,32 @@ class HomeScreenUiTest {
     }
 
     @Test
+    fun donutShowsSpentPlansUnavailableAndStillFree() {
+        val received = ReportingTotal(FiatMoney(100_000, Currencies.LKR))
+        val spent = ReportingTotal(FiatMoney(40_000, Currencies.LKR))
+        val overview = HomeOverview(
+            month = month,
+            summary = PeriodSummary(received, SpendingBreakdown(spent, zero, zero), 0),
+            recent = emptyList(),
+            hasRecordsInMonth = true,
+            receivedByDay = List(month.lengthOfMonth()) { zero },
+        )
+        compose.setContent {
+            ZarTheme {
+                HomeScreenContent(
+                    state = HomeUiState(month, canGoForward = true, HomeContent.Ready(overview)),
+                    onPreviousMonth = {}, onNextMonth = {}, onRetry = {}, onNavigate = {}, onAddOption = {},
+                )
+            }
+        }
+        compose.onNodeWithContentDescription("Spending donut").performClick()
+        compose.onNodeWithTag("donut-chart").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("60%", useUnmergedTree = true).assertIsDisplayed()
+        compose.onNodeWithText("Not tracked", useUnmergedTree = true).assertIsDisplayed()
+        compose.onNodeWithTag("donut-status", useUnmergedTree = true).assertTextContains("not tracked by month", substring = true)
+    }
+
+    @Test
     fun clientsOweAndNextBillRowsShowTheirDataAndOpenDetails() {
         var freelanceOpened = 0
         var openedBill: String? = null
