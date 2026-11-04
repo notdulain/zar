@@ -85,6 +85,7 @@ fun AddTransactionScreen(
             onSwap = manualViewModel::onSwapAccounts,
             onTransferNote = manualViewModel::onTransferNoteChange,
             onSave = manualViewModel::save,
+            onNewCategoryIcon = manualViewModel::onNewCategoryIconSelect,
         ),
         incomeActions = IncomeFormActions(
             onBack = onDone,

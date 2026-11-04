@@ -234,7 +234,7 @@ service cloud.firestore {
       let d = data();
       return hasOnlyAllowedFields(['id', 'name', 'nameKey', 'source', 'createdAt', 'icon'])
         && hasRequiredFields(['id', 'name', 'nameKey', 'source', 'createdAt'])
-        && (!('icon' in d) || d.icon in ['receipt', 'fork_knife', 'coffee', 'basket', 'groceries', 'car', 'transport',
+        && (!('icon' in d) || d.icon in ['receipt', 'fork_knife', 'coffee', 'basket', 'groceries', 'car', 'bank',
             'house', 'barbell', 'television', 'phone', 'wifi', 'lightning', 'piggy_bank', 'briefcase', 'wallet'])
         && d.id == categoryId
         && categoryId.matches('^custom-[A-Za-z0-9-]{8,56}$')

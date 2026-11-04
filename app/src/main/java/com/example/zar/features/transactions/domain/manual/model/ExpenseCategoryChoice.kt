@@ -26,7 +26,7 @@ enum class CategoryIcon(val key: String) {
     BASKET("basket"),
     GROCERIES("groceries"),
     CAR("car"),
-    TRANSPORT("transport"),
+    BANK("bank"),
     HOUSE("house"),
     BARBELL("barbell"),
     TELEVISION("television"),

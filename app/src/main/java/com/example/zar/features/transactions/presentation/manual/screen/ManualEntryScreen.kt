@@ -93,6 +93,7 @@ import com.example.zar.core.domain.model.Account
 import com.example.zar.core.domain.model.AccountId
 import com.example.zar.core.domain.model.SpendingClass
 import com.example.zar.core.domain.model.money.Money
+import com.example.zar.features.transactions.domain.manual.model.CategoryIcon
 import com.example.zar.core.presentation.components.ZarButton
 import com.example.zar.core.presentation.components.ZarButtonStyle
 import com.example.zar.core.presentation.components.ZarChip
@@ -154,6 +155,7 @@ internal class ManualEntryActions(
     val onSwap: () -> Unit,
     val onTransferNote: (String) -> Unit,
     val onSave: () -> Unit,
+    val onNewCategoryIcon: (CategoryIcon) -> Unit = {},
 )
 
 @Composable
@@ -295,6 +297,7 @@ internal fun ManualEntryContent(
             AddCategorySheet(
                 state = uiState.newCategory,
                 onName = actions.onNewCategoryName,
+                onIcon = actions.onNewCategoryIcon,
                 onCancel = actions.onAddCategoryCancel,
                 onSave = actions.onAddCategorySave,
                 modifier = Modifier.align(Alignment.BottomCenter),
@@ -761,6 +764,7 @@ private fun CategoryTile(
 private fun AddCategorySheet(
     state: NewCategoryState,
     onName: (String) -> Unit,
+    onIcon: (CategoryIcon) -> Unit,
     onCancel: () -> Unit,
     onSave: () -> Unit,
     modifier: Modifier = Modifier,
@@ -769,7 +773,7 @@ private fun AddCategorySheet(
     val nameFocus = remember { FocusRequester() }
     LaunchedEffect(Unit) { runCatching { nameFocus.requestFocus() } }
     Column(
-        modifier.fillMaxWidth().heightIn(max = 420.dp)
+        modifier.fillMaxWidth().heightIn(max = 600.dp)
             .shadow(14.dp, ZarShapes.sheet, ambientColor = Color(0x1F000000), spotColor = Color(0x1F000000))
             .clip(ZarShapes.sheet).background(colors.surface).pointerInput(Unit) { detectTapGestures {} }
             .navigationBarsPadding().imePadding()
@@ -783,17 +787,21 @@ private fun AddCategorySheet(
             }
             Text(stringResource(R.string.manual_new_category_title), style = ZarType.headingSheet, color = colors.textPrimary)
         }
-        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Box(Modifier.fillMaxWidth().clip(ZarShapes.md).background(colors.subtle).padding(horizontal = 14.dp)) {
-                TextInput(
-                    value = state.name,
-                    onValueChange = onName,
-                    placeholder = stringResource(R.string.manual_new_category_hint),
-                    modifier = Modifier.fillMaxWidth().focusRequester(nameFocus).testTag("manual-new-category-name"),
-                )
+        // The name and icons scroll together, so the buttons stay in reach with the keyboard open or large text.
+        Column(Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(18.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Box(Modifier.fillMaxWidth().clip(ZarShapes.md).background(colors.subtle).padding(horizontal = 14.dp)) {
+                    TextInput(
+                        value = state.name,
+                        onValueChange = onName,
+                        placeholder = stringResource(R.string.manual_new_category_hint),
+                        modifier = Modifier.fillMaxWidth().focusRequester(nameFocus).testTag("manual-new-category-name"),
+                    )
+                }
+                val problemRes = state.problem?.let { it.textRes() } ?: if (state.failed) R.string.manual_category_error_failed else null
+                FieldError(problemRes, Modifier.testTag("manual-new-category-error"))
             }
-            val problemRes = state.problem?.let { it.textRes() } ?: if (state.failed) R.string.manual_category_error_failed else null
-            FieldError(problemRes, Modifier.testTag("manual-new-category-error"))
+            CategoryIconPicker(selected = state.icon, onSelect = onIcon)
         }
         Row(Modifier.fillMaxWidth().padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             ZarButton(
@@ -808,6 +816,35 @@ private fun AddCategorySheet(
                 modifier = Modifier.weight(1f).testTag("manual-new-category-save"),
                 enabled = !state.isSaving && state.name.isNotBlank(),
             )
+        }
+    }
+}
+
+/** Every icon a custom category can show, as a grid of equal tiles with exactly one selected. */
+@Composable
+private fun CategoryIconPicker(selected: CategoryIcon, onSelect: (CategoryIcon) -> Unit) {
+    val colors = ZarTheme.colors
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        ZarMonoLabel(stringResource(R.string.manual_new_category_icon))
+        Column(Modifier.fillMaxWidth().selectableGroup(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            CategoryIcon.entries.chunked(4).forEach { row ->
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    row.forEach { icon ->
+                        val chosen = icon == selected
+                        val label = stringResource(icon.labelRes())
+                        Box(
+                            Modifier.weight(1f).heightIn(min = 48.dp).clip(ZarShapes.sm)
+                                .background(if (chosen) colors.accentSelected else colors.subtle)
+                                .selectable(selected = chosen, role = Role.RadioButton, onClick = { onSelect(icon) })
+                                .semantics { contentDescription = label }
+                                .testTag("manual-new-category-icon-${icon.key}"),
+                            Alignment.Center,
+                        ) {
+                            ZarIcon(icon.drawableRes(), size = 22.dp, tint = if (chosen) colors.textOnInverse else colors.iconStrong)
+                        }
+                    }
+                }
+            }
         }
     }
 }
@@ -1096,8 +1133,50 @@ internal fun ExpenseCategory.labelRes(): Int = when (this) {
     ExpenseCategory.OTHER -> R.string.manual_category_other
 }
 
-/** A custom category has no icon of its own yet; the picker design supplies one generic icon for all of them. */
-private fun ExpenseCategoryChoice.iconRes(): Int = (this as? ExpenseCategory)?.iconRes() ?: R.drawable.ic_ph_receipt
+/** A built-in category has a fixed icon; a custom one shows the icon its owner picked (the receipt by default). */
+private fun ExpenseCategoryChoice.iconRes(): Int = when (this) {
+    is ExpenseCategory -> iconRes()
+    is CustomExpenseCategory -> icon.drawableRes()
+    else -> R.drawable.ic_ph_receipt
+}
+
+private fun CategoryIcon.drawableRes(): Int = when (this) {
+    CategoryIcon.RECEIPT -> R.drawable.ic_ph_receipt
+    CategoryIcon.FORK_KNIFE -> R.drawable.ic_ph_fork_knife
+    CategoryIcon.COFFEE -> R.drawable.ic_figma_coffee
+    CategoryIcon.BASKET -> R.drawable.ic_ph_basket
+    CategoryIcon.GROCERIES -> R.drawable.ic_figma_groceries
+    CategoryIcon.CAR -> R.drawable.ic_ph_car
+    CategoryIcon.BANK -> R.drawable.ic_ph_bank
+    CategoryIcon.HOUSE -> R.drawable.ic_ph_house_inactive
+    CategoryIcon.BARBELL -> R.drawable.ic_ph_barbell
+    CategoryIcon.TELEVISION -> R.drawable.ic_ph_television
+    CategoryIcon.PHONE -> R.drawable.ic_ph_device_mobile
+    CategoryIcon.WIFI -> R.drawable.ic_ph_wifi_high
+    CategoryIcon.LIGHTNING -> R.drawable.ic_ph_lightning
+    CategoryIcon.PIGGY_BANK -> R.drawable.ic_ph_piggy_bank
+    CategoryIcon.BRIEFCASE -> R.drawable.ic_ph_briefcase
+    CategoryIcon.WALLET -> R.drawable.ic_ph_wallet
+}
+
+private fun CategoryIcon.labelRes(): Int = when (this) {
+    CategoryIcon.RECEIPT -> R.string.manual_icon_receipt
+    CategoryIcon.FORK_KNIFE -> R.string.manual_icon_fork_knife
+    CategoryIcon.COFFEE -> R.string.manual_icon_coffee
+    CategoryIcon.BASKET -> R.string.manual_icon_basket
+    CategoryIcon.GROCERIES -> R.string.manual_icon_groceries
+    CategoryIcon.CAR -> R.string.manual_icon_car
+    CategoryIcon.BANK -> R.string.manual_icon_bank
+    CategoryIcon.HOUSE -> R.string.manual_icon_house
+    CategoryIcon.BARBELL -> R.string.manual_icon_barbell
+    CategoryIcon.TELEVISION -> R.string.manual_icon_television
+    CategoryIcon.PHONE -> R.string.manual_icon_phone
+    CategoryIcon.WIFI -> R.string.manual_icon_wifi
+    CategoryIcon.LIGHTNING -> R.string.manual_icon_lightning
+    CategoryIcon.PIGGY_BANK -> R.string.manual_icon_piggy_bank
+    CategoryIcon.BRIEFCASE -> R.string.manual_icon_briefcase
+    CategoryIcon.WALLET -> R.string.manual_icon_wallet
+}
 
 private fun ExpenseCategory.iconRes(): Int = when (this) {
     ExpenseCategory.COFFEE_DINING -> R.drawable.ic_figma_coffee
