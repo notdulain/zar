@@ -590,6 +590,11 @@
     <string name="manual_new_category_title">New category</string>
     <string name="manual_new_category_hint">Category name</string>
     <string name="manual_new_category_icon">Icon</string>
+    <string name="manual_delete_category_title">Delete category?</string>
+    <string name="manual_delete_category_body">“%1$s” leaves your category lists. Entries you already saved with it keep its name, and you can add the name again later.</string>
+    <string name="manual_delete_category_action">Delete</string>
+    <string name="manual_delete_category_label">Delete %1$s</string>
+    <string name="manual_delete_category_error">Couldn’t delete it. Try again.</string>
     <string name="manual_icon_receipt">Receipt</string>
     <string name="manual_icon_fork_knife">Food</string>
     <string name="manual_icon_coffee">Coffee</string>

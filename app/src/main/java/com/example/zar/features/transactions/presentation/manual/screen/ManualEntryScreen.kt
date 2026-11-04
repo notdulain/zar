@@ -120,6 +120,7 @@ import com.example.zar.features.transactions.presentation.income.IncomeFormat
 import com.example.zar.features.transactions.presentation.manual.viewmodel.ManualEntryKind
 import com.example.zar.features.transactions.presentation.manual.viewmodel.ManualEntryMessage
 import com.example.zar.features.transactions.presentation.manual.viewmodel.ManualEntryUiState
+import com.example.zar.features.transactions.presentation.manual.viewmodel.DeleteCategoryState
 import com.example.zar.features.transactions.presentation.manual.viewmodel.NewCategoryState
 import java.time.LocalDate
 import java.time.LocalTime
@@ -156,6 +157,9 @@ internal class ManualEntryActions(
     val onTransferNote: (String) -> Unit,
     val onSave: () -> Unit,
     val onNewCategoryIcon: (CategoryIcon) -> Unit = {},
+    val onDeleteCategoryStart: (CustomExpenseCategory) -> Unit = {},
+    val onDeleteCategoryCancel: () -> Unit = {},
+    val onDeleteCategoryConfirm: () -> Unit = {},
 )
 
 @Composable
@@ -292,6 +296,15 @@ internal fun ManualEntryContent(
             )
         }
         }
+        if (uiState.deletingCategory != null) {
+            Box(Modifier.fillMaxSize().background(colors.scrim.copy(alpha = 0.64f)).clickable(onClick = actions.onDeleteCategoryCancel))
+            DeleteCategorySheet(
+                state = uiState.deletingCategory,
+                onCancel = actions.onDeleteCategoryCancel,
+                onConfirm = actions.onDeleteCategoryConfirm,
+                modifier = Modifier.align(Alignment.BottomCenter),
+            )
+        }
         if (uiState.newCategory != null) {
             Box(Modifier.fillMaxSize().background(colors.scrim.copy(alpha = 0.64f)).clickable(onClick = actions.onAddCategoryCancel))
             AddCategorySheet(
@@ -354,6 +367,7 @@ private fun ExpenseFields(state: ManualEntryUiState, actions: ManualEntryActions
                 selectedId = state.category?.id,
                 onSelect = { actions.onCategory(it); allCategories = false },
                 onAddCategory = actions.onAddCategoryStart,
+                onDeleteCategory = actions.onDeleteCategoryStart,
             )
         } else {
             Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -690,6 +704,7 @@ private fun CategoryGrid(
     selectedId: String?,
     onSelect: (ExpenseCategoryChoice) -> Unit,
     onAddCategory: () -> Unit,
+    onDeleteCategory: (CustomExpenseCategory) -> Unit,
 ) {
     val colors = ZarTheme.colors
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -715,6 +730,8 @@ private fun CategoryGrid(
                             category = category,
                             selected = category.id == selectedId,
                             onClick = { onSelect(category) },
+                            // Only the person's own categories can be deleted; built-ins have no delete.
+                            onDelete = (category as? CustomExpenseCategory)?.let { custom -> { onDeleteCategory(custom) } },
                             modifier = Modifier.weight(1f),
                         )
                     }
@@ -730,11 +747,14 @@ private fun CategoryTile(
     category: ExpenseCategoryChoice,
     selected: Boolean,
     onClick: () -> Unit,
+    onDelete: (() -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
     val colors = ZarTheme.colors
+    Box(modifier) {
     Column(
-        modifier
+        Modifier
+            .fillMaxWidth()
             .heightIn(min = 64.dp)
             .clip(ZarShapes.sm)
             .background(if (selected) colors.accentSelected else colors.subtle)
@@ -756,6 +776,66 @@ private fun CategoryTile(
             textAlign = TextAlign.Center,
             overflow = TextOverflow.Ellipsis,
         )
+    }
+    if (onDelete != null && category is CustomExpenseCategory) {
+        val label = stringResource(R.string.manual_delete_category_label, category.name)
+        Box(
+            Modifier.align(Alignment.TopEnd).size(40.dp).clip(CircleShape)
+                .clickable(role = Role.Button, onClickLabel = label, onClick = onDelete)
+                .semantics { contentDescription = label }
+                .testTag("manual-category-delete-${category.id}"),
+            Alignment.Center,
+        ) {
+            ZarIcon(R.drawable.ic_ph_trash, size = 16.dp, tint = if (selected) colors.textOnInverse else colors.iconMuted)
+        }
+    }
+    }
+}
+
+/** Confirms deleting one of the person's own categories. It never touches the draft or entries already saved. */
+@Composable
+private fun DeleteCategorySheet(
+    state: DeleteCategoryState,
+    onCancel: () -> Unit,
+    onConfirm: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val colors = ZarTheme.colors
+    Column(
+        modifier.fillMaxWidth()
+            .shadow(14.dp, ZarShapes.sheet, ambientColor = Color(0x1F000000), spotColor = Color(0x1F000000))
+            .clip(ZarShapes.sheet).background(colors.surface).pointerInput(Unit) { detectTapGestures {} }
+            .navigationBarsPadding()
+            .padding(start = 24.dp, end = 24.dp, top = 10.dp, bottom = 22.dp)
+            .testTag("manual-delete-category-sheet"),
+        verticalArrangement = Arrangement.spacedBy(22.dp),
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            Box(Modifier.fillMaxWidth(), Alignment.Center) {
+                Box(Modifier.size(36.dp, 4.dp).background(colors.handle, RoundedCornerShape(2.dp)))
+            }
+            Text(stringResource(R.string.manual_delete_category_title), style = ZarType.headingSheet, color = colors.textPrimary)
+            Text(
+                stringResource(R.string.manual_delete_category_body, state.category.name),
+                style = ZarType.bodyM,
+                color = colors.textSecondary,
+            )
+            FieldError(if (state.failed) R.string.manual_delete_category_error else null, Modifier.testTag("manual-delete-category-error"))
+        }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            ZarButton(
+                text = stringResource(R.string.action_cancel),
+                onClick = onCancel,
+                modifier = Modifier.weight(1f).testTag("manual-delete-category-cancel"),
+                style = ZarButtonStyle.Soft,
+            )
+            ZarButton(
+                text = stringResource(R.string.manual_delete_category_action),
+                onClick = onConfirm,
+                modifier = Modifier.weight(1f).testTag("manual-delete-category-confirm"),
+                enabled = !state.isDeleting,
+            )
+        }
     }
 }
 

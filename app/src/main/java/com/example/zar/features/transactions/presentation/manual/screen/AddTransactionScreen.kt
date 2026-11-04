@@ -86,6 +86,9 @@ fun AddTransactionScreen(
             onTransferNote = manualViewModel::onTransferNoteChange,
             onSave = manualViewModel::save,
             onNewCategoryIcon = manualViewModel::onNewCategoryIconSelect,
+            onDeleteCategoryStart = manualViewModel::onDeleteCategoryStart,
+            onDeleteCategoryCancel = manualViewModel::onDeleteCategoryCancel,
+            onDeleteCategoryConfirm = manualViewModel::onDeleteCategoryConfirm,
         ),
         incomeActions = IncomeFormActions(
             onBack = onDone,
