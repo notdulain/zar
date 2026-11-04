@@ -46,6 +46,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.clipPath
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.draw.rotate
@@ -487,8 +492,7 @@ private fun ClockDial(time: LocalTime, hourMode: Boolean, onSelect: (Int) -> Uni
     }
     val armAngle = settle.value
     val theta = armAngle * PI / 180 - PI / 2
-    // On a number the arm ends in the big knob that holds it; between numbers (a single minute) it ends in a small dot,
-    // so no number is half covered.
+    // The arm always ends in the same big knob. Between numbers (a single minute) a small dot marks its centre.
     val onNumber = selectedIndex % labelStep == 0
     val latestAngle by rememberUpdatedState(restingAngle)
     val latestIndex by rememberUpdatedState(selectedIndex)
@@ -529,7 +533,8 @@ private fun ClockDial(time: LocalTime, hourMode: Boolean, onSelect: (Int) -> Uni
                 )
                 drawLine(colors.accentPrimary, centre, end, strokeWidth = 2.dp.toPx(), cap = StrokeCap.Round)
                 drawCircle(colors.accentPrimary, radius = 4.dp.toPx(), center = centre)
-                drawCircle(colors.accentPrimary, radius = (if (onNumber) 22 else 6).dp.toPx(), center = end)
+                drawCircle(colors.accentPrimary, radius = 22.dp.toPx(), center = end)
+                if (!onNumber) drawCircle(colors.textOnInverse, radius = 2.5.dp.toPx(), center = end)
             }
             repeat(12) { index ->
                 val label = if (hourMode) (if (index == 0) 12 else index).toString() else "%02d".format(index * 5)
@@ -538,9 +543,6 @@ private fun ClockDial(time: LocalTime, hourMode: Boolean, onSelect: (Int) -> Uni
                 val y = (100 * sin(angle)).dp
                 val detent = index * labelStep
                 val chosen = selectedIndex == detent
-                // A number reads as selected while the arm's big knob is over it, whichever way the knob got there.
-                val gap = Math.toRadians(ClockGeometry.distance(armAngle, index * 30f).toDouble())
-                val underKnob = onNumber && 2 * 100 * sin(gap / 2) < 22
                 // Touches are resolved by position on the dial itself; this node is the TalkBack/keyboard alternative.
                 var focused by remember { mutableStateOf(false) }
                 Box(Modifier.align(Alignment.Center)
@@ -567,8 +569,28 @@ private fun ClockDial(time: LocalTime, hourMode: Boolean, onSelect: (Int) -> Uni
                     }, Alignment.Center) {
                     Box(Modifier.size(44.dp).clip(CircleShape)
                         .then(if (focused) Modifier.border(2.dp, colors.accentPrimary, CircleShape) else Modifier), Alignment.Center) {
-                        Text(label, style = ZarType.bodyL.copy(fontWeight = if (underKnob) FontWeight.Medium else FontWeight.Normal),
-                            color = if (underKnob) colors.textOnInverse else colors.textPrimary)
+                        Text(label, style = ZarType.bodyL.copy(fontWeight = if (chosen) FontWeight.Medium else FontWeight.Normal),
+                            color = colors.textPrimary)
+                    }
+                }
+            }
+            // The same numbers again in the knob's text colour, visible only inside the knob, so a number it covers
+            // (fully or partly) reads correctly. Decorative: the touch and accessibility nodes are the ones above.
+            Box(
+                Modifier.size(256.dp).clearAndSetSemantics {}.drawWithContent {
+                    val end = Offset(
+                        size.width / 2 + 100.dp.toPx() * cos(theta).toFloat(),
+                        size.height / 2 + 100.dp.toPx() * sin(theta).toFloat(),
+                    )
+                    clipPath(Path().apply { addOval(Rect(center = end, radius = 22.dp.toPx())) }) { this@drawWithContent.drawContent() }
+                },
+                Alignment.Center,
+            ) {
+                repeat(12) { index ->
+                    val label = if (hourMode) (if (index == 0) 12 else index).toString() else "%02d".format(index * 5)
+                    val angle = 2 * PI * index / 12 - PI / 2
+                    Box(Modifier.align(Alignment.Center).offset(x = (100 * cos(angle)).dp, y = (100 * sin(angle)).dp).size(48.dp), Alignment.Center) {
+                        Text(label, style = ZarType.bodyL.copy(fontWeight = FontWeight.Medium), color = colors.textOnInverse)
                     }
                 }
             }
