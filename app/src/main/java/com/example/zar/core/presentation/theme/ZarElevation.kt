@@ -18,8 +18,8 @@ import androidx.compose.ui.unit.dp
  */
 fun Modifier.zarFloatingNavShadow(shape: Shape, colors: ZarColors): Modifier {
     val dark = colors.canvas.luminance() < 0.5f
-    val tight = if (dark) Color(0x40000000) else Color(0x0F0F1A2B)
-    val wide = if (dark) Color(0x66000000) else Color(0x1A0F1A2B)
+    val tight = if (dark) Color(0x40000000) else Color(0x290F1A2B)
+    val wide = if (dark) Color(0x66000000) else Color(0x400F1A2B)
     return this
         .shadow(elevation = 3.dp, shape = shape, ambientColor = tight, spotColor = tight)
         .shadow(elevation = 14.dp, shape = shape, ambientColor = tight, spotColor = wide)
