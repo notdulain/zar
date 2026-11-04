@@ -64,8 +64,9 @@ data class HomeDonut(
             val receivedMinor = received.amount.minorUnits
             val committed = spent.amount.minorUnits + (forPlans?.amount?.minorUnits ?: 0L)
             val status = when {
-                receivedMinor <= 0L && committed > 0L -> DonutStatus.OVERSPENT
-                committed > receivedMinor -> DonutStatus.OVERSPENT
+                // Overspent only when Received is fully known. A partial Received total is a lower bound, so Spent above it
+                // proves nothing; that case falls through to UNRESOLVED_RATES. Partial Spent is still a lower bound on Spent.
+                received.isComplete && committed > maxOf(receivedMinor, 0L) -> DonutStatus.OVERSPENT
                 !received.isComplete || !spent.isComplete || forPlans?.isComplete == false -> DonutStatus.UNRESOLVED_RATES
                 receivedMinor <= 0L -> DonutStatus.NO_INCOME
                 forPlans == null -> DonutStatus.PLANS_UNAVAILABLE

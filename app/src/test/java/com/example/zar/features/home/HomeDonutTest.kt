@@ -62,6 +62,15 @@ class HomeDonutTest {
     }
 
     @Test
+    fun partialReceivedBelowSpentIsUnresolvedNotOverspent() {
+        val partialIncome = HomeDonut.from(summary(total(500, unresolved = 1), total(600)))
+        assertEquals(DonutStatus.UNRESOLVED_RATES, partialIncome.status)
+        assertNull(partialIncome.arcFractions)
+        // Known income that spending already exceeds is overspent even when a Spent amount is also partial.
+        assertEquals(DonutStatus.OVERSPENT, HomeDonut.from(summary(total(500), total(600, unresolved = 1))).status)
+    }
+
+    @Test
     fun unresolvedRatesAreFlaggedAndNeverCertified() {
         val donut = HomeDonut.from(summary(total(1_000, unresolved = 1), total(100)))
         assertEquals(DonutStatus.UNRESOLVED_RATES, donut.status)
