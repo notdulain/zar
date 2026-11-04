@@ -1,5 +1,6 @@
 package com.example.zar.integration
 
+import com.example.zar.features.capture.domain.usecase.ObserveCaptureAccountsUseCase
 import com.example.zar.core.data.remote.firestore.FirestoreCollections
 import com.example.zar.core.data.remote.firestore.LedgerDocumentMapper
 import com.example.zar.core.domain.calculation.ZarTime
@@ -295,7 +296,7 @@ class OfflineLedgerIntegrationTest {
             h.saveTransaction(manual, bank).getOrThrow()
             h.flush()
 
-            val capture = CaptureTextUseCase(BankSmsParser(), h.drafts)
+            val capture = CaptureTextUseCase(BankSmsParser(), h.drafts, ObserveCaptureAccountsUseCase(h.accounts))
             val now = Instant.now().truncatedTo(ChronoUnit.MILLIS)
             val drafted = capture(sms, DraftSource.SHARED_TEXT, now).getOrThrow() as CaptureOutcome.Drafted
             // Capturing the same text again is the same draft, not a second one.
@@ -350,7 +351,7 @@ class OfflineLedgerIntegrationTest {
         try {
             val bank = h.seedAccount("bank", openingDate = LocalDate.of(2026, 10, 1))
             val now = Instant.now().truncatedTo(ChronoUnit.MILLIS)
-            val capture = CaptureTextUseCase(BankSmsParser(), h.drafts)
+            val capture = CaptureTextUseCase(BankSmsParser(), h.drafts, ObserveCaptureAccountsUseCase(h.accounts))
             val drafted = capture(sms, DraftSource.SHARED_TEXT, now).getOrThrow() as CaptureOutcome.Drafted
             val draft = step("read draft") { h.drafts.observeDrafts().first { list -> list.any { it.id == drafted.draftId } } }.single { it.id == drafted.draftId }
             val confirm = ConfirmCapturedDraftUseCase(h.drafts, ObserveCategoryRulesUseCase(FirestoreCategoryRuleRepository(h.db, h.session)))
@@ -488,7 +489,7 @@ class OfflineLedgerIntegrationTest {
             h.flush()
 
             // The bank message that reports the same outgoing leg links to it instead of posting a second expense.
-            val capture = CaptureTextUseCase(BankSmsParser(), h.drafts)
+            val capture = CaptureTextUseCase(BankSmsParser(), h.drafts, ObserveCaptureAccountsUseCase(h.accounts))
             val drafted = capture(sms, DraftSource.SHARED_TEXT, now).getOrThrow() as CaptureOutcome.Drafted
             val draft = step("read draft") { h.drafts.observeDrafts().first { list -> list.any { it.id == drafted.draftId } } }.single { it.id == drafted.draftId }
             LinkCapturedDraftUseCase(h.drafts, h.ledger)(draft, transfer.outLegId, now.plusSeconds(10)).getOrThrow()

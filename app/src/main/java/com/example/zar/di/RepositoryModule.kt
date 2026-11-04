@@ -8,9 +8,11 @@ import com.example.zar.features.capture.data.auto.CaptureStagingDatabase
 import com.example.zar.features.capture.data.auto.DataStoreAutoCapturePreferences
 import com.example.zar.features.capture.data.auto.RoomSmsStagingRepository
 import com.example.zar.features.capture.data.auto.StagedSmsDao
+import com.example.zar.features.capture.data.auto.AndroidCaptureNotifier
 import com.example.zar.features.capture.data.auto.WorkManagerAutoCaptureScheduler
 import com.example.zar.features.capture.domain.auto.AutoCapturePreferences
 import com.example.zar.features.capture.domain.auto.AutoCaptureScheduler
+import com.example.zar.features.capture.domain.auto.CaptureNotifier
 import com.example.zar.features.capture.domain.auto.PauseAutoCaptureOnSignOut
 import com.example.zar.features.capture.domain.auto.SmsStagingRepository
 import dagger.Provides
@@ -239,6 +241,10 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun bindAutoCaptureScheduler(impl: WorkManagerAutoCaptureScheduler): AutoCaptureScheduler
+
+    @Binds
+    @Singleton
+    abstract fun bindCaptureNotifier(impl: AndroidCaptureNotifier): CaptureNotifier
 
     @Binds
     @IntoSet

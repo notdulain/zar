@@ -1,0 +1,35 @@
+package com.example.zar.core.presentation.motion
+
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.delay
+
+/**
+ * A card's first arrival: it fades in while rising [ZarMotion.RiseInTravel], a little after the one before it ([order]).
+ * Only the first [ZarMotion.RISE_IN_MAX_ORDER] wait their turn, so a long list never keeps anything waiting. With [play]
+ * false (e.g. coming back to a screen) or reduced motion, the card is simply there. Drawn in the layer phase only, so
+ * layout, semantics and touch targets are never affected.
+ */
+@Composable
+fun Modifier.riseIn(order: Int, play: Boolean): Modifier {
+    val policy = LocalZarMotion.current
+    if (!play || !policy.allowsSpatialMotion) return this
+    val progress = remember { Animatable(0f) }
+    LaunchedEffect(Unit) {
+        delay(order.coerceIn(0, ZarMotion.RISE_IN_MAX_ORDER) * ZarMotion.RISE_IN_STAGGER_MILLIS)
+        progress.animateTo(1f, tween(ZarMotion.RISE_IN_MILLIS, easing = FastOutSlowInEasing))
+    }
+    val travel = with(LocalDensity.current) { ZarMotion.RiseInTravel.toPx() }
+    return graphicsLayer {
+        alpha = progress.value
+        translationY = (1f - progress.value) * travel
+    }
+}

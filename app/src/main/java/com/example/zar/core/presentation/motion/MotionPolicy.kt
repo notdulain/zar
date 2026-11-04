@@ -76,6 +76,12 @@ object ZarMotion {
     const val PARALLAX_CHART = 0.12f
     val ParallaxChartCap = 16.dp
 
+    /** A card's first arrival (see riseIn): a short fade and rise, each card a beat after the one before. */
+    const val RISE_IN_MILLIS = 280
+    const val RISE_IN_STAGGER_MILLIS = 45L
+    const val RISE_IN_MAX_ORDER = 6
+    val RiseInTravel = 14.dp
+
     /** Length of a Back transition. A tween, because the predictive gesture scrubs it and a spring has no fixed length. */
     const val POP_MILLIS = 300
 

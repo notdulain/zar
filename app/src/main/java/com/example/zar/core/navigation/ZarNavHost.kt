@@ -43,6 +43,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.dialog
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
+import com.example.zar.core.domain.model.AccountType
 import com.example.zar.core.presentation.components.AddEntryOption
 import com.example.zar.core.presentation.components.LocalNavCapsuleController
 import com.example.zar.core.presentation.components.LocalNavChromeHost
@@ -83,7 +84,7 @@ import com.example.zar.features.bills.presentation.screen.BillFormScreen
 import com.example.zar.features.bills.presentation.screen.BillDetailScreen
 import com.example.zar.features.bills.presentation.screen.BillPaymentScreen
 import com.example.zar.features.bills.presentation.screen.BillsScreen
-import com.example.zar.features.crypto.presentation.screen.CryptoMovementScreen
+import com.example.zar.features.crypto.presentation.screen.CryptoMovementDetailScreen
 import com.example.zar.features.crypto.presentation.screen.CryptoScreen
 import com.example.zar.features.export.presentation.screen.ExportScreen
 import com.example.zar.features.freelance.presentation.screen.FreelanceScreen
@@ -109,6 +110,8 @@ fun ZarNavHost(
     modifier: Modifier = Modifier,
     openCatchUp: Boolean = false,
     onCatchUpOpened: () -> Unit = {},
+    openReviewDraft: String? = null,
+    onReviewOpened: () -> Unit = {},
 ) {
     val navController = rememberNavController()
     // The weekly reminder opens the catch-up on top of Home.
@@ -116,6 +119,13 @@ fun ZarNavHost(
         if (openCatchUp) {
             navController.navigate(CatchUpRoute) { launchSingleTop = true }
             onCatchUpOpened()
+        }
+    }
+    // A capture notification opens that draft's review on top of Home.
+    LaunchedEffect(openReviewDraft) {
+        openReviewDraft?.let { id ->
+            navController.navigate(CaptureReviewRoute(id)) { launchSingleTop = true }
+            onReviewOpened()
         }
     }
     // Text shared to Zar from another app opens the capture screen, which reads it.
@@ -391,11 +401,15 @@ fun ZarNavHost(
         composable<CryptoRoute> {
             CryptoScreen(
                 onBack = { navController.popBackStack() },
-                onAddMovement = { navController.navigate(CryptoMovementRoute) },
+                onOpenMovement = { id -> navController.navigate(CryptoMovementRoute(id)) },
+                onAddAccount = { navController.navigate(AccountFormRoute(type = AccountType.CRYPTO.name)) },
             )
         }
-        composable<CryptoMovementRoute> {
-            CryptoMovementScreen(onDone = { navController.popBackStack() })
+        composable<CryptoMovementRoute> { entry ->
+            CryptoMovementDetailScreen(
+                movementId = entry.toRoute<CryptoMovementRoute>().movementId,
+                onBack = { navController.popBackStack() },
+            )
         }
         composable<FreelanceRoute> {
             FreelanceScreen(

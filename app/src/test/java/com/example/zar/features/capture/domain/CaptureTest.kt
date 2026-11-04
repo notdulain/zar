@@ -1,5 +1,12 @@
 package com.example.zar.features.capture.domain
 
+import com.example.zar.core.domain.model.money.Currencies
+import com.example.zar.core.domain.model.OpeningBalance
+import com.example.zar.core.domain.model.AccountType
+import com.example.zar.core.domain.model.AccountId
+import com.example.zar.core.domain.model.Account
+import com.example.zar.core.domain.FakeAccountRepository
+import com.example.zar.features.capture.domain.usecase.ObserveCaptureAccountsUseCase
 import com.example.zar.features.rules.rule
 import com.example.zar.features.rules.FakeCategoryRules
 import com.example.zar.core.data.remote.firestore.DraftDocumentMapper
@@ -101,7 +108,7 @@ class CaptureTest {
     @Test
     fun capturedTextBecomesAPendingDraftWithoutTheText() = runBlocking {
         val drafts = FakeDrafts()
-        val outcome = CaptureTextUseCase(BankSmsParser(), drafts)(purchase, DraftSource.SHARED_TEXT, T0).getOrThrow()
+        val outcome = CaptureTextUseCase(BankSmsParser(), drafts, ObserveCaptureAccountsUseCase(FakeAccountRepository()))(purchase, DraftSource.SHARED_TEXT, T0).getOrThrow()
         assertTrue(outcome is CaptureOutcome.Drafted)
 
         val draft = drafts.drafts.value.values.single()
@@ -116,9 +123,35 @@ class CaptureTest {
     }
 
     @Test
+    fun aCommercialBankMessageArrivesWithHisCommercialBankAccountSuggested() = runBlocking {
+        val drafts = FakeDrafts()
+        val combank = Account(AccountId("combank"), "Commercial Bank", AccountType.BANK, Currencies.LKR, OpeningBalance.Unknown, LocalDate.of(2026, 1, 1))
+        val sampath = Account(AccountId("sampath"), "Sampath Savings", AccountType.BANK, Currencies.LKR, OpeningBalance.Unknown, LocalDate.of(2026, 1, 1))
+        CaptureTextUseCase(BankSmsParser(), drafts, ObserveCaptureAccountsUseCase(FakeAccountRepository(combank, sampath)))(purchase, DraftSource.SHARED_TEXT, T0).getOrThrow()
+
+        val proposal = drafts.drafts.value.values.single().proposals.single() as DraftProposal.ActualTransaction
+        assertEquals(combank.id, proposal.accountId)
+        assertTrue("A suggestion is shown as a guess", DraftField.ACCOUNT in proposal.uncertainFields)
+        assertTrue(DraftField.ACCOUNT !in proposal.missingFields)
+    }
+
+    @Test
+    fun accountsThatCannotBeReadOnlyMeanNoSuggestion() = runBlocking {
+        val drafts = FakeDrafts()
+        val broken = object : com.example.zar.core.domain.repository.AccountRepository {
+            override fun observeAccounts() = kotlinx.coroutines.flow.flow<List<Account>> { throw IllegalStateException("offline") }
+            override suspend fun saveAccount(account: Account) = Unit
+        }
+        val outcome = CaptureTextUseCase(BankSmsParser(), drafts, ObserveCaptureAccountsUseCase(broken))(purchase, DraftSource.SHARED_TEXT, T0).getOrThrow()
+
+        assertTrue(outcome is CaptureOutcome.Drafted)
+        assertNull((drafts.drafts.value.values.single().proposals.single() as DraftProposal.ActualTransaction).accountId)
+    }
+
+    @Test
     fun sharingTheSameMessageTwiceKeepsOneDraft() = runBlocking {
         val drafts = FakeDrafts()
-        val capture = CaptureTextUseCase(BankSmsParser(), drafts)
+        val capture = CaptureTextUseCase(BankSmsParser(), drafts, ObserveCaptureAccountsUseCase(FakeAccountRepository()))
         capture(purchase, DraftSource.SHARED_TEXT, T0)
         capture(purchase, DraftSource.SHARED_TEXT, T0.plusSeconds(60))
         assertEquals(1, drafts.drafts.value.size)
@@ -127,7 +160,7 @@ class CaptureTest {
     @Test
     fun otpsDeclinesAndUnknownFormatsAreNotDrafted() = runBlocking {
         val drafts = FakeDrafts()
-        val capture = CaptureTextUseCase(BankSmsParser(), drafts)
+        val capture = CaptureTextUseCase(BankSmsParser(), drafts, ObserveCaptureAccountsUseCase(FakeAccountRepository()))
         assertEquals(CaptureOutcome.Ignored(SmsIgnoreReason.OTP), capture("Code 123456 is your One Time Password", DraftSource.SHARED_TEXT, T0).getOrThrow())
         assertEquals(CaptureOutcome.Unrecognised, capture("Your account was credited with LKR 5,000.00 today.", DraftSource.SHARED_TEXT, T0).getOrThrow())
         assertEquals(CaptureOutcome.Empty, capture("   ", DraftSource.SHARED_TEXT, T0).getOrThrow())
@@ -138,7 +171,7 @@ class CaptureTest {
     fun confirmingSavesOneRecordAndClosesTheDraft() = runBlocking {
         val drafts = FakeDrafts()
         val ledger = drafts.ledger
-        CaptureTextUseCase(BankSmsParser(), drafts)(credit, DraftSource.SHARED_TEXT, T0)
+        CaptureTextUseCase(BankSmsParser(), drafts, ObserveCaptureAccountsUseCase(FakeAccountRepository()))(credit, DraftSource.SHARED_TEXT, T0)
         val draft = drafts.drafts.value.values.single()
         val confirm = ConfirmCapturedDraftUseCase(drafts, FakeCategoryRules().observeUseCase())
 
@@ -154,7 +187,7 @@ class CaptureTest {
     fun confirmRejectsTheWrongCurrencyAndUnsupportedTypes() = runBlocking {
         val drafts = FakeDrafts()
         val ledger = drafts.ledger
-        CaptureTextUseCase(BankSmsParser(), drafts)(purchase, DraftSource.SHARED_TEXT, T0)
+        CaptureTextUseCase(BankSmsParser(), drafts, ObserveCaptureAccountsUseCase(FakeAccountRepository()))(purchase, DraftSource.SHARED_TEXT, T0)
         val draft = drafts.drafts.value.values.single()
         val confirm = ConfirmCapturedDraftUseCase(drafts, FakeCategoryRules().observeUseCase())
 
@@ -169,7 +202,7 @@ class CaptureTest {
         val drafts = FakeDrafts()
         val health = ObserveCaptureHealthUseCase(drafts)
         assertNull(health().first().lastCapturedAt)
-        CaptureTextUseCase(BankSmsParser(), drafts)(purchase, DraftSource.SHARED_TEXT, T0)
+        CaptureTextUseCase(BankSmsParser(), drafts, ObserveCaptureAccountsUseCase(FakeAccountRepository()))(purchase, DraftSource.SHARED_TEXT, T0)
         val after = health().first()
         assertEquals(T0, after.lastCapturedAt)
         assertEquals(1, after.waitingForReview)
@@ -188,7 +221,7 @@ class CaptureTest {
     }
     @Test fun replayDoesNotResetCaptureTimeOrReopenFinishedDraft() = runBlocking {
         val drafts = FakeDrafts()
-        val capture = CaptureTextUseCase(BankSmsParser(), drafts)
+        val capture = CaptureTextUseCase(BankSmsParser(), drafts, ObserveCaptureAccountsUseCase(FakeAccountRepository()))
         capture(purchase, DraftSource.SHARED_TEXT, T0).getOrThrow()
         val original = drafts.drafts.value.values.single()
         capture(purchase, DraftSource.SHARED_TEXT, T0.plusSeconds(60)).getOrThrow()
@@ -200,7 +233,7 @@ class CaptureTest {
 
     @Test fun failedAtomicConfirmationKeepsDraftPendingAndRetrySavesOnce() = runBlocking {
         val drafts = FakeDrafts()
-        CaptureTextUseCase(BankSmsParser(), drafts)(purchase, DraftSource.SHARED_TEXT, T0).getOrThrow()
+        CaptureTextUseCase(BankSmsParser(), drafts, ObserveCaptureAccountsUseCase(FakeAccountRepository()))(purchase, DraftSource.SHARED_TEXT, T0).getOrThrow()
         val draft = drafts.drafts.value.values.single()
         val confirm = ConfirmCapturedDraftUseCase(drafts, FakeCategoryRules().observeUseCase())
         val now = Instant.parse("2026-10-22T04:00:00Z")
@@ -217,7 +250,7 @@ class CaptureTest {
 
     @Test fun futurePaymentsArchivedAccountsAndForeignDraftsCannotBeConfirmed() = runBlocking {
         val drafts = FakeDrafts()
-        CaptureTextUseCase(BankSmsParser(), drafts)(purchase, DraftSource.SHARED_TEXT, T0).getOrThrow()
+        CaptureTextUseCase(BankSmsParser(), drafts, ObserveCaptureAccountsUseCase(FakeAccountRepository()))(purchase, DraftSource.SHARED_TEXT, T0).getOrThrow()
         val draft = drafts.drafts.value.values.single()
         val confirm = ConfirmCapturedDraftUseCase(drafts, FakeCategoryRules().observeUseCase())
         val now = Instant.parse("2026-10-22T04:00:00Z")
@@ -234,7 +267,7 @@ class CaptureTest {
         message: String = purchase,
     ): FakeDrafts {
         val drafts = FakeDrafts()
-        CaptureTextUseCase(BankSmsParser(), drafts)(message, DraftSource.SHARED_TEXT, T0).getOrThrow()
+        CaptureTextUseCase(BankSmsParser(), drafts, ObserveCaptureAccountsUseCase(FakeAccountRepository()))(message, DraftSource.SHARED_TEXT, T0).getOrThrow()
         val draft = drafts.drafts.value.values.single()
         val confirm = ConfirmCapturedDraftUseCase(drafts, FakeCategoryRules(rules).observeUseCase())
         confirm(draft, bank, type, if (type == TransactionType.EXPENSE) SpendingClass.UNKNOWN else null, Instant.parse("2026-10-22T04:00:00Z")).getOrThrow()
@@ -290,7 +323,7 @@ class CaptureTest {
 
     @Test fun editingARuleOnlyChangesLaterCapturesNeverTheEntryAlreadySaved() = runBlocking {
         val drafts = FakeDrafts()
-        val capture = CaptureTextUseCase(BankSmsParser(), drafts)
+        val capture = CaptureTextUseCase(BankSmsParser(), drafts, ObserveCaptureAccountsUseCase(FakeAccountRepository()))
         val v1 = rule("CAFE SEVENTY THREE MALABE LK", category = "coffee-dining", id = "cafe", version = 1)
         val rules = FakeCategoryRules(listOf(v1))
         val confirm = ConfirmCapturedDraftUseCase(drafts, rules.observeUseCase())

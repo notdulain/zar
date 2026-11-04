@@ -17,6 +17,7 @@ class LayerBoundaryTest {
     /** Known upward import, kept visible instead of silently ignored. Remove when the helper moves to `core/domain`. */
     private val dataToPresentationAllowlist = setOf(
         "features/reminders/data/PaymentReminders.kt",
+        "features/capture/data/auto/AndroidCaptureNotifier.kt",
     )
 
     // ---- real source tree -------------------------------------------------------------------

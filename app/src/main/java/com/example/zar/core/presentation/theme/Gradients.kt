@@ -48,13 +48,16 @@ object ZarGradients {
         1.1453f to Color(0xFFF3A78F),
     )
 
-    /** Crypto hero "realized result": near-black to gold, with the gold mid-stop at 90% so the status line reads (4.79:1). */
+    /**
+     * Crypto hero "realized result": near-black to a deep gold. It used to end on bright Binance gold (#F0B90B), which
+     * left the status line under it at about 1.6:1; ending on #85620A keeps the gold glow and the line at 4.9:1.
+     */
     val crypto: Brush = vertical(
         1f,
         0f to Color(0xFF05070B),
         0.439f to Color(0xFF2A1F08),
         0.90f to Color(0xFF6E520C),
-        1f to Color(0xFFF0B90B),
+        1f to Color(0xFF85620A),
     )
 
     val statusBarScrim: Brush = vertical(

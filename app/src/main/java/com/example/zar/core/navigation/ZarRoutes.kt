@@ -102,13 +102,13 @@ data class AccountRoute(val accountId: String)
 
 /** Add an account when [accountId] is null; otherwise edit that account. */
 @Serializable
-data class AccountFormRoute(val accountId: String? = null)
+data class AccountFormRoute(val accountId: String? = null, /** [AccountType] name a new account starts on. */ val type: String? = null)
 
 @Serializable
 data object CryptoRoute
 
 @Serializable
-data object CryptoMovementRoute
+data class CryptoMovementRoute(val movementId: String)
 
 /** Paste or share a bank message; also shows supported banks and capture health. */
 @Serializable
