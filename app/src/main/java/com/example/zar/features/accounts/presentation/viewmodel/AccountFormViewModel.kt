@@ -67,7 +67,8 @@ class AccountFormViewModel @Inject constructor(
     private val saveAccount: SaveAccountUseCase,
 ) : ViewModel() {
 
-    private val editedId = savedStateHandle.toRoute<AccountFormRoute>().accountId?.let(::AccountId)
+    private val route = savedStateHandle.toRoute<AccountFormRoute>()
+    private val editedId = route.accountId?.let(::AccountId)
 
     // Created once per screen and reused on every retry, so a repeated save can't add a second account.
     private val newId = AccountId(RecordIds.newId())
@@ -77,7 +78,12 @@ class AccountFormViewModel @Inject constructor(
     val uiState: StateFlow<AccountFormUiState> = _uiState.asStateFlow()
 
     init {
-        if (editedId != null) viewModelScope.launch { load(editedId) }
+        if (editedId != null) {
+            viewModelScope.launch { load(editedId) }
+        } else {
+            // A new account opened for one purpose, e.g. "Add crypto account", starts on that type.
+            route.type?.let { name -> AccountType.entries.firstOrNull { it.name == name } }?.let(::onTypeSelect)
+        }
     }
 
     private suspend fun load(id: AccountId) {

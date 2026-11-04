@@ -1,248 +1,336 @@
 package com.example.zar.features.crypto.presentation.screen
 
-import com.example.zar.core.presentation.privacy.amountFieldTransformation
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import com.example.zar.core.presentation.components.ZarAlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedCard
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.key
+import com.example.zar.core.presentation.components.heroDisplacement
+import com.example.zar.core.presentation.components.heroParallax
+import com.example.zar.core.presentation.motion.LocalZarMotion
+import com.example.zar.core.presentation.motion.ZarMotion
+import com.example.zar.core.presentation.motion.riseIn
+import com.example.zar.core.presentation.motion.settleSize
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.zar.R
-import com.example.zar.core.presentation.components.ZarHeroItemKey
-import com.example.zar.core.presentation.components.heroDisplacement
-import com.example.zar.core.presentation.components.heroParallax
-import com.example.zar.core.presentation.motion.ZarMotion
-import com.example.zar.core.domain.calculation.CurrencyConverter
 import com.example.zar.core.domain.model.Account
-import com.example.zar.core.domain.model.AccountId
 import com.example.zar.core.domain.model.OpeningBalance
+import com.example.zar.core.domain.model.money.Currencies
 import com.example.zar.core.domain.model.money.FiatMoney
-import com.example.zar.features.crypto.domain.CryptoProblem
+import com.example.zar.core.presentation.components.ZarAddPill
+import com.example.zar.core.presentation.components.ZarButton
+import com.example.zar.core.presentation.components.ZarCard
+import com.example.zar.core.presentation.components.ZarDivider
+import com.example.zar.core.presentation.components.ZarIcon
+import com.example.zar.core.presentation.theme.ZarShapes
+import com.example.zar.core.presentation.theme.ZarTheme
+import com.example.zar.core.presentation.theme.ZarType
+import com.example.zar.features.bills.presentation.screen.BillCard
+import com.example.zar.features.bills.presentation.screen.BillNote
+import com.example.zar.features.bills.presentation.screen.BillSectionHeader
+import com.example.zar.features.bills.presentation.screen.StatusBarGlyphs
+import com.example.zar.features.bills.presentation.screen.BillFormat
 import com.example.zar.features.crypto.domain.model.AssetPosition
 import com.example.zar.features.crypto.domain.model.CryptoMovementKind
 import com.example.zar.features.crypto.domain.model.CryptoMovementRow
 import com.example.zar.features.crypto.domain.model.CryptoPortfolio
+import com.example.zar.features.crypto.domain.model.OpeningCost
+import com.example.zar.features.crypto.presentation.model.CryptoHeroStatus
+import com.example.zar.features.crypto.presentation.model.CryptoOverview
 import com.example.zar.features.crypto.presentation.viewmodel.CryptoMessage
-import com.example.zar.features.crypto.presentation.viewmodel.CryptoMovementViewModel
 import com.example.zar.features.crypto.presentation.viewmodel.CryptoUiState
 import com.example.zar.features.crypto.presentation.viewmodel.CryptoViewModel
-import com.example.zar.features.freelance.presentation.screen.CenteredText
-import com.example.zar.features.freelance.presentation.screen.DateField
-import com.example.zar.features.freelance.presentation.screen.Loading
-import com.example.zar.features.freelance.presentation.screen.SectionLabel
-import com.example.zar.features.freelance.presentation.screen.display
 import com.example.zar.features.transactions.presentation.income.IncomeFormat
-import com.example.zar.core.presentation.theme.ZarGradients
-import com.example.zar.features.transactions.presentation.income.screen.SummaryHeaderCard
-import com.example.zar.core.presentation.theme.ZarSansFont
 
-/** "+ LKR 40,000", "− LKR 10,000" or "LKR 0". */
-private fun FiatMoney.signed(): String = when {
-    isPositive -> "+ ${display()}"
-    isNegative -> "− ${FiatMoney(-minorUnits, currency).display()}"
-    else -> display()
-}
-
-private fun CryptoMessage.textRes(): Int = when (this) {
+internal fun CryptoMessage.textRes(): Int = when (this) {
     CryptoMessage.NOT_SIGNED_IN -> R.string.crypto_message_not_signed_in
     CryptoMessage.FAILED -> R.string.crypto_message_failed
 }
 
-// --- Overview ------------------------------------------------------------------------------
-
-@OptIn(ExperimentalMaterial3Api::class)
+/** Z89–Z93 — Crypto: realized profit or loss, holdings, wallets and movements, with the record sheet on top. */
 @Composable
 fun CryptoScreen(
     onBack: () -> Unit,
-    onAddMovement: () -> Unit,
+    onOpenMovement: (String) -> Unit,
+    onAddAccount: () -> Unit,
     viewModel: CryptoViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    var undoing by remember { mutableStateOf<CryptoMovementRow?>(null) }
-    val portfolio = uiState.portfolio
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.crypto_title)) },
-                navigationIcon = { TextButton(onClick = onBack) { Text(stringResource(R.string.action_back)) } },
-            )
-        },
-        floatingActionButton = {
-            if (portfolio?.wallets?.isNotEmpty() == true) {
-                val addDescription = stringResource(R.string.crypto_add_movement)
-                FloatingActionButton(
-                    onClick = onAddMovement,
-                    modifier = Modifier.semantics { contentDescription = addDescription },
-                    shape = CircleShape,
-                    containerColor = MaterialTheme.colorScheme.inverseSurface,
-                    contentColor = MaterialTheme.colorScheme.inverseOnSurface,
-                ) { Text("+", fontSize = 28.sp) }
-            }
-        },
-    ) { innerPadding ->
-        when {
-            uiState.isLoading -> Loading(Modifier.padding(innerPadding))
-            uiState.loadFailed || portfolio == null -> CenteredText(stringResource(R.string.crypto_load_failed), Modifier.padding(innerPadding))
-            else -> CryptoContent(portfolio, uiState, viewModel, onUndo = { undoing = it }, modifier = Modifier.padding(innerPadding))
-        }
-    }
-
-    uiState.editingCostFor?.let { wallet -> OpeningCostDialog(wallet, uiState, viewModel) }
-    undoing?.let { row ->
-        ZarAlertDialog(
-            onDismissRequest = { undoing = null },
-            title = { Text(stringResource(R.string.crypto_undo_title)) },
-            text = { Text(stringResource(R.string.crypto_undo_body)) },
-            confirmButton = {
-                TextButton(onClick = {
-                    undoing = null
-                    viewModel.undo(row)
-                }) { Text(stringResource(R.string.crypto_undo), color = MaterialTheme.colorScheme.error) }
-            },
-            dismissButton = { TextButton(onClick = { undoing = null }) { Text(stringResource(R.string.action_cancel)) } },
+    // Each opening gets a fresh form (and a fresh transfer id), so one sheet can never save twice.
+    var recordSession by rememberSaveable { mutableStateOf<Int?>(null) }
+    var nextSession by rememberSaveable { mutableIntStateOf(0) }
+    CryptoContent(
+        uiState = uiState,
+        onBack = onBack,
+        onRetry = viewModel::retry,
+        onOpenMovement = { onOpenMovement(it.outEntry.id.value) },
+        onSetCost = viewModel::editCost,
+        onRecord = { recordSession = nextSession++ },
+        onAddAccount = onAddAccount,
+    )
+    uiState.editingCostFor?.let { wallet ->
+        OpeningCostSheet(
+            wallet = wallet,
+            uiState = uiState,
+            onCostChange = viewModel::onCostChange,
+            onApproximateChange = viewModel::onCostApproximateChange,
+            onSave = viewModel::saveCost,
+            onDismiss = viewModel::dismissCost,
         )
     }
+    recordSession?.let { session -> RecordMovementSheet(session, onDismiss = { recordSession = null }) }
 }
 
 @Composable
-private fun CryptoContent(
-    portfolio: CryptoPortfolio,
+internal fun CryptoContent(
     uiState: CryptoUiState,
-    viewModel: CryptoViewModel,
-    onUndo: (CryptoMovementRow) -> Unit,
-    modifier: Modifier,
+    onBack: () -> Unit,
+    onRetry: () -> Unit,
+    onOpenMovement: (CryptoMovementRow) -> Unit,
+    onSetCost: (Account) -> Unit,
+    onRecord: () -> Unit,
+    onAddAccount: () -> Unit,
 ) {
-    val cryptoListState = rememberLazyListState()
-    val cryptoHeroOffset = cryptoListState.heroDisplacement()
-    LazyColumn(
-        state = cryptoListState,
-        modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 96.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        item(key = ZarHeroItemKey) {
-            SummaryHeaderCard(
-                label = stringResource(R.string.crypto_realized_label),
-                amount = portfolio.realized.signed(),
-                caption = if (portfolio.unknownResultCount == 0) {
-                    stringResource(R.string.crypto_realized_caption)
-                } else {
-                    pluralStringResource(R.plurals.crypto_unknown_results, portfolio.unknownResultCount, portfolio.unknownResultCount)
-                },
-                modifier = Modifier.heroParallax(cryptoHeroOffset, ZarMotion.PARALLAX_TEXT, ZarMotion.ParallaxTextCap),
-                brush = ZarGradients.crypto,
-            )
-        }
-        uiState.message?.let { item { Text(stringResource(it.textRes()), color = MaterialTheme.colorScheme.error, fontFamily = ZarSansFont) } }
-        if (portfolio.wallets.isEmpty()) {
-            item { CenteredText(stringResource(R.string.crypto_no_wallets), Modifier.padding(top = 32.dp)) }
-            return@LazyColumn
+    val colors = ZarTheme.colors
+    val scroll = rememberScrollState()
+    var heroHeight by remember { mutableIntStateOf(0) }
+    val pastHero by remember { derivedStateOf { heroHeight > 0 && scroll.value > heroHeight - 120 } }
+    StatusBarGlyphs(onDarkHero = !pastHero)
+    val portfolio = uiState.portfolio
+    val failed = uiState.loadFailed && portfolio == null
+    // Cards rise in on the first visit only; coming back from a movement shows them in place.
+    var firstVisit by rememberSaveable { mutableStateOf(true) }
+    val play = remember { firstVisit }
+    LaunchedEffect(portfolio != null) { if (portfolio != null) firstVisit = false }
+    // While the page scrolls, the hero's words drift up a little slower than the page and fade, as on Home.
+    val heroOffset = scroll.heroDisplacement()
+    val motion = LocalZarMotion.current
+    val heroContent = Modifier
+        .heroParallax(heroOffset, ZarMotion.PARALLAX_TEXT, ZarMotion.ParallaxTextCap)
+        .graphicsLayer {
+            if (motion.allowsSpatialMotion && heroHeight > 0) alpha = (1f - scroll.value / (heroHeight * 0.7f)).coerceIn(0f, 1f)
         }
 
-        item { SectionLabel(stringResource(R.string.crypto_holdings), Modifier.padding(top = 8.dp)) }
-        items(portfolio.assets, key = { "asset-${it.currency.code}" }) { AssetCard(it) }
-
-        item { SectionLabel(stringResource(R.string.crypto_wallets), Modifier.padding(top = 8.dp)) }
-        items(portfolio.wallets, key = { "wallet-${it.id.value}" }) { wallet ->
-            WalletCard(wallet, portfolio.openingCosts[wallet.id]?.let { it.cost to it.isApproximate }, onSetCost = { viewModel.editCost(wallet) })
+    Box(Modifier.fillMaxSize().background(colors.canvas)) {
+        Column(Modifier.fillMaxSize().verticalScroll(scroll)) {
+            Hero(portfolio, failed, onBack, Modifier.onSizeChanged { heroHeight = it.height }, heroContent)
+            when {
+                uiState.isLoading -> Box(Modifier.fillMaxWidth().padding(top = 72.dp), Alignment.Center) {
+                    CircularProgressIndicator(color = colors.accentSelected)
+                }
+                failed -> NoticeCard(
+                    icon = R.drawable.ic_ph_wifi_high,
+                    title = stringResource(R.string.crypto_load_failed_title),
+                    body = stringResource(R.string.crypto_load_failed_body),
+                    modifier = Modifier.padding(top = 22.dp).riseIn(0, play = true).testTag("crypto-load-failed"),
+                )
+                portfolio == null -> Unit
+                portfolio.wallets.isEmpty() -> NoticeCard(
+                    icon = R.drawable.ic_ph_wallet,
+                    title = stringResource(R.string.crypto_no_wallets_title),
+                    body = stringResource(R.string.crypto_no_wallets_body),
+                    modifier = Modifier.padding(top = 22.dp).riseIn(0, play).testTag("crypto-no-wallets"),
+                    card = false,
+                )
+                else -> Sections(portfolio, uiState.message, onOpenMovement, onSetCost, play)
+            }
+            // Room so the last card clears the floating button.
+            Spacer(Modifier.height(124.dp))
         }
-
-        item { SectionLabel(stringResource(R.string.crypto_movements), Modifier.padding(top = 8.dp)) }
-        if (portfolio.movements.isEmpty()) item { CenteredText(stringResource(R.string.crypto_no_movements)) }
-        items(portfolio.movements, key = { it.outEntry.id.value }) { row -> MovementCard(row, onClick = { onUndo(row) }) }
+        // Once the dark hero has scrolled away, the canvas fades in under the status bar so the clock never sits on a card.
+        val statusBar = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+        Box(
+            Modifier.fillMaxWidth().height(statusBar + 28.dp)
+                .graphicsLayer { alpha = if (heroHeight == 0) 0f else ((scroll.value - (heroHeight - 160)) / 60f).coerceIn(0f, 1f) }
+                .background(Brush.verticalGradient(0f to colors.canvas, 0.65f to colors.canvas, 1f to colors.canvas.copy(alpha = 0f))),
+        )
+        val bottom = Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 20.dp)
+        when {
+            uiState.isLoading -> Unit
+            failed -> ZarButton(stringResource(R.string.crypto_try_again), onClick = onRetry, modifier = bottom.testTag("crypto-retry"))
+            portfolio?.wallets?.isEmpty() == true ->
+                ZarButton(stringResource(R.string.crypto_add_account), onClick = onAddAccount, modifier = bottom.testTag("crypto-add-account"))
+            portfolio != null -> ZarAddPill(stringResource(R.string.crypto_record_movement), onClick = onRecord, modifier = bottom.testTag("crypto-record"))
+        }
     }
 }
 
 @Composable
-private fun AssetCard(position: AssetPosition) {
-    OutlinedCard(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(horizontal = 16.dp, vertical = 14.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(position.currency.code, style = MaterialTheme.typography.bodyLarge, fontFamily = ZarSansFont, modifier = Modifier.weight(1f))
-                val quantity = position.quantity.display()
+private fun Hero(portfolio: CryptoPortfolio?, failed: Boolean, onBack: () -> Unit, modifier: Modifier = Modifier, contentModifier: Modifier = Modifier) {
+    if (failed || portfolio == null) {
+        CryptoHero(
+            amount = if (failed) "—" else "",
+            caption = if (failed) stringResource(R.string.crypto_unavailable) else "",
+            status = if (failed) stringResource(R.string.crypto_status_connection) else null,
+            onBack = onBack,
+            modifier = modifier,
+            contentModifier = contentModifier,
+        )
+        return
+    }
+    val status = CryptoOverview.heroStatus(portfolio)
+    CryptoHero(
+        amount = portfolio.realized.signed(),
+        caption = if (portfolio.unknownResultCount == 0) {
+            stringResource(R.string.crypto_realized_caption)
+        } else {
+            pluralStringResource(R.plurals.crypto_unknown_results, portfolio.unknownResultCount, portfolio.unknownResultCount)
+        },
+        status = when (status) {
+            CryptoHeroStatus.NoWallets -> stringResource(R.string.crypto_status_no_wallets)
+            CryptoHeroStatus.OpeningBalancesOnly -> stringResource(R.string.crypto_status_opening_only)
+            CryptoHeroStatus.NoSalesYet -> stringResource(R.string.crypto_status_no_sales)
+            CryptoHeroStatus.KnownResultsOnly -> stringResource(R.string.crypto_status_known_only)
+            is CryptoHeroStatus.Realized -> pluralStringResource(
+                if (status.approximate) R.plurals.crypto_status_realized_approximate else R.plurals.crypto_status_realized,
+                status.sales,
+                status.sales,
+            )
+        },
+        onBack = onBack,
+        modifier = modifier,
+        contentModifier = contentModifier,
+    )
+}
+
+@Composable
+private fun Sections(
+    portfolio: CryptoPortfolio,
+    message: CryptoMessage?,
+    onOpenMovement: (CryptoMovementRow) -> Unit,
+    onSetCost: (Account) -> Unit,
+    play: Boolean,
+) {
+    var order = 0
+    // settleSize: a movement added or undone grows or shrinks the list smoothly instead of jumping.
+    Column(Modifier.padding(top = 18.dp).settleSize(), verticalArrangement = Arrangement.spacedBy(9.dp)) {
+        message?.let { FieldError(stringResource(it.textRes()), Modifier.padding(horizontal = 22.dp)) }
+        if (portfolio.assets.isNotEmpty()) {
+            BillSectionHeader(stringResource(R.string.crypto_holdings))
+            portfolio.assets.forEach { HoldingCard(it, Modifier.riseIn(order++, play)) }
+            Spacer(Modifier.height(13.dp))
+        }
+
+        BillSectionHeader(stringResource(R.string.crypto_wallets))
+        BillCard(Modifier.riseIn(order++, play).testTag("crypto-wallets")) {
+            portfolio.wallets.forEachIndexed { index, wallet ->
+                if (index > 0) ZarDivider()
+                WalletRow(wallet, portfolio.openingCosts[wallet.id], onSetCost = { onSetCost(wallet) })
+            }
+        }
+        Spacer(Modifier.height(13.dp))
+
+        BillSectionHeader(stringResource(R.string.crypto_movements))
+        if (portfolio.movements.isEmpty()) {
+            BillNote(stringResource(R.string.crypto_no_movements))
+        } else {
+            portfolio.movements.forEach { row ->
+                key(row.outEntry.id.value) { MovementCard(row, onClick = { onOpenMovement(row) }, modifier = Modifier.riseIn(order++, play)) }
+            }
+        }
+    }
+}
+
+/** Z89 holding: coin, quantity, and what it cost on average, or a warning when part of the cost is unknown. */
+@Composable
+private fun HoldingCard(position: AssetPosition, modifier: Modifier = Modifier) {
+    val colors = ZarTheme.colors
+    val code = position.currency.code
+    val quantity = position.quantity.withCode()
+    BillCard(modifier.testTag("crypto-holding-$code")) {
+        CryptoRow(
+            icon = currencyIcon(position.currency),
+            title = code,
+            lines = listOf(
+                stringResource(if (position.isCostApproximate) R.string.crypto_approximate else currencyName(code)) to null,
+            ),
+            end = if (position.isQuantityComplete) quantity else stringResource(R.string.crypto_at_least, quantity),
+        )
+        Column(Modifier.padding(bottom = 14.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+            if (position.unknownCostQuantity.isPositive) {
                 Text(
-                    if (position.isQuantityComplete) quantity else stringResource(R.string.crypto_at_least, quantity),
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontFamily = ZarSansFont,
+                    stringResource(R.string.crypto_cost_unknown_for, position.unknownCostQuantity.withCode()),
+                    style = ZarType.bodyCaption.copy(lineHeight = 15.sp),
+                    color = colors.danger,
                 )
             }
-            val costLine = listOfNotNull(
-                if (position.knownCost.isPositive) stringResource(R.string.crypto_cost, position.knownCost.display()) else null,
-                position.averageCost?.let { stringResource(R.string.crypto_avg_cost, it.display()) },
-                if (position.isCostApproximate) stringResource(R.string.crypto_approximate) else null,
-            )
-            if (costLine.isNotEmpty()) Detail(costLine.joinToString(" · "))
-            if (position.unknownCostQuantity.isPositive) {
-                Detail(stringResource(R.string.crypto_cost_unknown_for, position.unknownCostQuantity.display()), warning = true)
-            }
-            if (!position.realized.isZero) Detail(stringResource(R.string.crypto_realized_asset, position.realized.signed()))
+            if (position.knownCost.isPositive) Caption(stringResource(R.string.crypto_cost, position.knownCost.withCode()))
+            position.averageCost?.let { Caption(stringResource(R.string.crypto_avg_cost, it.withCode(), code)) }
         }
     }
 }
 
+private fun currencyName(code: String): Int = when (code) {
+    "BTC" -> R.string.crypto_name_btc
+    "ETH" -> R.string.crypto_name_eth
+    "USDT" -> R.string.crypto_name_usdt
+    else -> R.string.crypto_name_other
+}
+
 @Composable
-private fun WalletCard(wallet: Account, cost: Pair<FiatMoney, Boolean>?, onSetCost: () -> Unit) {
-    OutlinedCard(Modifier.fillMaxWidth()) {
-        Row(Modifier.padding(start = 16.dp, end = 8.dp, top = 10.dp, bottom = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                Text(wallet.name, style = MaterialTheme.typography.bodyLarge, fontFamily = ZarSansFont)
-                val opening = when (val balance = wallet.openingBalance) {
-                    is OpeningBalance.Known -> stringResource(R.string.crypto_opening, balance.amount.display())
-                    is OpeningBalance.Approximate -> stringResource(R.string.crypto_opening, balance.amount.display()) + " (" + stringResource(R.string.crypto_approximate) + ")"
-                    OpeningBalance.Unknown -> stringResource(R.string.crypto_opening_unknown)
-                }
-                val costText = cost?.let { (amount, approximate) ->
-                    stringResource(R.string.crypto_opening_cost, amount.display()) + if (approximate) " (" + stringResource(R.string.crypto_approximate) + ")" else ""
-                } ?: stringResource(R.string.crypto_opening_cost_missing)
-                Detail("$opening · $costText", warning = cost == null && wallet.openingBalance !is OpeningBalance.Unknown && hasCoins(wallet))
-            }
-            TextButton(onClick = onSetCost) { Text(stringResource(R.string.crypto_set_cost)) }
-        }
+private fun Caption(text: String) {
+    Text(text, style = ZarType.bodyCaption.copy(lineHeight = 15.sp), color = ZarTheme.colors.textSecondary)
+}
+
+/** Z89/Z90 wallet: what it opened with and what that cost; "Set cost" when coins have no cost yet. */
+@Composable
+private fun WalletRow(wallet: Account, cost: OpeningCost?, onSetCost: () -> Unit) {
+    val colors = ZarTheme.colors
+    val approximate = stringResource(R.string.crypto_approximate)
+    val opening = when (val balance = wallet.openingBalance) {
+        is OpeningBalance.Known -> stringResource(R.string.crypto_opening, balance.amount.withCode())
+        is OpeningBalance.Approximate -> stringResource(R.string.crypto_opening, balance.amount.withCode()) + " · " + approximate
+        OpeningBalance.Unknown -> stringResource(R.string.crypto_opening_unknown)
     }
+    val missing = cost == null && hasCoins(wallet)
+    val costLine = when {
+        cost != null -> stringResource(R.string.crypto_opening_cost, cost.cost.withCode())
+        missing -> stringResource(R.string.crypto_opening_cost_missing)
+        else -> stringResource(R.string.crypto_opening_cost, FiatMoney(0, Currencies.LKR).withCode())
+    }
+    CryptoRow(
+        icon = R.drawable.ic_ph_wallet,
+        title = wallet.name,
+        lines = listOf(opening to if (missing) colors.danger else null, costLine to if (missing) colors.danger else null),
+        end = if (missing) stringResource(R.string.crypto_set_cost) else null,
+        onEndClick = if (missing) onSetCost else null,
+        onClick = onSetCost,
+        modifier = Modifier.testTag("crypto-wallet-${wallet.id.value}"),
+    )
 }
 
 private fun hasCoins(wallet: Account): Boolean = when (val balance = wallet.openingBalance) {
@@ -252,237 +340,66 @@ private fun hasCoins(wallet: Account): Boolean = when (val balance = wallet.open
 }
 
 @Composable
-private fun MovementCard(row: CryptoMovementRow, onClick: () -> Unit) {
-    val out = row.outEntry.current
-    val inTx = row.inEntry.current
-    val title = when (row.kind) {
-        CryptoMovementKind.BUY -> stringResource(R.string.crypto_kind_buy, inTx.amount.currency.code)
-        CryptoMovementKind.SELL -> stringResource(R.string.crypto_kind_sell, out.amount.currency.code)
-        CryptoMovementKind.TRADE -> stringResource(R.string.crypto_kind_trade, out.amount.currency.code, inTx.amount.currency.code)
-        CryptoMovementKind.MOVE -> stringResource(R.string.crypto_kind_move, out.amount.currency.code)
+internal fun movementTitle(row: CryptoMovementRow): String {
+    val out = row.outEntry.current.amount.currency.code
+    val into = row.inEntry.current.amount.currency.code
+    return when (row.kind) {
+        CryptoMovementKind.BUY -> stringResource(R.string.crypto_kind_buy, into)
+        CryptoMovementKind.SELL -> stringResource(R.string.crypto_kind_sell, out)
+        CryptoMovementKind.TRADE -> stringResource(R.string.crypto_kind_trade, out, into)
+        CryptoMovementKind.MOVE -> stringResource(R.string.crypto_kind_move, out)
     }
-    val value = CurrencyConverter.reportingAmount(out.amount, out.reportingConversion)
-        ?: CurrencyConverter.reportingAmount(inTx.amount, inTx.reportingConversion)
-    OutlinedCard(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
-        Row(Modifier.padding(horizontal = 16.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                Text(title, style = MaterialTheme.typography.bodyLarge, fontFamily = ZarSansFont)
-                Detail("${row.fromName} → ${row.toName} · ${IncomeFormat.shortDate(row.date)}")
-                Detail(value?.display() ?: stringResource(R.string.crypto_no_value), warning = value == null && row.kind != CryptoMovementKind.MOVE)
-            }
-            Spacer(Modifier.width(12.dp))
-            Column(horizontalAlignment = Alignment.End) {
-                Text("− ${out.amount.display()}", style = MaterialTheme.typography.bodySmall, fontFamily = ZarSansFont)
-                Text("+ ${inTx.amount.display()}", style = MaterialTheme.typography.bodySmall, fontFamily = ZarSansFont)
-                row.result?.let { result ->
-                    val amount = result.amount
-                    val text = when {
-                        amount == null -> stringResource(R.string.crypto_result_unknown)
-                        amount.isNegative -> stringResource(R.string.crypto_loss, FiatMoney(-amount.minorUnits, amount.currency).display())
-                        else -> stringResource(R.string.crypto_profit, amount.display())
-                    }
-                    Text(
-                        text,
-                        style = MaterialTheme.typography.labelSmall,
-                        fontFamily = ZarSansFont,
-                        color = if (amount == null || amount.isNegative) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
+}
+
+/** Z89b movement: what it was, between which accounts, both amounts, and the profit or loss for a sale. */
+@Composable
+private fun MovementCard(row: CryptoMovementRow, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val colors = ZarTheme.colors
+    val amounts = stringResource(R.string.crypto_movement_amounts, row.outEntry.current.amount.withCode(), row.inEntry.current.amount.withCode())
+    val result = row.result?.let { r ->
+        val amount = r.amount
+        when {
+            amount == null -> stringResource(R.string.crypto_result_unknown) to colors.danger
+            amount.isNegative -> stringResource(R.string.crypto_loss, FiatMoney(-amount.minorUnits, amount.currency).withCode()) to colors.danger
+            else -> stringResource(R.string.crypto_profit, amount.withCode()) to colors.textIncome
+        }
+    }
+    val noValue = if (row.result == null && row.kind != CryptoMovementKind.MOVE && CryptoOverview.lkrValue(row) == null) {
+        stringResource(R.string.crypto_no_value) to colors.danger
+    } else null
+    ZarCard(
+        modifier.padding(horizontal = 10.dp).fillMaxWidth().testTag("crypto-movement"),
+        onClick = onClick,
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
+    ) {
+        CryptoRow(
+            icon = R.drawable.ic_ph_arrows_left_right,
+            title = movementTitle(row),
+            lines = listOf("${row.fromName} → ${row.toName} · ${BillFormat.dayMonth(row.date)}" to null),
+        )
+        Column(Modifier.padding(bottom = 14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(amounts, style = ZarType.bodyS.copy(lineHeight = 18.sp), color = colors.textPrimary)
+            listOfNotNull(result, noValue).forEach { (text, color) ->
+                Text(text, style = ZarType.bodyCaption.copy(lineHeight = 15.sp), color = color)
             }
         }
     }
 }
 
+/** Z91/Z93: an icon, a short title and one sentence, on a soft card or straight on the canvas. */
 @Composable
-private fun Detail(text: String, warning: Boolean = false) {
-    Text(
-        text,
-        style = MaterialTheme.typography.bodySmall,
-        fontFamily = ZarSansFont,
-        color = if (warning) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
-    )
-}
-
-@Composable
-private fun OpeningCostDialog(wallet: Account, uiState: CryptoUiState, viewModel: CryptoViewModel) {
-    ZarAlertDialog(
-        onDismissRequest = viewModel::dismissCost,
-        title = { Text(stringResource(R.string.crypto_cost_title, wallet.name)) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(stringResource(R.string.crypto_cost_body), style = MaterialTheme.typography.bodySmall)
-                OutlinedTextField(
-                    value = uiState.costText,
-                    onValueChange = viewModel::onCostChange,
-                    label = { Text(stringResource(R.string.crypto_cost_field)) },
-                    prefix = { Text("LKR ", fontFamily = ZarSansFont) },
-                    isError = uiState.costInvalid,
-                    supportingText = if (uiState.costInvalid) {
-                        { Text(stringResource(R.string.crypto_cost_invalid)) }
-                    } else null,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    visualTransformation = amountFieldTransformation(),
-                    singleLine = true,
-                )
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Checkbox(checked = uiState.costApproximate, onCheckedChange = viewModel::onCostApproximateChange)
-                    Text(stringResource(R.string.crypto_cost_approximate))
-                }
-            }
-        },
-        confirmButton = { TextButton(onClick = viewModel::saveCost, enabled = !uiState.isSaving) { Text(stringResource(R.string.income_save)) } },
-        dismissButton = { TextButton(onClick = viewModel::dismissCost) { Text(stringResource(R.string.action_cancel)) } },
-    )
-}
-
-// --- Movement form -------------------------------------------------------------------------
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun CryptoMovementScreen(
-    onDone: () -> Unit,
-    viewModel: CryptoMovementViewModel = hiltViewModel(),
-) {
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    LaunchedEffect(uiState.isFinished) { if (uiState.isFinished) onDone() }
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.crypto_movement_title)) },
-                navigationIcon = { TextButton(onClick = onDone) { Text(stringResource(R.string.action_back)) } },
-            )
-        },
-    ) { innerPadding ->
-        if (uiState.isLoading) {
-            Loading(Modifier.padding(innerPadding))
-            return@Scaffold
-        }
-        val problems = uiState.problems
-        Column(
-            Modifier.fillMaxSize().padding(innerPadding).imePadding().verticalScroll(rememberScrollState()).padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            AccountChooser(
-                label = stringResource(R.string.crypto_from),
-                accounts = uiState.accounts,
-                selected = uiState.fromId,
-                error = when {
-                    CryptoProblem.FROM_MISSING in problems -> stringResource(R.string.crypto_error_account)
-                    else -> null
-                },
-                onSelect = viewModel::onFromSelect,
-            )
-            AccountChooser(
-                label = stringResource(R.string.crypto_to),
-                accounts = uiState.accounts,
-                selected = uiState.toId,
-                error = when {
-                    CryptoProblem.TO_MISSING in problems -> stringResource(R.string.crypto_error_account)
-                    CryptoProblem.SAME_ACCOUNT in problems -> stringResource(R.string.crypto_error_same)
-                    CryptoProblem.NO_CRYPTO_ACCOUNT in problems -> stringResource(R.string.crypto_error_no_crypto)
-                    else -> null
-                },
-                onSelect = viewModel::onToSelect,
-            )
-
-            uiState.kind?.let { kind ->
-                Text(
-                    stringResource(
-                        when (kind) {
-                            CryptoMovementKind.BUY -> R.string.crypto_explain_buy
-                            CryptoMovementKind.SELL -> R.string.crypto_explain_sell
-                            CryptoMovementKind.TRADE -> R.string.crypto_explain_trade
-                            CryptoMovementKind.MOVE -> R.string.crypto_explain_move
-                        },
-                    ),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-
-            AmountField(
-                label = stringResource(R.string.crypto_sent),
-                value = uiState.sent,
-                code = uiState.from?.currency?.code,
-                error = amountError(problems, CryptoProblem.SENT_MISSING, CryptoProblem.SENT_INVALID),
-                hint = null,
-                onChange = viewModel::onSentChange,
-            )
-            AmountField(
-                label = stringResource(R.string.crypto_received),
-                value = uiState.received,
-                code = uiState.to?.currency?.code,
-                error = amountError(problems, CryptoProblem.RECEIVED_MISSING, CryptoProblem.RECEIVED_INVALID),
-                hint = if (uiState.kind == CryptoMovementKind.MOVE) stringResource(R.string.crypto_received_same) else null,
-                onChange = viewModel::onReceivedChange,
-            )
-            if (uiState.showValue) {
-                AmountField(
-                    label = stringResource(R.string.crypto_value),
-                    value = uiState.lkrValue,
-                    code = "LKR",
-                    error = if (CryptoProblem.VALUE_INVALID in problems) stringResource(R.string.crypto_error_value_invalid) else null,
-                    hint = stringResource(R.string.crypto_value_hint),
-                    onChange = viewModel::onValueChange,
-                )
-            }
-            DateField(stringResource(R.string.crypto_date), uiState.date, enabled = true, onSelect = viewModel::onDateSelect)
-            if (CryptoProblem.DATE_IN_FUTURE in problems) Text(stringResource(R.string.crypto_error_date_future), color = MaterialTheme.colorScheme.error)
-            OutlinedTextField(
-                value = uiState.note,
-                onValueChange = viewModel::onNoteChange,
-                label = { Text(stringResource(R.string.crypto_note)) },
-                isError = CryptoProblem.NOTE_TOO_LONG in problems,
-                supportingText = if (CryptoProblem.NOTE_TOO_LONG in problems) {
-                    { Text(stringResource(R.string.crypto_error_too_long)) }
-                } else null,
-                modifier = Modifier.fillMaxWidth(),
-            )
-            uiState.message?.let { Text(stringResource(it.textRes()), color = MaterialTheme.colorScheme.error, fontFamily = ZarSansFont) }
-            Button(onClick = viewModel::save, enabled = !uiState.isSaving, modifier = Modifier.fillMaxWidth().height(52.dp)) {
-                Text(stringResource(R.string.income_save))
-            }
+private fun NoticeCard(icon: Int, title: String, body: String, modifier: Modifier = Modifier, card: Boolean = true) {
+    val colors = ZarTheme.colors
+    val content: @Composable () -> Unit = {
+        Column(Modifier.padding(horizontal = 14.dp, vertical = 20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            ZarIcon(icon, size = 18.dp, tint = colors.iconMuted, modifier = if (card) Modifier.align(Alignment.CenterHorizontally) else Modifier)
+            Text(title, style = ZarType.bodyL.copy(lineHeight = 22.sp), color = colors.textPrimary, modifier = Modifier.padding(top = 6.dp))
+            Text(body, style = ZarType.bodyS.copy(lineHeight = 19.sp), color = colors.textSecondary)
         }
     }
-}
-
-@Composable
-private fun amountError(problems: Set<CryptoProblem>, missing: CryptoProblem, invalid: CryptoProblem): String? = when {
-    missing in problems -> stringResource(R.string.crypto_error_amount_missing)
-    invalid in problems -> stringResource(R.string.crypto_error_amount_invalid)
-    else -> null
-}
-
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-private fun AccountChooser(label: String, accounts: List<Account>, selected: AccountId?, error: String?, onSelect: (AccountId) -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        SectionLabel(label)
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            accounts.forEach { account ->
-                FilterChip(
-                    selected = account.id == selected,
-                    onClick = { onSelect(account.id) },
-                    label = { Text("${account.name} · ${account.currency.code}", fontFamily = ZarSansFont) },
-                )
-            }
-        }
-        error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
+    if (card) {
+        Box(modifier.padding(horizontal = 10.dp).fillMaxWidth().background(colors.subtle, ZarShapes.lg)) { content() }
+    } else {
+        Box(modifier.padding(horizontal = 10.dp).fillMaxWidth()) { content() }
     }
-}
-
-@Composable
-private fun AmountField(label: String, value: String, code: String?, error: String?, hint: String?, onChange: (String) -> Unit) {
-    OutlinedTextField(
-        value = value,
-        onValueChange = onChange,
-        label = { Text(label) },
-        prefix = code?.let { { Text("$it ", fontFamily = ZarSansFont) } },
-        isError = error != null,
-        supportingText = (error ?: hint)?.let { { Text(it) } },
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-        visualTransformation = amountFieldTransformation(),
-        singleLine = true,
-        modifier = Modifier.fillMaxWidth(),
-    )
 }
