@@ -1,8 +1,14 @@
 #!/bin/bash
-# Emulator-only display acceptance. Refuses physical devices and restores settings on exit.
+# Display acceptance. Refuses physical devices unless ZAR_ALLOW_PHYSICAL=1 and ZAR_PACKAGE names a side-by-side build
+# (for example com.example.zar.perf), so a phone's real app and data are never launched or changed. Settings are
+# restored on exit.
 set -euo pipefail
 serial="${1:-emulator-5556}"
-case "$serial" in emulator-*) ;; *) echo 'An emulator serial is required' >&2; exit 2;; esac
+pkg="${ZAR_PACKAGE:-com.example.zar}"
+case "$serial" in
+  emulator-*) ;;
+  *) [ "${ZAR_ALLOW_PHYSICAL:-}" = 1 ] && [ "$pkg" != com.example.zar ] || { echo 'A physical device needs ZAR_ALLOW_PHYSICAL=1 and a side-by-side ZAR_PACKAGE' >&2; exit 2; };;
+esac
 adb_bin="${ANDROID_SDK_ROOT:-$HOME/Library/Android/sdk}/platform-tools/adb"
 out_dir="${2:-docs/evidence/task6/display}"
 mkdir -p "$out_dir"
@@ -24,7 +30,7 @@ restore() {
 trap restore EXIT
 trap 'exit 130' INT TERM
 capture() {
-  "$adb_bin" -s "$serial" shell am start -S -W -n com.example.zar/.MainActivity >/dev/null
+  "$adb_bin" -s "$serial" shell am start -S -W -n "$pkg/com.example.zar.MainActivity" >/dev/null
   ready=false
   for attempt in $(seq 1 15); do
     "$adb_bin" -s "$serial" shell rm -f /sdcard/zar-task6-window.xml

@@ -42,6 +42,7 @@ class RuntimeAcceptanceEvidenceTest {
         }
         compose.waitUntilAtLeastOneExists(hasTestTag("received-amount"), 20_000)
         compose.waitUntil(20_000) { compose.onAllNodes(hasTestTag("home-goal-name") and hasText("New phone"), useUnmergedTree = true).fetchSemanticsNodes().size == 1 }
+        compose.waitUntil(20_000) { compose.onAllNodes(hasText("LKR 28,140"), useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty() }
         capture("01-home-bars-light")
         tag("received-chart").performTouchInput { click(androidx.compose.ui.geometry.Offset(width * .08f, height * .8f)) }
         capture("02-home-tooltip-light")

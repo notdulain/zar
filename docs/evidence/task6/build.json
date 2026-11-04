@@ -1,6 +1,6 @@
 {
-  "production_source_commit": "78aa06c28ad7bffce95186676bbd1dce551cfefb",
-  "debug_apk_sha256": "7ab43cdbb43dafa2656bc118bbdc7d0e19336fe98798638349243d2a6ec29561",
+  "production_source_commit": "3ecf1cf36e889d24bed8b0898315b8c186f04cc2",
+  "debug_apk_sha256": "eb962ffa183492ee0b89b24a780eab188e1d66e6176c19a1e302045d31810e02",
   "build_flags": [
     "zar.useEmulators=true",
     "zar.emulatorHost=10.0.2.2"
@@ -10,5 +10,6 @@
   "size": "1080x2400",
   "density_dpi": 420,
   "fixtures": "tools/task6-seed.mjs; local Auth/Firestore emulators only",
-  "phone": "Not modified during task 6"
+  "phone": "Not modified during task 6",
+  "physical_device": "Pixel 6a (Android 16), 60Hz only (display reports 60/30/20Hz); side-by-side com.example.zar.perf package, primary app and data untouched"
 }
