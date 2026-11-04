@@ -30,9 +30,17 @@ class RuntimeAcceptanceEvidenceTest {
     @Test fun recordedHomePlansSpendingAndAppearanceJourney() {
         EmulatorFirebase.requireEmulators()
         compose.waitUntilAtLeastOneExists(hasTestTag("email") or hasTestTag("nav-more"), 20_000)
-        runBlocking { FirebaseAuth.getInstance().signInWithEmailAndPassword("benchmark@zar.test", "benchmark-pass-1").await() }
+        runBlocking {
+            val auth = FirebaseAuth.getInstance()
+            com.example.zar.features.auth.step("fixture sign in") { auth.signInWithEmailAndPassword("benchmark@zar.test", "benchmark-pass-1").await() }
+            com.google.firebase.firestore.FirebaseFirestore.getInstance().enableNetwork().await()
+            val preference = com.example.zar.features.auth.step("fixture preference from server") { com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                .collection("users").document(auth.currentUser!!.uid).collection("planPreferences").document("main")
+                .get(com.google.firebase.firestore.Source.SERVER).await() }
+            org.junit.Assert.assertEquals("Local fixture main selection", "demo-phone", preference.getString("mainGoalId"))
+        }
         compose.waitUntilAtLeastOneExists(hasTestTag("received-amount"), 20_000)
-        compose.waitUntilExactlyOneExists(hasTestTag("home-goal-name") and hasText("New phone"), 20_000)
+        compose.waitUntil(20_000) { compose.onAllNodes(hasTestTag("home-goal-name") and hasText("New phone"), useUnmergedTree = true).fetchSemanticsNodes().size == 1 }
         capture("01-home-bars-light")
         tag("received-chart").performTouchInput { click(androidx.compose.ui.geometry.Offset(width * .08f, height * .8f)) }
         capture("02-home-tooltip-light")
@@ -47,7 +55,7 @@ class RuntimeAcceptanceEvidenceTest {
         tag("spending-screen").assertIsDisplayed()
         capture("06-spending-light")
         pressBack()
-        compose.onNodeWithText("Plans", useUnmergedTree = true).performScrollTo().performClick()
+        compose.onAllNodesWithText("Plans", useUnmergedTree = true).onFirst().performScrollTo().performClick()
         compose.waitUntilAtLeastOneExists(hasTestTag("plans-new-plan"), 15_000)
         capture("07-plans-light")
         tag("plans-new-plan").performClick()
@@ -59,6 +67,7 @@ class RuntimeAcceptanceEvidenceTest {
         capture("09-settings-light")
         tag("appearance-row").performScrollTo().performClick()
         tag("appearance-option-dark").performClick()
+        compose.waitUntil(15_000) { compose.onAllNodes(hasTestTag("appearance-row") and hasText("Dark", substring = true)).fetchSemanticsNodes().isNotEmpty() }
         capture("10-settings-dark")
         pressBack()
         tag("nav-plans").performClick()
@@ -70,5 +79,6 @@ class RuntimeAcceptanceEvidenceTest {
         tag("open-settings").performScrollTo().performClick()
         tag("appearance-row").performScrollTo().performClick()
         tag("appearance-option-light").performClick()
+        compose.waitUntil(15_000) { compose.onAllNodes(hasTestTag("appearance-row") and hasText("Light", substring = true)).fetchSemanticsNodes().isNotEmpty() }
     }
 }
