@@ -6,11 +6,12 @@ import com.example.zar.core.domain.model.AccountId
 import com.example.zar.core.domain.model.money.Currencies
 import com.example.zar.core.domain.model.money.Money
 import com.example.zar.features.plans.domain.model.GoalId
-import com.example.zar.features.plans.domain.model.MACBOOK_GOAL_ID
+import com.example.zar.features.plans.domain.model.newGoalId
 import com.example.zar.features.plans.domain.model.PlansOverview
 import com.example.zar.features.plans.domain.usecase.ObservePlansOverviewUseCase
 import com.example.zar.features.plans.domain.usecase.SaveGoalUseCase
 import com.example.zar.features.plans.domain.usecase.SetGoalAllocationUseCase
+import com.example.zar.features.plans.domain.usecase.SetMainGoalUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import java.time.LocalDate
@@ -26,12 +27,14 @@ import kotlinx.coroutines.launch
 enum class PlansMessage { INVALID_GOAL, INVALID_AMOUNT, ALLOCATION_TOO_LARGE, SAVE_FAILED }
 
 data class GoalEditorState(
+    /** The goal being edited; null while composing a new one. */
+    val goalId: GoalId? = null,
     val name: String = "MacBook fund",
     val target: String = "490000",
     val targetDate: LocalDate? = null,
 )
 
-data class AllocationEditorState(val accountId: AccountId? = null, val amount: String = "")
+data class AllocationEditorState(val goalId: GoalId? = null, val accountId: AccountId? = null, val amount: String = "")
 
 data class PlansUiState(
     val isLoading: Boolean = true,
@@ -43,6 +46,8 @@ data class PlansUiState(
     val message: PlansMessage? = null,
     /** Counts goals created from the New plan sheet, so the sheet can close once, after the save. */
     val goalCreatedCount: Int = 0,
+    /** The ID of the plan being created. Made on the first attempt and reused by every retry, so a retry never adds a second plan. */
+    val pendingGoalId: GoalId? = null,
 )
 
 @HiltViewModel
@@ -50,6 +55,7 @@ class PlansViewModel @Inject constructor(
     private val observePlans: ObservePlansOverviewUseCase,
     private val saveGoal: SaveGoalUseCase,
     private val setAllocation: SetGoalAllocationUseCase,
+    private val setMainGoal: SetMainGoalUseCase,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(PlansUiState())
@@ -60,11 +66,13 @@ class PlansViewModel @Inject constructor(
 
     fun retry() = observe()
 
-    fun openGoalEditor() {
-        val goal = _uiState.value.overview?.goal
+    fun openGoalEditor(goalId: GoalId? = null) {
+        val overview = _uiState.value.overview
+        val goal = goalId?.let { id -> overview?.goalById(id) } ?: overview?.goal
         _uiState.update {
             it.copy(
                 goalEditor = GoalEditorState(
+                    goalId = goal?.id,
                     name = goal?.name ?: "MacBook fund",
                     target = goal?.target?.toDecimal()?.toPlainString() ?: "490000",
                     targetDate = goal?.targetDate,
@@ -95,52 +103,70 @@ class PlansViewModel @Inject constructor(
             _uiState.update { it.copy(message = PlansMessage.INVALID_GOAL) }
             return
         }
+        // Editing addresses the exact plan. An editor opened with no plan is a new one and gets its own stable ID.
+        val goalId = editor.goalId
+            ?: _uiState.value.pendingGoalId
+            ?: newGoalId().also { fresh -> _uiState.update { it.copy(pendingGoalId = fresh) } }
         launchSave {
-            saveGoal(GoalId(MACBOOK_GOAL_ID), editor.name, target, editor.targetDate)
-                .onSuccess { _uiState.update { it.copy(goalEditor = null) } }
+            saveGoal(goalId, editor.name, target, editor.targetDate)
+                .onSuccess { _uiState.update { it.copy(goalEditor = null, pendingGoalId = null) } }
         }
     }
 
     /**
-     * Creates the one savings goal from the New plan sheet. Zar keeps a single goal, so when one exists this does nothing:
-     * the sheet offers Edit instead and nothing is ever replaced by a "new" plan. Until the plans have loaded it is not
-     * known whether a goal exists (and the goal ID is fixed), so nothing is written then either.
+     * Creates a new savings plan from the New plan sheet under its own stable ID, alongside any existing plans. The ID is made
+     * once per create attempt and kept until the save succeeds, so a retry rewrites the same plan instead of adding another.
+     * Until the plans have loaded nothing is written, because the catalog is not yet known.
      */
     fun createGoal(name: String, target: String, date: LocalDate?) {
-        val overview = _uiState.value.overview ?: return
-        if (overview.goal != null) return
+        if (_uiState.value.overview == null) return
         val amount = Money.parse(target, Currencies.LKR)
         if (name.isBlank() || name.length > 80 || amount == null || !amount.isPositive) {
             _uiState.update { it.copy(message = PlansMessage.INVALID_GOAL) }
             return
         }
+        val id = _uiState.value.pendingGoalId ?: newGoalId().also { fresh -> _uiState.update { it.copy(pendingGoalId = fresh) } }
+        // With no plan yet the new one becomes main explicitly, so adding more later can never move it by ordering.
+        val firstPlan = _uiState.value.overview?.goals.isNullOrEmpty()
         launchSave {
-            saveGoal(GoalId(MACBOOK_GOAL_ID), name.trim(), amount, date)
-                .onSuccess { _uiState.update { it.copy(goalCreatedCount = it.goalCreatedCount + 1, message = null) } }
+            saveGoal(id, name.trim(), amount, date)
+                .onSuccess { if (firstPlan) setMainGoal(id) }
+                .onSuccess {
+                    _uiState.update { it.copy(goalCreatedCount = it.goalCreatedCount + 1, pendingGoalId = null, message = null) }
+                }
         }
+    }
+
+    /** Makes [goalId] the main plan shown on Plans and Home. Nothing else changes. */
+    fun selectMainGoal(goalId: GoalId) {
+        if (_uiState.value.overview?.mainGoalId == goalId) return
+        launchSave { setMainGoal(goalId) }
     }
 
     fun clearMessage() = _uiState.update { it.copy(message = null) }
 
-    fun openAllocationEditor() {
+    fun openAllocationEditor(goalId: GoalId? = null) {
         val overview = _uiState.value.overview ?: return
-        val selected = overview.allocationAccounts.firstOrNull()?.account?.id ?: return
-        val existing = overview.goal?.allocations?.firstOrNull { it.accountId == selected }?.amount
+        val goal = goalId?.let(overview::goalById) ?: overview.goal ?: return
+        val selected = overview.allocationAccountsFor(goal.id).firstOrNull()?.account?.id ?: return
+        val existing = goal.allocations.firstOrNull { it.accountId == selected }?.amount
         _uiState.update {
             it.copy(
-                allocationEditor = AllocationEditorState(selected, existing?.toDecimal()?.toPlainString().orEmpty()),
+                allocationEditor = AllocationEditorState(goal.id, selected, existing?.toDecimal()?.toPlainString().orEmpty()),
                 message = null,
             )
         }
     }
 
     fun selectAllocationAccount(accountId: AccountId) {
-        val existing = _uiState.value.overview?.goal?.allocations
+        val state = _uiState.value
+        val goalId = state.allocationEditor?.goalId ?: state.overview?.goal?.id
+        val existing = goalId?.let { id -> state.overview?.goalById(id) }?.allocations
             ?.firstOrNull { it.accountId == accountId }
             ?.amount
         _uiState.update {
             it.copy(
-                allocationEditor = AllocationEditorState(accountId, existing?.toDecimal()?.toPlainString().orEmpty()),
+                allocationEditor = AllocationEditorState(goalId, accountId, existing?.toDecimal()?.toPlainString().orEmpty()),
                 message = null,
             )
         }
@@ -155,7 +181,7 @@ class PlansViewModel @Inject constructor(
     fun submitAllocation() {
         val state = _uiState.value
         val editor = state.allocationEditor ?: return
-        val goal = state.overview?.goal ?: return
+        val goal = (editor.goalId?.let { id -> state.overview?.goalById(id) } ?: state.overview?.goal) ?: return
         val accountId = editor.accountId ?: return
         val amount = Money.parse(editor.amount, goal.target.currency)
         if (amount == null || amount.isNegative) {

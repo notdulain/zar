@@ -23,6 +23,10 @@ data class ActivityFilter(
     val customTo: LocalDate? = null,
     val showVoided: Boolean = false,
     val query: String = "",
+    /** Narrows to one spending class, as when a breakdown row is opened. Null shows every kind of entry. */
+    val spendingClass: SpendingClass? = null,
+    /** Narrows to one breakdown row (see [com.example.zar.features.transactions.domain.category.SpendingKeys]). */
+    val categoryKey: String? = null,
 ) {
     /** How many choices differ from the default. The filter button shows a dot when this is above zero. */
     val activeCount: Int
@@ -31,6 +35,8 @@ data class ActivityFilter(
             preset != DatePreset.THIS_MONTH,
             showVoided,
             query.isNotBlank(),
+            spendingClass != null,
+            categoryKey != null,
         ).count { it }
 }
 

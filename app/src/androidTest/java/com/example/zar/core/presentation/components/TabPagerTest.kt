@@ -41,7 +41,7 @@ import org.junit.Test
 
 /**
  * The four tabs as one pager with the navbar outside it: tap and swipe stay in sync, the capsule follows the finger one for
- * one, a long jump never composes the pages in between, nested horizontal controls keep their own drags, and the pager is
+ * one, long jumps use the same page geometry as adjacent taps, nested horizontal controls keep their own drags, and the pager is
  * locked while a sheet or the keyboard is up.
  */
 class TabPagerTest {
@@ -214,18 +214,38 @@ class TabPagerTest {
     }
 
     @Test
-    fun aLongJumpNeverComposesThePagesBetween() {
+    fun aLongJumpUsesTheSameFullPagePushAsAnAdjacentTap() {
         show()
-        composedPages.clear()
-
+        compose.mainClock.autoAdvance = false
         compose.onNodeWithTag("nav-more").performClick()
+        compose.mainClock.advanceTimeBy(120)
+        val source = compose.onNodeWithTag("page-0").getUnclippedBoundsInRoot()
+        val target = compose.onNodeWithTag("page-3").getUnclippedBoundsInRoot()
+        assertTrue("source recedes left", source.left < 0.dp)
+        assertTrue("destination enters from the right", target.left > 4.dp)
+        compose.mainClock.autoAdvance = true
         compose.waitForIdle()
-
         assertEquals(3, tabs.pagerState.currentPage)
         compose.onNodeWithTag("nav-more").assertIsSelected()
-        assertFalse("Activity flashed by on a Home to More jump: $composedPages", 1 in composedPages)
-        assertFalse("Plans flashed by on a Home to More jump: $composedPages", 2 in composedPages)
-        assertEquals(3f, capsule.position, 0.01f)
+    }
+
+    @Test
+    fun returningToEarlierTabsAlwaysSlidesTheSourceRight() {
+        show()
+        for (destination in listOf("nav-plans" to 2, "nav-home" to 0)) {
+            compose.onNodeWithTag("nav-more").performClick()
+            compose.waitForIdle()
+            compose.mainClock.autoAdvance = false
+            compose.onNodeWithTag(destination.first).performClick()
+            compose.mainClock.advanceTimeBy(120)
+            val source = compose.onNodeWithTag("page-3").getUnclippedBoundsInRoot()
+            val target = compose.onNodeWithTag("page-${destination.second}").getUnclippedBoundsInRoot()
+            assertTrue("More must leave right for ${destination.first}: $source", source.left > 4.dp)
+            assertTrue("earlier tab returns from behind: $target", target.left < 0.dp)
+            compose.mainClock.autoAdvance = true
+            compose.waitForIdle()
+            assertEquals(destination.second, tabs.pagerState.currentPage)
+        }
     }
 
     @Test

@@ -12,6 +12,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.zar.core.presentation.components.LocalNavCapsuleController
+import com.example.zar.core.presentation.components.LocalNavContextActions
+import com.example.zar.core.presentation.components.NavContextActions
 import com.example.zar.core.presentation.components.LocalNavSession
 import com.example.zar.core.presentation.components.NavCapsuleController
 import com.example.zar.core.presentation.components.rememberNavSession
@@ -35,6 +37,7 @@ fun ZarRoot(
     val session by viewModel.session.collectAsStateWithLifecycle()
     when (val current = session) {
         SessionState.Loading -> SessionLoadingScreen()
+        is SessionState.Error -> SessionLoadingScreen(current.error, viewModel::retry)
         SessionState.SignedOut -> AuthNavHost()
         // A different user gets a brand-new graph.
         is SessionState.SignedIn -> key(current.user.id) {
@@ -42,6 +45,7 @@ fun ZarRoot(
             // The selected-capsule mover lives here too, so it is retained across every top-level route composition.
             CompositionLocalProvider(
                 LocalNavSession provides rememberNavSession(),
+                LocalNavContextActions provides remember { NavContextActions() },
                 LocalNavCapsuleController provides remember { NavCapsuleController() },
             ) {
                 Box {
@@ -58,7 +62,7 @@ fun ZarRoot(
 private fun AuthNavHost() {
     val navController = rememberNavController()
     // Sign in -> Register is a hierarchical push and Back reverses it, by the same policy as the signed-in graph.
-    val transitions = rememberZarRouteTransitions()
+    val transitions = rememberZarRouteTransitions(navController)
     NavHost(
         navController = navController,
         startDestination = SignInRoute,
@@ -66,6 +70,9 @@ private fun AuthNavHost() {
         exitTransition = transitions.exit,
         popEnterTransition = transitions.popEnter,
         popExitTransition = transitions.popExit,
+        // The Back gesture previews the same rightward slide as the toolbar Back button, never the default scale-down.
+        predictivePopEnterTransition = { transitions.popEnter(this) },
+        predictivePopExitTransition = { transitions.popExit(this) },
     ) {
         composable<SignInRoute> {
             SignInScreen(onCreateAccount = { navController.navigate(RegisterRoute) })

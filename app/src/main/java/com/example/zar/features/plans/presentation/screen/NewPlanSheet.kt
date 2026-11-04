@@ -48,7 +48,7 @@ import com.example.zar.core.presentation.components.ZarButton
 import com.example.zar.core.presentation.components.ZarButtonStyle
 import com.example.zar.core.presentation.components.ZarChip
 import com.example.zar.core.presentation.components.ZarIcon
-import com.example.zar.core.presentation.components.ZarMonoLabel
+import com.example.zar.core.presentation.components.ZarEyebrow
 import com.example.zar.core.presentation.components.sheetBackScrim
 import com.example.zar.core.presentation.components.sheetBackSlide
 import com.example.zar.core.presentation.format.formatWithCode
@@ -56,41 +56,35 @@ import com.example.zar.core.presentation.privacy.amountFieldTransformation
 import com.example.zar.core.presentation.theme.ZarShapes
 import com.example.zar.core.presentation.theme.ZarTheme
 import com.example.zar.core.presentation.theme.ZarType
+import com.example.zar.features.plans.presentation.viewmodel.PlansMessage
 import java.time.LocalDate
 import java.time.temporal.ChronoUnit
 
 /** The kinds of plan Zar can create today, each backed by a real flow. Nothing here is a placeholder. */
 enum class NewPlanType { Goal, Limit, Bill, Project }
 
-/** Which chip opens selected: the savings goal if none exists, then the weekly limit if unset, then a bill. */
-internal fun defaultNewPlanType(hasGoal: Boolean, hasWeeklyLimit: Boolean): NewPlanType = when {
-    !hasGoal -> NewPlanType.Goal
-    !hasWeeklyLimit -> NewPlanType.Limit
-    else -> NewPlanType.Bill
-}
-
 /** Months from [today] to [by], at least one, for "each month to reach it". */
 internal fun monthsToReach(today: LocalDate, by: LocalDate): Long = ChronoUnit.MONTHS.between(today, by).coerceAtLeast(1)
 
 /**
- * The Z21 "New plan" sheet. The type chips map to the flows that exist: a savings goal (one at a time; with a goal the sheet
- * offers Edit and never creates or overwrites), the weekly limit, a bill and a freelance project. [onDismiss] slides the
- * sheet right (see `SheetBackHost`); the other callbacks close it and open the real editor or form.
+ * The Z21 "New plan" sheet. The type chips map to the flows that exist: a savings goal (any number can coexist; each save
+ * creates its own plan and never touches another), the weekly limit, a bill and a freelance project. [onDismiss] slides the
+ * sheet right (see `SheetBackHost`); the other callbacks close it and open the real editor or form. A failed save keeps the
+ * form as typed and shows [message]; retrying reuses the same plan ID.
  */
 @Composable
 fun NewPlanSheet(
-    goalName: String?,
     hasWeeklyLimit: Boolean,
     isSaving: Boolean,
     onDismiss: () -> Unit,
     onCreateGoal: (name: String, target: String, date: LocalDate?) -> Unit,
-    onEditGoal: () -> Unit,
     onSetLimit: () -> Unit,
     onAddBill: () -> Unit,
     onAddProject: () -> Unit,
+    message: PlansMessage? = null,
 ) {
     val colors = ZarTheme.colors
-    var type by rememberSaveable { mutableStateOf(defaultNewPlanType(goalName != null, hasWeeklyLimit)) }
+    var type by rememberSaveable { mutableStateOf(NewPlanType.Goal) }
     BoxWithConstraints(Modifier.fillMaxSize().imePadding()) {
         Box(Modifier.fillMaxSize().sheetBackScrim().background(colors.scrim.copy(alpha = 0.64f)).clickable(onClick = onDismiss))
         Column(
@@ -118,7 +112,7 @@ fun NewPlanSheet(
                 Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState()).padding(horizontal = 24.dp).padding(bottom = 24.dp),
                 verticalArrangement = Arrangement.spacedBy(18.dp),
             ) {
-                ZarMonoLabel(stringResource(R.string.new_plan_type))
+                ZarEyebrow(stringResource(R.string.new_plan_type))
                 Column(Modifier.selectableGroup(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         ZarChip(stringResource(R.string.new_plan_type_goal), type == NewPlanType.Goal, { type = NewPlanType.Goal }, Modifier.testTag("new-plan-type-goal"))
@@ -130,14 +124,7 @@ fun NewPlanSheet(
                     }
                 }
                 when (type) {
-                    NewPlanType.Goal ->
-                        if (goalName == null) GoalForm(isSaving, onDismiss, onCreateGoal) else PlanExplainer(
-                            title = stringResource(R.string.new_plan_goal_exists_title, goalName),
-                            body = stringResource(R.string.new_plan_goal_exists_body),
-                            action = stringResource(R.string.new_plan_edit_goal, goalName),
-                            tag = "new-plan-edit-goal",
-                            onAction = onEditGoal,
-                        )
+                    NewPlanType.Goal -> GoalForm(isSaving, message, onDismiss, onCreateGoal)
                     NewPlanType.Limit -> PlanExplainer(
                         title = stringResource(if (hasWeeklyLimit) R.string.new_plan_limit_title_set else R.string.new_plan_limit_title),
                         body = stringResource(R.string.new_plan_limit_body),
@@ -176,7 +163,7 @@ private fun PlanExplainer(title: String, body: String, action: String, tag: Stri
 }
 
 @Composable
-private fun GoalForm(isSaving: Boolean, onCancel: () -> Unit, onCreate: (String, String, LocalDate?) -> Unit) {
+private fun GoalForm(isSaving: Boolean, message: PlansMessage?, onCancel: () -> Unit, onCreate: (String, String, LocalDate?) -> Unit) {
     val colors = ZarTheme.colors
     var name by rememberSaveable { mutableStateOf("") }
     var target by rememberSaveable { mutableStateOf("") }
@@ -213,6 +200,7 @@ private fun GoalForm(isSaving: Boolean, onCancel: () -> Unit, onCreate: (String,
             Text(stringResource(R.string.new_plan_nothing), style = ZarType.bodyS, color = colors.textPrimary)
         }
     }
+    if (message != null) Box(Modifier.testTag("new-plan-error")) { DialogError(message) }
     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         ZarButton(stringResource(R.string.action_cancel), onCancel, Modifier.weight(1f).testTag("new-plan-cancel"), style = ZarButtonStyle.Soft, enabled = !isSaving)
         ZarButton(

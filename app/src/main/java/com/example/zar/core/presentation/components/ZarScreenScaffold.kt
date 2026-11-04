@@ -69,6 +69,7 @@ fun ZarScreenScaffold(
     modifier: Modifier = Modifier,
     heroUnderStatusBar: Boolean = destination == TopLevelDestination.Home,
     chrome: NavChrome = LocalNavSession.current.chromeFor(destination),
+    onNewPlan: (() -> Unit)? = null,
     content: @Composable (PaddingValues) -> Unit,
 ) {
     val layoutDirection = LocalLayoutDirection.current
@@ -110,7 +111,7 @@ fun ZarScreenScaffold(
                 start = inner.calculateStartPadding(layoutDirection),
                 end = inner.calculateEndPadding(layoutDirection),
                 top = inner.calculateTopPadding(),
-                bottom = inner.calculateBottomPadding() + if (keyboardOpen) ZarDimens.NavBottomGap else ZarDimens.ChromeClearance,
+                bottom = inner.calculateBottomPadding() + if (keyboardOpen) ZarDimens.NavBottomGap else (LocalNavContextActions.current?.clearance ?: 208.dp),
             ),
         )
     }
@@ -118,6 +119,7 @@ fun ZarScreenScaffold(
         ZarTopLevelChrome(
             destination = destination,
             chrome = chrome,
+            onNewPlan = onNewPlan,
             onNavigate = onNavigate,
             onAddOption = onAddOption,
             controller = LocalNavCapsuleController.current ?: remember { NavCapsuleController() },

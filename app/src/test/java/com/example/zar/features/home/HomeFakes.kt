@@ -20,7 +20,11 @@ import com.example.zar.features.freelance.domain.usecase.ObserveFreelanceUseCase
 import com.example.zar.features.freelance.domain.usecase.ObserveOutstandingUseCase
 import com.example.zar.features.home.domain.usecase.ObserveHomeCommitmentsUseCase
 import com.example.zar.features.home.domain.usecase.ObserveHomeOverviewUseCase
+import com.example.zar.features.plans.FakeGoalRepository
 import com.example.zar.features.plans.FakePlanAccounts
+import com.example.zar.features.plans.FakePlanPreferences
+import com.example.zar.features.plans.domain.usecase.ObservePlansOverviewUseCase
+import com.example.zar.features.plans.domain.usecase.PlanDetailRequests
 import java.io.IOException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -71,9 +75,13 @@ class HomeRig {
     val expected = FakeExpectedPaymentRepository()
     val bills = SwitchableBills()
     private val accounts = FakePlanAccounts(emptyList())
+    val goals = FakeGoalRepository()
+    val planPreferences = FakePlanPreferences()
+    val detailRequests = PlanDetailRequests()
     val allowanceSettings = FakeAllowanceRepository()
 
     val overview = ObserveHomeOverviewUseCase(ledger)
+    val plans = ObservePlansOverviewUseCase(goals, accounts, ledger, planPreferences)
     val allowance = ObserveAllowanceUseCase(allowanceSettings, ledger, expected, kotlinx.coroutines.flow.flowOf(com.example.zar.core.domain.calculation.ZarTime.today()))
     val commitments = ObserveHomeCommitmentsUseCase(
         ObserveOutstandingUseCase(ObserveFreelanceUseCase(projects, expected, ledger)),

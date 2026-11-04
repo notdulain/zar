@@ -106,3 +106,9 @@ Nothing on the Settings or reminder screens is held only in memory. Hide amounts
 3. One currency per account (a Binance wallet with USDT and BTC becomes two accounts).
 4. Transfer fees are a separate `EXPENSE`.
 5. `observeLedger()` loads the user's whole ledger and filters in memory. That's fine at assignment scale; it would need paging later.
+
+## Savings plans (multiple goals)
+
+- A plan is a `SavingsGoal` with an opaque, stable `GoalId`. A new plan gets a UUID once per create attempt and every retry reuses it, so a retry rewrites the same document and never adds a second plan or touches another. The legacy `macbook-fund` record keeps its ID, name, target, date and allocations unchanged.
+- The user's main plan is a pointer in `users/{uid}/planPreferences/main` (`mainGoalId`). It resolves to the saved plan; otherwise to the legacy plan; otherwise to the first plan by name then ID. The first plan ever created is made main explicitly, and creating more plans never moves a valid pointer. Plans and Home read the same resolved plan.
+- Selecting a main plan writes only the pointer, never a plan, an allocation or the ledger.

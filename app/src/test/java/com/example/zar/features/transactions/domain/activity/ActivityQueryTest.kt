@@ -2,6 +2,8 @@ package com.example.zar.features.transactions.domain.activity
 
 import com.example.zar.features.transactions.domain.category.ExpenseCategoryCatalog
 import com.example.zar.features.transactions.domain.category.CategoryNameRules
+import com.example.zar.features.transactions.domain.category.SpendingKeys
+import com.example.zar.core.domain.model.SpendingClass
 import com.example.zar.core.domain.TestLedger.T0
 import com.example.zar.core.domain.TestLedger.bank
 import com.example.zar.core.domain.TestLedger.cash
@@ -191,5 +193,32 @@ class ActivityQueryTest {
         // Before the catalog arrives nothing disappears; the entries just have no readable category to match.
         assertEquals(emptyList<String>(), found("pets", ExpenseCategoryCatalog.BUILT_IN_ONLY))
         assertEquals(listOf("known", "orphan"), ActivityQuery.apply(ActivitySnapshot(listOf(known, orphan), listOf(cash)), ActivityFilter(), today).rows.map { it.entry.id.value })
+    }
+
+    @Test
+    fun aBreakdownRowShowsExactlyTheEntriesThatRowAddsUp() {
+        fun spend(id: String, cls: SpendingClass, category: String?, date: LocalDate = day(10, 12)) =
+            entry(tx(id, TransactionType.EXPENSE, lkr(100), cash, date, spendingClass = cls).let { it.copy(categoryId = category) })
+        val rent = spend("rent", SpendingClass.COMMITTED, "rent")
+        val rentLate = spend("rent-sep", SpendingClass.COMMITTED, "rent", day(9, 30))
+        val bills = spend("bills", SpendingClass.COMMITTED, "bills")
+        val coffee = spend("coffee", SpendingClass.DISCRETIONARY, "coffee-dining")
+        val loose = spend("loose", SpendingClass.UNKNOWN, null)
+        val adjustment = entry(tx("adjust", TransactionType.ADJUSTMENT_OUT, lkr(50), cash, day(10, 12)))
+        val income = entry(tx("pay", TransactionType.INCOME, lkr(900), bank, day(10, 12)))
+        val snap = ActivitySnapshot(listOf(rent, rentLate, bills, coffee, loose, adjustment, income), listOf(bank, cash))
+        val october = ActivityFilter(preset = DatePreset.CUSTOM, customFrom = day(10, 1), customTo = day(10, 31))
+
+        fun rows(filter: ActivityFilter) = ActivityQuery.apply(snap, filter, today).rows.map { it.entry.id.value }.sorted()
+
+        assertEquals(listOf("rent"), rows(october.copy(spendingClass = SpendingClass.COMMITTED, categoryKey = "rent")))
+        assertEquals(listOf("bills", "rent"), rows(october.copy(spendingClass = SpendingClass.COMMITTED)))
+        assertEquals(listOf("loose"), rows(october.copy(spendingClass = SpendingClass.UNKNOWN, categoryKey = SpendingKeys.UNCATEGORISED)))
+        assertEquals(listOf("adjust"), rows(october.copy(spendingClass = SpendingClass.UNKNOWN, categoryKey = SpendingKeys.ADJUSTMENTS)))
+        assertEquals(listOf("adjust", "loose"), rows(october.copy(spendingClass = SpendingClass.UNKNOWN)))
+        // Income and transfers are never part of a spending row, and an unfiltered list still shows them.
+        assertFalse("pay" in rows(october.copy(categoryKey = "rent")))
+        assertTrue("pay" in rows(october))
+        assertEquals(2, october.copy(spendingClass = SpendingClass.COMMITTED, categoryKey = "rent").activeCount - october.activeCount)
     }
 }

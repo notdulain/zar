@@ -21,9 +21,8 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ModalBottomSheet
+import com.example.zar.core.presentation.components.ZarModalSheet
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -33,7 +32,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -48,7 +46,7 @@ import com.example.zar.core.presentation.components.ZarButtonStyle
 import com.example.zar.core.presentation.components.ZarDivider
 import com.example.zar.core.presentation.components.ZarIcon
 import com.example.zar.core.presentation.components.ZarIconChip
-import com.example.zar.core.presentation.components.ZarMonoLabel
+import com.example.zar.core.presentation.components.ZarEyebrow
 import com.example.zar.core.presentation.theme.ZarDimens
 import com.example.zar.core.presentation.theme.ZarShapes
 import com.example.zar.core.presentation.theme.ZarTheme
@@ -59,9 +57,7 @@ import com.example.zar.features.rules.domain.model.RuleScope
 import com.example.zar.features.rules.presentation.viewmodel.RuleOfferUiState
 import com.example.zar.features.rules.presentation.viewmodel.RuleOfferViewModel
 import com.example.zar.features.transactions.presentation.activity.EntryDisplay
-import com.example.zar.features.transactions.presentation.activity.screen.SheetGrabber
 import com.example.zar.features.transactions.presentation.activity.screen.SheetHeader
-import com.example.zar.features.transactions.presentation.activity.screen.SheetScrim
 import kotlinx.coroutines.delay
 
 private const val CARD_SECONDS = 12L
@@ -115,9 +111,9 @@ private fun OfferCard(offer: RuleOffer, onOpen: () -> Unit, onDismiss: () -> Uni
         Modifier
             .padding(horizontal = 10.dp)
             .fillMaxWidth()
-            .shadow(12.dp, ZarShapes.lg)
             .clip(ZarShapes.lg)
             .background(colors.surface)
+            .border(ZarDimens.Hairline, colors.borderDefault, ZarShapes.lg)
             .padding(start = 20.dp, end = 8.dp, top = 12.dp, bottom = 12.dp)
             .testTag("rule-offer-card"),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -147,14 +143,9 @@ private fun RememberSheet(state: RuleOfferUiState, offer: RuleOffer, onDismiss: 
     val category = categoryName(offer.categoryId)
     val accountName = state.accountName
     var scope by remember { mutableStateOf(RuleScope.ANY_ACCOUNT) }
-    ModalBottomSheet(
+    ZarModalSheet(
         onDismissRequest = onDismiss,
-        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-        shape = ZarShapes.sheet,
-        containerColor = colors.surface,
-        scrimColor = SheetScrim,
-        dragHandle = { SheetGrabber() },
-    ) {
+    ) { dismiss ->
         Column(
             Modifier
                 .navigationBarsPadding()
@@ -164,7 +155,7 @@ private fun RememberSheet(state: RuleOfferUiState, offer: RuleOffer, onDismiss: 
                 .testTag("rule-sheet"),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            SheetHeader(stringResource(R.string.rules_sheet_title), onClose = onDismiss)
+            SheetHeader(stringResource(R.string.rules_sheet_title), onClose = dismiss)
             Row(
                 Modifier.fillMaxWidth().clip(ZarShapes.lg).background(colors.subtle).padding(14.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -195,7 +186,7 @@ private fun RememberSheet(state: RuleOfferUiState, offer: RuleOffer, onDismiss: 
                     )
                 }
             }
-            ZarMonoLabel(stringResource(R.string.rules_sheet_the_rule))
+            ZarEyebrow(stringResource(R.string.rules_sheet_the_rule))
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 KeyValueRow(stringResource(R.string.rules_matches), stringResource(R.string.rules_matches_value, offer.displayName))
                 KeyValueRow(stringResource(R.string.rules_sets), stringResource(R.string.rules_sets_value, category))
@@ -212,7 +203,7 @@ private fun RememberSheet(state: RuleOfferUiState, offer: RuleOffer, onDismiss: 
                 modifier = Modifier.testTag("rule-sheet-note"),
             )
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                ZarButton(stringResource(R.string.rules_not_now), onDismiss, Modifier.weight(1f).testTag("rule-sheet-not-now"), style = ZarButtonStyle.Soft)
+                ZarButton(stringResource(R.string.rules_not_now), dismiss, Modifier.weight(1f).testTag("rule-sheet-not-now"), style = ZarButtonStyle.Soft)
                 ZarButton(
                     stringResource(R.string.rules_remember),
                     { onRemember(if (accountName == null) RuleScope.ANY_ACCOUNT else scope) },

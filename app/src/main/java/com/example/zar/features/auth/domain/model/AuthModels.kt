@@ -7,6 +7,7 @@ data class AuthUser(val id: UserId, val email: String?)
 /** Whether someone is signed in. [Loading] lasts only until the saved session is restored. */
 sealed interface SessionState {
     data object Loading : SessionState
+    data class Error(val error: AuthError) : SessionState
     data object SignedOut : SessionState
     data class SignedIn(val user: AuthUser) : SessionState
 }

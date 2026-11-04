@@ -7,7 +7,7 @@ Source: [Zar UI Figma](https://www.figma.com/design/bBBJuQz1Cg8N34FcisKBs9/Zar-U
 - Wrap screens in `ZarTheme`; read semantic colors from `ZarTheme.colors`.
 - Use `ZarType` for exact named text styles. `ZarTypography` maps the same styles to Material typography slots.
 - Use `ZarDimens` and `ZarShapes` for spacing and corners; `ZarGradients` for the four hero paint styles.
-- Geist variable and Geist Mono variable are bundled in `res/font`. Amounts use Geist Light (300); labels use Geist Mono Regular (400), uppercase, with 4% tracking.
+- The Geist variable font is the only bundled design family (`res/font`). Amounts use Geist Light (300); labels use Geist Medium (500), uppercase, with 6% tracking and tabular figures (`tnum`). Geist Mono and monospace system fonts are not used.
 
 ## Main geometry
 
@@ -35,7 +35,7 @@ Source: [Zar UI Figma](https://www.figma.com/design/bBBJuQz1Cg8N34FcisKBs9/Zar-U
 | Heading/Sheet | Geist Medium | 18 sp | -1% |
 | Body/L, Body/M, Body/S | Geist Regular | 16, 15, 14 sp | -1%, 0%, -1% |
 | Label/Button, Label/Chip, Label/Tab | Geist Medium, Medium, Regular | 15, 13, 8 sp | 0%, 0%, 1% |
-| Mono/Label, Mono/Caption, Mono/Axis | Geist Mono Regular | 11, 10, 10 sp | 4%, 0%, 2% |
+| Label, Caption, Axis (`ZarType.label/caption/axis`) | Geist Medium, Regular, Regular (tabular figures) | 11, 10, 10 sp | 6%, 0%, 2% |
 
 Figma line height is 100% for named text styles. Currency prefixes beside amounts use 55% opacity.
 
@@ -64,7 +64,7 @@ New primitives: navy/300 `#5A86A6`, navy/400 `#41799C`, teal/300 `#5FB3B9`, teal
 
 `ZarGradients.dusk`, `received`, `spent`, and `goal` preserve Figma's exact color stops, including stops past 100%, so the visible lower edge stays dark. Use them only for hero money surfaces. The `statusBarScrim` brush is the separate dark status bar overlay.
 
-Figma elevation is neutral: card shadows are `#0F1A2B0A` (0, 1, blur 2) and `#0F1A2B0F` (0, 10, blur 28, spread -10); floating nav shadows are `#0F1A2B0F` (0, 2, blur 6) and `#0F1A2B1A` (0, 14, blur 34, spread -4), with 12 dp background blur.
+Cards have no shadow or elevation anywhere (`ZarCard`, `zarCard`, rows, hero blocks, error and empty cards, pressed and disabled states): grouping comes from the surface, hairline border and spacing. The only depth token is the floating navigation shadow (`zarFloatingNavShadow`): `#0F1A2B0F` (0, 2, blur 6) and `#0F1A2B1A` (0, 14, blur 34, spread -4) on Light, stacked as two Android shadow layers, with darker black tones on Dark. Floating buttons keep their own reviewed values and never read a card default.
 
 ## Screen coverage
 

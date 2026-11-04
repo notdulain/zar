@@ -5,6 +5,7 @@ import com.example.zar.core.domain.calculation.active
 import com.example.zar.core.domain.calculation.toDateRange
 import com.example.zar.core.domain.repository.LedgerRepository
 import com.example.zar.features.home.domain.model.HomeOverview
+import com.example.zar.features.home.domain.model.MonthlyIncomeTrend
 import java.time.YearMonth
 import javax.inject.Inject
 import kotlinx.coroutines.flow.Flow
@@ -28,6 +29,9 @@ class ObserveHomeOverviewUseCase @Inject constructor(
             receivedByDay = (1..month.lengthOfMonth()).map { day ->
                 val date = month.atDay(day)
                 LedgerSummaryCalculator.summarize(entries, date..date).received
+            },
+            receivedByMonth = (MonthlyIncomeTrend.WINDOW - 1 downTo 0).map { back ->
+                LedgerSummaryCalculator.summarize(entries, month.minusMonths(back.toLong()).toDateRange()).received
             },
         )
     }

@@ -31,7 +31,7 @@ import com.example.zar.core.presentation.components.ZarChip
 import com.example.zar.core.presentation.components.ZarDivider
 import com.example.zar.core.presentation.components.ZarFormRow
 import com.example.zar.core.presentation.components.ZarIcon
-import com.example.zar.core.presentation.components.ZarMonoLabel
+import com.example.zar.core.presentation.components.ZarEyebrow
 import com.example.zar.core.presentation.theme.ZarTheme
 import com.example.zar.core.presentation.theme.ZarType
 import com.example.zar.features.transactions.presentation.manual.screen.TextInput
@@ -98,7 +98,7 @@ import com.example.zar.features.reminders.presentation.rememberNotificationAcces
 import com.example.zar.features.transactions.presentation.activity.screen.DarkStatusBarIcons
 import com.example.zar.features.transactions.presentation.income.IncomeFormat
 import com.example.zar.features.transactions.presentation.income.screen.SummaryHeaderCard
-import com.example.zar.features.transactions.presentation.income.screen.ZarMono
+import com.example.zar.core.presentation.theme.ZarSansFont
 
 // --- Projects list -------------------------------------------------------------------------
 
@@ -193,7 +193,7 @@ private fun OwedHero(outstanding: Outstanding?, noProjects: Boolean, topInset: D
             )
         } else {
             Column(textLayer.padding(horizontal = 24.dp).padding(top = 12.dp, bottom = 32.dp).testTag("freelance-hero"), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                ZarMonoLabel(stringResource(R.string.freelance_owed_label), color = ZarSubtle)
+                ZarEyebrow(stringResource(R.string.freelance_owed_label), color = ZarSubtle)
                 Text(
                     owed?.owed?.display() ?: stringResource(R.string.freelance_owed_none),
                     style = ZarType.amountL,
@@ -263,7 +263,7 @@ fun ProjectScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(summary?.project?.name.orEmpty(), fontFamily = ZarMono) },
+                title = { Text(summary?.project?.name.orEmpty(), fontFamily = ZarSansFont) },
                 navigationIcon = { TextButton(onClick = onBack) { Text(stringResource(R.string.action_back)) } },
                 actions = {
                     if (summary != null) TextButton(onClick = { onEditProject(summary.project.id.value) }) { Text(stringResource(R.string.action_edit)) }
@@ -295,7 +295,7 @@ fun ProjectScreen(
                             modifier = Modifier.heroParallax(heroOffset, ZarMotion.PARALLAX_TEXT, ZarMotion.ParallaxTextCap),
                         )
                     }
-                    if (summary.project.isArchived) item { Text(stringResource(R.string.project_archived_note), fontFamily = ZarMono, color = MaterialTheme.colorScheme.error) }
+                    if (summary.project.isArchived) item { Text(stringResource(R.string.project_archived_note), fontFamily = ZarSansFont, color = MaterialTheme.colorScheme.error) }
                     if (summary.milestones.isEmpty()) item { CenteredText(stringResource(R.string.project_no_milestones)) }
                     items(summary.milestones, key = { it.milestone.id.value }) { milestone ->
                         MilestoneCard(milestone, onClick = { onOpenMilestone(summary.project.id.value, milestone.milestone.id.value) })
@@ -303,7 +303,7 @@ fun ProjectScreen(
                     if (!summary.project.isArchived) {
                         item {
                             OutlinedButton(onClick = { onAddMilestone(summary.project.id.value) }, modifier = Modifier.fillMaxWidth()) {
-                                Text(stringResource(R.string.project_add_milestone), fontFamily = ZarMono)
+                                Text(stringResource(R.string.project_add_milestone), fontFamily = ZarSansFont)
                             }
                         }
                     }
@@ -319,16 +319,16 @@ private fun MilestoneCard(summary: MilestoneSummary, onClick: () -> Unit) {
     OutlinedCard(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
         Row(Modifier.padding(horizontal = 16.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
-                Text(summary.milestone.title, style = MaterialTheme.typography.bodyLarge, fontFamily = ZarMono)
+                Text(summary.milestone.title, style = MaterialTheme.typography.bodyLarge, fontFamily = ZarSansFont)
                 val details = listOfNotNull(
                     stringResource(R.string.milestone_due_on, IncomeFormat.shortDate(summary.milestone.dueDate)),
                     if (summary.receipts.isNotEmpty()) pluralStringResource(R.plurals.milestone_payment_count, summary.receipts.size, summary.receipts.size) else null,
                 )
-                Text(details.joinToString(" · "), style = MaterialTheme.typography.bodySmall, fontFamily = ZarMono, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(details.joinToString(" · "), style = MaterialTheme.typography.bodySmall, fontFamily = ZarSansFont, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Spacer(Modifier.width(12.dp))
             Column(horizontalAlignment = Alignment.End) {
-                Text(summary.milestone.amount.display(), style = MaterialTheme.typography.bodyMedium, fontFamily = ZarMono)
+                Text(summary.milestone.amount.display(), style = MaterialTheme.typography.bodyMedium, fontFamily = ZarSansFont)
                 val (state, isWarning) = when {
                     progress.state == MatchState.CANCELLED -> stringResource(R.string.milestone_state_cancelled) to false
                     progress.state == MatchState.MATCHED -> stringResource(R.string.milestone_state_paid) to false
@@ -338,7 +338,7 @@ private fun MilestoneCard(summary: MilestoneSummary, onClick: () -> Unit) {
                 Text(
                     state,
                     style = MaterialTheme.typography.labelSmall,
-                    fontFamily = ZarMono,
+                    fontFamily = ZarSansFont,
                     color = if (isWarning) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
@@ -348,7 +348,7 @@ private fun MilestoneCard(summary: MilestoneSummary, onClick: () -> Unit) {
 
 // --- Project form --------------------------------------------------------------------------
 
-/** Figma Z195: Zar header with close, mono-labelled rows, currency chips and the Cancel / Save pair, like the account form. */
+/** Figma Z195: Zar header with close, labelled rows, currency chips and the Cancel / Save pair, like the account form. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ProjectFormScreen(
@@ -409,7 +409,7 @@ fun ProjectFormScreen(
                 if (FreelanceProblem.CLIENT_TOO_LONG in uiState.problems) ProjectFieldError(R.string.income_error_too_long)
                 ZarDivider()
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    ZarMonoLabel(stringResource(R.string.project_currency))
+                    ZarEyebrow(stringResource(R.string.project_currency))
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         uiState.currencyChoices.forEach { currency ->
                             ZarChip(

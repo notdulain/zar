@@ -48,7 +48,7 @@ internal fun WeeklyLimitCard(
         onClick = if (allowance is HomeAllowanceContent.Error) onRetry else onOpenPlans,
         contentPadding = PaddingValues(16.dp),
     ) {
-        Text(stringResource(R.string.home_weekly_limit).uppercase(), style = ZarType.monoLabel, color = colors.textTertiary)
+        Text(stringResource(R.string.home_weekly_limit).uppercase(), style = ZarType.label, color = colors.textTertiary)
         Spacer(Modifier.height(10.dp))
         when {
             allowance is HomeAllowanceContent.Error -> Text(

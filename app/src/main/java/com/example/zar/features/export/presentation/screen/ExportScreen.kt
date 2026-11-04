@@ -37,7 +37,7 @@ import com.example.zar.core.presentation.components.ZarButton
 import com.example.zar.core.presentation.components.ZarButtonSize
 import com.example.zar.core.presentation.components.ZarButtonStyle
 import com.example.zar.core.presentation.components.ZarCard
-import com.example.zar.core.presentation.components.ZarMonoLabel
+import com.example.zar.core.presentation.components.ZarEyebrow
 import com.example.zar.core.presentation.components.ZarTitleBlock
 import com.example.zar.core.presentation.theme.ZarTheme
 import com.example.zar.core.presentation.theme.ZarType
@@ -161,7 +161,7 @@ private fun ExportCard(
 ) {
     val colors = ZarTheme.colors
     ZarCard(Modifier.fillMaxWidth().testTag(tag)) {
-        ZarMonoLabel(stringResource(title).uppercase())
+        ZarEyebrow(stringResource(title).uppercase())
         Text(
             stringResource(detail),
             style = ZarType.bodyS,

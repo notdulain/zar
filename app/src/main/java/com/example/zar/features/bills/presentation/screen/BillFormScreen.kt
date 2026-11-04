@@ -20,7 +20,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
-import androidx.compose.material3.DatePickerDialog
+import com.example.zar.core.presentation.components.ZarDatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -49,7 +49,7 @@ import com.example.zar.core.presentation.components.ZarChip
 import com.example.zar.core.presentation.components.ZarDivider
 import com.example.zar.core.presentation.components.ZarFormRow
 import com.example.zar.core.presentation.components.ZarIcon
-import com.example.zar.core.presentation.components.ZarMonoLabel
+import com.example.zar.core.presentation.components.ZarEyebrow
 import com.example.zar.core.presentation.theme.ZarTheme
 import com.example.zar.core.presentation.theme.ZarType
 import com.example.zar.features.accounts.presentation.screen.iconRes
@@ -66,7 +66,7 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
 
-/** Add or edit a bill, laid out like the Figma sheets (Z21): mono labels, chips and 58dp actions. */
+/** Add or edit a bill, laid out like the Figma sheets (Z21): labels, chips and 58dp actions. */
 @Composable
 fun BillFormScreen(
     onBack: () -> Unit,
@@ -188,7 +188,7 @@ private fun FormBody(
                     keyboardType = KeyboardType.Decimal,
                     modifier = Modifier.weight(1f).testTag("bill-amount"),
                 )
-                state.account?.let { ZarMonoLabel(it.currency.code, Modifier.padding(start = 8.dp)) }
+                state.account?.let { ZarEyebrow(it.currency.code, Modifier.padding(start = 8.dp)) }
             }
         }
         FieldError(
@@ -236,7 +236,7 @@ private fun FormBody(
 @Composable
 private fun Section(label: String, content: @Composable () -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        ZarMonoLabel(label)
+        ZarEyebrow(label)
         content()
     }
 }
@@ -261,7 +261,7 @@ private fun DateRow(date: LocalDate, onSelect: (LocalDate) -> Unit) {
     }
     if (!showPicker) return
     val state = rememberDatePickerState(initialSelectedDateMillis = date.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli())
-    DatePickerDialog(
+    ZarDatePickerDialog(
         onDismissRequest = { showPicker = false },
         confirmButton = {
             TextButton(onClick = {

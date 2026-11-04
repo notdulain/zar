@@ -25,11 +25,11 @@ import com.example.zar.core.presentation.components.ZarCard
 import com.example.zar.core.presentation.components.ZarDivider
 import com.example.zar.core.presentation.components.ZarIcon
 import com.example.zar.core.presentation.components.ZarIconChip
-import com.example.zar.core.presentation.components.ZarMonoLabel
+import com.example.zar.core.presentation.components.ZarEyebrow
 import com.example.zar.core.presentation.theme.ZarTheme
 import com.example.zar.core.presentation.theme.ZarType
 
-/** Mono section label with an optional mono value or Label/Action on the right (Z22 headers). */
+/** Section label with an optional value or Label/Action on the right (Z22 headers). */
 @Composable
 internal fun BillSectionHeader(
     label: String,
@@ -44,7 +44,7 @@ internal fun BillSectionHeader(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        ZarMonoLabel(label)
+        ZarEyebrow(label)
         when {
             action != null -> Text(
                 action,
@@ -52,7 +52,7 @@ internal fun BillSectionHeader(
                 color = colors.textSelected,
                 modifier = Modifier.clickable(enabled = onAction != null, role = Role.Button) { onAction?.invoke() },
             )
-            value != null -> ZarMonoLabel(value)
+            value != null -> ZarEyebrow(value)
         }
     }
 }
@@ -126,7 +126,7 @@ internal fun <T> BillRows(items: List<T>, modifier: Modifier = Modifier, row: @C
     }
 }
 
-/** Z23 detail row: mono label (110dp), value, and a caret when it opens the edit form. */
+/** Z23 detail row: label (110dp), value, and a caret when it opens the edit form. */
 @Composable
 internal fun BillDetailRow(label: String, value: String, onClick: (() -> Unit)?) {
     val colors = ZarTheme.colors
@@ -136,7 +136,7 @@ internal fun BillDetailRow(label: String, value: String, onClick: (() -> Unit)?)
             .padding(vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Row(Modifier.width(110.dp)) { ZarMonoLabel(label) }
+        Row(Modifier.width(110.dp)) { ZarEyebrow(label) }
         Text(value, style = ZarType.bodyM.copy(lineHeight = 19.sp), color = colors.textPrimary, modifier = Modifier.weight(1f))
         if (onClick != null) ZarIcon(R.drawable.ic_ph_caret_right, size = 14.dp, tint = colors.iconMuted)
     }

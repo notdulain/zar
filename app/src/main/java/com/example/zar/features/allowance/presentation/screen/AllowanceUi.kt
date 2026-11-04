@@ -33,7 +33,7 @@ import com.example.zar.core.presentation.components.ZarButtonSize
 import com.example.zar.core.presentation.components.ZarButtonStyle
 import com.example.zar.core.presentation.components.ZarCard
 import com.example.zar.core.presentation.components.ZarChip
-import com.example.zar.core.presentation.components.ZarMonoLabel
+import com.example.zar.core.presentation.components.ZarEyebrow
 import com.example.zar.core.presentation.components.ZarSwitch
 import com.example.zar.core.presentation.format.formatWithCode
 import com.example.zar.core.presentation.theme.ZarShapes
@@ -65,7 +65,7 @@ fun AllowanceCard(state: AllowanceUiState, onEdit: () -> Unit, onRetry: () -> Un
     val colors = ZarTheme.colors
     val status = state.overview?.status
     ZarCard(modifier.fillMaxWidth().testTag("allowance-card")) {
-        ZarMonoLabel(stringResource(R.string.plans_allowance))
+        ZarEyebrow(stringResource(R.string.plans_allowance))
         when {
             state.isLoading -> Text(
                 stringResource(R.string.allowance_loading),
@@ -237,7 +237,7 @@ fun AllowanceEditorDialog(
             enabled = !isSaving,
             isError = message == AllowanceMessage.INVALID_AMOUNT,
         )
-        ZarMonoLabel(stringResource(R.string.allowance_categories_heading))
+        ZarEyebrow(stringResource(R.string.allowance_categories_heading))
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             categories.choices.forEach { category ->
                 ZarChip(
@@ -251,7 +251,7 @@ fun AllowanceEditorDialog(
             }
         }
         Text(stringResource(R.string.allowance_categories_note), style = ZarType.bodyCaption, color = colors.textTertiary)
-        ZarMonoLabel(stringResource(R.string.allowance_week_start_heading))
+        ZarEyebrow(stringResource(R.string.allowance_week_start_heading))
         FlowRow(Modifier.selectableGroup(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             DayOfWeek.entries.forEach { day ->
                 ZarChip(

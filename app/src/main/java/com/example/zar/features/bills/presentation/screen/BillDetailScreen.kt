@@ -22,13 +22,12 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
-import androidx.compose.material3.DatePickerDialog
+import com.example.zar.core.presentation.components.ZarDatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ModalBottomSheet
+import com.example.zar.core.presentation.components.ZarModalSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDatePickerState
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
@@ -74,9 +73,7 @@ import com.example.zar.features.bills.presentation.viewmodel.BillUiState
 import com.example.zar.features.bills.presentation.viewmodel.BillMessage
 import com.example.zar.features.bills.presentation.viewmodel.BillViewModel
 import com.example.zar.features.transactions.presentation.activity.screen.InfoBanner
-import com.example.zar.features.transactions.presentation.activity.screen.SheetGrabber
 import com.example.zar.features.transactions.presentation.activity.screen.SheetHeader
-import com.example.zar.features.transactions.presentation.activity.screen.SheetScrim
 import com.example.zar.features.transactions.presentation.income.IncomeFormat
 import java.time.Instant
 import java.time.LocalDate
@@ -383,20 +380,15 @@ private fun EndBillSheet(
     var fromEpochDay by rememberSaveable { mutableLongStateOf(ZarTime.today().toEpochDay()) }
     var showPicker by rememberSaveable { mutableStateOf(false) }
     val from = LocalDate.ofEpochDay(fromEpochDay)
-    ModalBottomSheet(
+    ZarModalSheet(
         onDismissRequest = onDismiss,
-        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-        shape = ZarShapes.sheet,
-        containerColor = colors.surface,
-        scrimColor = SheetScrim,
-        dragHandle = { SheetGrabber() },
-    ) {
+    ) { dismiss ->
         Column(
             Modifier.navigationBarsPadding().verticalScroll(rememberScrollState())
                 .padding(horizontal = ZarDimens.SheetGutter).padding(bottom = 14.dp).testTag("bill-end-sheet"),
             verticalArrangement = Arrangement.spacedBy(20.dp),
         ) {
-            SheetHeader(stringResource(R.string.bill_end_title, bill.name), onClose = onDismiss)
+            SheetHeader(stringResource(R.string.bill_end_title, bill.name), onClose = dismiss)
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (bill.cancellation == null) {
                     ZarChip(stringResource(R.string.bill_end_intend), choice == EndChoice.INTEND, onClick = { choice = EndChoice.INTEND })
@@ -430,7 +422,7 @@ private fun EndBillSheet(
                 }
             }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                ZarButton(stringResource(R.string.bill_cancel), onDismiss, Modifier.weight(1f), ZarButtonStyle.Soft)
+                ZarButton(stringResource(R.string.bill_cancel), dismiss, Modifier.weight(1f), ZarButtonStyle.Soft)
                 ZarButton(
                     stringResource(R.string.bill_end_confirm),
                     onClick = {
@@ -448,7 +440,7 @@ private fun EndBillSheet(
     }
     if (showPicker) {
         val state = rememberDatePickerState(initialSelectedDateMillis = from.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli())
-        DatePickerDialog(
+        ZarDatePickerDialog(
             onDismissRequest = { showPicker = false },
             confirmButton = {
                 TextButton(onClick = {

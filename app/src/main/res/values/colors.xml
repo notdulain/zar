@@ -4,5 +4,5 @@
     <color name="white">#FFFFFFFF</color>
     <!-- Neutral launch surface: the brand navy, shown before the first frame. It reads the same in Light and Dark, so
          the OS-controlled splash (which cannot read the saved appearance) never shows the opposite mode. -->
-    <color name="zar_launch_surface">#FF0C1625</color>
+    <color name="zar_launch_surface">#FF05070B</color>
 </resources>

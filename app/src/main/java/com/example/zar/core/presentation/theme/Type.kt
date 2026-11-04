@@ -3,9 +3,8 @@ package com.example.zar.core.presentation.theme
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.font.FontFamily
 
-// Both variable fonts are bundled in res/font and weighted in ZarDesign.kt.
+// The Geist variable font is bundled in res/font and weighted in ZarDesign.kt; Zar has no second design family.
 val ZarSansFont: FontFamily = GeistFamily
-val ZarMonoFont: FontFamily = GeistMonoFamily
 
 /** Material slots point at the same Figma styles exposed explicitly by [ZarType]. */
 val ZarTypography = Typography(
@@ -22,6 +21,6 @@ val ZarTypography = Typography(
     bodyMedium = ZarType.bodyM,
     bodySmall = ZarType.bodyS,
     labelLarge = ZarType.labelButton,
-    labelMedium = ZarType.monoLabel,
-    labelSmall = ZarType.monoCaption,
+    labelMedium = ZarType.label,
+    labelSmall = ZarType.caption,
 )
