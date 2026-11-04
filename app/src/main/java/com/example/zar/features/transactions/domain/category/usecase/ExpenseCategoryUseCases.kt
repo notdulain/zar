@@ -56,6 +56,22 @@ class CreateExpenseCategoryUseCase @Inject constructor(
     /** A category [invoke] reported as saved that the server then refused; see [ExpenseCategoryRepository.lateRejections]. */
     val lateRejections: Flow<CustomExpenseCategory> get() = categories.lateRejections
 
+    /**
+     * Deletes a custom category the person added. It is archived, not erased: it leaves the pickers and its name can
+     * be used again, but entries that used it keep their label. Built-ins and unknown IDs are refused.
+     */
+    suspend fun archive(id: String): Result<Unit> {
+        if (!CustomCategoryIds.isCustom(id)) return Result.failure(LedgerError.InvalidRecord("Not a custom category ID"))
+        return try {
+            categories.archive(id)
+            Result.success(Unit)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     suspend operator fun invoke(
         id: String,
         rawName: String,

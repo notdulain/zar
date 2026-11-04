@@ -1,5 +1,6 @@
 package com.example.zar.features.transactions.presentation.manual
 
+import com.example.zar.features.transactions.domain.category.CategoryLabel
 import com.example.zar.features.transactions.domain.manual.model.CategoryIcon
 import com.example.zar.features.transactions.domain.manual.model.CustomExpenseCategory
 import com.example.zar.features.transactions.domain.manual.model.CustomCategoryIds
@@ -863,6 +864,82 @@ class ManualEntryViewModelTest {
         assertNull(vm.uiState.value.newCategory!!.problem)
         vm.onAddCategorySave()
         assertEquals("Pets", (vm.uiState.value.category as CustomExpenseCategory).name)
+    }
+
+    @Test
+    fun confirmingADeleteArchivesTheCategoryAndKeepsTheDraft() {
+        val vm = viewModel()
+        vm.onAccountSelect(cash.id)
+        vm.onAmountChange("850")
+        vm.onTitleChange("Vet")
+        makeCategory(vm, "Pets")
+        val pets = vm.uiState.value.categoryCatalog.customs.single()
+        vm.onCategorySelect(ExpenseCategory.TRANSPORT)
+
+        vm.onDeleteCategoryStart(pets)
+        assertEquals(pets, vm.uiState.value.deletingCategory!!.category)
+        assertEquals("nothing is deleted until confirmed", 0, categoryRepo.archives)
+        vm.onDeleteCategoryConfirm()
+
+        val state = vm.uiState.value
+        assertNull(state.deletingCategory)
+        assertTrue("gone from the pickers", state.categoryCatalog.customs.isEmpty())
+        assertEquals("old entries still resolve", "Pets", (state.categoryCatalog.label(pets.id) as CategoryLabel.Custom).name)
+        assertEquals(ExpenseCategory.TRANSPORT, state.category)
+        assertEquals("850", state.amount)
+        assertEquals("Vet", state.title)
+        assertTrue(ledger.saved.isEmpty())
+    }
+
+    @Test
+    fun deletingTheSelectedCategoryClearsTheSelection() {
+        val vm = viewModel()
+        makeCategory(vm, "Pets")
+        val pets = vm.uiState.value.category as CustomExpenseCategory
+        vm.onDeleteCategoryStart(pets)
+        vm.onDeleteCategoryConfirm()
+        assertNull(vm.uiState.value.category)
+        assertFalse(vm.uiState.value.categoryChosen)
+    }
+
+    @Test
+    fun cancellingADeleteChangesNothing() {
+        val vm = viewModel()
+        makeCategory(vm, "Pets")
+        val pets = vm.uiState.value.category as CustomExpenseCategory
+        vm.onDeleteCategoryStart(pets)
+        vm.onDeleteCategoryCancel()
+        assertNull(vm.uiState.value.deletingCategory)
+        assertEquals(0, categoryRepo.archives)
+        assertEquals(pets, vm.uiState.value.category)
+    }
+
+    @Test
+    fun aRefusedDeleteKeepsTheConfirmationForARetryAndDeletesOnce() {
+        val vm = viewModel()
+        makeCategory(vm, "Pets")
+        val pets = vm.uiState.value.category as CustomExpenseCategory
+        categoryRepo.failNextWith = java.io.IOException("unavailable")
+        vm.onDeleteCategoryStart(pets)
+        vm.onDeleteCategoryConfirm()
+        assertTrue(vm.uiState.value.deletingCategory!!.failed)
+        assertEquals(pets, vm.uiState.value.category)
+        vm.onDeleteCategoryConfirm()
+        assertNull(vm.uiState.value.deletingCategory)
+        assertEquals(1, categoryRepo.archives)
+    }
+
+    @Test
+    fun aDeletedNameCanBeAddedAgain() {
+        val vm = viewModel()
+        makeCategory(vm, "Pets")
+        val first = vm.uiState.value.category as CustomExpenseCategory
+        vm.onDeleteCategoryStart(first)
+        vm.onDeleteCategoryConfirm()
+        makeCategory(vm, "Pets")
+        val second = vm.uiState.value.category as CustomExpenseCategory
+        assertTrue(second.id != first.id)
+        assertEquals(listOf(second), vm.uiState.value.categoryCatalog.customs)
     }
 
     @Test

@@ -75,6 +75,13 @@ data class NewCategoryState(
     val failed: Boolean = false,
 )
 
+/** The "Delete category" confirmation while it is open. [failed] means the delete was refused, so it can be retried. */
+data class DeleteCategoryState(
+    val category: CustomExpenseCategory,
+    val isDeleting: Boolean = false,
+    val failed: Boolean = false,
+)
+
 data class ManualEntryUiState(
     val isLoading: Boolean = true,
     val kind: ManualEntryKind = ManualEntryKind.EXPENSE,
@@ -92,6 +99,8 @@ data class ManualEntryUiState(
     val categoryCatalog: ExpenseCategoryCatalog = ExpenseCategoryCatalog.BUILT_IN_ONLY,
     /** Non-null while the Add category form is open. */
     val newCategory: NewCategoryState? = null,
+    /** Non-null while the Delete category confirmation is open. */
+    val deletingCategory: DeleteCategoryState? = null,
     /** True once the user picked the category themselves, so a remembered rule no longer fills it in. */
     val categoryChosen: Boolean = false,
     /** The rule that filled in [category] for the typed title. Cleared as soon as the user picks another category. */
@@ -266,6 +275,41 @@ class ManualEntryViewModel @Inject constructor(
 
     fun onNewCategoryNameChange(value: String) = _uiState.update { state ->
         state.newCategory?.let { state.copy(newCategory = it.copy(name = value, problem = null, failed = false)) } ?: state
+    }
+
+    /** Asks to delete one of the person's own categories. Nothing changes until it is confirmed. */
+    fun onDeleteCategoryStart(category: CustomExpenseCategory) {
+        _uiState.update { it.copy(deletingCategory = DeleteCategoryState(category)) }
+    }
+
+    fun onDeleteCategoryCancel() = _uiState.update { it.copy(deletingCategory = null) }
+
+    /**
+     * Deletes the category. If it was the selected one the selection is cleared so the draft cannot point at a
+     * category that has gone from the pickers; every other field of the draft stays. Entries already saved with it
+     * keep its name. A refused delete keeps the confirmation open for a retry.
+     */
+    fun onDeleteCategoryConfirm() {
+        val pending = _uiState.value.deletingCategory ?: return
+        if (pending.isDeleting) return
+        _uiState.update { it.copy(deletingCategory = pending.copy(isDeleting = true, failed = false)) }
+        viewModelScope.launch {
+            createCategory.archive(pending.category.id).fold(
+                onSuccess = {
+                    _uiState.update {
+                        val wasSelected = it.category?.id == pending.category.id
+                        it.copy(
+                            deletingCategory = null,
+                            category = if (wasSelected) null else it.category,
+                            categoryChosen = if (wasSelected) false else it.categoryChosen,
+                        ).withRule()
+                    }
+                },
+                onFailure = {
+                    _uiState.update { it.copy(deletingCategory = it.deletingCategory?.copy(isDeleting = false, failed = true)) }
+                },
+            )
+        }
     }
 
     /** Picks the icon the new category will show. Only the open form changes; the draft is untouched. */
