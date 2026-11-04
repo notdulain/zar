@@ -13,7 +13,7 @@ import org.junit.Test
 
 class ContextualPlansChromeTest {
     @get:Rule val compose = createComposeRule()
-    @Test fun changingContextKeepsEveryTabAtTheSameBounds() {
+    @Test fun plansShowsNewPlanBesideTheTabBarOnOneRow() {
         var destination by mutableStateOf(TopLevelDestination.Activity)
         var creates = 0
         val controller = NavCapsuleController()
@@ -21,12 +21,18 @@ class ContextualPlansChromeTest {
             ZarTopLevelChrome(destination, NavChrome.Full, { destination = it }, {}, controller,
                 modifier = Modifier.align(Alignment.BottomCenter), onNewPlan = { creates++ })
         } } }
-        val tags = listOf("nav-home", "nav-activity", "nav-plans", "nav-more")
-        val bounds = tags.map { compose.onNodeWithTag(it).getUnclippedBoundsInRoot() }
+        compose.onNodeWithTag("add-entry").assertIsDisplayed()
+        compose.onNodeWithTag("plans-new-plan").assertDoesNotExist()
         compose.onNodeWithTag("nav-plans").performClick()
         compose.waitForIdle()
-        assertEquals(bounds, tags.map { compose.onNodeWithTag(it).getUnclippedBoundsInRoot() })
-        compose.onNodeWithTag("plans-new-plan").assertIsDisplayed().performClick()
+        compose.onNodeWithTag("add-entry").assertDoesNotExist()
+        val action = compose.onNodeWithTag("plans-new-plan").assertIsDisplayed().getUnclippedBoundsInRoot()
+        val tabs = listOf("nav-home", "nav-activity", "nav-plans", "nav-more").map { compose.onNodeWithTag(it).getUnclippedBoundsInRoot() }
+        // Figma "Floating Nav · Plans": one row, the action 68dp high and to the right of the last tab, never above the bar.
+        assertEquals(68f, (action.bottom - action.top).value, 0.5f)
+        assertTrue(action.left >= tabs.last().right)
+        assertEquals((tabs.first().top + tabs.first().bottom).value / 2, (action.top + action.bottom).value / 2, 1f)
+        compose.onNodeWithTag("plans-new-plan").performClick()
         assertEquals(1, creates)
     }
 }

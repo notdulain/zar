@@ -1,5 +1,16 @@
 package com.example.zar.core.presentation.components
 
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.FloatingActionButtonDefaults
+import androidx.compose.material3.Text
+import androidx.compose.ui.draw.alpha
+import com.example.zar.core.presentation.motion.pressScale
+import com.example.zar.core.presentation.theme.ZarType
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.animation.core.Animatable
@@ -86,7 +97,7 @@ val LocalNavChromeHost = compositionLocalOf { false }
 @Stable
 class NavContextActions {
     var newPlan: (() -> Unit)? by mutableStateOf(null)
-    var clearance: Dp by mutableStateOf(188.dp)
+    var clearance: Dp by mutableStateOf(ZarDimens.ChromeClearance)
 }
 val LocalNavContextActions = compositionLocalOf<NavContextActions?> { null }
 
@@ -248,23 +259,54 @@ fun ZarTopLevelChrome(
                         enter = fadeIn(policy.fade<Float>(ZarMotion.NAV_REVEAL_MILLIS)) +
                             slideInVertically(policy.fade<IntOffset>(ZarMotion.NAV_REVEAL_MILLIS)) { rise },
                     ) {
-                        val navWidth = maxWidth.coerceAtMost(380.dp)
-                        Column(Modifier.width(navWidth), verticalArrangement = Arrangement.spacedBy(12.dp), horizontalAlignment = Alignment.End) {
-                            if (destination == TopLevelDestination.Plans) {
-                                ZarButton(stringResource(R.string.plans_new_plan), { onNewPlan?.invoke() },
-                                    Modifier.heightIn(min = 48.dp).testTag("plans-new-plan"), enabled = enabled && onNewPlan != null)
-                            } else addButton()
+                        // Figma "Floating Nav": the tab bar and the separate action button share one row, 8dp apart. The bar
+                        // keeps whatever width the action leaves, up to the 293dp of the Home variant. On Plans the action
+                        // is the extended "New plan" button, so the bar is narrower there.
+                        Row(horizontalArrangement = Arrangement.spacedBy(ZarDimens.SpaceXs), verticalAlignment = Alignment.CenterVertically) {
                             ZarBottomNav(
                                 selected = destination,
                                 onNavigate = { setExpanded(false); onNavigate(it) },
                                 controller = controller,
                                 driveCapsule = driveCapsule,
-                                modifier = Modifier.width(navWidth).semantics { traversalIndex = 3f; isTraversalGroup = true },
+                                modifier = Modifier.weight(1f, fill = false).widthIn(max = 293.dp)
+                                    .semantics { traversalIndex = 3f; isTraversalGroup = true },
                             )
+                            if (destination == TopLevelDestination.Plans) {
+                                ZarNewPlanButton(onClick = { onNewPlan?.invoke() }, enabled = enabled && onNewPlan != null)
+                            } else addButton()
                         }
                     }
                 }
             }
+        }
+    }
+}
+
+/** Figma "Add button · New plan": the Add button stretched to a 68dp-high pill with a 18dp plus and a "New plan" label. */
+@Composable
+private fun ZarNewPlanButton(onClick: () -> Unit, enabled: Boolean, modifier: Modifier = Modifier) {
+    val colors = ZarTheme.colors
+    val press = remember { MutableInteractionSource() }
+    FloatingActionButton(
+        onClick = { if (enabled) onClick() },
+        interactionSource = press,
+        modifier = modifier
+            .pressScale(press)
+            .height(ZarDimens.AddButtonSize)
+            .alpha(if (enabled) 1f else 0.5f)
+            .testTag("plans-new-plan"),
+        shape = RoundedCornerShape(ZarDimens.NavRadius),
+        containerColor = colors.accentPrimary,
+        contentColor = colors.textOnInverse,
+        elevation = FloatingActionButtonDefaults.elevation(4.dp, 4.dp, 4.dp, 4.dp),
+    ) {
+        Row(
+            Modifier.padding(start = 16.dp, end = 18.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            PlusIcon(tint = colors.textOnInverse, modifier = Modifier.size(18.dp))
+            Text(stringResource(R.string.plans_new_plan), style = ZarType.labelButton, color = colors.textOnInverse, maxLines = 1)
         }
     }
 }
