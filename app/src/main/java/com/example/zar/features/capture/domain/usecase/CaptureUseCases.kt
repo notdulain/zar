@@ -39,8 +39,10 @@ import kotlinx.coroutines.withTimeoutOrNull
 private val CAPTURE_SOURCES = setOf(DraftSource.SHARED_TEXT, DraftSource.SMS)
 
 sealed interface CaptureOutcome {
-    /** Read and saved as a pending draft for review. */
-    /** [isNew] is false when the same message was already waiting, e.g. shared before the SMS was read. */
+    /**
+     * Read and saved as a pending draft for review. [account] is the one matched from the message, if any; [isNew]
+     * is false when the same message was already waiting, e.g. shared before the SMS was read.
+     */
     data class Drafted(val draftId: DraftId, val parsed: ParsedBankSms, val account: Account? = null, val isNew: Boolean = true) : CaptureOutcome
 
     /** An OTP, a declined payment or a notice: nothing to record. */
