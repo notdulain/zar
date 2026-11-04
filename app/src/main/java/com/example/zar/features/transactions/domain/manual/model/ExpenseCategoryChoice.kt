@@ -54,6 +54,11 @@ data class CustomExpenseCategory(
     val nameKey: String,
     val createdAt: Instant,
     val icon: CategoryIcon = CategoryIcon.DEFAULT,
+    /**
+     * Deleted by the person: hidden from every picker but still stored, so an expense that used it keeps its name.
+     * Never reversed on the same document; adding the name again makes a new category.
+     */
+    val archived: Boolean = false,
 ) : ExpenseCategoryChoice {
     override val usualClass: SpendingClass? get() = null
 }

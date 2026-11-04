@@ -110,6 +110,15 @@ class FirestoreExpenseCategoryRepository @Inject constructor(
         if (session.currentUserId() != uid) throw LedgerError.NotSignedIn()
     }
 
+    override suspend fun archive(id: String) {
+        val uid = session.currentUserId() ?: throw LedgerError.NotSignedIn()
+        val write = categoriesOf(uid.value).document(id).update("archived", true)
+        // Accepted locally at once and works offline; wait briefly so a fast server rejection reaches the caller.
+        withTimeoutOrNull(WAIT_FOR_SERVER_MS) { write.await() }
+        if (write.isComplete && !write.isSuccessful) throw write.exception ?: LedgerError.InvalidRecord("Could not delete the category")
+        if (session.currentUserId() != uid) throw LedgerError.NotSignedIn()
+    }
+
     private fun categoriesOf(uid: String): CollectionReference =
         firestore.collection(FirestoreCollections.USERS).document(uid).collection(FirestoreCollections.EXPENSE_CATEGORIES)
 

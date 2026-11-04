@@ -78,4 +78,13 @@ class ExpenseCategoryDocumentMapperTest {
         assertEquals(CategoryIcon.entries.size, CategoryIcon.entries.map { it.key }.toSet().size)
         CategoryIcon.entries.forEach { assertEquals(it, CategoryIcon.fromKey(it.key)) }
     }
+
+    @Test
+    fun anArchivedCategoryWritesAndReadsBackAsArchived() {
+        val gone = pets.copy(archived = true)
+        assertEquals(true, ExpenseCategoryDocumentMapper.toMap(gone)["archived"])
+        assertEquals(gone, ExpenseCategoryDocumentMapper.fromMap(ExpenseCategoryDocumentMapper.toMap(gone)))
+        assertEquals(false, "archived" in ExpenseCategoryDocumentMapper.toMap(pets))
+        assertEquals(false, ExpenseCategoryDocumentMapper.fromMap(ExpenseCategoryDocumentMapper.toMap(pets))?.archived)
+    }
 }

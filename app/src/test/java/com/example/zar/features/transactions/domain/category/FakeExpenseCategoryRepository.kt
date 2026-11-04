@@ -50,6 +50,20 @@ class FakeExpenseCategoryRepository(user: String? = "alice") : ExpenseCategoryRe
         stored.value = stored.value + (uid.value to (mine + (category.id to category)))
     }
 
+    /** Like the rules: the category stays stored, marked archived. Archiving twice, or an unknown ID, changes nothing. */
+    override suspend fun archive(id: String) {
+        val uid = signedIn.value ?: throw LedgerError.NotSignedIn()
+        failNextWith?.let { failNextWith = null; throw it }
+        val mine = stored.value[uid.value].orEmpty()
+        val existing = mine[id] ?: return
+        if (existing.archived) return
+        archives++
+        stored.value = stored.value + (uid.value to (mine + (id to existing.copy(archived = true))))
+    }
+
+    var archives = 0
+        private set
+
     private val late = MutableSharedFlow<CustomExpenseCategory>(extraBufferCapacity = 8)
     override val lateRejections: Flow<CustomExpenseCategory> = late
 

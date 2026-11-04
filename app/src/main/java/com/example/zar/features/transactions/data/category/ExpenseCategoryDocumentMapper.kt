@@ -22,6 +22,7 @@ object ExpenseCategoryDocumentMapper {
         put("createdAt", category.createdAt.toEpochMilli())
         // The default icon is left out, so those categories stay valid under rules that predate the icon field.
         if (category.icon != CategoryIcon.DEFAULT) put("icon", category.icon.key)
+        if (category.archived) put("archived", true)
     }
 
     fun fromMap(map: Map<String, Any?>): CustomExpenseCategory? = runCatching {
@@ -34,6 +35,7 @@ object ExpenseCategoryDocumentMapper {
             nameKey = CategoryNameRules.keyOf(name),
             createdAt = Instant.ofEpochMilli((map["createdAt"] as Number).toLong()),
             icon = CategoryIcon.fromKey(map["icon"] as? String),
+            archived = map["archived"] == true,
         )
     }.getOrNull()
 }

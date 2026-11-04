@@ -44,6 +44,13 @@ interface ExpenseCategoryRepository {
     suspend fun create(category: CustomExpenseCategory)
 
     /**
+     * Deletes the category [id] for the person: it is kept but marked archived, so expenses that used it keep their
+     * name. Doing it again changes nothing. Works offline like [create]; throws if the server rejects it quickly or
+     * nobody is signed in (LedgerError.NotSignedIn).
+     */
+    suspend fun archive(id: String)
+
+    /**
      * Categories whose [create] already returned but whose write the server refused afterwards, so the local copy was
      * rolled back. Nothing is emitted for a quick rejection (that [create] throws) or for a write that is still queued.
      */

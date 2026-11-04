@@ -356,6 +356,21 @@ test('expense categories: owner-only, custom ids, safe names, never changed or d
   const noSource = cat('custom-bad-nosource'); delete noSource.source;
   await assertFails(setDoc(at('custom-bad-nosource'), noSource));
   await bad('extra', { extra: true });
+  // Deleting a category archives it: only archived: true may change, and it never comes back.
+  const archivedId = 'custom-archive-1';
+  await assertSucceeds(setDoc(at(archivedId), cat(archivedId)));
+  await assertSucceeds(updateDoc(at(archivedId), { archived: true }));
+  await assertSucceeds(updateDoc(at(archivedId), { archived: true })); // a replay changes nothing
+  await assertFails(updateDoc(at(archivedId), { archived: false }));
+  await assertFails(updateDoc(at(archivedId), { name: 'Renamed', nameKey: 'renamed' }));
+  await assertFails(updateDoc(at(archivedId), { archived: true, icon: 'car' }));
+  await assertFails(deleteDoc(at(archivedId)));
+  const notArchived = 'custom-archive-2';
+  await assertSucceeds(setDoc(at(notArchived), cat(notArchived)));
+  await assertFails(updateDoc(at(notArchived), { archived: 'yes' }));
+  await assertFails(updateDoc(at(notArchived), { archived: false }));
+  await assertFails(updateDoc(doc(bob(), path('alice', 'expenseCategories', notArchived)), { archived: true }));
+  await assertFails(updateDoc(doc(anon(), path('alice', 'expenseCategories', notArchived)), { archived: true }));
   // Optional icon: a known key is accepted, anything else is not.
   await assertSucceeds(setDoc(at('custom-icon-ok-1'), cat('custom-icon-ok-1', { icon: 'piggy_bank' })));
   await assertSucceeds(setDoc(at('custom-icon-default'), cat('custom-icon-default', { icon: 'receipt' })));

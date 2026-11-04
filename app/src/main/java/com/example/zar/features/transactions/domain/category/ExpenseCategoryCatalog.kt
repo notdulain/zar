@@ -48,20 +48,28 @@ data class ExpenseCategoryCatalog(
     private val ordered: List<CustomExpenseCategory> =
         stored.sortedWith(compareBy<CustomExpenseCategory> { it.createdAt }.thenBy { it.id })
 
+    /** Deleted (archived) categories take no part in names or pickers; they only keep old IDs resolving. */
+    private val active: List<CustomExpenseCategory> = ordered.filterNot { it.archived }
+
     private val canonicalByKey: Map<String, ExpenseCategoryChoice> = buildMap {
         builtInKeys.forEach { (key, category) -> put(key, category) }
-        ordered.forEach { putIfAbsent(it.nameKey, it) }
+        active.forEach { putIfAbsent(it.nameKey, it) }
     }
 
+    /**
+     * An active category is its name's canonical one unless a built-in or an earlier category has the name. A deleted
+     * one resolves to a live category with the same name if there is one, otherwise to itself, so old entries keep
+     * their label.
+     */
     private fun canonicalOf(category: CustomExpenseCategory): ExpenseCategoryChoice =
-        canonicalByKey.getValue(category.nameKey)
+        if (category.archived) canonicalByKey[category.nameKey] ?: category else canonicalByKey.getValue(category.nameKey)
 
-    /** The categories to offer: built-ins first, then non-duplicate customs. */
-    val choices: List<ExpenseCategoryChoice> = ExpenseCategory.entries + ordered.filter { canonicalOf(it) == it }
+    /** The categories to offer: built-ins first, then non-duplicate customs that have not been deleted. */
+    val choices: List<ExpenseCategoryChoice> = ExpenseCategory.entries + active.filter { canonicalOf(it) == it }
 
-    val customs: List<CustomExpenseCategory> = ordered.filter { canonicalOf(it) == it }
+    val customs: List<CustomExpenseCategory> = active.filter { canonicalOf(it) == it }
 
-    val conflicts: List<CategoryConflict> = ordered
+    val conflicts: List<CategoryConflict> = active
         .filter { canonicalOf(it) != it }
         .groupBy { canonicalOf(it) }
         .map { (canonical, duplicates) -> CategoryConflict(canonical, duplicates.map { it.id }) }
@@ -77,7 +85,7 @@ data class ExpenseCategoryCatalog(
     /** The ID the picker uses for [id]: itself unless it is a reconciled duplicate. Unknown IDs are unchanged. */
     fun canonicalId(id: String): String = byId[id]?.id ?: id
 
-    /** True when [key] (see [CategoryNameRules.keyOf]) is a built-in or stored custom name. */
+    /** True when [key] (see [CategoryNameRules.keyOf]) is a built-in or a live custom name; a deleted name is free again. */
     fun hasName(key: String): Boolean = key in canonicalByKey
 
     fun label(id: String?): CategoryLabel? {
