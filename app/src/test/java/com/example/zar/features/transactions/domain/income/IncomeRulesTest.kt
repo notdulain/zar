@@ -82,6 +82,15 @@ class IncomeRulesTest {
     }
 
     @Test
+    fun aCommaInTheRateIsADecimalSeparatorNotThousands() {
+        // 300,5 used to lose its comma and be saved as 3005, ten times too high.
+        val usd = { rate: String -> valid(input(amount = "400", currency = Currencies.USD, rate = rate)).rateToReporting }
+        assertEquals(0, "300.5".toBigDecimal().compareTo(usd("300,5")))
+        assertEquals(0, "1100".toBigDecimal().compareTo(usd("1,100")))
+        assertEquals(setOf(IncomeProblem.RATE_INVALID), problems(input(amount = "400", currency = Currencies.USD, rate = "1,2,3")))
+    }
+
+    @Test
     fun rejectsTextLongerThanFirestoreAllows() {
         assertEquals(
             setOf(IncomeProblem.RECEIVED_FROM_TOO_LONG, IncomeProblem.NOTE_TOO_LONG),

@@ -13,6 +13,7 @@ import com.example.zar.core.domain.model.money.ExchangeRate
 import com.example.zar.core.domain.model.money.Money
 import com.example.zar.core.domain.model.money.RateSource
 import com.example.zar.core.domain.model.money.ReportingConversion
+import com.example.zar.features.rates.domain.RateText
 import com.example.zar.features.transactions.domain.income.model.IncomeDetails
 import com.example.zar.features.transactions.domain.income.model.IncomeFormInput
 import com.example.zar.features.transactions.domain.income.model.IncomeFormResult
@@ -48,8 +49,7 @@ object IncomeRules {
         val rate = if (input.currency == reporting || input.rate.isBlank()) {
             null
         } else {
-            input.rate.replace(",", "").trim().toBigDecimalOrNull()?.takeIf { it.signum() > 0 }
-                ?: null.also { problems += IncomeProblem.RATE_INVALID }
+            RateText.parse(input.rate) ?: null.also { problems += IncomeProblem.RATE_INVALID }
         }
 
         val receivedFrom = input.receivedFrom.trim()
