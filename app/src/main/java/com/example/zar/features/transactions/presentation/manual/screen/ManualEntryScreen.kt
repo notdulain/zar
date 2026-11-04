@@ -814,7 +814,7 @@ private fun DeleteCategorySheet(
             }
             Text(stringResource(R.string.manual_delete_category_title), style = ZarType.headingSheet, color = colors.textPrimary)
             Text(
-                stringResource(R.string.manual_delete_category_body, state.category.name),
+                stringResource(R.string.manual_delete_category_body, state.category.labelText()),
                 style = ZarType.bodyM,
                 color = colors.textSecondary,
             )

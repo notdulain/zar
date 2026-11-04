@@ -77,7 +77,7 @@ data class NewCategoryState(
 
 /** The "Delete category" confirmation while it is open. [failed] means the delete was refused, so it can be retried. */
 data class DeleteCategoryState(
-    val category: CustomExpenseCategory,
+    val category: ExpenseCategoryChoice,
     val isDeleting: Boolean = false,
     val failed: Boolean = false,
 )
@@ -277,9 +277,14 @@ class ManualEntryViewModel @Inject constructor(
         state.newCategory?.let { state.copy(newCategory = it.copy(name = value, problem = null, failed = false)) } ?: state
     }
 
-    /** Asks to delete one of the person's own categories. Nothing changes until it is confirmed. */
-    fun onDeleteCategoryStart(category: CustomExpenseCategory) {
-        _uiState.update { it.copy(deletingCategory = DeleteCategoryState(category)) }
+    /**
+     * Asks to remove a category (one of the person's own or a built-in) from their lists. Nothing changes until it is
+     * confirmed. The last remaining category cannot be removed, so an expense can always be given one.
+     */
+    fun onDeleteCategoryStart(category: ExpenseCategoryChoice) {
+        _uiState.update {
+            if (it.categoryCatalog.choices.size <= 1) it else it.copy(deletingCategory = DeleteCategoryState(category))
+        }
     }
 
     fun onDeleteCategoryCancel() = _uiState.update { it.copy(deletingCategory = null) }
@@ -294,7 +299,7 @@ class ManualEntryViewModel @Inject constructor(
         if (pending.isDeleting) return
         _uiState.update { it.copy(deletingCategory = pending.copy(isDeleting = true, failed = false)) }
         viewModelScope.launch {
-            createCategory.archive(pending.category.id).fold(
+            createCategory.remove(pending.category).fold(
                 onSuccess = {
                     _uiState.update {
                         val wasSelected = it.category?.id == pending.category.id

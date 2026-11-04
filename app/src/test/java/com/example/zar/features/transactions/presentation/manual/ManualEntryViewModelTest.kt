@@ -943,6 +943,53 @@ class ManualEntryViewModelTest {
     }
 
     @Test
+    fun removingABuiltInHidesItFromThePickersButKeepsItsNameForOldEntries() {
+        val vm = viewModel()
+        vm.onAccountSelect(cash.id)
+        vm.onAmountChange("850")
+        vm.onCategorySelect(ExpenseCategory.GROCERIES)
+
+        vm.onDeleteCategoryStart(ExpenseCategory.GROCERIES)
+        vm.onDeleteCategoryConfirm()
+
+        val state = vm.uiState.value
+        assertNull(state.deletingCategory)
+        assertTrue(state.categoryCatalog.choices.none { it.id == "groceries" })
+        assertEquals(CategoryLabel.BuiltIn(ExpenseCategory.GROCERIES), state.categoryCatalog.label("groceries"))
+        assertNull("the removed category was selected, so the selection clears", state.category)
+        assertEquals("850", state.amount)
+        assertEquals(1, categoryRepo.hides)
+    }
+
+    @Test
+    fun typingARemovedBuiltInsNameBringsItBackAndSelectsIt() {
+        val vm = viewModel()
+        vm.onDeleteCategoryStart(ExpenseCategory.RENT)
+        vm.onDeleteCategoryConfirm()
+        assertTrue(vm.uiState.value.categoryCatalog.choices.none { it.id == "rent" })
+
+        makeCategory(vm, "rent")
+
+        val state = vm.uiState.value
+        assertTrue(state.categoryCatalog.choices.any { it.id == "rent" })
+        assertEquals(ExpenseCategory.RENT, state.category)
+        assertTrue("no lookalike custom category was made", state.categoryCatalog.customs.isEmpty())
+        assertEquals(1, categoryRepo.restores)
+    }
+
+    @Test
+    fun theLastRemainingCategoryCannotBeRemoved() {
+        val vm = viewModel()
+        ExpenseCategory.entries.dropLast(1).forEach {
+            vm.onDeleteCategoryStart(it)
+            vm.onDeleteCategoryConfirm()
+        }
+        assertEquals(1, vm.uiState.value.categoryCatalog.choices.size)
+        vm.onDeleteCategoryStart(vm.uiState.value.categoryCatalog.choices.single())
+        assertNull(vm.uiState.value.deletingCategory)
+    }
+
+    @Test
     fun aNewCategoryUsesTheDefaultIconUntilOneIsPicked() {
         val vm = viewModel()
         vm.onAddCategoryStart()

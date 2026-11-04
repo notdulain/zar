@@ -5,6 +5,7 @@ import com.example.zar.features.transactions.domain.category.usecase.CategoryNam
 import com.example.zar.features.transactions.domain.category.usecase.CreateExpenseCategoryUseCase
 import com.example.zar.features.transactions.domain.category.usecase.ObserveExpenseCategoryCatalogUseCase
 import com.example.zar.features.transactions.domain.manual.model.CustomCategoryIds
+import com.example.zar.features.transactions.domain.manual.model.CustomExpenseCategory
 import java.time.Instant
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.drop
@@ -28,7 +29,7 @@ class ExpenseCategoryUseCasesTest {
     @Test
     fun createsACategoryThatShowsUpInTheCatalog() {
         val result = make("custom-pets-1", "  Pets ")
-        assertEquals("Pets", result.getOrThrow().name)
+        assertEquals("Pets", (result.getOrThrow() as CustomExpenseCategory).name)
         assertEquals(listOf("custom-pets-1"), catalog().customs.map { it.id })
         assertEquals(CategoryLabel.Custom("Pets"), catalog().label("custom-pets-1"))
     }

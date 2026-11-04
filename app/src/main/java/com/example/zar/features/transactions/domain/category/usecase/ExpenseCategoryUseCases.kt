@@ -9,6 +9,8 @@ import com.example.zar.features.transactions.domain.category.repository.ExpenseC
 import com.example.zar.features.transactions.domain.manual.model.CategoryIcon
 import com.example.zar.features.transactions.domain.manual.model.CustomCategoryIds
 import com.example.zar.features.transactions.domain.manual.model.CustomExpenseCategory
+import com.example.zar.features.transactions.domain.manual.model.ExpenseCategory
+import com.example.zar.features.transactions.domain.manual.model.ExpenseCategoryChoice
 import java.time.Instant
 import javax.inject.Inject
 import kotlin.coroutines.cancellation.CancellationException
@@ -57,13 +59,16 @@ class CreateExpenseCategoryUseCase @Inject constructor(
     val lateRejections: Flow<CustomExpenseCategory> get() = categories.lateRejections
 
     /**
-     * Deletes a custom category the person added. It is archived, not erased: it leaves the pickers and its name can
-     * be used again, but entries that used it keep their label. Built-ins and unknown IDs are refused.
+     * Removes [category] from the person's lists. Nothing is erased: one they added is archived and a built-in is
+     * marked removed, so entries that used it keep their label and its name can be used again.
      */
-    suspend fun archive(id: String): Result<Unit> {
-        if (!CustomCategoryIds.isCustom(id)) return Result.failure(LedgerError.InvalidRecord("Not a custom category ID"))
+    suspend fun remove(category: ExpenseCategoryChoice): Result<Unit> {
         return try {
-            categories.archive(id)
+            when (category) {
+                is CustomExpenseCategory -> categories.archive(category.id)
+                is ExpenseCategory -> categories.hideBuiltIn(category.id)
+                else -> return Result.failure(LedgerError.InvalidRecord("Unknown category"))
+            }
             Result.success(Unit)
         } catch (e: CancellationException) {
             throw e
@@ -78,8 +83,19 @@ class CreateExpenseCategoryUseCase @Inject constructor(
         catalog: ExpenseCategoryCatalog,
         now: Instant,
         icon: CategoryIcon = CategoryIcon.DEFAULT,
-    ): Result<CustomExpenseCategory> {
+    ): Result<ExpenseCategoryChoice> {
         if (!CustomCategoryIds.isCustom(id)) return Result.failure(LedgerError.InvalidRecord("Not a custom category ID"))
+        // The name of a built-in the person removed brings that built-in back, rather than making a lookalike copy.
+        catalog.hiddenBuiltInNamed(CategoryNameRules.keyOf(rawName.trim()))?.let { builtIn ->
+            return try {
+                categories.restoreBuiltIn(builtIn.id)
+                Result.success(builtIn)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
         catalog.stored.firstOrNull { it.id == id }?.let { return Result.success(it) }
         val valid = when (val check = CategoryNameRules.validate(rawName, catalog)) {
             is CategoryNameCheck.Invalid -> return Result.failure(CategoryNameRejected(check.problem))
