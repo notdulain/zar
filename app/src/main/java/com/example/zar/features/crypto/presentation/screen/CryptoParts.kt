@@ -106,7 +106,7 @@ internal fun CryptoHero(
             if (status != null) {
                 Row(Modifier.padding(top = 18.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                     StatusDot(CryptoGold)
-                    Text(status, style = ZarType.bodyCaption.copy(lineHeight = 15.sp), color = onDark.copy(alpha = 0.8f), modifier = Modifier.testTag("crypto-status"))
+                    Text(status, style = ZarType.bodyCaption.copy(lineHeight = 15.sp), color = onDark.copy(alpha = 0.9f), modifier = Modifier.testTag("crypto-status"))
                 }
             }
         }
