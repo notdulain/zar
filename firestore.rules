@@ -69,7 +69,8 @@ rules_version = '2';
 //   categoryIds (list of up to 8 category ids), weekStart (MONDAY..SUNDAY), updatedAt (int)
 //   The allowance reads the ledger but never writes to it.
 //
-// expenseCategories/{categoryId} create, no-change update or archive, no delete (custom expense categories)
+// expenseCategories/{categoryId} create, no-change update or archive; delete only for a hidden-built-in marker
+//   (custom expense categories, plus markers for built-ins the person removed from their lists)
 //   id (== doc id, 'custom-' + 8-56 letters, digits or hyphens: built-in and income ids can never match),
 //   name (1-80 stored characters, trimmed, no control or line-break characters; the app limits it to 40 code points),
 //   nameKey (1-160, lower case, trimmed: the comparison key), source ('CUSTOM'), createdAt (int),
@@ -225,6 +226,18 @@ service cloud.firestore {
         && isDateString(d.openingDate)
         && d.archived is bool
         && isMillis(d.updatedAt);
+    }
+
+    // A built-in category the person removed from their lists. Keyed by the built-in's own ID; it is only a marker,
+    // so entries that used the built-in keep resolving, and deleting the marker brings the built-in back.
+    function isValidHiddenBuiltIn(categoryId) {
+      let d = data();
+      return hasOnlyAllowedFields(['id', 'source', 'createdAt'])
+        && hasRequiredFields(['id', 'source', 'createdAt'])
+        && d.id == categoryId
+        && categoryId in ['coffee-dining', 'groceries', 'transport', 'bills', 'rent', 'season-ticket', 'subscriptions', 'other']
+        && d.source == 'HIDDEN_BUILT_IN'
+        && isMillis(d.createdAt);
     }
 
     // A user's own expense category. IDs must start with custom-, so a client can never claim a built-in or
@@ -651,13 +664,16 @@ service cloud.firestore {
 
       match /expenseCategories/{categoryId} {
         allow read: if isOwner(userId);
-        allow create: if isOwner(userId) && isValidExpenseCategory(categoryId);
+        allow create: if isOwner(userId) && (isValidExpenseCategory(categoryId) || isValidHiddenBuiltIn(categoryId));
         // Categories are never renamed or edited. An update may only replay the create, or delete the category by
         // setting archived to true (it stays stored, so entries that used it keep resolving). It is never undone.
-        allow update: if isOwner(userId) && isValidExpenseCategory(categoryId)
-          && (data() == resource.data
-            || (data().archived == true && data().diff(resource.data).affectedKeys().hasOnly(['archived'])));
-        allow delete: if false;
+        allow update: if isOwner(userId)
+          && ((isValidExpenseCategory(categoryId)
+              && (data() == resource.data
+                || (data().archived == true && data().diff(resource.data).affectedKeys().hasOnly(['archived']))))
+            || (isValidHiddenBuiltIn(categoryId) && data() == resource.data));
+        // Only a hidden-built-in marker can be deleted (restoring the built-in); a real category never is.
+        allow delete: if isOwner(userId) && resource.data.source == 'HIDDEN_BUILT_IN';
       }
 
       match /drafts/{draftId} {

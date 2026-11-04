@@ -87,4 +87,14 @@ class ExpenseCategoryDocumentMapperTest {
         assertEquals(false, "archived" in ExpenseCategoryDocumentMapper.toMap(pets))
         assertEquals(false, ExpenseCategoryDocumentMapper.fromMap(ExpenseCategoryDocumentMapper.toMap(pets))?.archived)
     }
+
+    @Test
+    fun aHiddenBuiltInDocumentRoundTripsAndOtherDocumentsAreNotMistakenForOne() {
+        val map = HiddenBuiltInDocumentMapper.toMap("groceries", 1_790_000_000_000)
+        assertEquals(setOf("id", "source", "createdAt"), map.keys)
+        assertEquals("groceries", HiddenBuiltInDocumentMapper.idOf(map))
+        assertNull(HiddenBuiltInDocumentMapper.idOf(ExpenseCategoryDocumentMapper.toMap(pets)))
+        assertNull("only real built-in IDs count", HiddenBuiltInDocumentMapper.idOf(map + ("id" to "made-up")))
+        assertNull(ExpenseCategoryDocumentMapper.fromMap(map))
+    }
 }

@@ -40,10 +40,13 @@ data class ExpenseCategoryCatalog(
      * so the names stay usable; a screen can offer a recovery notice instead of dropping the user's own categories.
      */
     val degraded: Boolean = false,
+    /** IDs of built-ins the person removed from their lists. They still resolve for old entries but are not offered. */
+    val hiddenBuiltIns: Set<String> = emptySet(),
 ) {
 
+    /** The built-ins still on offer; a removed one gives its name back (typing it restores the built-in). */
     private val builtInKeys: Map<String, ExpenseCategory> =
-        ExpenseCategory.entries.associateBy { CategoryNameRules.keyOf(it.defaultName) }
+        ExpenseCategory.entries.filter { it.id !in hiddenBuiltIns }.associateBy { CategoryNameRules.keyOf(it.defaultName) }
 
     private val ordered: List<CustomExpenseCategory> =
         stored.sortedWith(compareBy<CustomExpenseCategory> { it.createdAt }.thenBy { it.id })
@@ -65,7 +68,12 @@ data class ExpenseCategoryCatalog(
         if (category.archived) canonicalByKey[category.nameKey] ?: category else canonicalByKey.getValue(category.nameKey)
 
     /** The categories to offer: built-ins first, then non-duplicate customs that have not been deleted. */
-    val choices: List<ExpenseCategoryChoice> = ExpenseCategory.entries + active.filter { canonicalOf(it) == it }
+    val choices: List<ExpenseCategoryChoice> =
+        ExpenseCategory.entries.filter { it.id !in hiddenBuiltIns } + active.filter { canonicalOf(it) == it }
+
+    /** The removed built-in whose name is [key], if any: adding that name brings it back instead of making a copy. */
+    fun hiddenBuiltInNamed(key: String): ExpenseCategory? =
+        ExpenseCategory.entries.firstOrNull { it.id in hiddenBuiltIns && CategoryNameRules.keyOf(it.defaultName) == key }
 
     val customs: List<CustomExpenseCategory> = active.filter { canonicalOf(it) == it }
 

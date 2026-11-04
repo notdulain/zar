@@ -4,6 +4,7 @@ import com.example.zar.features.transactions.domain.category.CategoryNameRules
 import com.example.zar.features.transactions.domain.manual.model.CategoryIcon
 import com.example.zar.features.transactions.domain.manual.model.CustomCategoryIds
 import com.example.zar.features.transactions.domain.manual.model.CustomExpenseCategory
+import com.example.zar.features.transactions.domain.manual.model.ExpenseCategory
 import java.time.Instant
 
 /**
@@ -38,4 +39,22 @@ object ExpenseCategoryDocumentMapper {
             archived = map["archived"] == true,
         )
     }.getOrNull()
+}
+
+/**
+ * A built-in category the person removed from their lists. It is stored next to their own categories, marked by
+ * [SOURCE] and keyed by the built-in's own ID, so old entries still resolve and the name can be restored later.
+ */
+object HiddenBuiltInDocumentMapper {
+    const val SOURCE = "HIDDEN_BUILT_IN"
+
+    fun toMap(id: String, createdAtMillis: Long): Map<String, Any> =
+        mapOf("id" to id, "source" to SOURCE, "createdAt" to createdAtMillis)
+
+    /** The hidden built-in's ID, or null when [map] is not a hidden-built-in document. */
+    fun idOf(map: Map<String, Any?>): String? {
+        if (map["source"] != SOURCE) return null
+        val id = map["id"] as? String ?: return null
+        return id.takeIf { known -> ExpenseCategory.entries.any { it.id == known } }
+    }
 }

@@ -14,6 +14,8 @@ import kotlinx.coroutines.flow.emptyFlow
 data class CustomCategorySnapshot(
     val categories: List<CustomExpenseCategory>,
     val isDegraded: Boolean = false,
+    /** IDs of built-in categories the person removed from their lists. */
+    val hiddenBuiltIns: Set<String> = emptySet(),
 )
 
 /**
@@ -49,6 +51,12 @@ interface ExpenseCategoryRepository {
      * nobody is signed in (LedgerError.NotSignedIn).
      */
     suspend fun archive(id: String)
+
+    /** Removes the built-in [id] from the person's lists. Entries that used it keep its name. Repeating it changes nothing. */
+    suspend fun hideBuiltIn(id: String)
+
+    /** Brings a removed built-in back into the lists. Does nothing if it was not removed. */
+    suspend fun restoreBuiltIn(id: String)
 
     /**
      * Categories whose [create] already returned but whose write the server refused afterwards, so the local copy was

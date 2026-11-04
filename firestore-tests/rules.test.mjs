@@ -371,6 +371,22 @@ test('expense categories: owner-only, custom ids, safe names, never changed or d
   await assertFails(updateDoc(at(notArchived), { archived: false }));
   await assertFails(updateDoc(doc(bob(), path('alice', 'expenseCategories', notArchived)), { archived: true }));
   await assertFails(updateDoc(doc(anon(), path('alice', 'expenseCategories', notArchived)), { archived: true }));
+  // Removing a built-in from the lists stores a marker keyed by the built-in's id; deleting it brings it back.
+  const marker = (id, over = {}) => ({ id, source: 'HIDDEN_BUILT_IN', createdAt: millis, ...over });
+  await assertSucceeds(setDoc(at('groceries'), marker('groceries')));
+  await assertSucceeds(setDoc(at('groceries'), marker('groceries'))); // replay changes nothing
+  await assertSucceeds(setDoc(at('season-ticket'), marker('season-ticket')));
+  await assertFails(setDoc(at('made-up'), marker('made-up')));
+  await assertFails(setDoc(at('salary'), marker('salary')));
+  await assertFails(setDoc(at('bills'), marker('bills', { id: 'rent' })));
+  await assertFails(setDoc(at('bills'), marker('bills', { source: 'CUSTOM' })));
+  await assertFails(setDoc(at('bills'), marker('bills', { name: 'Bills' })));
+  await assertFails(setDoc(at('bills'), marker('bills', { createdAt: 0 })));
+  await assertFails(updateDoc(at('groceries'), { createdAt: millis + 1 }));
+  await assertSucceeds(deleteDoc(at('groceries'))); // restore
+  await assertFails(deleteDoc(at('custom-archive-1'))); // a real category is never deleted
+  await assertFails(setDoc(doc(bob(), path('alice', 'expenseCategories', 'transport')), marker('transport')));
+  await assertFails(deleteDoc(doc(bob(), path('alice', 'expenseCategories', 'season-ticket'))));
   // Optional icon: a known key is accepted, anything else is not.
   await assertSucceeds(setDoc(at('custom-icon-ok-1'), cat('custom-icon-ok-1', { icon: 'piggy_bank' })));
   await assertSucceeds(setDoc(at('custom-icon-default'), cat('custom-icon-default', { icon: 'receipt' })));

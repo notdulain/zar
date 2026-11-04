@@ -20,6 +20,7 @@ class FakeExpenseCategoryRepository(user: String? = "alice") : ExpenseCategoryRe
     val signedIn = MutableStateFlow(user?.let(::UserId))
     private val stored = MutableStateFlow<Map<String, Map<String, CustomExpenseCategory>>>(emptyMap())
     private val degraded = MutableStateFlow(false)
+    private val hidden = MutableStateFlow<Map<String, Set<String>>>(emptyMap())
     var failNextWith: Throwable? = null
     var writes = 0
         private set
@@ -29,8 +30,12 @@ class FakeExpenseCategoryRepository(user: String? = "alice") : ExpenseCategoryRe
 
     @OptIn(ExperimentalCoroutinesApi::class)
     override fun observeCustomCategories(): Flow<CustomCategorySnapshot> = signedIn.flatMapLatest { uid ->
-        combine(stored, degraded) { all, isDegraded ->
-            CustomCategorySnapshot(uid?.let { all[it.value].orEmpty().values.toList() }.orEmpty(), isDegraded)
+        combine(stored, degraded, hidden) { all, isDegraded, hiddenByUser ->
+            CustomCategorySnapshot(
+                uid?.let { all[it.value].orEmpty().values.toList() }.orEmpty(),
+                isDegraded,
+                uid?.let { hiddenByUser[it.value].orEmpty() }.orEmpty(),
+            )
         }
     }
 
@@ -62,6 +67,29 @@ class FakeExpenseCategoryRepository(user: String? = "alice") : ExpenseCategoryRe
     }
 
     var archives = 0
+        private set
+
+    override suspend fun hideBuiltIn(id: String) {
+        val uid = signedIn.value ?: throw LedgerError.NotSignedIn()
+        failNextWith?.let { failNextWith = null; throw it }
+        val mine = hidden.value[uid.value].orEmpty()
+        if (id in mine) return
+        hides++
+        hidden.value = hidden.value + (uid.value to (mine + id))
+    }
+
+    override suspend fun restoreBuiltIn(id: String) {
+        val uid = signedIn.value ?: throw LedgerError.NotSignedIn()
+        failNextWith?.let { failNextWith = null; throw it }
+        val mine = hidden.value[uid.value].orEmpty()
+        if (id !in mine) return
+        restores++
+        hidden.value = hidden.value + (uid.value to (mine - id))
+    }
+
+    var hides = 0
+        private set
+    var restores = 0
         private set
 
     private val late = MutableSharedFlow<CustomExpenseCategory>(extraBufferCapacity = 8)

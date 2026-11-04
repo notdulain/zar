@@ -145,4 +145,27 @@ class ExpenseCategoryCatalogTest {
         val catalog = ExpenseCategoryCatalog(listOf(deleted("custom-a", "Alpha")))
         assertEquals(ExpenseCategoryCatalog.BUILT_IN_ONLY.choices, catalog.choices)
     }
+
+    // --- Removed (hidden) built-ins ---
+
+    @Test
+    fun aHiddenBuiltInLeavesThePickersButStillNamesOldEntries() {
+        val catalog = ExpenseCategoryCatalog(hiddenBuiltIns = setOf("groceries"))
+        assertTrue(catalog.choices.none { it.id == "groceries" })
+        assertEquals(ExpenseCategory.entries.size - 1, catalog.choices.size)
+        assertEquals(CategoryLabel.BuiltIn(ExpenseCategory.GROCERIES), catalog.label("groceries"))
+        assertEquals(ExpenseCategory.GROCERIES, catalog.find("groceries"))
+    }
+
+    @Test
+    fun typingAHiddenBuiltInsNameIsNotADuplicateAndFindsItToRestore() {
+        val key = CategoryNameRules.keyOf("Groceries")
+        val shown = ExpenseCategoryCatalog()
+        assertTrue(shown.hasName(key))
+        assertNull(shown.hiddenBuiltInNamed(key))
+        val hidden = ExpenseCategoryCatalog(hiddenBuiltIns = setOf("groceries"))
+        assertTrue(!hidden.hasName(key))
+        assertEquals(ExpenseCategory.GROCERIES, hidden.hiddenBuiltInNamed(key))
+        assertNull(hidden.hiddenBuiltInNamed(CategoryNameRules.keyOf("Pets")))
+    }
 }

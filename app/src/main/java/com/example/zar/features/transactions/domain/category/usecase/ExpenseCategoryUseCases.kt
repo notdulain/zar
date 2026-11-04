@@ -31,7 +31,7 @@ class ObserveExpenseCategoryCatalogUseCase @Inject constructor(
         emit(last)
         try {
             categories.observeCustomCategories().collect { snapshot ->
-                last = ExpenseCategoryCatalog(snapshot.categories, degraded = snapshot.isDegraded)
+                last = ExpenseCategoryCatalog(snapshot.categories, degraded = snapshot.isDegraded, hiddenBuiltIns = snapshot.hiddenBuiltIns)
                 emit(last)
             }
         } catch (error: CancellationException) {
