@@ -26,6 +26,9 @@ class MainActivity : ComponentActivity() {
     // Set when the app was opened from the weekly reminder, and cleared once the catch-up has been opened.
     private var openCatchUp by mutableStateOf(false)
 
+    // Set when a capture notification was tapped, and cleared once that draft's review has been opened.
+    private var openReviewDraft by mutableStateOf<String?>(null)
+
     // Bank text shared from another app. Kept in memory only; the capture screen takes it.
     @Inject lateinit var sharedTextInbox: SharedTextInbox
 
@@ -36,6 +39,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         applyZarAppearance(dark = displayPreferences.current().appearance.resolveDark(resources.configuration.isSystemNightMode()))
         openCatchUp = savedInstanceState?.getBoolean(LaunchTargets.EXTRA) ?: intent.isCatchUpLaunch()
+        openReviewDraft = if (savedInstanceState != null) savedInstanceState.getString(LaunchTargets.EXTRA_DRAFT_ID) else intent.reviewDraft()
         takeSharedText(intent)
         setContent {
             val display by displayPreferences().collectAsStateWithLifecycle(initialValue = displayPreferences.current())
@@ -44,7 +48,12 @@ class MainActivity : ComponentActivity() {
                 // or above default; see ZarProportionPolicy for why it only ever raises the layout density.
                 ProvideBaselineProportions {
                     ProvideZarMotion(display.reduceMotion) {
-                        ZarRoot(openCatchUp = openCatchUp, onCatchUpOpened = { openCatchUp = false })
+                        ZarRoot(
+                            openCatchUp = openCatchUp,
+                            onCatchUpOpened = { openCatchUp = false },
+                            openReviewDraft = openReviewDraft,
+                            onReviewOpened = { openReviewDraft = null },
+                        )
                     }
                 }
             }
@@ -53,6 +62,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onSaveInstanceState(outState: Bundle) {
         outState.putBoolean(LaunchTargets.EXTRA, openCatchUp)
+        outState.putString(LaunchTargets.EXTRA_DRAFT_ID, openReviewDraft)
         super.onSaveInstanceState(outState)
     }
 
@@ -60,6 +70,7 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         if (intent.isCatchUpLaunch()) openCatchUp = true
+        intent.reviewDraft()?.let { openReviewDraft = it }
         takeSharedText(intent)
     }
 
@@ -72,4 +83,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun Intent.isCatchUpLaunch(): Boolean = getStringExtra(LaunchTargets.EXTRA) == LaunchTargets.CATCH_UP
+
+    private fun Intent.reviewDraft(): String? =
+        getStringExtra(LaunchTargets.EXTRA_DRAFT_ID)?.takeIf { getStringExtra(LaunchTargets.EXTRA) == LaunchTargets.CAPTURE_REVIEW }
 }
