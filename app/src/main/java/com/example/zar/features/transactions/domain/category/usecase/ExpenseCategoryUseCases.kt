@@ -6,6 +6,7 @@ import com.example.zar.features.transactions.domain.category.CategoryNameProblem
 import com.example.zar.features.transactions.domain.category.CategoryNameRules
 import com.example.zar.features.transactions.domain.category.ExpenseCategoryCatalog
 import com.example.zar.features.transactions.domain.category.repository.ExpenseCategoryRepository
+import com.example.zar.features.transactions.domain.manual.model.CategoryIcon
 import com.example.zar.features.transactions.domain.manual.model.CustomCategoryIds
 import com.example.zar.features.transactions.domain.manual.model.CustomExpenseCategory
 import java.time.Instant
@@ -60,6 +61,7 @@ class CreateExpenseCategoryUseCase @Inject constructor(
         rawName: String,
         catalog: ExpenseCategoryCatalog,
         now: Instant,
+        icon: CategoryIcon = CategoryIcon.DEFAULT,
     ): Result<CustomExpenseCategory> {
         if (!CustomCategoryIds.isCustom(id)) return Result.failure(LedgerError.InvalidRecord("Not a custom category ID"))
         catalog.stored.firstOrNull { it.id == id }?.let { return Result.success(it) }
@@ -67,7 +69,7 @@ class CreateExpenseCategoryUseCase @Inject constructor(
             is CategoryNameCheck.Invalid -> return Result.failure(CategoryNameRejected(check.problem))
             is CategoryNameCheck.Valid -> check
         }
-        val category = CustomExpenseCategory(id = id, name = valid.name, nameKey = valid.key, createdAt = now)
+        val category = CustomExpenseCategory(id = id, name = valid.name, nameKey = valid.key, createdAt = now, icon = icon)
         return try {
             categories.create(category)
             Result.success(category)

@@ -1,5 +1,6 @@
 package com.example.zar.features.transactions.presentation.manual
 
+import com.example.zar.features.transactions.domain.manual.model.CategoryIcon
 import com.example.zar.features.transactions.domain.manual.model.CustomExpenseCategory
 import com.example.zar.features.transactions.domain.manual.model.CustomCategoryIds
 import com.example.zar.features.transactions.domain.category.CategoryNameRules
@@ -862,6 +863,42 @@ class ManualEntryViewModelTest {
         assertNull(vm.uiState.value.newCategory!!.problem)
         vm.onAddCategorySave()
         assertEquals("Pets", (vm.uiState.value.category as CustomExpenseCategory).name)
+    }
+
+    @Test
+    fun aNewCategoryUsesTheDefaultIconUntilOneIsPicked() {
+        val vm = viewModel()
+        vm.onAddCategoryStart()
+        assertEquals(CategoryIcon.DEFAULT, vm.uiState.value.newCategory!!.icon)
+        vm.onNewCategoryNameChange("Pets")
+        vm.onAddCategorySave()
+        assertEquals(CategoryIcon.DEFAULT, vm.uiState.value.categoryCatalog.customs.single().icon)
+    }
+
+    @Test
+    fun thePickedIconIsSavedWithTheCategoryAndKeptOnRetry() {
+        val vm = viewModel()
+        vm.onAddCategoryStart()
+        vm.onNewCategoryNameChange("Pets")
+        vm.onNewCategoryIconSelect(CategoryIcon.PIGGY_BANK)
+        categoryRepo.failNextWith = java.io.IOException("unavailable")
+        vm.onAddCategorySave()
+        // A failed write keeps the form, the typed name and the picked icon.
+        assertEquals(CategoryIcon.PIGGY_BANK, vm.uiState.value.newCategory!!.icon)
+        // Editing the name does not reset the icon.
+        vm.onNewCategoryNameChange("Pets and vet")
+        assertEquals(CategoryIcon.PIGGY_BANK, vm.uiState.value.newCategory!!.icon)
+        vm.onAddCategorySave()
+        val created = vm.uiState.value.categoryCatalog.customs.single()
+        assertEquals(CategoryIcon.PIGGY_BANK, created.icon)
+        assertEquals(created, vm.uiState.value.category)
+    }
+
+    @Test
+    fun pickingAnIconWithNoFormOpenChangesNothing() {
+        val vm = viewModel()
+        vm.onNewCategoryIconSelect(CategoryIcon.CAR)
+        assertNull(vm.uiState.value.newCategory)
     }
 
     @Test

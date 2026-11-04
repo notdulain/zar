@@ -30,6 +30,7 @@ import com.example.zar.features.transactions.domain.category.usecase.CreateExpen
 import com.example.zar.features.transactions.domain.category.usecase.ObserveExpenseCategoryCatalogUseCase
 import com.example.zar.features.transactions.domain.manual.EntrySuggestions
 import com.example.zar.features.transactions.domain.manual.ManualEntryRules
+import com.example.zar.features.transactions.domain.manual.model.CategoryIcon
 import com.example.zar.features.transactions.domain.manual.model.CustomCategoryIds
 import com.example.zar.features.transactions.domain.manual.model.CustomExpenseCategory
 import com.example.zar.features.transactions.domain.manual.model.EntrySuggestion
@@ -68,6 +69,7 @@ enum class ManualEntryMessage { NOT_SIGNED_IN, ACCOUNT_ARCHIVED, FAILED }
  */
 data class NewCategoryState(
     val name: String = "",
+    val icon: CategoryIcon = CategoryIcon.DEFAULT,
     val problem: CategoryNameProblem? = null,
     val isSaving: Boolean = false,
     val failed: Boolean = false,
@@ -266,6 +268,11 @@ class ManualEntryViewModel @Inject constructor(
         state.newCategory?.let { state.copy(newCategory = it.copy(name = value, problem = null, failed = false)) } ?: state
     }
 
+    /** Picks the icon the new category will show. Only the open form changes; the draft is untouched. */
+    fun onNewCategoryIconSelect(value: CategoryIcon) = _uiState.update { state ->
+        state.newCategory?.let { state.copy(newCategory = it.copy(icon = value)) } ?: state
+    }
+
     /** Closes the form without creating anything; the selection and every typed field stay. */
     fun onAddCategoryCancel() {
         pendingCategoryId = null
@@ -282,7 +289,7 @@ class ManualEntryViewModel @Inject constructor(
         val id = pendingCategoryId ?: CustomCategoryIds.newId().also { pendingCategoryId = it }
         _uiState.update { it.copy(newCategory = form.copy(isSaving = true, problem = null, failed = false)) }
         viewModelScope.launch {
-            val outcome = createCategory(id, form.name, _uiState.value.categoryCatalog, Instant.now())
+            val outcome = createCategory(id, form.name, _uiState.value.categoryCatalog, Instant.now(), form.icon)
             outcome.fold(
                 onSuccess = { created ->
                     pendingCategoryId = null
@@ -312,7 +319,7 @@ class ManualEntryViewModel @Inject constructor(
             it.copy(
                 category = null,
                 categoryChosen = false,
-                newCategory = it.newCategory ?: NewCategoryState(name = rejected.name, failed = true),
+                newCategory = it.newCategory ?: NewCategoryState(name = rejected.name, icon = rejected.icon, failed = true),
             ).withRule()
         }
     }
