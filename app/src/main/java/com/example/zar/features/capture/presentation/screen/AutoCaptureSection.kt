@@ -45,6 +45,7 @@ import com.example.zar.core.presentation.theme.ZarTheme
 import com.example.zar.core.presentation.theme.ZarType
 import com.example.zar.features.capture.presentation.viewmodel.AutoCaptureUiState
 import com.example.zar.features.capture.presentation.viewmodel.AutoCaptureViewModel
+import com.example.zar.features.reminders.presentation.rememberNotificationAccess
 import com.example.zar.features.transactions.presentation.income.IncomeFormat
 
 /** The SMS-only feature flag exists from Android 13; before that, telephony implies SMS. */
@@ -57,7 +58,9 @@ private fun Context.canReadSms() =
 
 /**
  * The opt-in for automatic SMS capture. SMS access is asked for only when it's switched on, and
- * a refusal leaves it off; sharing and pasting keep working either way.
+ * a refusal leaves it off; sharing and pasting keep working either way. Notification access is asked
+ * for at the same time so each capture can ask for review; refusing it leaves capture on, and the
+ * drafts still wait in Needs review.
  */
 @Composable
 fun AutoCaptureSection(onAddManually: (() -> Unit)? = null, viewModel: AutoCaptureViewModel = hiltViewModel()) {
@@ -66,10 +69,14 @@ fun AutoCaptureSection(onAddManually: (() -> Unit)? = null, viewModel: AutoCaptu
     val canReceive = remember { context.canReceiveSms() }
     var granted by remember { mutableStateOf(context.canReadSms()) }
     var refused by remember { mutableStateOf(false) }
+    val notifications = rememberNotificationAccess()
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { ok ->
         granted = ok
         refused = !ok
-        if (ok) viewModel.setEnabled(true)
+        if (ok) {
+            viewModel.setEnabled(true)
+            if (!notifications.enabled) notifications.request()
+        }
     }
     LifecycleResumeEffect(Unit) {
         granted = context.canReadSms()
@@ -85,7 +92,10 @@ fun AutoCaptureSection(onAddManually: (() -> Unit)? = null, viewModel: AutoCaptu
         onToggle = { on ->
             when {
                 !on -> viewModel.setEnabled(false)
-                granted -> viewModel.setEnabled(true)
+                granted -> {
+                    viewModel.setEnabled(true)
+                    if (!notifications.enabled) notifications.request()
+                }
                 else -> launcher.launch(Manifest.permission.RECEIVE_SMS)
             }
         },

@@ -1237,6 +1237,7 @@
     <string name="capture_review_discard">Discard</string>
     <string name="capture_review_gone">This message was already reviewed.</string>
     <string name="capture_review_pick_account">Choose an account</string>
+    <string name="capture_review_account_matched">Picked from the bank in the message. Tap another account if it\'s wrong.</string>
     <string name="capture_review_pick_type">Choose a type</string>
     <string name="capture_type_expense">Expense</string>
     <string name="capture_type_income">Income</string>
@@ -1629,4 +1630,11 @@
     <string name="auth_registration_password_placeholder">Password (at least %1$d characters)</string>
     <string name="auth_already_have_account">Already have an account?</string>
     <string name="auth_registering">Creating account…</string>
+    <string name="capture_notify_channel_name">Captured bank messages</string>
+    <string name="capture_notify_channel_description">Asks you to review each bank message Zar saved in the background.</string>
+    <string name="capture_notify_title_at">%1$s at %2$s</string>
+    <string name="capture_notify_title">%1$s from a bank message</string>
+    <string name="capture_notify_body_account">%1$s · Tap to review and confirm.</string>
+    <string name="capture_notify_body">Tap to review and confirm.</string>
+    <string name="capture_notify_public_title">A bank message is waiting for review</string>
 </resources>
