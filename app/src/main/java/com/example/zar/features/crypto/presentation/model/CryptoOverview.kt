@@ -2,6 +2,8 @@ package com.example.zar.features.crypto.presentation.model
 
 import com.example.zar.core.domain.calculation.CurrencyConverter
 import com.example.zar.core.domain.model.money.FiatMoney
+import com.example.zar.core.domain.model.money.Money
+import com.example.zar.features.crypto.domain.model.CryptoMovementKind
 import com.example.zar.features.crypto.domain.model.CryptoMovementRow
 import com.example.zar.features.crypto.domain.model.CryptoPortfolio
 
@@ -33,6 +35,10 @@ object CryptoOverview {
             else -> CryptoHeroStatus.Realized(sales, approximate = portfolio.assets.any { it.isCostApproximate })
         }
     }
+
+    /** The amount named in the title ("Bought BTC 0.0025"): the coins received for a buy, the amount sent for anything else. */
+    fun titleAmount(row: CryptoMovementRow): Money =
+        if (row.kind == CryptoMovementKind.BUY) row.inEntry.current.amount else row.outEntry.current.amount
 
     /** The movement's LKR value: what was paid for a buy, or received for a sale. Null when unknown. */
     fun lkrValue(row: CryptoMovementRow): FiatMoney? =

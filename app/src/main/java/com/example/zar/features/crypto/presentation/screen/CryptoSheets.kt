@@ -62,6 +62,7 @@ import com.example.zar.features.bills.presentation.screen.BillFormat
 import com.example.zar.features.crypto.domain.CryptoProblem
 import com.example.zar.features.crypto.domain.model.CryptoMovementKind
 import com.example.zar.features.crypto.domain.model.CryptoMovementRow
+import com.example.zar.features.crypto.presentation.model.CryptoOverview
 import com.example.zar.features.crypto.presentation.viewmodel.CryptoMovementUiState
 import com.example.zar.features.crypto.presentation.viewmodel.CryptoMovementViewModel
 import com.example.zar.features.crypto.presentation.viewmodel.CryptoUiState
@@ -423,7 +424,7 @@ internal fun UndoMovementSheet(row: CryptoMovementRow, isSaving: Boolean, onUndo
                 ZarIconChip(currencyIcon(row.outEntry.current.amount.currency), size = 36.dp, iconSize = 18.dp, background = colors.surface)
                 Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
                     Text(
-                        "${movementTitle(row)} ${IncomeFormat.amount(row.outEntry.current.amount)}",
+                        "${movementTitle(row)} ${IncomeFormat.amount(CryptoOverview.titleAmount(row))}",
                         style = ZarType.labelButton.copy(lineHeight = 19.sp),
                         color = colors.textPrimary,
                     )

@@ -132,13 +132,14 @@ private fun Detail(row: CryptoMovementRow, portfolio: CryptoPortfolio, play: Boo
     Column {
         ZarIconChip(R.drawable.ic_ph_arrows_left_right, Modifier.padding(start = 22.dp, top = 10.dp), size = 44.dp, iconSize = 20.dp)
         Text(
-            "${movementTitle(row)} ${IncomeFormat.amount(out.amount)}",
+            "${movementTitle(row)} ${IncomeFormat.amount(CryptoOverview.titleAmount(row))}",
             style = ZarType.bodyL.copy(lineHeight = 22.sp),
             color = colors.textPrimary,
             modifier = Modifier.padding(start = 22.dp, end = 22.dp, top = 16.dp),
         )
         Text(
-            "→ ${into.amount.withCode()}",
+            // A buy's coins are already in the title, so the headline shows what was paid for them.
+            if (row.kind == CryptoMovementKind.BUY) "− ${out.amount.withCode()}" else "→ ${into.amount.withCode()}",
             style = ZarType.amountM.copy(lineHeight = 34.sp),
             color = colors.textPrimary,
             modifier = Modifier.padding(start = 22.dp, top = 3.dp).testTag("crypto-detail-amount"),

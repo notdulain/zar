@@ -16,6 +16,7 @@ import com.example.zar.core.domain.model.money.Money
 import com.example.zar.features.crypto.domain.CryptoMovementRules
 import com.example.zar.features.crypto.domain.CryptoPortfolioCalculator
 import com.example.zar.features.crypto.domain.model.CryptoMovement
+import com.example.zar.features.crypto.domain.model.CryptoMovementKind
 import com.example.zar.features.crypto.domain.model.OpeningCost
 import com.example.zar.features.crypto.presentation.model.CryptoHeroStatus
 import com.example.zar.features.crypto.presentation.model.CryptoOverview
@@ -61,6 +62,15 @@ class CryptoOverviewTest {
         assertEquals(lkr("300000"), CryptoOverview.lkrValue(bought))
         assertNull(CryptoOverview.costRemoved(bought))
         assertEquals(CryptoHeroStatus.NoSalesYet, CryptoOverview.heroStatus(portfolio(buy)))
+    }
+
+    @Test
+    fun aBuyIsTitledWithTheCoinsReceivedNotTheMoneyPaid() {
+        val p = portfolio(buy + sell)
+        val bought = p.movements.single { it.kind == CryptoMovementKind.BUY }
+        val sold = p.movements.single { it.kind == CryptoMovementKind.SELL }
+        assertEquals(btc("0.01"), CryptoOverview.titleAmount(bought))
+        assertEquals(btc("0.01"), CryptoOverview.titleAmount(sold))
     }
 
     @Test
