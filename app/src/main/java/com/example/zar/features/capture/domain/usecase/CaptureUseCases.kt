@@ -40,7 +40,8 @@ private val CAPTURE_SOURCES = setOf(DraftSource.SHARED_TEXT, DraftSource.SMS)
 
 sealed interface CaptureOutcome {
     /** Read and saved as a pending draft for review. */
-    data class Drafted(val draftId: DraftId, val parsed: ParsedBankSms) : CaptureOutcome
+    /** [isNew] is false when the same message was already waiting, e.g. shared before the SMS was read. */
+    data class Drafted(val draftId: DraftId, val parsed: ParsedBankSms, val account: Account? = null, val isNew: Boolean = true) : CaptureOutcome
 
     /** An OTP, a declined payment or a notice: nothing to record. */
     data class Ignored(val reason: SmsIgnoreReason) : CaptureOutcome
@@ -75,7 +76,13 @@ class CaptureTextUseCase @Inject constructor(
                 val suggested = SmsAccountMatcher.match(result.sms.format, result.sms.accountHint, result.sms.amount.currency, known)
                 val draft = CapturedDraftRules.draftFrom(id, result.sms, source, now, suggested)
                 val saved = if (owner == null) drafts.saveDraft(draft) else drafts.saveDraftFor(owner, draft)
-                if (saved.status == DraftStatus.PENDING_REVIEW) CaptureOutcome.Drafted(id, result.sms)
+                if (saved.status == DraftStatus.PENDING_REVIEW) CaptureOutcome.Drafted(
+                    draftId = id,
+                    parsed = result.sms,
+                    account = known.firstOrNull { it.id == suggested },
+                    // A replay returns the draft as first saved, with its own source and capture time.
+                    isNew = saved.source == draft.source && saved.createdAt == draft.createdAt,
+                )
                 else CaptureOutcome.AlreadyReviewed
             }
         }
