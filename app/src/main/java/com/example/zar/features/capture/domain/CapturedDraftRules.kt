@@ -4,6 +4,7 @@ import com.example.zar.core.domain.calculation.CurrencyConverter
 import com.example.zar.core.domain.calculation.ZarTime
 import com.example.zar.core.domain.model.LedgerError
 import com.example.zar.core.domain.model.Account
+import com.example.zar.core.domain.model.AccountId
 import com.example.zar.core.domain.model.Draft
 import com.example.zar.core.domain.model.DraftField
 import com.example.zar.core.domain.model.DraftId
@@ -40,16 +41,17 @@ object CapturedDraftRules {
         return DraftId("capture-" + digest.take(16).joinToString("") { "%02x".format(it) })
     }
 
-    fun draftFrom(id: DraftId, parsed: ParsedBankSms, source: DraftSource, createdAt: Instant): Draft {
+    /** [suggestedAccount] comes from [SmsAccountMatcher]; it is kept as a guess the person can change. */
+    fun draftFrom(id: DraftId, parsed: ParsedBankSms, source: DraftSource, createdAt: Instant, suggestedAccount: AccountId? = null): Draft {
         val (type, typeCertain) = suggestedType(parsed.kind)
         val uncertain = buildSet {
             if (!typeCertain) add(DraftField.TYPE)
+            if (suggestedAccount != null) add(DraftField.ACCOUNT)
         }
         val proposal = DraftProposal.ActualTransaction(
             type = type,
             amount = parsed.amount,
-            // Messages only show the last digits, which accounts don't store; the user picks.
-            accountId = null,
+            accountId = suggestedAccount,
             date = parsed.date,
             spendingClass = if (type == TransactionType.EXPENSE) SpendingClass.UNKNOWN else null,
             merchant = parsed.counterparty?.take(120),

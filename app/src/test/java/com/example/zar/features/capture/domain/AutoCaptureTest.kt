@@ -1,5 +1,7 @@
 package com.example.zar.features.capture.domain
 
+import com.example.zar.core.domain.FakeAccountRepository
+import com.example.zar.features.capture.domain.usecase.ObserveCaptureAccountsUseCase
 import com.example.zar.core.domain.model.Draft
 import com.example.zar.core.domain.model.DraftId
 import com.example.zar.core.domain.model.DraftProposal
@@ -132,7 +134,7 @@ class AutoCaptureTest {
         val scheduler = FakeScheduler()
         val drafts = FakeDrafts(session)
         val stage = StageIncomingSmsUseCase(BankSmsParser(), session, preferences, staging, scheduler)
-        val process = ProcessStagedSmsUseCase(session, staging, CaptureTextUseCase(BankSmsParser(), drafts))
+        val process = ProcessStagedSmsUseCase(session, staging, CaptureTextUseCase(BankSmsParser(), drafts, ObserveCaptureAccountsUseCase(FakeAccountRepository())))
     }
 
     // --- Staging ---------------------------------------------------------------------------
@@ -201,7 +203,7 @@ class AutoCaptureTest {
     @Test
     fun aMessageAlreadySharedOrCapturedMakesNoSecondDraft() = runBlocking {
         val f = Fixture(alice, alice)
-        CaptureTextUseCase(BankSmsParser(), f.drafts)(purchase, DraftSource.SHARED_TEXT, received)
+        CaptureTextUseCase(BankSmsParser(), f.drafts, ObserveCaptureAccountsUseCase(FakeAccountRepository()))(purchase, DraftSource.SHARED_TEXT, received)
         f.stage(purchase, received)
         f.process(received)
         f.stage(purchase, received.plusSeconds(5))

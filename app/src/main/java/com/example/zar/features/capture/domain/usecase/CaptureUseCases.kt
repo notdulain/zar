@@ -19,6 +19,7 @@ import com.example.zar.core.domain.repository.DraftRepository
 import com.example.zar.core.domain.repository.LedgerRepository
 import com.example.zar.core.domain.repository.LinkWrite
 import com.example.zar.features.capture.domain.CapturedDraftRules
+import com.example.zar.features.capture.domain.SmsAccountMatcher
 import com.example.zar.features.capture.domain.model.ParsedBankSms
 import com.example.zar.features.capture.domain.model.SmsIgnoreReason
 import com.example.zar.features.capture.domain.model.SmsParseResult
@@ -59,6 +60,7 @@ sealed interface CaptureOutcome {
 class CaptureTextUseCase @Inject constructor(
     private val parser: BankSmsParser,
     private val drafts: DraftRepository,
+    private val accounts: ObserveCaptureAccountsUseCase,
 ) {
     /** With [owner] the draft is saved only if that user is still signed in (see [DraftRepository.saveDraftFor]). */
     suspend operator fun invoke(text: String, source: DraftSource, now: Instant, owner: UserId? = null): Result<CaptureOutcome> = attempt {
@@ -68,7 +70,10 @@ class CaptureTextUseCase @Inject constructor(
             SmsParseResult.Unrecognised -> CaptureOutcome.Unrecognised
             is SmsParseResult.Parsed -> {
                 val id = CapturedDraftRules.draftIdFor(text)
-                val draft = CapturedDraftRules.draftFrom(id, result.sms, source, now)
+                // Accounts that cannot be read in a moment only mean no suggestion: capturing never waits on them.
+                val known = runCatching { withTimeoutOrNull(ACCOUNTS_WAIT_MS) { accounts().first() } }.getOrNull().orEmpty()
+                val suggested = SmsAccountMatcher.match(result.sms.format, result.sms.accountHint, result.sms.amount.currency, known)
+                val draft = CapturedDraftRules.draftFrom(id, result.sms, source, now, suggested)
                 val saved = if (owner == null) drafts.saveDraft(draft) else drafts.saveDraftFor(owner, draft)
                 if (saved.status == DraftStatus.PENDING_REVIEW) CaptureOutcome.Drafted(id, result.sms)
                 else CaptureOutcome.AlreadyReviewed
@@ -168,6 +173,7 @@ class DiscardCapturedDraftUseCase @Inject constructor(
 }
 
 private const val RULES_WAIT_MS = 2_000L
+private const val ACCOUNTS_WAIT_MS = 2_000L
 
 private inline fun <T> attempt(block: () -> T): Result<T> = try {
     Result.success(block())
