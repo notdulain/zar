@@ -61,8 +61,14 @@ cd "$ROOT"
 rm -rf "$ROOT/benchmark/build/outputs/connected_android_test_additional_output"
 FILTER=()
 [[ -z "${ZAR_BENCHMARK_FILTER:-}" ]] || FILTER=("-Pandroid.testInstrumentationRunnerArguments.class=$ZAR_BENCHMARK_FILTER")
+# ZAR_APP_ID_SUFFIX=.perf measures a side-by-side com.example.zar.perf build, so a phone's real app and data are never
+# replaced or uninstalled by the connected-test cleanup. Unset means the plain com.example.zar package.
+SUFFIX=()
+if [[ -n "${ZAR_APP_ID_SUFFIX:-}" ]]; then
+  SUFFIX=(-Pzar.appIdSuffix="$ZAR_APP_ID_SUFFIX" -Pandroid.testInstrumentationRunnerArguments.zarTargetPackage="com.example.zar$ZAR_APP_ID_SUFFIX")
+fi
 ANDROID_SERIAL="$SERIAL" ./gradlew --max-workers=2 :benchmark:connectedBenchmarkAndroidTest \
-  -Pzar.useEmulators=true -Pzar.emulatorHost="$HOST" ${FILTER[@]+"${FILTER[@]}"} 2>&1 | tee "$OUT/gradle.log"
+  -Pzar.useEmulators=true -Pzar.emulatorHost="$HOST" ${SUFFIX[@]+"${SUFFIX[@]}"} ${FILTER[@]+"${FILTER[@]}"} 2>&1 | tee "$OUT/gradle.log"
 
 echo "== 5. collect results"
 RESULTS="$(find "$ROOT/benchmark/build/outputs/connected_android_test_additional_output" -name '*benchmarkData.json' 2>/dev/null | head -1)"
@@ -73,7 +79,7 @@ mkdir -p "$OUT/traces"
 find "$RESULT_DIR" -name '*.perfetto-trace' -exec cp {} "$OUT/traces/" \;
 "$PYTHON" "$ROOT/tools/summarize-benchmark.py" "$OUT/benchmarkData.json" | tee "$OUT/summary.md"
 if ls "$OUT"/traces/*.perfetto-trace >/dev/null 2>&1; then
-  "$PYTHON" "$ROOT/tools/trace-frame-summary.py" "$OUT"/traces/*.perfetto-trace | tee "$OUT/trace-frame-summary.txt"
+  "$PYTHON" "$ROOT/tools/trace-frame-summary.py" ${ZAR_APP_ID_SUFFIX:+--package "com.example.zar$ZAR_APP_ID_SUFFIX"} "$OUT"/traces/*.perfetto-trace | tee "$OUT/trace-frame-summary.txt"
 fi
 
 echo "done: $OUT"

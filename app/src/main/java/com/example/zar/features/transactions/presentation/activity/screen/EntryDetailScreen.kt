@@ -29,9 +29,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ModalBottomSheet
+import com.example.zar.core.presentation.components.ZarModalSheet
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -70,7 +69,7 @@ import com.example.zar.core.presentation.components.ZarCard
 import com.example.zar.core.presentation.components.ZarDivider
 import com.example.zar.core.presentation.components.ZarFormRow
 import com.example.zar.core.presentation.components.ZarIconChip
-import com.example.zar.core.presentation.components.ZarMonoLabel
+import com.example.zar.core.presentation.components.ZarEyebrow
 import com.example.zar.core.presentation.theme.ZarDimens
 import com.example.zar.core.presentation.theme.ZarShapes
 import com.example.zar.core.presentation.theme.ZarTheme
@@ -367,7 +366,7 @@ private fun DetailsCard(state: EntryDetailUiState, detail: EntryDetail, modifier
             ValueRow(stringResource(R.string.activity_field_status), stringResource(status), dot = if (entry.isVoided) colors.textAttention else colors.fresh)
         }
     }
-    ZarCard(modifier.fillMaxWidth(), contentPadding = PaddingValues(horizontal = 20.dp, vertical = 4.dp), soft = true) {
+    ZarCard(modifier.fillMaxWidth(), contentPadding = PaddingValues(horizontal = 20.dp, vertical = 4.dp)) {
         rows.forEachIndexed { index, row ->
             if (index > 0) ZarDivider()
             Box(Modifier.padding(vertical = 14.dp)) { row() }
@@ -402,9 +401,9 @@ private fun ClassRow(spendingClass: SpendingClass?) {
 private fun LinkedEntriesCard(detail: EntryDetail, modifier: Modifier = Modifier) {
     val colors = ZarTheme.colors
     val legs = listOfNotNull(detail.entry, detail.counterpart).sortedBy { if (it.original.type == TransactionType.TRANSFER_OUT) 0 else 1 }
-    ZarCard(modifier.fillMaxWidth().testTag("detail-linked"), contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp), soft = true) {
+    ZarCard(modifier.fillMaxWidth().testTag("detail-linked"), contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp)) {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            ZarMonoLabel(stringResource(R.string.activity_linked_title))
+            ZarEyebrow(stringResource(R.string.activity_linked_title))
             legs.forEach { leg ->
                 val tx = leg.current
                 val isOut = leg.original.type == TransactionType.TRANSFER_OUT
@@ -442,9 +441,9 @@ private fun HistoryCard(detail: EntryDetail, modifier: Modifier = Modifier) {
     val entry = detail.entry
     // Newest first, one line per field a correction changed, then the original record at the bottom.
     val lines = detail.history.reversed().flatMap { event -> event.changes.map { it to event.correction.correctedAt } }
-    ZarCard(modifier.fillMaxWidth().testTag("detail-history"), contentPadding = PaddingValues(horizontal = 20.dp, vertical = 18.dp), soft = true) {
+    ZarCard(modifier.fillMaxWidth().testTag("detail-history"), contentPadding = PaddingValues(horizontal = 20.dp, vertical = 18.dp)) {
         Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-            ZarMonoLabel(stringResource(R.string.activity_history_title))
+            ZarEyebrow(stringResource(R.string.activity_history_title))
             lines.forEach { (change, at) ->
                 HistoryLine(
                     title = stringResource(historyTitle(change.field)),
@@ -562,7 +561,6 @@ private fun RuleCardView(card: RuleCard, actions: DetailActions, modifier: Modif
         modifier.fillMaxWidth().testTag(tag),
         onClick = onClick,
         contentPadding = PaddingValues(horizontal = 20.dp, vertical = 17.dp),
-        soft = true,
     ) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -585,7 +583,6 @@ private fun RefundsCard(detail: EntryDetail, actions: DetailActions, modifier: M
             modifier.fillMaxWidth().testTag("detail-refund-prompt"),
             onClick = { actions.onRefund(detail.entry.id.value) },
             contentPadding = PaddingValues(horizontal = 20.dp, vertical = 17.dp),
-            soft = true,
         ) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -597,9 +594,9 @@ private fun RefundsCard(detail: EntryDetail, actions: DetailActions, modifier: M
         }
         return
     }
-    ZarCard(modifier.fillMaxWidth().testTag("detail-refunds"), contentPadding = PaddingValues(horizontal = 20.dp, vertical = 18.dp), soft = true) {
+    ZarCard(modifier.fillMaxWidth().testTag("detail-refunds"), contentPadding = PaddingValues(horizontal = 20.dp, vertical = 18.dp)) {
         Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-            ZarMonoLabel(stringResource(R.string.activity_refunds_title))
+            ZarEyebrow(stringResource(R.string.activity_refunds_title))
             summary.refunds.forEach { refund ->
                 val tx = refund.current
                 Box(Modifier.fillMaxWidth().clickable(role = Role.Button) { actions.onOpenEntry(refund.id.value) }.testTag("detail-refund-${refund.id.value}")) {
@@ -649,10 +646,9 @@ private fun LinkedPurchaseCard(detail: EntryDetail, actions: DetailActions, modi
         modifier.fillMaxWidth().testTag("detail-linked-purchase"),
         onClick = purchase?.let { { actions.onOpenEntry(it.id.value) } },
         contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp),
-        soft = true,
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            ZarMonoLabel(stringResource(R.string.activity_linked_purchase_title))
+            ZarEyebrow(stringResource(R.string.activity_linked_purchase_title))
             if (purchase == null) {
                 Text(stringResource(R.string.activity_linked_purchase_missing), style = ZarType.bodyCaption, color = colors.textSecondary)
             } else {
@@ -688,9 +684,9 @@ private fun LinkedPurchaseCard(detail: EntryDetail, actions: DetailActions, modi
 private fun AdjustmentCard(detail: EntryDetail, modifier: Modifier = Modifier) {
     val colors = ZarTheme.colors
     val outgoing = detail.entry.current.type == TransactionType.ADJUSTMENT_OUT
-    ZarCard(modifier.fillMaxWidth().testTag("detail-adjustment"), contentPadding = PaddingValues(horizontal = 20.dp, vertical = 18.dp), soft = true) {
+    ZarCard(modifier.fillMaxWidth().testTag("detail-adjustment"), contentPadding = PaddingValues(horizontal = 20.dp, vertical = 18.dp)) {
         Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-            ZarMonoLabel(stringResource(if (outgoing) R.string.activity_adjustment_out_card_title else R.string.activity_adjustment_in_card_title))
+            ZarEyebrow(stringResource(if (outgoing) R.string.activity_adjustment_out_card_title else R.string.activity_adjustment_in_card_title))
             if (outgoing) {
                 HistoryLine(stringResource(R.string.activity_adjustment_out_line1_title), stringResource(R.string.activity_adjustment_out_line1_body), colors.chartUnknown)
                 HistoryLine(stringResource(R.string.activity_adjustment_out_line2_title), stringResource(R.string.activity_adjustment_out_line2_body), colors.textTertiary)
@@ -773,14 +769,9 @@ private fun DetailActionsBar(detail: EntryDetail, actions: DetailActions, modifi
 private fun VoidSheet(state: EntryDetailUiState, detail: EntryDetail, actions: DetailActions) {
     val colors = ZarTheme.colors
     val tx = detail.entry.current
-    ModalBottomSheet(
+    ZarModalSheet(
         onDismissRequest = actions.onDismissVoid,
-        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-        shape = ZarShapes.sheet,
-        containerColor = colors.surface,
-        scrimColor = SheetScrim,
-        dragHandle = { SheetGrabber() },
-    ) {
+    ) { dismiss ->
         Column(
             Modifier.navigationBarsPadding().padding(horizontal = ZarDimens.SheetGutter).padding(bottom = 14.dp).testTag("void-sheet"),
             verticalArrangement = Arrangement.spacedBy(20.dp),
@@ -793,7 +784,7 @@ private fun VoidSheet(state: EntryDetailUiState, detail: EntryDetail, actions: D
                         else -> R.string.activity_void_title
                     },
                 ),
-                onClose = actions.onDismissVoid,
+                onClose = dismiss,
             )
             Row(
                 Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(colors.subtle).padding(horizontal = 14.dp, vertical = 12.dp),
@@ -850,7 +841,7 @@ private fun VoidSheet(state: EntryDetailUiState, detail: EntryDetail, actions: D
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 ZarButton(
                     text = stringResource(R.string.activity_void_keep),
-                    onClick = actions.onDismissVoid,
+                    onClick = dismiss,
                     style = ZarButtonStyle.Soft,
                     enabled = !state.isVoiding,
                     modifier = Modifier.weight(1f).testTag("void-keep"),

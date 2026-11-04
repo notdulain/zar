@@ -64,6 +64,10 @@ rules_version = '2';
 //   id (== doc id), name (1-80), target (positive Money), targetDate? (YYYY-MM-DD), allocations (max 10),
 //   allocation {accountId, amount}; allocations reserve money but do not write ledger entries.
 //
+// planPreferences/main            create, update (one document; no delete)
+//   id ('main' == doc id), mainGoalId (1-64 chars, the user's main savings plan), updatedAt (int).
+//   Selecting a main plan never writes to goals/: it only points at one. A pointer to a missing goal is harmless.
+//
 // allowance/weekly                create, update (one document; no delete: switch it off instead)
 //   id ('weekly' == doc id), enabled (bool), amount? (positive LKR FIAT Money; required when enabled),
 //   categoryIds (list of up to 8 category ids), weekStart (MONDAY..SUNDAY), updatedAt (int)
@@ -442,6 +446,16 @@ service cloud.firestore {
         && (count < 8 || isShortString(c[7], 64));
     }
 
+    function isValidPlanPreferences(docId) {
+      let d = data();
+      return hasOnlyAllowedFields(['id', 'mainGoalId', 'updatedAt'])
+        && hasRequiredFields(['id', 'mainGoalId', 'updatedAt'])
+        && docId == 'main'
+        && d.id == docId
+        && isShortString(d.mainGoalId, 64)
+        && isMillis(d.updatedAt);
+    }
+
     function isValidGoal(goalId) {
       let d = data();
       let a = d.allocations;
@@ -628,6 +642,12 @@ service cloud.firestore {
         allow create: if isOwner(userId) && isValidGoal(goalId);
         allow update: if isOwner(userId) && isValidGoal(goalId)
           && areImmutableFieldsUnchanged(['id']);
+        allow delete: if false;
+      }
+
+      match /planPreferences/{docId} {
+        allow read: if isOwner(userId);
+        allow create, update: if isOwner(userId) && isValidPlanPreferences(docId);
         allow delete: if false;
       }
 

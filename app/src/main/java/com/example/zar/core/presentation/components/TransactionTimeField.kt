@@ -4,7 +4,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.material3.AlertDialog
+import com.example.zar.core.presentation.components.ZarAlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -45,7 +45,7 @@ fun TransactionTimeField(time: LocalTime?, modifier: Modifier = Modifier, tag: S
     if (open) {
         val initial = time ?: LocalTime.now(ZarTime.ZONE)
         val state = rememberTimePickerState(initialHour = initial.hour, initialMinute = initial.minute, is24Hour = false)
-        AlertDialog(
+        ZarAlertDialog(
             onDismissRequest = { open = false },
             title = { Text(stringResource(R.string.entry_field_time)) },
             text = { TimeInput(state = state, modifier = Modifier.testTag("$tag-picker")) },

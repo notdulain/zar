@@ -175,6 +175,24 @@ class ObserveHomeOverviewUseCaseTest {
     }
 
     @Test
+    fun sixMonthTotalsEndAtTheSelectedMonthAndStaySeparateFromDailyBars() {
+        val o = compute(
+            tx("may", TransactionType.INCOME, lkr(100), date = LocalDate.of(2026, 5, 31)),
+            tx("sep", TransactionType.INCOME, lkr(250), date = LocalDate.of(2026, 9, 30)),
+            tx("oct-a", TransactionType.INCOME, lkr(1_000), date = october.atDay(1)),
+            tx("oct-b", TransactionType.INCOME, lkr(500), date = october.atDay(20)),
+            tx("too-early", TransactionType.INCOME, lkr(999), date = LocalDate.of(2026, 4, 30)),
+            tx("no-rate", TransactionType.INCOME, usd(10), account = TestLedger.payoneer,
+                conversion = ReportingConversion.Missing(Currencies.LKR), date = LocalDate.of(2026, 7, 4)),
+        )
+        assertEquals(6, o.receivedByMonth.size)
+        assertEquals(listOf(100L, 0L, 0L, 0L, 250L, 1_500L), o.receivedByMonth.map { it.amount.minorUnits / 100 })
+        assertEquals(1, o.receivedByMonth[2].unresolvedCount)
+        assertEquals(31, o.receivedByDay.size)
+        assertEquals(o.summary.received, o.receivedByMonth.last())
+    }
+
+    @Test
     fun expenseOnlyMonthsHaveNoIncomeBarsAndRespectLeapYearLength() {
         val february = YearMonth.of(2028, 2)
         val o = compute(tx("expense", TransactionType.EXPENSE, lkr(500), date = february.atDay(29)), month = february)

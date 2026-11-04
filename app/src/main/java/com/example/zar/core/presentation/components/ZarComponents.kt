@@ -43,15 +43,15 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.example.zar.core.presentation.theme.ZarShapes
 import com.example.zar.core.presentation.theme.ZarTheme
+import com.example.zar.core.presentation.theme.borderControl
 import com.example.zar.core.presentation.theme.ZarType
 
 // Shared building blocks from the Zar-UI Figma design system (Components page).
 
-/** White card with the card elevation (Elevation/Card) and a hairline border. */
+/** Flat white card: surface and hairline border, no shadow. */
 fun Modifier.zarCard(shape: Shape = ZarShapes.lg): Modifier = composed {
     val colors = ZarTheme.colors
     this
-        .shadow(6.dp, shape, ambientColor = Color(0x0A0F1A2B), spotColor = Color(0x1F0F1A2B))
         .background(colors.surface, shape)
         .border(1.dp, colors.borderDefault, shape)
         .clip(shape)
@@ -111,7 +111,7 @@ fun ZarTitleBlock(title: String, subtitle: String?, modifier: Modifier = Modifie
     }
 }
 
-/** Mono/Label section header with an optional trailing action (Label/Action). */
+/** Label section header with an optional trailing action (Label/Action). */
 @Composable
 fun ZarSectionHeader(label: String, modifier: Modifier = Modifier, action: String? = null, onAction: (() -> Unit)? = null) {
     Row(
@@ -119,7 +119,7 @@ fun ZarSectionHeader(label: String, modifier: Modifier = Modifier, action: Strin
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        ZarMonoLabel(label)
+        ZarEyebrow(label)
         if (action != null) {
             Text(
                 action,
@@ -132,13 +132,14 @@ fun ZarSectionHeader(label: String, modifier: Modifier = Modifier, action: Strin
 }
 
 @Composable
-fun ZarMonoLabel(text: String, modifier: Modifier = Modifier, color: Color = ZarTheme.colors.textTertiary) {
-    Text(text.uppercase(), style = ZarType.monoLabel, color = color, modifier = modifier)
+fun ZarEyebrow(text: String, modifier: Modifier = Modifier, color: Color = ZarTheme.colors.textTertiary) {
+    Text(text.uppercase(), style = ZarType.label, color = color, modifier = modifier)
 }
 
 private const val ICON_MAX_FONT_SCALE = 1.2f
 
-enum class ZarButtonStyle { Primary, Soft, Outline }
+/** [Bounded] is a surface-filled button with a 3:1 outline, for an action that must stay visibly a button on the canvas. */
+enum class ZarButtonStyle { Primary, Soft, Outline, Bounded }
 enum class ZarButtonSize { Large, Medium }
 
 /** Figma button variants: Large (58dp) for sheets, Medium (44dp) inside cards. */
@@ -160,7 +161,7 @@ fun ZarButton(
     val container = when (style) {
         ZarButtonStyle.Primary -> colors.accentPrimary
         ZarButtonStyle.Soft -> colors.subtle
-        ZarButtonStyle.Outline -> colors.surface
+        ZarButtonStyle.Outline, ZarButtonStyle.Bounded -> colors.surface
     }
     val content = contentColor ?: if (style == ZarButtonStyle.Primary) colors.textOnInverse else colors.textPrimary
     val press = remember { MutableInteractionSource() }
@@ -171,7 +172,13 @@ fun ZarButton(
             .alpha(if (enabled) 1f else 0.4f)
             .clip(shape)
             .background(container)
-            .then(if (style == ZarButtonStyle.Outline) Modifier.border(BorderStroke(1.dp, colors.borderDefault), shape) else Modifier)
+            .then(
+                when (style) {
+                    ZarButtonStyle.Outline -> Modifier.border(BorderStroke(1.dp, colors.borderDefault), shape)
+                    ZarButtonStyle.Bounded -> Modifier.border(BorderStroke(1.dp, colors.borderControl), shape)
+                    else -> Modifier
+                },
+            )
             .clickable(interactionSource = press, indication = LocalIndication.current, enabled = enabled, role = Role.Button, onClick = onClick)
             .padding(horizontal = horizontalPadding),
         Alignment.Center,
@@ -247,7 +254,7 @@ fun ZarAddPill(text: String, onClick: () -> Unit, modifier: Modifier = Modifier)
     }
 }
 
-/** A label (Mono/Label, fixed width) beside its value, as in Figma's form rows. */
+/** A label (Label, fixed width) beside its value, as in Figma's form rows. */
 @Composable
 fun ZarFormRow(
     label: String,
@@ -256,7 +263,7 @@ fun ZarFormRow(
     content: @Composable RowScope.() -> Unit,
 ) {
     Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.width(labelWidth).height(16.dp), Alignment.CenterStart) { ZarMonoLabel(label) }
+        Box(Modifier.width(labelWidth).height(16.dp), Alignment.CenterStart) { ZarEyebrow(label) }
         content()
     }
 }

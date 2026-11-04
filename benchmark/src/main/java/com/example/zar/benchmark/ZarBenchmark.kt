@@ -34,7 +34,9 @@ import org.junit.runner.RunWith
 class ZarBenchmark {
     @get:Rule val benchmarkRule = MacrobenchmarkRule()
 
-    private val pkg = "com.example.zar"
+    /** `-Pandroid.testInstrumentationRunnerArguments.zarTargetPackage=com.example.zar.perf` measures a side-by-side build. */
+    private val pkg = androidx.test.platform.app.InstrumentationRegistry.getArguments().getString("zarTargetPackage")
+        ?: "com.example.zar"
 
     /** The animator scale is restored after every test, whether or not a reduced-motion journey changed it. */
     @After fun restoreAnimatorScale() {

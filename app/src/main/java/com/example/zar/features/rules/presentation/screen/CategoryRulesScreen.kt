@@ -18,9 +18,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ModalBottomSheet
+import com.example.zar.core.presentation.components.ZarModalSheet
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -39,7 +38,7 @@ import com.example.zar.core.presentation.components.ZarButtonStyle
 import com.example.zar.core.presentation.components.ZarCard
 import com.example.zar.core.presentation.components.ZarChip
 import com.example.zar.core.presentation.components.ZarDivider
-import com.example.zar.core.presentation.components.ZarMonoLabel
+import com.example.zar.core.presentation.components.ZarEyebrow
 import com.example.zar.core.presentation.components.ZarSwitch
 import com.example.zar.core.presentation.theme.ZarDimens
 import com.example.zar.core.presentation.theme.ZarShapes
@@ -50,9 +49,7 @@ import com.example.zar.features.catchup.presentation.screen.CatchUpScaffold
 import com.example.zar.features.rules.domain.model.CategoryRule
 import com.example.zar.features.rules.presentation.viewmodel.CategoryRulesUiState
 import com.example.zar.features.rules.presentation.viewmodel.CategoryRulesViewModel
-import com.example.zar.features.transactions.presentation.activity.screen.SheetGrabber
 import com.example.zar.features.transactions.presentation.activity.screen.SheetHeader
-import com.example.zar.features.transactions.presentation.activity.screen.SheetScrim
 import com.example.zar.features.transactions.presentation.manual.screen.labelRes
 
 /** Every remembered name (Figma Z117, Z121), with an on/off switch each and an editor (Z118). Rules are never deleted. */
@@ -168,14 +165,9 @@ private fun EditRuleSheet(
 ) {
     val colors = ZarTheme.colors
     val draft = state.draft ?: return
-    ModalBottomSheet(
+    ZarModalSheet(
         onDismissRequest = onDismiss,
-        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-        shape = ZarShapes.sheet,
-        containerColor = colors.surface,
-        scrimColor = SheetScrim,
-        dragHandle = { SheetGrabber() },
-    ) {
+    ) { dismiss ->
         Column(
             Modifier
                 .navigationBarsPadding()
@@ -185,8 +177,8 @@ private fun EditRuleSheet(
                 .testTag("rule-edit-sheet"),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            SheetHeader(stringResource(R.string.rules_edit_title, rule.displayName), onClose = onDismiss)
-            ZarMonoLabel(stringResource(R.string.rules_edit_category))
+            SheetHeader(stringResource(R.string.rules_edit_title, rule.displayName), onClose = dismiss)
+            ZarEyebrow(stringResource(R.string.rules_edit_category))
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 LocalExpenseCategoryCatalog.current.choices.forEach { category ->
                     ZarChip(
@@ -197,7 +189,7 @@ private fun EditRuleSheet(
                     )
                 }
             }
-            ZarMonoLabel(stringResource(R.string.rules_edit_account))
+            ZarEyebrow(stringResource(R.string.rules_edit_account))
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 ZarChip(
                     label = stringResource(R.string.rules_scope_any),

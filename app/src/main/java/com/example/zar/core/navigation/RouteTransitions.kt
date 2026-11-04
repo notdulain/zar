@@ -12,6 +12,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.unit.IntOffset
 import androidx.navigation.NavBackStackEntry
+import androidx.navigation.NavController
 import androidx.navigation.NavDestination
 import androidx.navigation.NavDestination.Companion.hasRoute
 import com.example.zar.core.presentation.motion.LocalZarMotion
@@ -33,12 +34,12 @@ internal class ZarRouteTransitions(
 )
 
 @Composable
-internal fun rememberZarRouteTransitions(): ZarRouteTransitions {
+internal fun rememberZarRouteTransitions(navController: NavController): ZarRouteTransitions {
     val policy = LocalZarMotion.current
-    return remember(policy) { buildRouteTransitions(policy) }
+    return remember(policy, navController) { buildRouteTransitions(policy, navController) }
 }
 
-private fun buildRouteTransitions(policy: MotionPolicy): ZarRouteTransitions {
+private fun buildRouteTransitions(policy: MotionPolicy, navController: NavController): ZarRouteTransitions {
     val spatial = policy.allowsSpatialMotion
     val spec = policy.spring<IntOffset>(ZarSprings.Route)
     // Back must be seekable for the predictive gesture (a spring has no fixed length to scrub), so pops use a tween.
@@ -47,9 +48,9 @@ private fun buildRouteTransitions(policy: MotionPolicy): ZarRouteTransitions {
 
     fun AnimatedContentTransitionScope<NavBackStackEntry>.into(move: NavRouteMotion.Move): EnterTransition = when (move) {
         NavRouteMotion.Move.Fade -> fadeIn(fade)
-        NavRouteMotion.Move.PushIn -> slideIntoContainer(SlideDirection.Start, spec)
-        // The parent returns from a little behind the start edge while the child leaves toward the end: no scale, no fade.
-        NavRouteMotion.Move.PopIn -> slideIntoContainer(SlideDirection.End, popSpec) { (it * ZarMotion.ROUTE_PARENT_RECEDE).toInt() }
+        NavRouteMotion.Move.PushIn -> slideIntoContainer(SlideDirection.Left, spec)
+        // The parent returns from a little behind the left edge while the child leaves toward the right: no scale, no fade. These are physical directions, so Back goes right in RTL too.
+        NavRouteMotion.Move.PopIn -> slideIntoContainer(SlideDirection.Right, popSpec) { (it * ZarMotion.ROUTE_PARENT_RECEDE).toInt() }
         NavRouteMotion.Move.ModalUp -> slideIntoContainer(SlideDirection.Up, spec)
         else -> EnterTransition.None
     }
@@ -57,21 +58,30 @@ private fun buildRouteTransitions(policy: MotionPolicy): ZarRouteTransitions {
     fun AnimatedContentTransitionScope<NavBackStackEntry>.out(move: NavRouteMotion.Move): ExitTransition = when (move) {
         NavRouteMotion.Move.Fade -> fadeOut(fade)
         // The parent recedes only a little; the child covers the rest.
-        NavRouteMotion.Move.Recede -> slideOutOfContainer(SlideDirection.Start, spec) { (it * ZarMotion.ROUTE_PARENT_RECEDE).toInt() }
-        NavRouteMotion.Move.PopOut -> slideOutOfContainer(SlideDirection.End, popSpec)
+        NavRouteMotion.Move.Recede -> slideOutOfContainer(SlideDirection.Left, spec) { (it * ZarMotion.ROUTE_PARENT_RECEDE).toInt() }
+        NavRouteMotion.Move.PopOut -> slideOutOfContainer(SlideDirection.Right, popSpec)
         else -> ExitTransition.None
     }
 
+    fun AnimatedContentTransitionScope<NavBackStackEntry>.popEnterMove() = into(NavRouteMotion.popEnter(spatial, initialState.destination.isModalRoute()))
+    fun AnimatedContentTransitionScope<NavBackStackEntry>.popExitMove() = out(NavRouteMotion.popExit(spatial))
+    fun AnimatedContentTransitionScope<NavBackStackEntry>.isBackInProgress() = NavRouteMotion.isBackInProgress(
+        initialId = initialState.id,
+        targetId = targetState.id,
+        topId = navController.currentBackStackEntry?.id,
+        belowTopId = navController.previousBackStackEntry?.id,
+    )
+
     return ZarRouteTransitions(
-        enter = { into(NavRouteMotion.enter(spatial, targetState.destination.isModalRoute())) },
-        exit = { out(NavRouteMotion.exit(spatial, targetState.destination.isModalRoute())) },
-        popEnter = { into(NavRouteMotion.popEnter(spatial, initialState.destination.isModalRoute())) },
-        popExit = { out(NavRouteMotion.popExit(spatial)) },
+        enter = { if (isBackInProgress()) popEnterMove() else into(NavRouteMotion.enter(spatial, targetState.destination.isModalRoute())) },
+        exit = { if (isBackInProgress()) popExitMove() else out(NavRouteMotion.exit(spatial, targetState.destination.isModalRoute())) },
+        popEnter = { popEnterMove() },
+        popExit = { popExitMove() },
     )
 }
 
 /**
  * Compose routes that present the Add-transaction sheet shell (grabber, close): they rise from below. Dialog routes
- * (Add transaction, Quick note) are platform windows driven by `SheetBackHost`. Any Back, a sheet's included, slides right.
+ * (Add transaction, Quick note) are platform windows driven by `SheetBackHost`. Any Back, a sheet's included, slides physically right.
  */
 internal fun NavDestination.isModalRoute(): Boolean = hasRoute<IncomeFormRoute>()

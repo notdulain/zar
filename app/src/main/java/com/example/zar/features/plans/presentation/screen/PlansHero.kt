@@ -93,26 +93,10 @@ internal fun PlansHeroBox(modifier: Modifier = Modifier, content: @Composable Co
     )
 }
 
-/** "Plans" on the left, the "+ New plan" pill on the right, vertically centred on the title. */
+/** Plans title; creation is the contextual action above the fixed bottom tabs. */
 @Composable
 internal fun PlansHeroHeader(onNewPlan: () -> Unit, modifier: Modifier = Modifier) {
-    Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-        Text(stringResource(R.string.nav_plans), style = HeroTitle, color = ZarWhite)
-        // The pill is 36dp tall; the touch target is 48dp.
-        Box(
-            Modifier.heightIn(min = 48.dp).clickable(role = Role.Button, onClick = onNewPlan).testTag("plans-new-plan"),
-            contentAlignment = Alignment.Center,
-        ) {
-            Row(
-                Modifier.height(36.dp).clip(RoundedCornerShape(18.dp)).background(ZarWhite.copy(alpha = 0.14f)).padding(horizontal = 14.dp),
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                ZarIcon(R.drawable.ic_ph_plus_small, size = 16.dp, tint = ZarWhite)
-                Text(stringResource(R.string.plans_new_plan), style = TextStyle(fontFamily = GeistFamily, fontWeight = FontWeight.Medium, fontSize = 14.sp, lineHeight = 18.sp), color = ZarWhite)
-            }
-        }
-    }
+    Text(stringResource(R.string.nav_plans), modifier = modifier.fillMaxWidth(), style = HeroTitle, color = ZarWhite)
 }
 
 @Composable
@@ -122,6 +106,8 @@ internal fun GoalHero(
     onEditGoal: () -> Unit,
     onAllocate: () -> Unit,
     heroOffset: HeroScrollOffset,
+    onChangeMain: () -> Unit = {},
+    onViewGoal: () -> Unit = {},
 ) {
     val goal = overview.goal
     val progress = overview.progress
@@ -141,8 +127,8 @@ internal fun GoalHero(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(stringResource(R.string.plans_main_goal), style = HeroBody14, color = ZarWhite.copy(alpha = 0.75f))
                             Box(
-                                Modifier.heightIn(min = 48.dp).clickable(role = Role.Button, onClick = onEditGoal)
-                                    .padding(horizontal = 10.dp).testTag("plans-edit-goal"),
+                                Modifier.heightIn(min = 48.dp).clickable(role = Role.Button, onClick = onChangeMain)
+                                    .padding(horizontal = 10.dp).testTag("plans-change-main"),
                                 contentAlignment = Alignment.Center,
                             ) {
                                 Text(
@@ -188,17 +174,24 @@ internal fun GoalHero(
         }
         Spacer(Modifier.height(24.dp))
         val enabled = goal == null || overview.allocationAccounts.isNotEmpty()
-        Box(
-            Modifier.heightIn(min = 48.dp)
-                .clickable(enabled = enabled, role = Role.Button) { if (goal == null) onEditGoal() else onAllocate() }
-                .testTag("plans-set-aside"),
-            contentAlignment = Alignment.CenterStart,
-        ) {
-            Text(
-                stringResource(if (goal == null) R.string.plans_create_action else R.string.plans_allocate_action) + " →",
-                style = HeroMedium15,
-                color = ZarWhite.copy(alpha = if (enabled) 1f else 0.4f),
-            )
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            if (goal != null) {
+                Box(Modifier.heightIn(min = 48.dp).clickable(role = Role.Button, onClick = onViewGoal).testTag("plans-view-goal"), contentAlignment = Alignment.CenterStart) {
+                    Text(stringResource(R.string.plans_view_goal) + " →", style = HeroMedium15, color = ZarWhite)
+                }
+            }
+            Box(
+                Modifier.heightIn(min = 48.dp)
+                    .clickable(enabled = enabled, role = Role.Button) { if (goal == null) onEditGoal() else onAllocate() }
+                    .testTag("plans-set-aside"),
+                contentAlignment = Alignment.CenterStart,
+            ) {
+                Text(
+                    stringResource(if (goal == null) R.string.plans_create_action else R.string.plans_allocate_action) + " →",
+                    style = HeroMedium15,
+                    color = ZarWhite.copy(alpha = if (enabled) 1f else 0.4f),
+                )
+            }
         }
         if (goal != null && overview.allocationAccounts.isEmpty()) {
             Text(stringResource(R.string.plans_no_accounts), style = ZarType.bodyS, color = ZarWhite.copy(alpha = 0.8f))

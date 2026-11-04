@@ -39,7 +39,7 @@ import com.example.zar.core.presentation.components.ZarCard
 import com.example.zar.core.presentation.components.ZarDivider
 import com.example.zar.core.presentation.components.ZarIcon
 import com.example.zar.core.presentation.components.ZarIconChip
-import com.example.zar.core.presentation.components.ZarMonoLabel
+import com.example.zar.core.presentation.components.ZarEyebrow
 import com.example.zar.core.presentation.components.ZarSwitch
 import com.example.zar.core.presentation.theme.ZarTheme
 import com.example.zar.core.presentation.theme.ZarType
@@ -120,7 +120,7 @@ internal fun AutoCaptureCard(
     val on = status.enabled
     ZarCard(Modifier.fillMaxWidth().testTag("auto-capture")) {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            ZarMonoLabel(stringResource(R.string.auto_capture_label))
+            ZarEyebrow(stringResource(R.string.auto_capture_label))
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
                 ZarIconChip(R.drawable.ic_ph_chat_text)
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {

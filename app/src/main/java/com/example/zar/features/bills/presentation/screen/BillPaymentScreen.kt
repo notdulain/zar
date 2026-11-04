@@ -44,7 +44,7 @@ import com.example.zar.core.presentation.components.ZarButtonStyle
 import com.example.zar.core.presentation.components.ZarDivider
 import com.example.zar.core.presentation.components.ZarFormRow
 import com.example.zar.core.presentation.components.ZarIcon
-import com.example.zar.core.presentation.components.ZarMonoLabel
+import com.example.zar.core.presentation.components.ZarEyebrow
 import com.example.zar.core.presentation.theme.ZarTheme
 import com.example.zar.core.presentation.theme.ZarType
 import com.example.zar.features.bills.domain.BillProblem
@@ -148,7 +148,7 @@ private fun Body(state: BillOccurrenceUiState, onUnlink: (com.example.zar.featur
         if (progress.state == MatchState.NOT_MATCHED) Note(stringResource(R.string.bill_payment_honest))
 
         if (state.payments.isNotEmpty()) {
-            ZarMonoLabel(stringResource(R.string.bill_payment_linked))
+            ZarEyebrow(stringResource(R.string.bill_payment_linked))
             Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).border(1.dp, colors.borderDefault, RoundedCornerShape(14.dp))) {
                 state.payments.forEachIndexed { index, payment ->
                     if (index > 0) ZarDivider()
@@ -177,7 +177,7 @@ private fun Body(state: BillOccurrenceUiState, onUnlink: (com.example.zar.featur
             state.candidates.isEmpty() -> Note(stringResource(R.string.bill_payment_none_found, progress.expected.amount.currency.code))
             else -> {
                 Column(Modifier.selectableGroup(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    ZarMonoLabel(stringResource(R.string.bill_payment_candidates))
+                    ZarEyebrow(stringResource(R.string.bill_payment_candidates))
                     state.candidates.forEach { candidate ->
                         CandidateCard(state, candidate, selected = candidate.entry.id.value == state.selectedId, onClick = { onSelect(candidate) })
                     }
@@ -192,7 +192,7 @@ private fun Body(state: BillOccurrenceUiState, onUnlink: (com.example.zar.featur
                             keyboardType = KeyboardType.Decimal,
                             modifier = Modifier.weight(1f).testTag("bill-payment-amount"),
                         )
-                        ZarMonoLabel(progress.expected.amount.currency.code, Modifier.padding(start = 8.dp))
+                        ZarEyebrow(progress.expected.amount.currency.code, Modifier.padding(start = 8.dp))
                     }
                 }
                 FieldError(

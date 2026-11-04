@@ -28,7 +28,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
@@ -51,6 +50,7 @@ import com.example.zar.core.presentation.motion.ZarMotion
 import com.example.zar.core.presentation.motion.ZarSprings
 import com.example.zar.core.presentation.theme.ZarDimens
 import com.example.zar.core.presentation.theme.ZarTheme
+import com.example.zar.core.presentation.theme.zarFloatingNavShadow
 import com.example.zar.core.presentation.theme.ZarType
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.filter
@@ -128,12 +128,7 @@ fun ZarBottomNav(
                 interior = Rect(borderPx, borderPx, it.size.width - borderPx, it.size.height - borderPx)
                 reportSlots()
             }
-            .shadow(
-                elevation = 14.dp,
-                shape = shape,
-                ambientColor = Color(0x0F0F1A2B),
-                spotColor = Color(0x1A0F1A2B),
-            ),
+            .zarFloatingNavShadow(shape, colors),
         shape = shape,
         color = colors.surface,
         border = BorderStroke(1.dp, if (colors.surface == Color.White) Color.White else colors.borderDefault),

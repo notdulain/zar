@@ -32,11 +32,45 @@ class NavRouteMotionTest {
     }
 
     @Test
-    fun reducedMotionFadesEveryKindOfChangeIncludingSheets() {
+    fun reducedMotionFadesForwardChangesIncludingSheets() {
         assertEquals(NavRouteMotion.Move.Fade, NavRouteMotion.enter(false, targetModal = false))
         assertEquals(NavRouteMotion.Move.Fade, NavRouteMotion.enter(false, targetModal = true))
         assertEquals(NavRouteMotion.Move.Fade, NavRouteMotion.exit(false, targetModal = true))
-        assertEquals(NavRouteMotion.Move.Fade, NavRouteMotion.popExit(false))
-        assertEquals(NavRouteMotion.Move.Fade, NavRouteMotion.popEnter(false, initialModal = false))
+    }
+
+    @Test
+    fun backWithMotionReducedOrOffLandsAtOnceWithNoFade() {
+        assertEquals(NavRouteMotion.Move.Instant, NavRouteMotion.popExit(false))
+        assertEquals(NavRouteMotion.Move.Instant, NavRouteMotion.popEnter(false, initialModal = false))
+        assertEquals(NavRouteMotion.Move.Instant, NavRouteMotion.popEnter(false, initialModal = true))
+        val backMoves = listOf(
+            NavRouteMotion.popExit(false),
+            NavRouteMotion.popEnter(false, initialModal = false),
+            NavRouteMotion.popExit(true),
+        )
+        assertEquals(false, backMoves.contains(NavRouteMotion.Move.Fade))
+    }
+
+    @Test
+    fun aChangeFromTheTopEntryToTheOneBeneathItIsABackStillInProgress() {
+        assertEquals(true, NavRouteMotion.isBackInProgress(initialId = "child", targetId = "parent", topId = "child", belowTopId = "parent"))
+    }
+
+    @Test
+    fun aPushIsNeverMistakenForABack() {
+        // A real push targets the new top, even with the parent directly beneath it.
+        assertEquals(false, NavRouteMotion.isBackInProgress(initialId = "parent", targetId = "child", topId = "child", belowTopId = "parent"))
+        assertEquals(false, NavRouteMotion.isBackInProgress(initialId = "grand", targetId = "child", topId = "child", belowTopId = "parent"))
+    }
+
+    @Test
+    fun aCompletedPopIsLeftToThePopCallbacks() {
+        // The child has left the stack, so it is no longer the top; NavHost reads its live pop flag for this case.
+        assertEquals(false, NavRouteMotion.isBackInProgress(initialId = "child", targetId = "parent", topId = "parent", belowTopId = null))
+    }
+
+    @Test
+    fun theFirstCompositionWithOneEntryIsNotABack() {
+        assertEquals(false, NavRouteMotion.isBackInProgress(initialId = "only", targetId = "only", topId = "only", belowTopId = null))
     }
 }

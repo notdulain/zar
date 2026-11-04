@@ -32,7 +32,7 @@ import com.example.zar.core.presentation.components.ZarButtonStyle
 import com.example.zar.core.presentation.components.ZarCard
 import com.example.zar.core.presentation.components.ZarChip
 import com.example.zar.core.presentation.components.ZarDivider
-import com.example.zar.core.presentation.components.ZarMonoLabel
+import com.example.zar.core.presentation.components.ZarEyebrow
 import com.example.zar.core.presentation.components.ZarIcon
 import com.example.zar.core.presentation.components.ZarIconChip
 import com.example.zar.core.presentation.theme.ZarTheme
@@ -272,7 +272,7 @@ private fun CountStep(state: CatchUpUiState, actions: CatchUpActions) {
             Text(balance.account.name, style = ZarType.bodyM, color = colors.textPrimary)
         }
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            ZarMonoLabel(stringResource(R.string.catch_up_counted))
+            ZarEyebrow(stringResource(R.string.catch_up_counted))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 TextInput(
                     value = state.counted,
@@ -282,7 +282,7 @@ private fun CountStep(state: CatchUpUiState, actions: CatchUpActions) {
                     keyboardType = KeyboardType.Decimal,
                     modifier = Modifier.weight(1f).testTag("catchup-amount"),
                 )
-                Text(balance.account.currency.code, style = ZarType.monoLabel, color = colors.textTertiary, modifier = Modifier.padding(start = 8.dp))
+                Text(balance.account.currency.code, style = ZarType.label, color = colors.textTertiary, modifier = Modifier.padding(start = 8.dp))
             }
         }
         FieldError(

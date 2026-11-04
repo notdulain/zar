@@ -49,7 +49,9 @@ import com.example.zar.features.export.data.ContentResolverExportFileWriter
 import com.example.zar.features.export.domain.repository.ExportFileWriter
 import com.example.zar.features.allowance.domain.repository.AllowanceRepository
 import com.example.zar.features.plans.data.repository.FirestoreGoalRepository
+import com.example.zar.features.plans.data.repository.FirestorePlanPreferencesRepository
 import com.example.zar.features.plans.domain.repository.GoalRepository
+import com.example.zar.features.plans.domain.repository.PlanPreferencesRepository
 import com.example.zar.features.quicknote.data.remote.HttpQuickNoteDraftTransport
 import com.example.zar.features.reminders.data.DataStoreReminderPreferencesRepository
 import com.example.zar.features.reminders.data.ResetRemindersOnSignOut
@@ -129,6 +131,9 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun bindGoalRepository(impl: FirestoreGoalRepository): GoalRepository
+
+    @Binds
+    abstract fun bindPlanPreferencesRepository(impl: FirestorePlanPreferencesRepository): PlanPreferencesRepository
 
     @Binds
     @Singleton

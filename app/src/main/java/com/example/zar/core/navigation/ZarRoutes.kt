@@ -130,3 +130,14 @@ data class BillRoute(val billId: String)
 /** One due date of a bill, where actual payments are linked. [dueDate] is yyyy-MM-dd. */
 @Serializable
 data class BillOccurrenceRoute(val billId: String, val dueDate: String)
+
+/** The spending breakdown for one calendar month ([month] is `yyyy-MM`), opened from Home's See breakdown. */
+@Serializable
+data class SpendingRoute(val month: String)
+
+/**
+ * The entries behind one breakdown row: [spendingClass] is a `SpendingClass` name and [categoryKey] a row key, or null for
+ * the whole class. Read-only; it never writes ledger data.
+ */
+@Serializable
+data class SpendingEntriesRoute(val month: String, val spendingClass: String, val categoryKey: String? = null)

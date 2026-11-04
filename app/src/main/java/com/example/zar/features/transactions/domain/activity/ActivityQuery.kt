@@ -6,6 +6,7 @@ import com.example.zar.core.domain.model.LedgerEntry
 import com.example.zar.core.domain.model.TransactionType
 import com.example.zar.features.transactions.domain.activity.model.ActivityFilter
 import com.example.zar.features.transactions.domain.category.ExpenseCategoryCatalog
+import com.example.zar.features.transactions.domain.category.SpendingKeys
 import com.example.zar.features.transactions.domain.activity.model.ActivityList
 import com.example.zar.features.transactions.domain.activity.model.ActivityRow
 import com.example.zar.features.transactions.domain.activity.model.ActivitySnapshot
@@ -42,6 +43,7 @@ object ActivityQuery {
         val rows = onAccount
             .filter { it.current.date in range }
             .filter { filter.showVoided || !it.isVoided }
+            .filter { inBreakdownRow(it, filter, snapshot.categories) }
             .filter { needle.isEmpty() || matches(it, accounts[it.current.accountId]?.name, snapshot.categories, needle) }
             .sortedWith(newestFirst)
             .map { ActivityRow(it, accounts[it.current.accountId]) }
@@ -52,6 +54,15 @@ object ActivityQuery {
             summary = LedgerSummaryCalculator.summarize(onAccount, range),
             hasAnyEntries = snapshot.entries.isNotEmpty(),
         )
+    }
+
+    /** True when no breakdown row is chosen, or the entry is one of the entries that row adds up. */
+    private fun inBreakdownRow(entry: LedgerEntry, filter: ActivityFilter, categories: ExpenseCategoryCatalog): Boolean {
+        if (filter.spendingClass == null && filter.categoryKey == null) return true
+        val tx = entry.current
+        val spendingClass = SpendingKeys.classOf(tx) ?: return false
+        return (filter.spendingClass == null || filter.spendingClass == spendingClass) &&
+            (filter.categoryKey == null || filter.categoryKey == SpendingKeys.keyOf(tx, categories))
     }
 
     /**

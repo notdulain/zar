@@ -196,4 +196,14 @@ class ContrastTest {
         assertNotEquals(light.borderNav, light.textPrimary)
         assertNotEquals(dark.borderNav, dark.textPrimary)
     }
+
+    @Test
+    fun boundedControlOutlineMeetsNonTextContrastAgainstItsBackgroundsInBothThemes() {
+        listOf(light, dark).forEach { colors ->
+            assertTrue(contrast(colors.borderControl, colors.canvas) >= 3.0)
+            assertTrue(contrast(colors.borderControl, colors.surface) >= 3.0)
+            // The Sign out label sits on the surface fill.
+            assertTrue(contrast(colors.textPrimary, colors.surface) >= 4.5)
+        }
+    }
 }

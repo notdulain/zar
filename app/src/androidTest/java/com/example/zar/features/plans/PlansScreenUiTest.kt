@@ -51,7 +51,7 @@ class PlansScreenUiTest {
         compose.onNodeWithTag("plans-backed").assertTextEquals("LKR 4,000")
         compose.onNodeWithText("Allocated LKR 8,000").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("plans-backed").performScrollTo()
-        compose.onNodeWithTag("plans-edit-goal").performClick()
+        compose.onNodeWithTag("plans-change-main").performClick()
         compose.onNodeWithTag("plans-set-aside").performClick()
         assertEquals(1, edits)
         assertEquals(1, allocations)
@@ -129,7 +129,7 @@ class PlansScreenUiTest {
             CompositionLocalProvider(LocalDensity provides Density(density.density, fontScale)) {
                 ZarTheme(darkTheme = dark) {
                     Box(if (narrow) Modifier.width(320.dp) else Modifier) {
-                        PlansScreenContent(PlansUiState(isLoading = false, overview = overview), {}, {}, {}, onEdit, onAllocate)
+                        PlansScreenContent(PlansUiState(isLoading = false, overview = overview), {}, {}, {}, onEdit, onAllocate, onChangeMain = onEdit)
                     }
                 }
             }

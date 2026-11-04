@@ -12,6 +12,22 @@
         <item name="android:navigationBarColor">@android:color/transparent</item>
         <!-- The launch surface is dark, so the bar glyphs must be light until Compose takes over. -->
         <item name="android:windowLightStatusBar">false</item>
+        <!-- Every Compose Dialog, AlertDialog and DatePickerDialog window resolves this, so none zooms or fades on Back. -->
+        <item name="android:dialogTheme">@style/Theme.Zar.Dialog</item>
+    </style>
+
+    <style name="Theme.Zar.Dialog" parent="android:Theme.Material.Light.Dialog">
+        <item name="android:windowAnimationStyle">@style/ZarDialogWindowAnimation</item>
+    </style>
+
+    <!-- Platform enter animation kept; the exit slides physically right with no fade or zoom. -->
+    <style name="ZarDialogWindowAnimation" parent="@android:style/Animation.Dialog">
+        <item name="android:windowExitAnimation">@anim/zar_dialog_exit_right</item>
+    </style>
+
+    <!-- Motion reduced or off: the dialog disappears at once. -->
+    <style name="ZarDialogWindowAnimationNone" parent="@android:style/Animation.Dialog">
+        <item name="android:windowExitAnimation">@anim/zar_sheet_exit_none</item>
     </style>
 
     <style name="Theme.Zar" parent="Theme.Zar.Base" />

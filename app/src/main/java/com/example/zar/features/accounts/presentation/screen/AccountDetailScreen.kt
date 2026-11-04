@@ -56,7 +56,7 @@ import com.example.zar.core.presentation.components.ZarCard
 import com.example.zar.core.presentation.components.ZarDivider
 import com.example.zar.core.presentation.components.ZarIcon
 import com.example.zar.core.presentation.components.ZarIconChip
-import com.example.zar.core.presentation.components.ZarMonoLabel
+import com.example.zar.core.presentation.components.ZarEyebrow
 import com.example.zar.core.presentation.components.ZarSectionHeader
 import com.example.zar.core.presentation.components.ZarTitleBlock
 import com.example.zar.core.presentation.components.HeroScrollOffset
@@ -192,7 +192,7 @@ private fun BalanceCard(detail: AccountDetail, modifier: Modifier = Modifier) {
     val current = balance.current
     ZarCard(modifier.fillMaxWidth(), contentPadding = PaddingValues(0.dp)) {
         Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            ZarMonoLabel(stringResource(R.string.account_balance_label))
+            ZarEyebrow(stringResource(R.string.account_balance_label))
             if (current == null) {
                 Text(stringResource(R.string.account_balance_unknown), style = ZarType.amountL, color = colors.textTertiary)
             } else {
@@ -255,7 +255,7 @@ private fun DetailRow(label: String, value: String, onClick: (() -> Unit)? = nul
         Modifier.fillMaxWidth().then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier).padding(vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(Modifier.width(110.dp).height(16.dp), Alignment.CenterStart) { ZarMonoLabel(label) }
+        Box(Modifier.width(110.dp).height(16.dp), Alignment.CenterStart) { ZarEyebrow(label) }
         Text(value, style = ZarType.bodyM, color = ZarTheme.colors.textPrimary, modifier = Modifier.weight(1f))
         if (onClick != null) ZarIcon(R.drawable.ic_ph_caret_right, size = 14.dp, tint = ZarTheme.colors.iconMuted)
     }

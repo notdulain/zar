@@ -1,5 +1,9 @@
 package com.example.zar.features.auth.presentation.screen
 
+import androidx.compose.animation.core.animateDpAsState
+import com.example.zar.core.presentation.motion.LocalZarMotion
+import com.example.zar.core.presentation.motion.ZarSprings
+import com.example.zar.core.presentation.motion.settleSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -59,7 +63,6 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.material3.Icon
 import com.example.zar.R
 import com.example.zar.core.presentation.theme.GeistFamily
-import com.example.zar.core.presentation.theme.GeistMonoFamily
 import com.example.zar.core.presentation.theme.ZarGradients
 import com.example.zar.core.presentation.theme.ZarLightColors
 import com.example.zar.core.presentation.theme.ZarTheme
@@ -69,13 +72,13 @@ import com.example.zar.features.auth.presentation.viewmodel.SignInUiState
 private val White = Color.White
 private val Title = TextStyle(fontFamily = GeistFamily, fontWeight = FontWeight.Light, fontSize = 32.sp, lineHeight = 38.sp, letterSpacing = (-0.64).sp, color = White)
 private val FieldText = TextStyle(fontFamily = GeistFamily, fontWeight = FontWeight.Normal, fontSize = 16.sp, lineHeight = 22.sp, letterSpacing = (-0.16).sp, color = White)
-private val FieldLabel = TextStyle(fontFamily = GeistMonoFamily, fontWeight = FontWeight.Normal, fontSize = 11.sp, lineHeight = 14.sp, letterSpacing = 0.44.sp)
+private val FieldLabel = TextStyle(fontFamily = GeistFamily, fontWeight = FontWeight.Medium, fontSize = 11.sp, lineHeight = 14.sp, letterSpacing = 0.66.sp)
 private val Message = TextStyle(fontFamily = GeistFamily, fontWeight = FontWeight.Normal, fontSize = 14.sp, lineHeight = 18.sp, letterSpacing = (-0.14).sp)
 private val ErrorDot = Color(0xFFDD8468)
 
 /**
  * The Figma sign-in (Z39–Z42, Z188) on the dusk gradient, both themes alike: big headline, two underlined fields with a
- * floating mono label once filled, an eye toggle and Forgot? on the password row, one message row (an error, a field
+ * floating label once filled, an eye toggle and Forgot? on the password row, one message row (an error, a field
  * problem or the reset confirmation, announced as a live region), a full-width pill button and the sign-up link at the
  * foot. The form scrolls and lifts with the keyboard; the footer stays where it is and the keyboard covers it.
  * The state, validation and actions are the existing view model's.
@@ -89,6 +92,7 @@ internal fun SignInContent(
     onForgotPassword: () -> Unit,
     onCreateAccount: () -> Unit,
 ) {
+    AuthSystemBars()
     val busy = state.isSubmitting
     val colors = ZarTheme.colors
     val isLight = colors.canvas == ZarLightColors.canvas
@@ -102,11 +106,11 @@ internal fun SignInContent(
     }
     Box(Modifier.fillMaxSize().background(ZarGradients.dusk)) {
         Column(
-            Modifier.fillMaxSize().imePadding().verticalScroll(rememberScrollState()).padding(horizontal = 32.dp),
+            Modifier.fillMaxSize().authEntrance().imePadding().verticalScroll(rememberScrollState()).padding(horizontal = 32.dp),
         ) {
             Spacer(Modifier.height(232.dp))
             Text(stringResource(R.string.auth_sign_in_headline), style = Title)
-            Spacer(Modifier.height(64.dp))
+            Spacer(Modifier.height(54.dp))
             UnderlineField(
                 value = state.email, onValueChange = onEmailChange, label = stringResource(R.string.auth_email),
                 placeholder = stringResource(R.string.auth_email), enabled = !busy, testTag = "email",
@@ -114,7 +118,7 @@ internal fun SignInContent(
                 keyboardActions = KeyboardActions(),
                 contentType = ContentType.EmailAddress,
             )
-            Spacer(Modifier.height(20.dp))
+            Spacer(Modifier.height(10.dp))
             var visible by rememberSaveable { mutableStateOf(false) }
             UnderlineField(
                 value = state.password, onValueChange = onPasswordChange, label = stringResource(R.string.auth_password),
@@ -164,20 +168,7 @@ internal fun SignInContent(
                 }
                 Spacer(Modifier.height(28.dp))
             }
-            Box(
-                Modifier.fillMaxWidth().height(54.dp).clip(CircleShape)
-                    // Light: white on the dark gradient. Dark: the accent blue with a white label.
-                    .background(if (isLight) White else colors.accentPrimary)
-                    .clickable(enabled = !busy, role = Role.Button, onClick = onSubmit)
-                    .testTag("submit"),
-                Alignment.Center,
-            ) {
-                Text(
-                    stringResource(if (busy) R.string.auth_signing_in else R.string.auth_sign_in_action),
-                    style = TextStyle(fontFamily = GeistFamily, fontWeight = FontWeight.Medium, fontSize = 15.sp, lineHeight = 20.sp),
-                    color = if (isLight) Color(0xFF0E0F12) else White,
-                )
-            }
+            AuthSubmitButton(stringResource(if (busy) R.string.auth_signing_in else R.string.auth_sign_in_action), busy, onSubmit)
             Spacer(Modifier.height(240.dp))
         }
         Row(
@@ -204,11 +195,11 @@ internal fun SignInContent(
 
 /**
  * A 40dp field: 16sp white text on a 1dp white-at-25% underline (2dp white while focused), a placeholder at 45% while empty
- * and, once filled, a mono label 10dp above. Not a Material outlined field; the semantics (content type for autofill, a
+ * and, once filled, a label 10dp above. Not a Material outlined field; the semantics (content type for autofill, a
  * password transformation, IME actions) are the platform's.
  */
 @Composable
-private fun UnderlineField(
+internal fun UnderlineField(
     value: String,
     onValueChange: (String) -> Unit,
     label: String,
@@ -219,11 +210,17 @@ private fun UnderlineField(
     keyboardActions: KeyboardActions,
     contentType: ContentType,
     visualTransformation: VisualTransformation = VisualTransformation.None,
+    problem: CredentialProblem? = null,
+    modifier: Modifier = Modifier,
     trailing: @Composable () -> Unit = {},
 ) {
     val source = remember { MutableInteractionSource() }
     val focused by source.collectIsFocusedAsState()
     val dim = if (enabled) 1f else 0.5f
+    val policy = LocalZarMotion.current
+    val underlineHeight by animateDpAsState(if (focused) 2.dp else 1.dp,
+        animationSpec = policy.spring(ZarSprings.Settle), label = "auth focus underline")
+    Column(Modifier.settleSize().padding(top = 10.dp)) {
     Box(Modifier.fillMaxWidth().height(40.dp)) {
         if (value.isNotEmpty()) {
             Text(label.uppercase(), style = FieldLabel, color = White.copy(alpha = 0.5f * dim), modifier = Modifier.offset(y = (-10).dp))
@@ -237,14 +234,20 @@ private fun UnderlineField(
                     cursorBrush = SolidColor(White),
                     keyboardOptions = keyboardOptions, keyboardActions = keyboardActions,
                     visualTransformation = visualTransformation, interactionSource = source,
-                    modifier = Modifier.fillMaxWidth().testTag(testTag).semantics { this.contentType = contentType },
+                    modifier = Modifier.fillMaxWidth().then(modifier).testTag(testTag).semantics { this.contentType = contentType; contentDescription = label },
                 )
             }
             trailing()
         }
         Box(
-            Modifier.align(Alignment.BottomStart).fillMaxWidth().height(if (focused) 2.dp else 1.dp)
-                .background(if (focused) White else White.copy(alpha = 0.25f)),
+            Modifier.align(Alignment.BottomStart).fillMaxWidth().height(underlineHeight)
+                .background(if (problem != null) ErrorDot else if (focused) White else White.copy(alpha = 0.25f)),
         )
+    }
+    if (problem != null) {
+        Text(problemText(problem), style = com.example.zar.core.presentation.theme.ZarType.bodyCaption,
+            color = ErrorDot, modifier = Modifier.padding(top = 6.dp)
+                .semantics { liveRegion = LiveRegionMode.Polite }.testTag("$testTag-error"))
+    }
     }
 }

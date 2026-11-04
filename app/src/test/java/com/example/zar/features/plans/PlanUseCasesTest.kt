@@ -36,6 +36,7 @@ class PlanUseCasesTest {
             FakeGoalRepository(listOf(goal)),
             FakePlanAccounts(listOf(savings)),
             TrackingPlanLedger(),
+            FakePlanPreferences(),
         )().first()
 
         assertEquals(lkr(11_200), overview.allocationAccounts.single().current)
@@ -126,7 +127,7 @@ class PlanUseCasesTest {
     fun overviewUsesLiveLedgerBalanceForBackedAmount() = runBlocking {
         val funded = goal.copy(allocations = listOf(GoalAllocation(savings.id, lkr(8_000))))
         val ledger = TrackingPlanLedger()
-        val observe = ObservePlansOverviewUseCase(FakeGoalRepository(listOf(funded)), FakePlanAccounts(listOf(savings)), ledger)
+        val observe = ObservePlansOverviewUseCase(FakeGoalRepository(listOf(funded)), FakePlanAccounts(listOf(savings)), ledger, FakePlanPreferences())
         assertEquals(lkr(8_000), observe(LocalDate.of(2026, 10, 20)).first().progress?.backed)
 
         ledger.entries.value = listOf(TestLedger.entry(TestLedger.tx("expense", TransactionType.EXPENSE, lkr(6_000), savings)))
@@ -141,6 +142,6 @@ class PlanUseCasesTest {
         val goals = FakeGoalRepository(listOf(goal))
         val accounts = FakePlanAccounts(listOf(futureAccount))
         assertTrue(SetGoalAllocationUseCase(goals, accounts, TrackingPlanLedger())(goal.id, savings.id, lkr(1_000)).isFailure)
-        assertTrue(ObservePlansOverviewUseCase(goals, accounts, TrackingPlanLedger())().first().allocationAccounts.isEmpty())
+        assertTrue(ObservePlansOverviewUseCase(goals, accounts, TrackingPlanLedger(), FakePlanPreferences())().first().allocationAccounts.isEmpty())
     }
 }

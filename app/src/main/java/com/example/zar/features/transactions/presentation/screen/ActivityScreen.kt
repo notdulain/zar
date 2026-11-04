@@ -40,13 +40,12 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDefaults
-import androidx.compose.material3.DatePickerDialog
+import com.example.zar.core.presentation.components.ZarDatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ModalBottomSheet
+import com.example.zar.core.presentation.components.ZarModalSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDatePickerState
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -110,9 +109,7 @@ import com.example.zar.features.transactions.presentation.activity.screen.Banner
 import com.example.zar.features.transactions.presentation.activity.screen.EmptyCard
 import com.example.zar.features.transactions.presentation.activity.screen.FilterPill
 import com.example.zar.features.transactions.presentation.activity.screen.InfoBanner
-import com.example.zar.features.transactions.presentation.activity.screen.SheetGrabber
 import com.example.zar.features.transactions.presentation.activity.screen.SheetHeader
-import com.example.zar.features.transactions.presentation.activity.screen.SheetScrim
 import com.example.zar.features.transactions.presentation.activity.screen.TagPill
 import com.example.zar.features.transactions.presentation.activity.viewmodel.ActivityContent
 import com.example.zar.features.transactions.presentation.activity.viewmodel.ActivityUiState
@@ -452,7 +449,7 @@ private fun ActivityHero(
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(rangeLabel.uppercase(), style = ZarType.monoLabel.copy(lineHeight = 14.sp), color = ZarWhite)
+                Text(rangeLabel.uppercase(), style = ZarType.label.copy(lineHeight = 14.sp), color = ZarWhite)
                 ZarIcon(R.drawable.ic_ph_caret_down, size = 12.dp, tint = ZarWhite)
             }
         }
@@ -484,7 +481,7 @@ private fun HeroTotal(amount: String, label: String, align: Alignment.Horizontal
         )
         Text(
             label.uppercase(),
-            style = ZarType.monoCaption.copy(lineHeight = 13.sp, letterSpacing = 1.sp),
+            style = ZarType.caption.copy(lineHeight = 13.sp, letterSpacing = 1.sp),
             color = ZarWhite,
             modifier = Modifier.padding(horizontal = 3.dp),
         )
@@ -599,7 +596,7 @@ private fun RangeLine(state: ActivityUiState, list: ActivityList?, onClear: () -
     Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
         Text(
             rangeLabel(state).uppercase(),
-            style = ZarType.monoLabel.copy(lineHeight = 14.sp),
+            style = ZarType.label.copy(lineHeight = 14.sp),
             color = ZarTheme.colors.textPrimary,
         )
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.Top) {
@@ -626,7 +623,7 @@ private fun RangeLine(state: ActivityUiState, list: ActivityList?, onClear: () -
 // --- Rows -------------------------------------------------------------------------------------
 
 @Composable
-private fun EntryRow(row: ActivityRow, onClick: () -> Unit, modifier: Modifier = Modifier) {
+internal fun EntryRow(row: ActivityRow, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val tx = row.entry.current
     val colors = ZarTheme.colors
     val voided = row.entry.isVoided
@@ -640,7 +637,6 @@ private fun EntryRow(row: ActivityRow, onClick: () -> Unit, modifier: Modifier =
         onClick = onClick,
         radius = 24.dp,
         contentPadding = PaddingValues(start = 15.dp, end = 19.dp, top = 15.dp, bottom = 15.dp),
-        soft = true,
     ) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
             ZarIconChip(
@@ -697,14 +693,9 @@ private fun ActivityFilterSheet(
     var draft by remember { mutableStateOf(filter) }
     val count = previewCount(draft)
     val close = stringResource(R.string.action_close)
-    ModalBottomSheet(
+    ZarModalSheet(
         onDismissRequest = onDismiss,
-        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-        shape = ZarShapes.sheet,
-        containerColor = ZarTheme.colors.surface,
-        scrimColor = SheetScrim,
-        dragHandle = { SheetGrabber() },
-    ) {
+    ) { dismiss ->
         // Figma Z45: 24dp margins, 20dp between blocks, 12dp from a label to its chips, 8dp between chip rows.
         Column(
             Modifier
@@ -715,7 +706,7 @@ private fun ActivityFilterSheet(
                 .testTag("activity-filter-sheet"),
             verticalArrangement = Arrangement.spacedBy(20.dp),
         ) {
-            SheetHeader(stringResource(R.string.activity_filter_title), onClose = onDismiss)
+            SheetHeader(stringResource(R.string.activity_filter_title), onClose = dismiss)
 
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 SheetLabel(stringResource(R.string.manual_field_account))
@@ -813,10 +804,10 @@ private fun ActivityFilterSheet(
     }
 }
 
-/** The small mono caption above a group of chips, with Figma's 14dp line. */
+/** The small caption above a group of chips, with Figma's 14dp line. */
 @Composable
 private fun SheetLabel(text: String) {
-    Text(text.uppercase(), style = ZarType.monoLabel.copy(lineHeight = 14.sp), color = ZarTheme.colors.textTertiary)
+    Text(text.uppercase(), style = ZarType.label.copy(lineHeight = 14.sp), color = ZarTheme.colors.textTertiary)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -828,13 +819,13 @@ private fun DateField(label: String, date: LocalDate, onPick: (LocalDate) -> Uni
         modifier.clip(RoundedCornerShape(14.dp)).background(colors.subtle).clickable(role = Role.Button) { open = true }.padding(horizontal = 14.dp, vertical = 10.dp),
         verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
-        Text(label.uppercase(), style = ZarType.monoLabel.copy(lineHeight = 14.sp), color = colors.textTertiary)
+        Text(label.uppercase(), style = ZarType.label.copy(lineHeight = 14.sp), color = colors.textTertiary)
         Text(EntryDisplay.dayMonth(date), style = ZarType.bodyM.copy(lineHeight = 20.sp), color = colors.textPrimary, maxLines = 1)
     }
     if (!open) return
     val state = rememberDatePickerState(initialSelectedDateMillis = date.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli())
     val pickerColors = DatePickerDefaults.colors(containerColor = ZarTheme.colors.surface, selectedDayContainerColor = ZarTheme.colors.accentSelected)
-    DatePickerDialog(
+    ZarDatePickerDialog(
         colors = pickerColors,
         tonalElevation = 0.dp,
         onDismissRequest = { open = false },

@@ -88,13 +88,13 @@ internal fun BannerAction(text: String, onClick: () -> Unit, modifier: Modifier 
     }
 }
 
-/** Small mono tag such as EDITED or VOID. */
+/** Small tag such as EDITED or VOID. */
 @Composable
 internal fun TagPill(text: String, modifier: Modifier = Modifier, attention: Boolean = false) {
     val colors = ZarTheme.colors
     Text(
         text.uppercase(),
-        style = ZarType.monoCaption,
+        style = ZarType.caption,
         color = if (attention) colors.textAttention else colors.textTertiary,
         modifier = modifier.clip(CircleShape).background(colors.subtle).padding(horizontal = 8.dp, vertical = 3.dp),
     )
@@ -134,21 +134,6 @@ internal fun FilterPill(
     }
 }
 
-/** The navy scrim Figma puts behind a bottom sheet (#05070B at 55%). */
-internal val SheetScrim = Color(0x8C05070B)
-
-/** The light 36x4 grabber, 10dp below the sheet top and 14dp above the title. */
-@Composable
-internal fun SheetGrabber() {
-    Box(
-        Modifier
-            .padding(top = 10.dp, bottom = 14.dp)
-            .size(width = 36.dp, height = 4.dp)
-            .clip(RoundedCornerShape(2.dp))
-            .background(ZarPrimitives.gray300),
-    )
-}
-
 /** Sheet title with the 20dp cross at the right edge of the 24dp margin. */
 @Composable
 internal fun SheetHeader(title: String, onClose: () -> Unit, modifier: Modifier = Modifier) {
@@ -180,7 +165,7 @@ internal fun EmptyCard(
 ) {
     val colors = ZarTheme.colors
     // Figma Z48: 32dp above the 56dp icon chip, 28dp below the button, 10dp between the lines.
-    ZarCard(modifier.fillMaxWidth(), contentPadding = PaddingValues(start = 24.dp, end = 24.dp, top = 32.dp, bottom = 28.dp), soft = true) {
+    ZarCard(modifier.fillMaxWidth(), contentPadding = PaddingValues(start = 24.dp, end = 24.dp, top = 32.dp, bottom = 28.dp)) {
         Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Column(
                 Modifier.size(56.dp).clip(CircleShape).background(colors.subtle),

@@ -4,6 +4,12 @@ import androidx.activity.compose.PredictiveBackHandler
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.ui.Alignment
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.SideEffect
@@ -37,12 +43,12 @@ import kotlinx.coroutines.flow.first
 /**
  * The state of a sheet that is dismissed by sliding to the right (the logical end), as Back does everywhere in the app.
  * [slide] is the sheet's travel as a fraction of its width and [fade] its opacity; the backdrop never moves, and the scrim
- * fades as the sheet leaves. Reduced motion never translates: the sheet crossfades out in at most 100 ms.
+ * fades as the sheet leaves. Reduced-motion Back resolves immediately; a downward swipe may crossfade in at most 100 ms.
  */
 @Stable
 class SheetBackState internal constructor(
     internal val slide: Animatable<Float, androidx.compose.animation.core.AnimationVector1D>,
-    internal val fade: Animatable<Float, androidx.compose.animation.core.AnimationVector1D>,
+    internal val fade: Animatable<Float, androidx.compose.animation.core.AnimationVector1D> = Animatable(1f),
     internal val entrance: Animatable<Float, androidx.compose.animation.core.AnimationVector1D> = Animatable(0f),
     entryHeightPx: Float = 0f,
     internal val swipeEnabled: Boolean = false,
@@ -160,14 +166,13 @@ fun SheetBackHost(onPop: () -> Unit, slideUpOnEnter: Boolean = false, content: @
     CompositionLocalProvider(LocalSheetBack provides state) { content(::dismiss) }
 }
 
-/** Commits the slide (or the reduced-motion crossfade) and then pops. Shared with tests. */
+/** Commits Back rightward, or pops immediately when motion is reduced/off. Shared with tests. */
 internal fun CoroutineScope.leave(state: SheetBackState, policy: MotionPolicy, onPop: () -> Unit) {
     launch {
         state.entrance.stop()
         when (policy.level) {
             MotionLevel.Full -> state.slide.animateTo(1f, spring(ZarSprings.Route.dampingRatio, ZarSprings.Route.stiffness))
-            MotionLevel.Reduced -> state.fade.animateTo(0f, tween(MotionPolicy.REDUCED_FADE_MAX_MILLIS))
-            MotionLevel.Instant -> Unit
+            MotionLevel.Reduced, MotionLevel.Instant -> Unit
         }
         onPop()
     }
@@ -180,9 +185,8 @@ const val PREVIEW_FACTOR = 0.5f
 fun Modifier.sheetBackSlide(swipeEnabled: Boolean = true): Modifier = composed {
     val state = LocalSheetBack.current ?: return@composed this
     val policy = LocalZarMotion.current
-    val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
     sheetSwipeToDismiss(state, swipeEnabled).graphicsLayer {
-        translationX = state.slide.value * size.width * if (rtl) -1f else 1f
+        translationX = state.slide.value * size.width
         translationY = state.entrance.value * (if (state.entryHeightPx > 0f) state.entryHeightPx else size.height) +
             if (policy.allowsSpatialMotion) state.swipeOffsetPx else 0f
         alpha = state.fade.value
@@ -197,4 +201,25 @@ fun Modifier.sheetBackScrim(): Modifier = composed {
         val swipe = if (policy.allowsSpatialMotion) (state.swipeOffsetPx / state.swipeExtentPx).coerceIn(0f, 1f) else 0f
         alpha = (1f - state.leaving()) * (1f - state.entrance.value.coerceIn(0f, 1f)) * (1f - swipe)
     }
+}
+
+/**
+ * A sub-surface of a Back-hosted sheet (a date or time picker, the new-category sheet) at the bottom of the enclosing Box.
+ * Opening shows it at once; Back or Cancel clears [visible] and it leaves toward the physical right with no fade or scale.
+ * Keep whatever it displays alive until the exit ends, and compose it after (above) the surface it covers. With motion
+ * reduced or off it disappears immediately.
+ */
+@Composable
+fun BoxScope.SheetSubSurface(visible: Boolean, content: @Composable () -> Unit) {
+    val policy = LocalZarMotion.current
+    AnimatedVisibility(
+        visible = visible,
+        modifier = Modifier.align(Alignment.BottomCenter),
+        enter = EnterTransition.None,
+        exit = if (policy.allowsSpatialMotion) {
+            slideOutHorizontally(spring(ZarSprings.Route.dampingRatio, ZarSprings.Route.stiffness)) { it }
+        } else {
+            ExitTransition.None
+        },
+    ) { content() }
 }

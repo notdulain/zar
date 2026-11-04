@@ -22,13 +22,6 @@ fun SignInScreen(
     viewModel: SignInViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    // The gradient is dark in both themes, so the status-bar glyphs are light.
-    val activity = LocalContext.current.findActivity()
-    val view = LocalView.current
-    DisposableEffect(activity, view) {
-        activity?.let { WindowCompat.getInsetsController(it.window, view).isAppearanceLightStatusBars = false }
-        onDispose { }
-    }
     SignInContent(
         state = state,
         onEmailChange = viewModel::onEmailChange,

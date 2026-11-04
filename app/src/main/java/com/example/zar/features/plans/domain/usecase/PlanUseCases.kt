@@ -1,8 +1,11 @@
 package com.example.zar.features.plans.domain.usecase
 
+import com.example.zar.core.domain.calculation.AccountBalance
 import com.example.zar.core.domain.calculation.AccountBalanceCalculator
 import com.example.zar.core.domain.calculation.ZarTime
+import com.example.zar.core.domain.model.Account
 import com.example.zar.core.domain.model.AccountId
+import com.example.zar.core.domain.model.LedgerEntry
 import com.example.zar.core.domain.model.LedgerError
 import com.example.zar.core.domain.model.money.Money
 import com.example.zar.core.domain.repository.AccountRepository
@@ -11,13 +14,16 @@ import com.example.zar.core.domain.usecase.resultOf
 import com.example.zar.features.plans.domain.model.GoalAllocation
 import com.example.zar.features.plans.domain.model.GoalBackingCalculator
 import com.example.zar.features.plans.domain.model.GoalId
-import com.example.zar.features.plans.domain.model.MACBOOK_GOAL_ID
+import com.example.zar.features.plans.domain.model.MainGoalResolver
 import com.example.zar.features.plans.domain.model.PlansOverview
 import com.example.zar.features.plans.domain.model.SavingsGoal
 import com.example.zar.features.plans.domain.repository.GoalRepository
+import com.example.zar.features.plans.domain.repository.PlanPreferencesRepository
 import javax.inject.Inject
+import kotlin.coroutines.cancellation.CancellationException
 import java.time.LocalDate
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 
@@ -25,28 +31,48 @@ class ObservePlansOverviewUseCase @Inject constructor(
     private val goals: GoalRepository,
     private val accounts: AccountRepository,
     private val ledger: LedgerRepository,
+    private val preferences: PlanPreferencesRepository,
 ) {
     operator fun invoke(today: LocalDate = ZarTime.today()): Flow<PlansOverview> = combine(
         goals.observeGoals(),
         accounts.observeAccounts(),
         ledger.observeLedger(),
-    ) { savedGoals, savedAccounts, entries ->
-        val goal = savedGoals.firstOrNull { it.id.value == MACBOOK_GOAL_ID }
-        val currency = goal?.target?.currency
-        val eligible = savedAccounts
-            .asSequence()
-            .filter { account -> !account.isArchived || goal?.allocations?.any { it.accountId == account.id } == true }
-            .filter { currency == null || it.currency == currency }
-            .filter { account -> account.openingDate <= today || goal?.allocations?.any { it.accountId == account.id } == true }
-            .map { AccountBalanceCalculator.calculate(it, entries, today) }
-            .filter { balance ->
-                (balance.current != null && !balance.current.isNegative) ||
-                    goal?.allocations?.any { it.accountId == balance.account.id } == true
-            }
-            .sortedBy { it.account.name.lowercase() }
-            .toList()
-        PlansOverview(goal, eligible, goal?.let { GoalBackingCalculator.calculate(it, savedAccounts, entries, today) })
+        // The pointer is a convenience: if it cannot be read (offline rules gap, permission), plans still load and the
+        // legacy/fallback main applies. A read failure must never look like an empty or failed catalog.
+        preferences.observeMainGoalId().catch { if (it is CancellationException) throw it else emit(null) },
+    ) { savedGoals, savedAccounts, entries, preferredId ->
+        val catalog = savedGoals.sortedWith(compareBy({ it.name.lowercase() }, { it.id.value }))
+        val mainId = MainGoalResolver.resolve(catalog, preferredId)
+        val accountsByGoal = catalog.associate { goal -> goal.id to eligibleAccounts(goal, savedAccounts, entries, today) }
+        val progressByGoal = GoalBackingCalculator.calculateAll(catalog, savedAccounts, entries, today)
+        val main = catalog.firstOrNull { it.id == mainId }
+        PlansOverview(
+            goal = main,
+            allocationAccounts = main?.let { accountsByGoal[it.id] }.orEmpty(),
+            progress = main?.let { progressByGoal[it.id] },
+            goals = catalog,
+            progressByGoal = progressByGoal,
+            accountsByGoal = accountsByGoal,
+        )
     }
+
+    private fun eligibleAccounts(
+        goal: SavingsGoal,
+        savedAccounts: List<Account>,
+        entries: List<LedgerEntry>,
+        today: LocalDate,
+    ): List<AccountBalance> = savedAccounts
+        .asSequence()
+        .filter { account -> !account.isArchived || goal.allocations.any { it.accountId == account.id } }
+        .filter { it.currency == goal.target.currency }
+        .filter { account -> account.openingDate <= today || goal.allocations.any { it.accountId == account.id } }
+        .map { AccountBalanceCalculator.calculate(it, entries, today) }
+        .filter { balance ->
+            (balance.current != null && !balance.current.isNegative) ||
+                goal.allocations.any { it.accountId == balance.account.id }
+        }
+        .sortedBy { it.account.name.lowercase() }
+        .toList()
 }
 
 class SaveGoalUseCase @Inject constructor(
@@ -97,5 +123,16 @@ class SetGoalAllocationUseCase @Inject constructor(
             updatedAllocations += GoalAllocation(accountId, amount)
         }
         goals.saveGoal(goal.copy(allocations = updatedAllocations))
+    }
+}
+
+/** Makes an existing plan the main one. It only moves the pointer: no plan or allocation is written. */
+class SetMainGoalUseCase @Inject constructor(
+    private val goals: GoalRepository,
+    private val preferences: PlanPreferencesRepository,
+) {
+    suspend operator fun invoke(id: GoalId): Result<Unit> = resultOf {
+        if (goals.observeGoals().first().none { it.id == id }) throw LedgerError.InvalidRecord("Goal not found")
+        preferences.setMainGoalId(id)
     }
 }

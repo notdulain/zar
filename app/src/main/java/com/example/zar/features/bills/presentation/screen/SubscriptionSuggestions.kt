@@ -27,7 +27,7 @@ import com.example.zar.R
 import com.example.zar.core.presentation.components.ZarCard
 import com.example.zar.core.presentation.components.ZarDivider
 import com.example.zar.core.presentation.components.ZarIconChip
-import com.example.zar.core.presentation.components.ZarMonoLabel
+import com.example.zar.core.presentation.components.ZarEyebrow
 import com.example.zar.core.presentation.theme.ZarTheme
 import com.example.zar.core.presentation.theme.ZarType
 import com.example.zar.features.bills.domain.RecurringSuggestion
@@ -52,7 +52,7 @@ fun SubscriptionSuggestionsSection(
     if (suggestions.isEmpty()) return
     val colors = ZarTheme.colors
     Column(modifier.fillMaxWidth().testTag("subscription-suggestions")) {
-        ZarMonoLabel(stringResource(R.string.subs_label), Modifier.padding(horizontal = edge + 12.dp))
+        ZarEyebrow(stringResource(R.string.subs_label), Modifier.padding(horizontal = edge + 12.dp))
         Text(
             stringResource(R.string.subs_intro),
             style = ZarType.bodyS.copy(lineHeight = 19.sp),

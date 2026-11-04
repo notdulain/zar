@@ -1,4 +1,5 @@
 import { test, before, after, beforeEach } from 'node:test';
+import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { initializeTestEnvironment, assertSucceeds, assertFails } from '@firebase/rules-unit-testing';
 import { doc, setDoc, getDoc, getDocs, collection, deleteDoc, updateDoc, writeBatch, deleteField } from 'firebase/firestore';
@@ -46,6 +47,7 @@ const ownershipCases = [
   ['paymentMatches', 'p1_t1', { expectedPaymentId: 'p1', transactionId: 't1', amount: lkr(1000), matchedAt: millis }],
   ['projects', 'p1', { id: 'p1', name: 'Test project', currency: { code: 'LKR', kind: 'FIAT', digits: 2 }, status: 'ACTIVE', createdAt: millis }],
   ['goals', 'g1', { id: 'g1', name: 'Test goal', target: lkr(10000), allocations: [], updatedAt: millis }],
+  ['planPreferences', 'main', { id: 'main', mainGoalId: 'g1', updatedAt: millis }],
   ['allowance', 'weekly', { id: 'weekly', enabled: false, categoryIds: [], weekStart: 'MONDAY', updatedAt: millis }],
   ['cryptoOpeningCosts', 'wallet', { accountId: 'wallet', cost: lkr(1000), approximate: false, updatedAt: millis }],
   ['bills', 'b1', { id: 'b1', name: 'Test bill', accountId: 'bank', amount: lkr(1000), frequency: 'MONTHLY', firstDue: '2026-10-30', status: 'ACTIVE', createdAt: millis }],
@@ -280,6 +282,37 @@ test('goals: allocation boundary and update schema stay enforced', async () => {
   await assertFails(updateDoc(r, { unexpectedField: true }));
   await assertFails(updateDoc(doc(bob(), path('alice', 'goals', goal.id)), { name: 'Changed' }));
   await assertFails(getDoc(doc(anon(), path('alice', 'goals', goal.id))));
+});
+
+test('goals: several plans coexist under distinct IDs and a retried create is the same document', async () => {
+  const a = { id: 'a1b2c3d4-0000-4000-8000-000000000001', name: 'Laptop', target: lkr(49000000), allocations: [], updatedAt: 1790000000000 };
+  const b = { ...a, id: 'a1b2c3d4-0000-4000-8000-000000000002', name: 'Phone', target: lkr(9000000) };
+  const legacy = { ...a, id: 'macbook-fund', name: 'MacBook fund',
+    allocations: [{ accountId: 'savings', amount: lkr(1120000) }] };
+  await assertSucceeds(setDoc(doc(alice(), path('alice', 'goals', legacy.id)), legacy));
+  await assertSucceeds(setDoc(doc(alice(), path('alice', 'goals', a.id)), a));
+  await assertSucceeds(setDoc(doc(alice(), path('alice', 'goals', b.id)), b));
+  await assertSucceeds(setDoc(doc(alice(), path('alice', 'goals', b.id)), b)); // retry of the same create
+  const legacySnap = await getDoc(doc(alice(), path('alice', 'goals', legacy.id)));
+  assert.equal(legacySnap.data().allocations.length, 1);
+  await assertFails(deleteDoc(doc(alice(), path('alice', 'goals', a.id))));
+});
+
+test('planPreferences: one owner-only main-plan pointer, no delete, nothing else writable', async () => {
+  const pref = { id: 'main', mainGoalId: 'macbook-fund', updatedAt: 1790000000000 };
+  const r = doc(alice(), path('alice', 'planPreferences', 'main'));
+  await assertSucceeds(setDoc(r, pref));
+  await assertSucceeds(updateDoc(r, { mainGoalId: 'a1b2c3d4-0000-4000-8000-000000000002', updatedAt: 1790000000001 }));
+  await assertSucceeds(getDoc(r));
+  await assertFails(updateDoc(r, { mainGoalId: '' }));
+  await assertFails(updateDoc(r, { mainGoalId: 'x'.repeat(65) }));
+  await assertFails(updateDoc(r, { extra: true }));
+  await assertFails(setDoc(r, { id: 'main', updatedAt: 1790000000002 }));
+  await assertFails(setDoc(doc(alice(), path('alice', 'planPreferences', 'other')), { ...pref, id: 'other' }));
+  await assertFails(deleteDoc(r));
+  await assertFails(getDoc(doc(bob(), path('alice', 'planPreferences', 'main'))));
+  await assertFails(setDoc(doc(bob(), path('alice', 'planPreferences', 'main')), pref));
+  await assertFails(getDoc(doc(anon(), path('alice', 'planPreferences', 'main'))));
 });
 
 test('allowance: one owner-only setting, LKR amount, no delete', async () => {

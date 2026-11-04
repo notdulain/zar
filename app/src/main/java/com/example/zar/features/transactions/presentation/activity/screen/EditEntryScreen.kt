@@ -51,7 +51,7 @@ import com.example.zar.core.presentation.components.ZarChip
 import com.example.zar.core.presentation.components.ZarDivider
 import com.example.zar.core.presentation.components.ZarFormRow
 import com.example.zar.core.presentation.components.ZarIcon
-import com.example.zar.core.presentation.components.ZarMonoLabel
+import com.example.zar.core.presentation.components.ZarEyebrow
 import com.example.zar.core.presentation.theme.ZarShapes
 import com.example.zar.core.presentation.theme.ZarTheme
 import com.example.zar.core.presentation.theme.ZarType
@@ -262,7 +262,7 @@ private fun EditFields(state: EditEntryUiState, amount: String, actions: EditAct
 
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            ZarMonoLabel(stringResource(R.string.manual_field_counts_as))
+            ZarEyebrow(stringResource(R.string.manual_field_counts_as))
         }
         val classes = listOf(SpendingClass.COMMITTED, SpendingClass.DISCRETIONARY, SpendingClass.UNKNOWN)
         Segmented(

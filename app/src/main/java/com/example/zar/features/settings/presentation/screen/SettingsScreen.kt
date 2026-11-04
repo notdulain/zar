@@ -22,9 +22,8 @@ import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ModalBottomSheet
+import com.example.zar.core.presentation.components.ZarModalSheet
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -61,9 +60,7 @@ import com.example.zar.features.settings.domain.model.AppearanceMode
 import com.example.zar.features.settings.presentation.viewmodel.SettingsUiState
 import com.example.zar.features.settings.presentation.viewmodel.SettingsViewModel
 import com.example.zar.features.transactions.presentation.activity.screen.DarkStatusBarIcons
-import com.example.zar.features.transactions.presentation.activity.screen.SheetGrabber
 import com.example.zar.features.transactions.presentation.activity.screen.SheetHeader
-import com.example.zar.features.transactions.presentation.activity.screen.SheetScrim
 
 @Composable
 fun SettingsScreen(
@@ -163,7 +160,7 @@ internal fun SettingsContent(
                 text = stringResource(R.string.settings_sign_out),
                 onClick = onSignOut,
                 modifier = Modifier.fillMaxWidth().testTag("sign-out"),
-                style = ZarButtonStyle.Soft,
+                style = ZarButtonStyle.Bounded,
                 enabled = !uiState.isSigningOut,
             )
         }
@@ -234,14 +231,9 @@ internal fun AppearanceSheet(
     onRetry: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    ModalBottomSheet(
+    ZarModalSheet(
         onDismissRequest = onDismiss,
-        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-        shape = ZarShapes.sheet,
-        containerColor = ZarTheme.colors.surface,
-        scrimColor = SheetScrim,
-        dragHandle = { SheetGrabber() },
-    ) {
+    ) { dismiss ->
         Column(
             Modifier
                 .navigationBarsPadding()
@@ -250,7 +242,7 @@ internal fun AppearanceSheet(
                 .testTag("appearance-sheet"),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            SheetHeader(stringResource(R.string.settings_appearance), onClose = onDismiss)
+            SheetHeader(stringResource(R.string.settings_appearance), onClose = dismiss)
             Column(Modifier.fillMaxWidth().selectableGroup()) {
                 AppearanceOption(AppearanceMode.LIGHT, stringResource(R.string.settings_appearance_light), null, selected, onSelect)
                 AppearanceOption(AppearanceMode.DARK, stringResource(R.string.settings_appearance_dark), null, selected, onSelect)
@@ -341,14 +333,9 @@ private fun AppearanceSaveFailedRow(current: String, onRetry: () -> Unit) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun SignOutUnsyncedSheet(onCancel: () -> Unit, onConfirm: () -> Unit) {
-    ModalBottomSheet(
+    ZarModalSheet(
         onDismissRequest = onCancel,
-        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-        shape = ZarShapes.sheet,
-        containerColor = ZarTheme.colors.surface,
-        scrimColor = SheetScrim,
-        dragHandle = { SheetGrabber() },
-    ) {
+    ) { dismiss ->
         Column(
             Modifier
                 .navigationBarsPadding()
@@ -357,10 +344,10 @@ internal fun SignOutUnsyncedSheet(onCancel: () -> Unit, onConfirm: () -> Unit) {
                 .testTag("sign-out-sheet"),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            SheetHeader(stringResource(R.string.sign_out_unsynced_title), onClose = onCancel)
+            SheetHeader(stringResource(R.string.sign_out_unsynced_title), onClose = dismiss)
             Text(stringResource(R.string.sign_out_unsynced_body), style = ZarType.bodyS, color = ZarTheme.colors.textSecondary)
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                ZarButton(stringResource(R.string.action_cancel), onCancel, Modifier.weight(1f).testTag("sign-out-cancel"), style = ZarButtonStyle.Soft)
+                ZarButton(stringResource(R.string.action_cancel), dismiss, Modifier.weight(1f).testTag("sign-out-cancel"), style = ZarButtonStyle.Soft)
                 ZarButton(stringResource(R.string.sign_out_anyway), onConfirm, Modifier.weight(1f).testTag("sign-out-anyway"))
             }
         }

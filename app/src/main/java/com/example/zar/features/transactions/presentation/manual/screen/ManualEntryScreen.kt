@@ -1,15 +1,15 @@
 package com.example.zar.features.transactions.presentation.manual.screen
 
+import com.example.zar.core.presentation.components.SheetSubSurface
 import com.example.zar.core.presentation.components.sheetBackScrim
 import com.example.zar.core.presentation.components.sheetBackSlide
-import com.example.zar.core.presentation.components.LocalSheetBack
 import androidx.compose.ui.text.input.VisualTransformation
 import com.example.zar.core.presentation.privacy.amountFieldTransformation
 import androidx.activity.compose.BackHandler
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDefaults
-import androidx.compose.material3.DatePickerDialog
+import com.example.zar.core.presentation.components.ZarDatePickerDialog
 import androidx.compose.material3.SelectableDates
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.TextButton
@@ -100,7 +100,7 @@ import com.example.zar.core.presentation.components.ZarChip
 import com.example.zar.core.presentation.components.ZarDivider
 import com.example.zar.core.presentation.components.ZarFormRow
 import com.example.zar.core.presentation.components.ZarIcon
-import com.example.zar.core.presentation.components.ZarMonoLabel
+import com.example.zar.core.presentation.components.ZarEyebrow
 import com.example.zar.core.presentation.format.formatForRow
 import com.example.zar.core.presentation.format.formatWithCode
 import com.example.zar.core.presentation.theme.ZarShapes
@@ -178,6 +178,7 @@ internal fun ManualEntryContent(
     val typeSlider = typeIndicator ?: rememberSelectorIndicator(typeIndex)
     val closeLabel = stringResource(R.string.manual_close)
     val noteFocus = remember { FocusRequester() }
+    val sheet = com.example.zar.core.presentation.components.LocalSheetBack.current
     var openedWithFocus by rememberSaveable { mutableStateOf(false) }
     var openPicker by rememberSaveable { mutableStateOf<String?>(null) }
 
@@ -185,7 +186,6 @@ internal fun ManualEntryContent(
     BackHandler(enabled = openPicker != null) { openPicker = null }
 
     // Opened from Quick note's "fill the form" path: focus the note once the sheet has settled.
-    val sheet = LocalSheetBack.current
     LaunchedEffect(uiState.isLoading, uiState.kind) {
         val wanted = focusNote && !openedWithFocus
         if (wanted && !uiState.isLoading && uiState.kind == ManualEntryKind.EXPENSE) {
@@ -197,21 +197,7 @@ internal fun ManualEntryContent(
 
     BoxWithConstraints(Modifier.fillMaxSize().imePadding()) {
         Box(Modifier.fillMaxSize().sheetBackScrim().background(colors.scrim.copy(alpha = 0.64f)).clickable(onClick = actions.onClose))
-        if (openPicker == "date") {
-            ManualDatePickerSheet(
-                date = uiState.date,
-                onCancel = { openPicker = null },
-                onSetDate = { actions.onDate(it); openPicker = null },
-                modifier = Modifier.align(Alignment.BottomCenter).sheetBackSlide(swipeEnabled = false),
-            )
-        } else if (openPicker == "time") {
-            ManualTimePickerSheet(
-                time = uiState.time,
-                onCancel = { openPicker = null },
-                onSetTime = { actions.onTime(it); openPicker = null },
-                modifier = Modifier.align(Alignment.BottomCenter).sheetBackSlide(swipeEnabled = false),
-            )
-        } else {
+        if (openPicker == null) {
         Column(
             Modifier.align(Alignment.BottomCenter).sheetBackSlide(swipeEnabled = !uiState.isSaving).fillMaxWidth()
                 .then(if (sheetHeight != null) Modifier.height(minOf(sheetHeight, maxHeight - 48.dp)) else Modifier.heightIn(max = maxHeight - 48.dp))
@@ -294,25 +280,53 @@ internal fun ManualEntryContent(
             )
         }
         }
-        if (uiState.deletingCategory != null) {
-            Box(Modifier.fillMaxSize().background(colors.scrim.copy(alpha = 0.64f)).clickable(onClick = actions.onDeleteCategoryCancel))
-            DeleteCategorySheet(
-                state = uiState.deletingCategory,
-                onCancel = actions.onDeleteCategoryCancel,
-                onConfirm = actions.onDeleteCategoryConfirm,
-                modifier = Modifier.align(Alignment.BottomCenter),
+        SheetSubSurface(visible = openPicker == "date") {
+            ManualDatePickerSheet(
+                date = uiState.date,
+                onCancel = { openPicker = null },
+                onSetDate = { actions.onDate(it); openPicker = null },
+                modifier = Modifier.sheetBackSlide(swipeEnabled = false),
             )
         }
+        SheetSubSurface(visible = openPicker == "time") {
+            ManualTimePickerSheet(
+                time = uiState.time,
+                onCancel = { openPicker = null },
+                onSetTime = { actions.onTime(it); openPicker = null },
+                modifier = Modifier.sheetBackSlide(swipeEnabled = false),
+            )
+        }
+        // Kept after the state clears so the sheet can finish leaving to the right.
+        val shownNewCategory = remember { arrayOfNulls<NewCategoryState>(1) }
+        uiState.newCategory?.let { shownNewCategory[0] = it }
         if (uiState.newCategory != null) {
             Box(Modifier.fillMaxSize().background(colors.scrim.copy(alpha = 0.64f)).clickable(onClick = actions.onAddCategoryCancel))
-            AddCategorySheet(
-                state = uiState.newCategory,
-                onName = actions.onNewCategoryName,
-                onIcon = actions.onNewCategoryIcon,
-                onCancel = actions.onAddCategoryCancel,
-                onSave = actions.onAddCategorySave,
-                modifier = Modifier.align(Alignment.BottomCenter),
-            )
+        }
+        SheetSubSurface(visible = uiState.newCategory != null) {
+            shownNewCategory[0]?.let { state ->
+                AddCategorySheet(
+                    state = state,
+                    onName = actions.onNewCategoryName,
+                    onIcon = actions.onNewCategoryIcon,
+                    onCancel = actions.onAddCategoryCancel,
+                    onSave = actions.onAddCategorySave,
+                )
+            }
+        }
+        // Same hold-until-gone treatment for the delete confirmation.
+        val shownDeleting = remember { arrayOfNulls<DeleteCategoryState>(1) }
+        uiState.deletingCategory?.let { shownDeleting[0] = it }
+        if (uiState.deletingCategory != null) {
+            Box(Modifier.fillMaxSize().background(colors.scrim.copy(alpha = 0.64f)).clickable(onClick = actions.onDeleteCategoryCancel))
+        }
+        SheetSubSurface(visible = uiState.deletingCategory != null) {
+            shownDeleting[0]?.let { state ->
+                DeleteCategorySheet(
+                    state = state,
+                    onCancel = actions.onDeleteCategoryCancel,
+                    onConfirm = actions.onDeleteCategoryConfirm,
+                )
+            }
         }
     }
 }
@@ -391,7 +405,7 @@ private fun ExpenseFields(state: ManualEntryUiState, actions: ManualEntryActions
 
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            ZarMonoLabel(stringResource(R.string.manual_field_counts_as))
+            ZarEyebrow(stringResource(R.string.manual_field_counts_as))
             state.category?.takeIf { it.usualClass != null }?.let {
                 Text(
                     stringResource(R.string.manual_counts_as_hint, it.labelText()),
@@ -474,8 +488,8 @@ private fun Suggestions(state: ManualEntryUiState, onSelect: (EntrySuggestion) -
             Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 8.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            ZarMonoLabel(stringResource(R.string.manual_suggestions_header))
-            ZarMonoLabel(stringResource(R.string.manual_suggestions_fills), color = colors.textPlaceholder)
+            ZarEyebrow(stringResource(R.string.manual_suggestions_header))
+            ZarEyebrow(stringResource(R.string.manual_suggestions_fills), color = colors.textPlaceholder)
         }
         state.suggestions.forEach { suggestion ->
             val account = state.accounts.firstOrNull { it.id == suggestion.accountId }
@@ -541,7 +555,7 @@ private fun TransferFields(state: ManualEntryUiState, actions: ManualEntryAction
 
     ZarFormRow(stringResource(R.string.manual_field_fees)) {
         Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-            ZarMonoLabel(state.currency.code)
+            ZarEyebrow(state.currency.code)
             TextInput(
                 value = state.fee,
                 onValueChange = actions.onFee,
@@ -682,7 +696,7 @@ internal fun Section(label: String, action: String? = null, onAction: (() -> Uni
     // Expanding "All categories" / "All accounts" settles to its new height instead of jumping.
     Column(Modifier.settleSize(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            ZarMonoLabel(label)
+            ZarEyebrow(label)
             if (action != null && onAction != null) {
                 Text(action, style = ZarType.labelAction, color = ZarTheme.colors.textSelected,
                     modifier = Modifier.clickable(role = Role.Button, onClick = onAction))
@@ -903,7 +917,7 @@ private fun AddCategorySheet(
 private fun CategoryIconPicker(selected: CategoryIcon, onSelect: (CategoryIcon) -> Unit) {
     val colors = ZarTheme.colors
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        ZarMonoLabel(stringResource(R.string.manual_new_category_icon))
+        ZarEyebrow(stringResource(R.string.manual_new_category_icon))
         Column(Modifier.fillMaxWidth().selectableGroup(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             CategoryIcon.entries.chunked(4).forEach { row ->
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -1142,12 +1156,12 @@ internal fun DateTimeRow(
     }
     if (stacked) {
         Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            ZarMonoLabel(stringResource(R.string.manual_field_date))
+            ZarEyebrow(stringResource(R.string.manual_field_date))
             values(Modifier.fillMaxWidth())
         }
     } else {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            ZarMonoLabel(stringResource(R.string.manual_field_date), modifier = Modifier.size(width = 96.dp, height = 16.dp))
+            ZarEyebrow(stringResource(R.string.manual_field_date), modifier = Modifier.size(width = 96.dp, height = 16.dp))
             values(Modifier.weight(1f))
         }
     }
@@ -1178,7 +1192,7 @@ internal fun DateRow(date: LocalDate, onSelect: (LocalDate) -> Unit) {
         },
     )
     val pickerColors = DatePickerDefaults.colors(containerColor = ZarTheme.colors.surface, selectedDayContainerColor = ZarTheme.colors.accentSelected)
-    DatePickerDialog(
+    ZarDatePickerDialog(
         colors = pickerColors,
         tonalElevation = 0.dp,
         onDismissRequest = { showPicker = false },
