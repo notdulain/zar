@@ -37,7 +37,7 @@ Read back from the Firestore emulator with a small script after the steps above 
 
 ## Tests run for this change
 
-- Unit tests (JVM): the whole suite, 143 classes and 1,431 tests, 0 failures, 0 errors, 0 skipped.
+- Unit tests (JVM): the whole suite after merging `main` (20 commits, PRs #47 and #48), 145 classes and 1,456 tests, 0 failures, 0 errors, 0 skipped. Before the merge it was 143 classes and 1,431 tests.
 - Firestore rules tests: 48 of 48, including a new case for a rate with source `PROVIDER`, and one that refuses an unknown source and a comma in the rate.
 
 ## Not covered
@@ -46,7 +46,7 @@ Read back from the Firestore emulator with a small script after the steps above 
 - **An answer that is cached** was not observed on the phone. It is covered by `ExchangeRateApiRepositoryTest` (one request, then the second answer from the cache; a new request after the provider's next update).
 - **The provider's "too many requests" answer (HTTP 429)** was not triggered on purpose. It is covered by a unit test against a mock server: nothing is sent for 20 minutes.
 - **The expense form's earlier-date and typed-over states** were not captured. They share the row and the logic with income and are covered by `ManualEntryViewModelTest`.
-- **Instrumented (on-device) tests** were not run.
+- **Instrumented (on-device) tests** were compiled (including two fixed for this change) but not run.
 - **Adding a rate to an expense that was already saved** is still not possible.
 - **The saved record's rate is only visible in the income edit form.** The Activity detail screen does not show rates.
 - **The Figma frames** (section 29, Z198 to Z210) show the rate as a row with a label; the app keeps the existing layout of the field (label with the link on the first line, the number below). The wording, states and colours match.
