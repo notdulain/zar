@@ -109,6 +109,8 @@ fun ZarNavHost(
     modifier: Modifier = Modifier,
     openCatchUp: Boolean = false,
     onCatchUpOpened: () -> Unit = {},
+    openReviewDraft: String? = null,
+    onReviewOpened: () -> Unit = {},
 ) {
     val navController = rememberNavController()
     // The weekly reminder opens the catch-up on top of Home.
@@ -116,6 +118,13 @@ fun ZarNavHost(
         if (openCatchUp) {
             navController.navigate(CatchUpRoute) { launchSingleTop = true }
             onCatchUpOpened()
+        }
+    }
+    // A capture notification opens that draft's review on top of Home.
+    LaunchedEffect(openReviewDraft) {
+        openReviewDraft?.let { id ->
+            navController.navigate(CaptureReviewRoute(id)) { launchSingleTop = true }
+            onReviewOpened()
         }
     }
     // Text shared to Zar from another app opens the capture screen, which reads it.

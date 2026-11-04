@@ -251,7 +251,9 @@ class CaptureReviewViewModel internal constructor(
                             val proposal = draft.proposals.singleOrNull() as? DraftProposal.ActualTransaction
                             next = next.copy(
                                 type = proposal?.type?.takeIf { it in CapturedDraftRules.CONFIRMABLE_TYPES && DraftField.TYPE !in proposal.uncertainFields },
-                                accountId = next.matchingAccounts.singleOrNull()?.id,
+                                // The account matched from the message, if it can still hold it; otherwise the only one that can.
+                                accountId = proposal?.accountId?.takeIf { id -> next.matchingAccounts.any { it.id == id } }
+                                    ?: next.matchingAccounts.singleOrNull()?.id,
                             )
                         }
                         next

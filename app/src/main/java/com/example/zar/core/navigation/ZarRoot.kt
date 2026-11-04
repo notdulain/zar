@@ -32,6 +32,8 @@ import com.example.zar.features.rules.presentation.screen.RuleOfferHost
 fun ZarRoot(
     openCatchUp: Boolean = false,
     onCatchUpOpened: () -> Unit = {},
+    openReviewDraft: String? = null,
+    onReviewOpened: () -> Unit = {},
     viewModel: SessionViewModel = hiltViewModel(),
 ) {
     val session by viewModel.session.collectAsStateWithLifecycle()
@@ -49,7 +51,12 @@ fun ZarRoot(
                 LocalNavCapsuleController provides remember { NavCapsuleController() },
             ) {
                 Box {
-                    ZarNavHost(openCatchUp = openCatchUp, onCatchUpOpened = onCatchUpOpened)
+                    ZarNavHost(
+                        openCatchUp = openCatchUp,
+                        onCatchUpOpened = onCatchUpOpened,
+                        openReviewDraft = openReviewDraft,
+                        onReviewOpened = onReviewOpened,
+                    )
                     // The "Remember this choice" offer floats above every signed-in screen.
                     RuleOfferHost()
                 }

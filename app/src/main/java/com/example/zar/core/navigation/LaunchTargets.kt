@@ -6,4 +6,8 @@ object LaunchTargets {
 
     /** The weekly catch-up reminder. */
     const val CATCH_UP = "catch_up"
+
+    /** A notification for one captured bank message; the draft's id is in [EXTRA_DRAFT_ID]. */
+    const val CAPTURE_REVIEW = "capture_review"
+    const val EXTRA_DRAFT_ID = "zar.draft_id"
 }

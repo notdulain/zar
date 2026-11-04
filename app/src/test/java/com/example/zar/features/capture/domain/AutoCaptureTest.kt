@@ -1,5 +1,9 @@
 package com.example.zar.features.capture.domain
 
+import com.example.zar.core.domain.FakeAccountRepository
+import com.example.zar.features.capture.domain.usecase.ObserveCaptureAccountsUseCase
+import com.example.zar.features.capture.domain.auto.CaptureNotifier
+import com.example.zar.features.capture.domain.auto.CapturedForReview
 import com.example.zar.core.domain.model.Draft
 import com.example.zar.core.domain.model.DraftId
 import com.example.zar.core.domain.model.DraftProposal
@@ -125,14 +129,20 @@ class AutoCaptureTest {
         override suspend fun closeAsLinked(draft: Draft, link: EvidenceLink) = LinkWrite.SAVED
     }
 
-    private class Fixture(signedIn: UserId?, enabledFor: UserId?) {
+    private class FakeNotifier : CaptureNotifier {
+        val shown = mutableListOf<CapturedForReview>()
+        override fun draftWaiting(capture: CapturedForReview) { shown += capture }
+    }
+
+    private class Fixture(signedIn: UserId?, enabledFor: UserId?, vararg accounts: com.example.zar.core.domain.model.Account) {
         val session = FakeSession(signedIn)
+        val notifier = FakeNotifier()
         val preferences = FakePreferences(enabledFor)
         val staging = FakeStaging()
         val scheduler = FakeScheduler()
         val drafts = FakeDrafts(session)
         val stage = StageIncomingSmsUseCase(BankSmsParser(), session, preferences, staging, scheduler)
-        val process = ProcessStagedSmsUseCase(session, staging, CaptureTextUseCase(BankSmsParser(), drafts))
+        val process = ProcessStagedSmsUseCase(session, staging, CaptureTextUseCase(BankSmsParser(), drafts, ObserveCaptureAccountsUseCase(FakeAccountRepository(*accounts))), notifier)
     }
 
     // --- Staging ---------------------------------------------------------------------------
@@ -188,6 +198,56 @@ class AutoCaptureTest {
         assertEquals(CapturedDraftRules.draftIdFor(purchase), draft.id)
     }
 
+    // --- Notifications -----------------------------------------------------------------------
+
+    @Test
+    fun eachNewSmsDraftAsksHimToReviewItWithTheMatchedAccount() = runBlocking {
+        val combank = com.example.zar.core.domain.model.Account(
+            com.example.zar.core.domain.model.AccountId("combank"), "Commercial Bank", com.example.zar.core.domain.model.AccountType.BANK,
+            com.example.zar.core.domain.model.money.Currencies.LKR, com.example.zar.core.domain.model.OpeningBalance.Unknown, java.time.LocalDate.of(2026, 1, 1),
+        )
+        val f = Fixture(alice, alice, combank)
+        f.stage(purchase, received)
+        f.process(received.plusSeconds(60))
+
+        val notice = f.notifier.shown.single()
+        assertEquals(CapturedDraftRules.draftIdFor(purchase), notice.draftId)
+        assertEquals("800.00", notice.amount.toDecimal().toPlainString())
+        assertEquals("CAFE SEVENTY THREE MALABE LK", notice.counterparty)
+        assertEquals("Commercial Bank", notice.accountName)
+    }
+
+    @Test
+    fun aMessageHeAlreadySharedIsNotNotifiedAgain() = runBlocking {
+        val f = Fixture(alice, alice)
+        CaptureTextUseCase(BankSmsParser(), f.drafts, ObserveCaptureAccountsUseCase(FakeAccountRepository()))(purchase, DraftSource.SHARED_TEXT, received)
+        f.stage(purchase, received)
+        f.process(received)
+        assertTrue(f.notifier.shown.isEmpty())
+    }
+
+    @Test
+    fun aMessageThatWaitedOfflineIsNotifiedOnceWhenSaved() = runBlocking {
+        val f = Fixture(alice, alice)
+        f.stage(purchase, received)
+        f.drafts.offline = true
+        f.process(received)
+        assertTrue("Nothing to review yet", f.notifier.shown.isEmpty())
+        f.drafts.offline = false
+        f.process(received.plusSeconds(60))
+        f.process(received.plusSeconds(120))
+        assertEquals(1, f.notifier.shown.size)
+    }
+
+    @Test
+    fun anotherUsersMessagesNeverNotify() = runBlocking {
+        val f = Fixture(alice, alice)
+        f.stage(purchase, received)
+        f.session.user.value = bob
+        f.process(received)
+        assertTrue(f.notifier.shown.isEmpty())
+    }
+
     @Test
     fun aCreditIsNotGuessedAsIncome() = runBlocking {
         val f = Fixture(alice, alice)
@@ -201,7 +261,7 @@ class AutoCaptureTest {
     @Test
     fun aMessageAlreadySharedOrCapturedMakesNoSecondDraft() = runBlocking {
         val f = Fixture(alice, alice)
-        CaptureTextUseCase(BankSmsParser(), f.drafts)(purchase, DraftSource.SHARED_TEXT, received)
+        CaptureTextUseCase(BankSmsParser(), f.drafts, ObserveCaptureAccountsUseCase(FakeAccountRepository()))(purchase, DraftSource.SHARED_TEXT, received)
         f.stage(purchase, received)
         f.process(received)
         f.stage(purchase, received.plusSeconds(5))

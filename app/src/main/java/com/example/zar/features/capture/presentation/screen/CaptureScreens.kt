@@ -298,6 +298,9 @@ internal fun CaptureReviewContent(
                     }
                 }
                 if (state.showErrors && state.accountId == null) Detail(stringResource(R.string.capture_review_pick_account), true)
+                if (DraftField.ACCOUNT in proposal.uncertainFields && state.accountId != null && state.accountId == proposal.accountId) {
+                    Detail(stringResource(R.string.capture_review_account_matched))
+                }
                 ZarEyebrow(stringResource(R.string.capture_review_type))
                 if (proposal.type == null || DraftField.TYPE in proposal.uncertainFields) Detail(stringResource(R.string.capture_review_type_hint))
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
