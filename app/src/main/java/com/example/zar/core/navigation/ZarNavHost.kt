@@ -290,6 +290,10 @@ fun ZarNavHost(
                     initialKind = route.initialKind,
                     onDone = dismiss,
                     onAddAccount = { navController.navigate(AccountFormRoute()) },
+                    // The same Quick note window the Add menu opens; it replaces this sheet rather than stacking on it.
+                    onOpenQuickNote = {
+                        navController.navigate(QuickNoteRoute) { popUpTo<ManualEntryRoute> { inclusive = true } }
+                    },
                 )
             }
         }

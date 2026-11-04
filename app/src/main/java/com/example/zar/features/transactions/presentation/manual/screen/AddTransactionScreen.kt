@@ -34,6 +34,7 @@ fun AddTransactionScreen(
     initialKind: String?,
     onDone: () -> Unit,
     onAddAccount: () -> Unit,
+    onOpenQuickNote: () -> Unit,
     manualViewModel: ManualEntryViewModel = hiltViewModel(),
     incomeViewModel: IncomeFormViewModel = hiltViewModel(key = "add-income"),
 ) {
@@ -89,6 +90,7 @@ fun AddTransactionScreen(
             onDeleteCategoryStart = manualViewModel::onDeleteCategoryStart,
             onDeleteCategoryCancel = manualViewModel::onDeleteCategoryCancel,
             onDeleteCategoryConfirm = manualViewModel::onDeleteCategoryConfirm,
+            onQuickNote = onOpenQuickNote,
         ),
         incomeActions = IncomeFormActions(
             onBack = onDone,

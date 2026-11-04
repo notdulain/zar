@@ -160,6 +160,8 @@ internal class ManualEntryActions(
     val onDeleteCategoryStart: (CustomExpenseCategory) -> Unit = {},
     val onDeleteCategoryCancel: () -> Unit = {},
     val onDeleteCategoryConfirm: () -> Unit = {},
+    /** Opens the real Quick note window in place of this sheet. */
+    val onQuickNote: () -> Unit = {},
 )
 
 @Composable
@@ -176,17 +178,16 @@ internal fun ManualEntryContent(
     val typeSlider = typeIndicator ?: rememberSelectorIndicator(typeIndex)
     val closeLabel = stringResource(R.string.manual_close)
     val noteFocus = remember { FocusRequester() }
-    var quickNoteTaps by remember { mutableIntStateOf(0) }
     var openedWithFocus by rememberSaveable { mutableStateOf(false) }
     var openPicker by rememberSaveable { mutableStateOf<String?>(null) }
 
     // Back closes an open date or time picker first, instead of dismissing the whole form and losing what was typed.
     BackHandler(enabled = openPicker != null) { openPicker = null }
 
-    // "Quick note" focuses the note once; the field may not exist yet if the form was on Transfer.
+    // Opened from Quick note's "fill the form" path: focus the note once the sheet has settled.
     val sheet = LocalSheetBack.current
-    LaunchedEffect(uiState.isLoading, uiState.kind, quickNoteTaps) {
-        val wanted = quickNoteTaps > 0 || (focusNote && !openedWithFocus)
+    LaunchedEffect(uiState.isLoading, uiState.kind) {
+        val wanted = focusNote && !openedWithFocus
         if (wanted && !uiState.isLoading && uiState.kind == ManualEntryKind.EXPENSE) {
             sheet?.awaitEntrance()
             runCatching { noteFocus.requestFocus() }
@@ -280,10 +281,7 @@ internal fun ManualEntryContent(
         ) {
             ZarButton(
                 text = stringResource(R.string.manual_quick_note),
-                onClick = {
-                    actions.onKind(ManualEntryKind.EXPENSE)
-                    quickNoteTaps++
-                },
+                onClick = actions.onQuickNote,
                 modifier = Modifier.weight(1f).testTag("manual-quick-note"),
                 style = ZarButtonStyle.Soft,
                 icon = R.drawable.ic_ph_note_pencil,
