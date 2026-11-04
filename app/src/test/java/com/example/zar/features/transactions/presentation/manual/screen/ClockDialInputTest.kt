@@ -318,4 +318,66 @@ class ClockDialInputTest {
         listOf(0f, 180f, 270f).forEach { i.moveTo(it, radius = 8f) }
         assertEquals(0, rec.ticks)
     }
+
+    // Minute mode: 60 detents, so every minute is selectable and ticks.
+
+    private val minuteConfig = ClockDialConfig(armLength = 100f, centerDeadzone = 24f, armGrabRadius = 24f, hysteresisDegrees = 1f, detents = 60)
+
+    private fun minuteInput(rec: Recorder) = ClockDialInput(
+        config = minuteConfig,
+        restingArmAngle = { rec.restingAngle },
+        currentDetent = { rec.detent },
+        onSelectDetent = { rec.selected += it; rec.detent = it; rec.restingAngle = it * 6f },
+        onFinished = { rec.finished++ },
+        ticks = rec.ticker,
+        onArmAngle = { rec.armAngle = it },
+    )
+
+    @Test
+    fun minuteGeometryHasSixDegreeDetents() {
+        assertEquals(17, ClockGeometry.detentOf(100f, 60))
+        assertEquals(0, ClockGeometry.detentOf(359f, 60))
+        assertEquals(1, ClockGeometry.detentOf(3.5f, 60))
+        assertEquals(102f, ClockGeometry.angleOfDetent(17, 60), 0.001f)
+    }
+
+    @Test
+    fun tapSelectsTheExactMinuteNotTheNearestFive() {
+        val rec = Recorder(detent = 0)
+        val i = minuteInput(rec)
+        val (x, y) = at(100f)
+        i.press(x, y)
+        i.tap(x, y, 1_000L)
+        assertEquals(listOf(17), rec.selected)
+        assertEquals(1, rec.finished)
+        assertEquals(1, rec.ticks)
+    }
+
+    @Test
+    fun slowMinuteDragSelectsAndTicksEveryMinute() {
+        val rec = Recorder(detent = 0, restingAngle = 0f)
+        val i = minuteInput(rec)
+        val (x, y) = at(0f)
+        i.press(x, y)
+        i.dragStart(x, y, 1_000L)
+        for (minute in 1..5) i.moveTo(minute * 6f)
+        assertEquals(listOf(1, 2, 3, 4, 5), rec.selected)
+        assertEquals(5, rec.ticks)
+        i.moveTo(0f)
+        assertEquals(0, rec.selected.last())
+        assertEquals(6, rec.ticks)
+    }
+
+    @Test
+    fun minuteHysteresisStaysUnderHalfAMinuteSoTheArmDoesNotLag() {
+        val rec = Recorder(detent = 0, restingAngle = 0f)
+        val i = minuteInput(rec)
+        val (x, y) = at(0f)
+        i.press(x, y)
+        i.dragStart(x, y, 1_000L)
+        i.moveTo(3.5f) // 0.5 degrees past the 3 degree boundary: no switch yet
+        assertTrue(rec.selected.isEmpty())
+        i.moveTo(4.5f) // 1.5 degrees past: switches to minute 1
+        assertEquals(listOf(1), rec.selected)
+    }
 }

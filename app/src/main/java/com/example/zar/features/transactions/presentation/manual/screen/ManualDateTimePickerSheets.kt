@@ -282,7 +282,7 @@ fun ManualTimePickerSheet(
                 selected = if (activeHour) {
                     selected.withHour(detent + if (selected.hour >= 12) 12 else 0)
                 } else {
-                    selected.withMinute(detent * 5)
+                    selected.withMinute(detent)
                 }
             }, onSelectionFinished = { if (activeHour) activeHour = false })
         } else {
@@ -466,50 +466,58 @@ private fun TimeNumber(value: String, selected: Boolean, onClick: () -> Unit, on
 private fun ClockDial(time: LocalTime, hourMode: Boolean, onSelect: (Int) -> Unit, onSelectionFinished: () -> Unit) {
     val colors = ZarTheme.colors
     val density = LocalDensity.current
-    // Typed minutes keep their exact arm angle; hours rest on their detent.
-    val restingAngle = if (hourMode) ClockGeometry.angleOfDetent(time.hour % 12) else time.minute * 6f
-    val selectedIndex = ClockGeometry.detentOf(restingAngle)
+    // Hours step through 12 positions, minutes through all 60, so every minute is reachable and ticks.
+    val detents = if (hourMode) 12 else 60
+    val labelStep = detents / 12
+    val restingAngle = ClockGeometry.angleOfDetent(if (hourMode) time.hour % 12 else time.minute, detents)
+    val selectedIndex = if (hourMode) time.hour % 12 else time.minute
     val policy = LocalZarMotion.current
-    var dragAngle by remember { mutableStateOf<Float?>(null) }
-    // The arm tracks the finger directly; only the release settles, along the shortest path to the resting detent,
+    var dragging by remember { mutableStateOf(false) }
+    // The arm and its end knob are one shape drawn at one angle. It sits on the selected position while a finger drags,
+    // so it never leads or trails the selection; only a tap or a typed change settles to it, along the shortest path
     // with the shared settle spring. Reduced motion and disabled system animations resolve immediately.
     val settle = remember { Animatable(restingAngle) }
-    LaunchedEffect(dragAngle, restingAngle, policy) {
-        val current = dragAngle
-        if (current != null) {
-            settle.snapTo(current)
+    LaunchedEffect(dragging, restingAngle, policy) {
+        val delta = ClockGeometry.signedDelta(settle.value, restingAngle)
+        if (!dragging && delta != 0f && policy.allowsSpatialMotion) {
+            settle.animateTo(settle.value + delta, policy.spring(ZarSprings.Settle))
         } else {
-            val delta = ClockGeometry.signedDelta(settle.value, restingAngle)
-            if (delta != 0f && policy.allowsSpatialMotion) {
-                settle.animateTo(settle.value + delta, policy.spring(ZarSprings.Settle))
-            } else {
-                settle.snapTo(restingAngle)
-            }
+            settle.snapTo(restingAngle)
         }
     }
-    val armAngle = dragAngle ?: settle.value
+    val armAngle = settle.value
     val theta = armAngle * PI / 180 - PI / 2
+    // On a number the arm ends in the big knob that holds it; between numbers (a single minute) it ends in a small dot,
+    // so no number is half covered.
+    val onNumber = selectedIndex % labelStep == 0
     val latestAngle by rememberUpdatedState(restingAngle)
     val latestIndex by rememberUpdatedState(selectedIndex)
     val latestSelect by rememberUpdatedState(onSelect)
     val latestFinished by rememberUpdatedState(onSelectionFinished)
     val ticks = rememberSelectionTicker()
-    val input = remember(density, ticks) {
+    val input = remember(density, ticks, detents) {
         with(density) {
             ClockDialInput(
-                config = ClockDialConfig(armLength = 100.dp.toPx(), centerDeadzone = 24.dp.toPx(), armGrabRadius = 24.dp.toPx()),
+                config = ClockDialConfig(
+                    armLength = 100.dp.toPx(),
+                    centerDeadzone = 24.dp.toPx(),
+                    armGrabRadius = 24.dp.toPx(),
+                    // A minute is only 6 degrees wide, so the dead band past its edge must be small.
+                    hysteresisDegrees = if (detents == 12) 3f else 1f,
+                    detents = detents,
+                ),
                 restingArmAngle = { latestAngle },
                 currentDetent = { latestIndex },
                 onSelectDetent = { latestSelect(it) },
                 onFinished = { latestFinished() },
                 ticks = ticks,
-                onArmAngle = { dragAngle = it },
+                onArmAngle = { dragging = it != null },
             )
         }
     }
     Box(Modifier.fillMaxWidth(), Alignment.Center) {
         Box(
-            Modifier.size(256.dp).clip(CircleShape).background(colors.subtle)
+            Modifier.size(256.dp).clip(CircleShape).background(colors.subtle).testTag("time-dial")
                 .pointerInput(input) { detectClockGestures(input) },
             Alignment.Center,
         ) {
@@ -521,25 +529,31 @@ private fun ClockDial(time: LocalTime, hourMode: Boolean, onSelect: (Int) -> Uni
                 )
                 drawLine(colors.accentPrimary, centre, end, strokeWidth = 2.dp.toPx(), cap = StrokeCap.Round)
                 drawCircle(colors.accentPrimary, radius = 4.dp.toPx(), center = centre)
+                drawCircle(colors.accentPrimary, radius = (if (onNumber) 22 else 6).dp.toPx(), center = end)
             }
             repeat(12) { index ->
                 val label = if (hourMode) (if (index == 0) 12 else index).toString() else "%02d".format(index * 5)
                 val angle = 2 * PI * index / 12 - PI / 2
                 val x = (100 * cos(angle)).dp
                 val y = (100 * sin(angle)).dp
-                // Touches are resolved by sector on the dial itself; this node is the TalkBack/keyboard alternative.
+                val detent = index * labelStep
+                val chosen = selectedIndex == detent
+                // A number reads as selected while the arm's big knob is over it, whichever way the knob got there.
+                val gap = Math.toRadians(ClockGeometry.distance(armAngle, index * 30f).toDouble())
+                val underKnob = onNumber && 2 * 100 * sin(gap / 2) < 22
+                // Touches are resolved by position on the dial itself; this node is the TalkBack/keyboard alternative.
                 var focused by remember { mutableStateOf(false) }
                 Box(Modifier.align(Alignment.Center)
                     .offset(x = x, y = y)
                     .size(48.dp)
                     .onFocusChanged { focused = it.isFocused }
                     .onKeyEvent { event ->
-                        // Real keyboard activation: Enter/Space/centre-Dpad select this detent exactly like a tap.
+                        // Real keyboard activation: Enter/Space/centre-Dpad select this position exactly like a tap.
                         if (event.type == KeyEventType.KeyUp &&
                             (event.key == Key.Enter || event.key == Key.NumPadEnter ||
                                 event.key == Key.Spacebar || event.key == Key.DirectionCenter)
                         ) {
-                            input.clickDetent(index)
+                            input.clickDetent(detent)
                             true
                         } else {
                             false
@@ -548,14 +562,13 @@ private fun ClockDial(time: LocalTime, hourMode: Boolean, onSelect: (Int) -> Uni
                     .focusable()
                     .semantics(mergeDescendants = true) {
                         role = Role.Button
-                        selected = selectedIndex == index
-                        onClick(label = "Select $label") { input.clickDetent(index); true }
+                        selected = chosen
+                        onClick(label = "Select $label") { input.clickDetent(detent); true }
                     }, Alignment.Center) {
                     Box(Modifier.size(44.dp).clip(CircleShape)
-                        .then(if (focused) Modifier.border(2.dp, colors.accentPrimary, CircleShape) else Modifier)
-                        .background(if (selectedIndex == index) colors.accentPrimary else Color.Transparent), Alignment.Center) {
-                        Text(label, style = ZarType.bodyL.copy(fontWeight = if (selectedIndex == index) FontWeight.Medium else FontWeight.Normal),
-                            color = if (selectedIndex == index) colors.textOnInverse else colors.textPrimary)
+                        .then(if (focused) Modifier.border(2.dp, colors.accentPrimary, CircleShape) else Modifier), Alignment.Center) {
+                        Text(label, style = ZarType.bodyL.copy(fontWeight = if (underKnob) FontWeight.Medium else FontWeight.Normal),
+                            color = if (underKnob) colors.textOnInverse else colors.textPrimary)
                     }
                 }
             }
