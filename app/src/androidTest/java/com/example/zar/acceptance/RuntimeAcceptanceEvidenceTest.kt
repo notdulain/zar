@@ -21,6 +21,7 @@ class RuntimeAcceptanceEvidenceTest {
     private fun tag(s: String) = compose.onAllNodesWithTag(s).onLast()
     private fun capture(name: String) {
         compose.waitForIdle()
+        Thread.sleep(900) // let sheet, tab and theme transitions finish so the frame is the settled screen
         val inst = InstrumentationRegistry.getInstrumentation()
         val bitmap = checkNotNull(inst.uiAutomation.takeScreenshot())
         val dir = File(inst.targetContext.cacheDir, "task6-runtime").apply { mkdirs() }
@@ -63,7 +64,8 @@ class RuntimeAcceptanceEvidenceTest {
         capture("08-new-plan-light")
         pressBack()
         tag("nav-more").performClick()
-        tag("open-settings").performScrollTo().performClick()
+        tag("open-settings").performScrollTo().performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)
+        compose.waitUntilAtLeastOneExists(hasTestTag("appearance-row"), 15_000)
         capture("09-settings-light")
         tag("appearance-row").performScrollTo().performClick()
         tag("appearance-option-dark").performClick()
@@ -76,7 +78,7 @@ class RuntimeAcceptanceEvidenceTest {
         capture("12-home-dark")
         // Restore the test emulator's saved appearance through the production Settings flow.
         tag("nav-more").performClick()
-        tag("open-settings").performScrollTo().performClick()
+        tag("open-settings").performScrollTo().performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)
         tag("appearance-row").performScrollTo().performClick()
         tag("appearance-option-light").performClick()
         compose.waitUntil(15_000) { compose.onAllNodes(hasTestTag("appearance-row") and hasText("Light", substring = true)).fetchSemanticsNodes().isNotEmpty() }
