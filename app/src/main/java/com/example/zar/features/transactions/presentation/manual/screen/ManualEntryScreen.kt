@@ -16,6 +16,8 @@ import androidx.compose.material3.TextButton
 import java.time.Instant
 import java.time.ZoneOffset
 import androidx.compose.foundation.background
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.selection.selectable
@@ -919,8 +921,15 @@ internal fun Segmented(
                                 .clip(ZarShapes.sm)
                                 .background(if (selected) colors.surface else colors.subtle),
                         )
-                        // A moving indicator means a repeat tap changes nothing: no second selection, no replayed bounce.
-                        .selectable(selected = selected, role = Role.RadioButton, onClick = { if (indicator == null || !selected) onSelect(index) })
+                        // With a moving indicator the slide is the only feedback: no press ripple, which would flash on the
+                        // target before the indicator arrives. A repeat tap changes nothing: no second selection or bounce.
+                        .selectable(
+                            selected = selected,
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = if (indicator == null) LocalIndication.current else null,
+                            role = Role.RadioButton,
+                            onClick = { if (indicator == null || !selected) onSelect(index) },
+                        )
                         .padding(vertical = 8.dp)
                         .testTag("$tagPrefix-${tags[index]}"),
                     Alignment.Center,
