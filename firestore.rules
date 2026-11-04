@@ -72,7 +72,8 @@ rules_version = '2';
 // expenseCategories/{categoryId} create, no-change update, no delete (custom expense categories)
 //   id (== doc id, 'custom-' + 8-56 letters, digits or hyphens: built-in and income ids can never match),
 //   name (1-80 stored characters, trimmed, no control or line-break characters; the app limits it to 40 code points),
-//   nameKey (1-160, lower case, trimmed: the comparison key), source ('CUSTOM'), createdAt (int).
+//   nameKey (1-160, lower case, trimmed: the comparison key), source ('CUSTOM'), createdAt (int),
+//   icon? (optional; one of the app's CategoryIcon keys, absent means the generic receipt icon).
 //   A category never changes or goes away, so an expense's categoryId keeps resolving. A replayed create is an
 //   update with identical data and is allowed; the rules never look the category up from a transaction.
 //
@@ -231,8 +232,10 @@ service cloud.firestore {
     // computed by the app (CategoryNameRules), so nameKey is only checked to be a plausible normalised form.
     function isValidExpenseCategory(categoryId) {
       let d = data();
-      return hasOnlyAllowedFields(['id', 'name', 'nameKey', 'source', 'createdAt'])
+      return hasOnlyAllowedFields(['id', 'name', 'nameKey', 'source', 'createdAt', 'icon'])
         && hasRequiredFields(['id', 'name', 'nameKey', 'source', 'createdAt'])
+        && (!('icon' in d) || d.icon in ['receipt', 'fork_knife', 'coffee', 'basket', 'groceries', 'car', 'transport',
+            'house', 'barbell', 'television', 'phone', 'wifi', 'lightning', 'piggy_bank', 'briefcase', 'wallet'])
         && d.id == categoryId
         && categoryId.matches('^custom-[A-Za-z0-9-]{8,56}$')
         && d.source == 'CUSTOM'

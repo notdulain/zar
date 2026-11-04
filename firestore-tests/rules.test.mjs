@@ -356,6 +356,12 @@ test('expense categories: owner-only, custom ids, safe names, never changed or d
   const noSource = cat('custom-bad-nosource'); delete noSource.source;
   await assertFails(setDoc(at('custom-bad-nosource'), noSource));
   await bad('extra', { extra: true });
+  // Optional icon: a known key is accepted, anything else is not.
+  await assertSucceeds(setDoc(at('custom-icon-ok-1'), cat('custom-icon-ok-1', { icon: 'piggy_bank' })));
+  await assertSucceeds(setDoc(at('custom-icon-default'), cat('custom-icon-default', { icon: 'receipt' })));
+  await bad('icon-unknown', { icon: 'rocket' });
+  await bad('icon-type', { icon: 7 });
+  await bad('icon-empty', { icon: '' });
   await bad('nonstring', { name: 7 });
   await bad('created', { createdAt: 0 });
   await bad('createdstr', { createdAt: '1790000000000' });

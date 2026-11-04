@@ -1,6 +1,7 @@
 package com.example.zar.features.transactions.data.category
 
 import com.example.zar.features.transactions.domain.category.CategoryNameRules
+import com.example.zar.features.transactions.domain.manual.model.CategoryIcon
 import com.example.zar.features.transactions.domain.manual.model.CustomCategoryIds
 import com.example.zar.features.transactions.domain.manual.model.CustomExpenseCategory
 import java.time.Instant
@@ -13,13 +14,15 @@ import java.time.Instant
 object ExpenseCategoryDocumentMapper {
     const val SOURCE_CUSTOM = "CUSTOM"
 
-    fun toMap(category: CustomExpenseCategory): Map<String, Any> = mapOf(
-        "id" to category.id,
-        "name" to category.name,
-        "nameKey" to category.nameKey,
-        "source" to SOURCE_CUSTOM,
-        "createdAt" to category.createdAt.toEpochMilli(),
-    )
+    fun toMap(category: CustomExpenseCategory): Map<String, Any> = buildMap {
+        put("id", category.id)
+        put("name", category.name)
+        put("nameKey", category.nameKey)
+        put("source", SOURCE_CUSTOM)
+        put("createdAt", category.createdAt.toEpochMilli())
+        // The default icon is left out, so those categories stay valid under rules that predate the icon field.
+        if (category.icon != CategoryIcon.DEFAULT) put("icon", category.icon.key)
+    }
 
     fun fromMap(map: Map<String, Any?>): CustomExpenseCategory? = runCatching {
         val id = map["id"] as String
@@ -30,6 +33,7 @@ object ExpenseCategoryDocumentMapper {
             name = name,
             nameKey = CategoryNameRules.keyOf(name),
             createdAt = Instant.ofEpochMilli((map["createdAt"] as Number).toLong()),
+            icon = CategoryIcon.fromKey(map["icon"] as? String),
         )
     }.getOrNull()
 }
