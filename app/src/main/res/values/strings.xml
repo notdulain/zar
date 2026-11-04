@@ -1183,6 +1183,7 @@
     <string name="capture_review_discard">Discard</string>
     <string name="capture_review_gone">This message was already reviewed.</string>
     <string name="capture_review_pick_account">Choose an account</string>
+    <string name="capture_review_account_matched">Picked from the bank in the message. Tap another account if it\'s wrong.</string>
     <string name="capture_review_pick_type">Choose a type</string>
     <string name="capture_type_expense">Expense</string>
     <string name="capture_type_income">Income</string>
