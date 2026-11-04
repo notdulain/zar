@@ -7,6 +7,12 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.ui.input.pointer.positionChange
+import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.foundation.gestures.horizontalDrag
+import androidx.compose.foundation.gestures.awaitHorizontalTouchSlopOrCancellation
 import androidx.compose.foundation.gestures.awaitTouchSlopOrCancellation
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.drag
@@ -58,6 +64,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
@@ -104,7 +111,15 @@ fun ManualDatePickerSheet(
     val today = remember { ZarTime.today() }
     var selected by remember(date) { mutableStateOf(date.coerceAtMost(today)) }
     var month by remember(date) { mutableStateOf(YearMonth.from(selected)) }
+    var choosingMonth by remember { mutableStateOf(false) }
     val colors = ZarTheme.colors
+    val currentMonth = YearMonth.from(today)
+    val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
+    // Swiping the calendar changes the month; the next month stays off past today, as the arrow does.
+    fun step(delta: Long) {
+        val target = month.plusMonths(delta)
+        if (target <= currentMonth) month = target
+    }
     PickerShell(title = "Date", onCancel = onCancel, action = "Set date", onAction = { onSetDate(selected) }, modifier = modifier) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             listOf("Today" to today, "Yesterday" to today.minusDays(1), "2 days ago" to today.minusDays(2)).forEach { (label, value) ->
@@ -115,15 +130,36 @@ fun ManualDatePickerSheet(
             }
         }
 
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Column(
+            Modifier.testTag("date-calendar").pointerInput(rtl, currentMonth) { detectMonthSwipes(rtl) { delta -> step(delta) } },
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
             Row(Modifier.fillMaxWidth().padding(bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-                Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Row(
+                    Modifier.weight(1f).heightIn(min = 44.dp).clip(ZarShapes.sm)
+                        .clickable(role = Role.Button, onClickLabel = "Choose month") { choosingMonth = !choosingMonth }
+                        .semantics { stateDescription = if (choosingMonth) "Choosing month" else "Showing days" }
+                        .testTag("date-month-title"),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
                     Text(month.format(DateTimeFormatter.ofPattern("MMMM yyyy", locale)), style = ZarType.bodyL.copy(fontWeight = FontWeight.Medium), color = colors.textPrimary)
-                    ZarIcon(R.drawable.ic_ph_caret_down, size = 14.dp, tint = colors.iconMuted)
+                    ZarIcon(R.drawable.ic_ph_caret_down, modifier = Modifier.rotate(if (choosingMonth) 180f else 0f), size = 14.dp, tint = colors.iconMuted)
                 }
-                MonthArrow("Previous month", enabled = true, rotated = true) { month = month.minusMonths(1) }
-                Spacer(Modifier.width(8.dp))
-                MonthArrow("Next month", enabled = month < YearMonth.from(today)) { month = month.plusMonths(1) }
+                if (!choosingMonth) {
+                    MonthArrow("Previous month", enabled = true, rotated = true) { month = month.minusMonths(1) }
+                    Spacer(Modifier.width(8.dp))
+                    MonthArrow("Next month", enabled = month < currentMonth) { month = month.plusMonths(1) }
+                }
+            }
+            if (choosingMonth) {
+                MonthChooser(
+                    selected = month,
+                    latest = currentMonth,
+                    locale = locale,
+                    onChoose = { month = it; choosingMonth = false },
+                )
+                return@Column
             }
             Row(Modifier.fillMaxWidth()) {
                 listOf("S", "M", "T", "W", "T", "F", "S").forEach { day ->
@@ -328,10 +364,81 @@ private fun PickerShell(title: String, onCancel: () -> Unit, action: String, onA
     }
 }
 
+/** A year stepper over a 3 x 4 grid of months. Months after the current one are off, like future days. */
+@Composable
+private fun MonthChooser(selected: YearMonth, latest: YearMonth, locale: java.util.Locale, onChoose: (YearMonth) -> Unit) {
+    val colors = ZarTheme.colors
+    var year by remember(selected) { mutableStateOf(selected.year) }
+    Column(Modifier.testTag("date-month-grid"), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            MonthArrow("Previous year", enabled = true, rotated = true) { year-- }
+            Text(
+                year.toString(),
+                modifier = Modifier.weight(1f),
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                style = ZarType.bodyL.copy(fontWeight = FontWeight.Medium),
+                color = colors.textPrimary,
+            )
+            MonthArrow("Next year", enabled = year < latest.year) { year++ }
+        }
+        repeat(4) { row ->
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                repeat(3) { column ->
+                    val candidate = YearMonth.of(year, row * 3 + column + 1)
+                    val enabled = candidate <= latest
+                    val active = candidate == selected
+                    Box(
+                        Modifier.weight(1f).height(46.dp).clip(ZarShapes.sm)
+                            .background(if (active) colors.accentPrimary else colors.subtle)
+                            .clickable(enabled = enabled, role = Role.Button, onClickLabel = "Show ${candidate.month.getDisplayName(java.time.format.TextStyle.FULL, locale)} $year") { onChoose(candidate) }
+                            .testTag("date-month-${candidate.monthValue}"),
+                        Alignment.Center,
+                    ) {
+                        Text(
+                            candidate.month.getDisplayName(java.time.format.TextStyle.SHORT, locale),
+                            style = ZarType.bodyM.copy(fontWeight = if (active) FontWeight.Medium else FontWeight.Normal),
+                            color = when { active -> colors.textOnInverse; !enabled -> colors.textDisabled; else -> colors.textPrimary },
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * A horizontal swipe of at least 48dp over the calendar moves one month: toward the start of the reading direction
+ * goes back, toward its end goes forward. Vertical drags are left to the sheet's own scrolling.
+ */
+private suspend fun PointerInputScope.detectMonthSwipes(rtl: Boolean, onStep: (Long) -> Unit) {
+    val threshold = 48.dp.toPx()
+    awaitEachGesture {
+        val down = awaitFirstDown(requireUnconsumed = false)
+        var total = 0f
+        var started = false
+        val first = awaitHorizontalTouchSlopOrCancellation(down.id) { change, over ->
+            change.consume()
+            total += over
+            started = true
+        } ?: return@awaitEachGesture
+        if (started) {
+            horizontalDrag(first.id) { change ->
+                total += change.positionChange().x
+                change.consume()
+            }
+            if (kotlin.math.abs(total) >= threshold) {
+                // Dragging right reveals the previous month in LTR; mirrored in RTL.
+                val back = if (rtl) total < 0 else total > 0
+                onStep(if (back) -1L else 1L)
+            }
+        }
+    }
+}
+
 @Composable
 private fun MonthArrow(label: String, enabled: Boolean, rotated: Boolean = false, onClick: () -> Unit) {
     val colors = ZarTheme.colors
-    Box(Modifier.size(44.dp).clip(CircleShape).background(colors.subtle).clickable(enabled = enabled, role = Role.Button, onClickLabel = label, onClick = onClick), Alignment.Center) {
+    Box(Modifier.size(44.dp).clip(CircleShape).background(colors.subtle).clickable(enabled = enabled, role = Role.Button, onClickLabel = label, onClick = onClick).semantics { contentDescription = label }, Alignment.Center) {
         ZarIcon(R.drawable.ic_ph_caret_right, modifier = if (rotated) Modifier.rotate(180f) else Modifier, size = 18.dp, tint = if (enabled) colors.iconStrong else colors.textDisabled)
     }
 }
