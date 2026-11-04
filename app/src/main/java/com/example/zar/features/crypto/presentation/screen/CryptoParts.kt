@@ -79,6 +79,8 @@ internal fun CryptoHero(
     status: String?,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
+    /** Moves the title, amount and status together, e.g. a slower drift and fade while the page scrolls. */
+    contentModifier: Modifier = Modifier,
 ) {
     val statusBar = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     val onDark = Color.White
@@ -96,7 +98,7 @@ internal fun CryptoHero(
         ) {
             Icon(painterResource(R.drawable.ic_ph_arrow_left), stringResource(R.string.crypto_back), Modifier.size(22.dp), tint = onDark)
         }
-        Column(Modifier.padding(horizontal = 24.dp)) {
+        Column(contentModifier.padding(horizontal = 24.dp)) {
             Text(stringResource(R.string.crypto_title), style = ZarType.displayTitle, color = onDark, modifier = Modifier.padding(top = 14.dp))
             ZarEyebrow(stringResource(R.string.crypto_realized_label), Modifier.padding(top = 26.dp), color = onDark.copy(alpha = 0.6f))
             Text(amount, style = ZarType.amountL.copy(lineHeight = 40.sp), color = onDark, modifier = Modifier.padding(top = 10.dp).testTag("crypto-realized"))

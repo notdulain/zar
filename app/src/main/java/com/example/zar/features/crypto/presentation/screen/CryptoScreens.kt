@@ -19,6 +19,14 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.key
+import com.example.zar.core.presentation.components.heroDisplacement
+import com.example.zar.core.presentation.components.heroParallax
+import com.example.zar.core.presentation.motion.LocalZarMotion
+import com.example.zar.core.presentation.motion.ZarMotion
+import com.example.zar.core.presentation.motion.riseIn
+import com.example.zar.core.presentation.motion.settleSize
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -124,10 +132,22 @@ internal fun CryptoContent(
     StatusBarGlyphs(onDarkHero = !pastHero)
     val portfolio = uiState.portfolio
     val failed = uiState.loadFailed && portfolio == null
+    // Cards rise in on the first visit only; coming back from a movement shows them in place.
+    var firstVisit by rememberSaveable { mutableStateOf(true) }
+    val play = remember { firstVisit }
+    LaunchedEffect(portfolio != null) { if (portfolio != null) firstVisit = false }
+    // While the page scrolls, the hero's words drift up a little slower than the page and fade, as on Home.
+    val heroOffset = scroll.heroDisplacement()
+    val motion = LocalZarMotion.current
+    val heroContent = Modifier
+        .heroParallax(heroOffset, ZarMotion.PARALLAX_TEXT, ZarMotion.ParallaxTextCap)
+        .graphicsLayer {
+            if (motion.allowsSpatialMotion && heroHeight > 0) alpha = (1f - scroll.value / (heroHeight * 0.7f)).coerceIn(0f, 1f)
+        }
 
     Box(Modifier.fillMaxSize().background(colors.canvas)) {
         Column(Modifier.fillMaxSize().verticalScroll(scroll)) {
-            Hero(portfolio, failed, onBack, Modifier.onSizeChanged { heroHeight = it.height })
+            Hero(portfolio, failed, onBack, Modifier.onSizeChanged { heroHeight = it.height }, heroContent)
             when {
                 uiState.isLoading -> Box(Modifier.fillMaxWidth().padding(top = 72.dp), Alignment.Center) {
                     CircularProgressIndicator(color = colors.accentSelected)
@@ -136,17 +156,17 @@ internal fun CryptoContent(
                     icon = R.drawable.ic_ph_wifi_high,
                     title = stringResource(R.string.crypto_load_failed_title),
                     body = stringResource(R.string.crypto_load_failed_body),
-                    modifier = Modifier.padding(top = 22.dp).testTag("crypto-load-failed"),
+                    modifier = Modifier.padding(top = 22.dp).riseIn(0, play = true).testTag("crypto-load-failed"),
                 )
                 portfolio == null -> Unit
                 portfolio.wallets.isEmpty() -> NoticeCard(
                     icon = R.drawable.ic_ph_wallet,
                     title = stringResource(R.string.crypto_no_wallets_title),
                     body = stringResource(R.string.crypto_no_wallets_body),
-                    modifier = Modifier.padding(top = 22.dp).testTag("crypto-no-wallets"),
+                    modifier = Modifier.padding(top = 22.dp).riseIn(0, play).testTag("crypto-no-wallets"),
                     card = false,
                 )
-                else -> Sections(portfolio, uiState.message, onOpenMovement, onSetCost)
+                else -> Sections(portfolio, uiState.message, onOpenMovement, onSetCost, play)
             }
             // Room so the last card clears the floating button.
             Spacer(Modifier.height(124.dp))
@@ -170,7 +190,7 @@ internal fun CryptoContent(
 }
 
 @Composable
-private fun Hero(portfolio: CryptoPortfolio?, failed: Boolean, onBack: () -> Unit, modifier: Modifier = Modifier) {
+private fun Hero(portfolio: CryptoPortfolio?, failed: Boolean, onBack: () -> Unit, modifier: Modifier = Modifier, contentModifier: Modifier = Modifier) {
     if (failed || portfolio == null) {
         CryptoHero(
             amount = if (failed) "—" else "",
@@ -178,6 +198,7 @@ private fun Hero(portfolio: CryptoPortfolio?, failed: Boolean, onBack: () -> Uni
             status = if (failed) stringResource(R.string.crypto_status_connection) else null,
             onBack = onBack,
             modifier = modifier,
+            contentModifier = contentModifier,
         )
         return
     }
@@ -202,6 +223,7 @@ private fun Hero(portfolio: CryptoPortfolio?, failed: Boolean, onBack: () -> Uni
         },
         onBack = onBack,
         modifier = modifier,
+        contentModifier = contentModifier,
     )
 }
 
@@ -211,17 +233,20 @@ private fun Sections(
     message: CryptoMessage?,
     onOpenMovement: (CryptoMovementRow) -> Unit,
     onSetCost: (Account) -> Unit,
+    play: Boolean,
 ) {
-    Column(Modifier.padding(top = 18.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
+    var order = 0
+    // settleSize: a movement added or undone grows or shrinks the list smoothly instead of jumping.
+    Column(Modifier.padding(top = 18.dp).settleSize(), verticalArrangement = Arrangement.spacedBy(9.dp)) {
         message?.let { FieldError(stringResource(it.textRes()), Modifier.padding(horizontal = 22.dp)) }
         if (portfolio.assets.isNotEmpty()) {
             BillSectionHeader(stringResource(R.string.crypto_holdings))
-            portfolio.assets.forEach { HoldingCard(it) }
+            portfolio.assets.forEach { HoldingCard(it, Modifier.riseIn(order++, play)) }
             Spacer(Modifier.height(13.dp))
         }
 
         BillSectionHeader(stringResource(R.string.crypto_wallets))
-        BillCard(Modifier.testTag("crypto-wallets")) {
+        BillCard(Modifier.riseIn(order++, play).testTag("crypto-wallets")) {
             portfolio.wallets.forEachIndexed { index, wallet ->
                 if (index > 0) ZarDivider()
                 WalletRow(wallet, portfolio.openingCosts[wallet.id], onSetCost = { onSetCost(wallet) })
@@ -233,18 +258,20 @@ private fun Sections(
         if (portfolio.movements.isEmpty()) {
             BillNote(stringResource(R.string.crypto_no_movements))
         } else {
-            portfolio.movements.forEach { row -> MovementCard(row, onClick = { onOpenMovement(row) }) }
+            portfolio.movements.forEach { row ->
+                key(row.outEntry.id.value) { MovementCard(row, onClick = { onOpenMovement(row) }, modifier = Modifier.riseIn(order++, play)) }
+            }
         }
     }
 }
 
 /** Z89 holding: coin, quantity, and what it cost on average, or a warning when part of the cost is unknown. */
 @Composable
-private fun HoldingCard(position: AssetPosition) {
+private fun HoldingCard(position: AssetPosition, modifier: Modifier = Modifier) {
     val colors = ZarTheme.colors
     val code = position.currency.code
     val quantity = position.quantity.withCode()
-    BillCard(Modifier.testTag("crypto-holding-$code")) {
+    BillCard(modifier.testTag("crypto-holding-$code")) {
         CryptoRow(
             icon = currencyIcon(position.currency),
             title = code,
@@ -326,7 +353,7 @@ internal fun movementTitle(row: CryptoMovementRow): String {
 
 /** Z89b movement: what it was, between which accounts, both amounts, and the profit or loss for a sale. */
 @Composable
-private fun MovementCard(row: CryptoMovementRow, onClick: () -> Unit) {
+private fun MovementCard(row: CryptoMovementRow, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val colors = ZarTheme.colors
     val amounts = stringResource(R.string.crypto_movement_amounts, row.outEntry.current.amount.withCode(), row.inEntry.current.amount.withCode())
     val result = row.result?.let { r ->
@@ -341,7 +368,7 @@ private fun MovementCard(row: CryptoMovementRow, onClick: () -> Unit) {
         stringResource(R.string.crypto_no_value) to colors.danger
     } else null
     ZarCard(
-        Modifier.padding(horizontal = 10.dp).fillMaxWidth().testTag("crypto-movement"),
+        modifier.padding(horizontal = 10.dp).fillMaxWidth().testTag("crypto-movement"),
         onClick = onClick,
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
     ) {

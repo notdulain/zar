@@ -23,6 +23,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import com.example.zar.core.presentation.motion.riseIn
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -67,6 +69,10 @@ fun CryptoMovementDetailScreen(
     val portfolio = uiState.portfolio
     val row = portfolio?.movements?.firstOrNull { it.outEntry.id.value == movementId }
     var confirming by rememberSaveable { mutableStateOf(false) }
+    // The two cards rise in once, when the page first opens.
+    var firstVisit by rememberSaveable { mutableStateOf(true) }
+    val play = remember { firstVisit }
+    LaunchedEffect(row != null) { if (row != null) firstVisit = false }
     // Undone: both sides are gone, so there is nothing left to show here.
     LaunchedEffect(uiState.undone) { if (uiState.undone?.value == movementId) onBack() }
     val colors = ZarTheme.colors
@@ -84,7 +90,7 @@ fun CryptoMovementDetailScreen(
                 }
                 uiState.loadFailed && portfolio == null -> BillNote(stringResource(R.string.crypto_load_failed), Modifier.padding(top = 24.dp))
                 row == null || portfolio == null -> BillNote(stringResource(R.string.crypto_movement_gone), Modifier.padding(top = 24.dp))
-                else -> Detail(row, portfolio)
+                else -> Detail(row, portfolio, play)
             }
             uiState.message?.let { FieldError(stringResource(it.textRes()), Modifier.padding(start = 22.dp, end = 22.dp, top = 12.dp)) }
             Spacer(Modifier.height(124.dp))
@@ -117,7 +123,7 @@ fun CryptoMovementDetailScreen(
 }
 
 @Composable
-private fun Detail(row: CryptoMovementRow, portfolio: CryptoPortfolio) {
+private fun Detail(row: CryptoMovementRow, portfolio: CryptoPortfolio, play: Boolean) {
     val colors = ZarTheme.colors
     val out = row.outEntry.current
     val into = row.inEntry.current
@@ -144,7 +150,7 @@ private fun Detail(row: CryptoMovementRow, portfolio: CryptoPortfolio) {
             modifier = Modifier.padding(start = 22.dp, end = 22.dp, top = 6.dp),
         )
 
-        BillCard(Modifier.padding(top = 19.dp).testTag("crypto-detail")) {
+        BillCard(Modifier.padding(top = 19.dp).riseIn(0, play).testTag("crypto-detail")) {
             CryptoDetailRow(stringResource(R.string.crypto_detail_value), value?.withCode() ?: stringResource(R.string.crypto_no_value), if (value == null) colors.danger else null)
             row.result?.let { result ->
                 CryptoOverview.costRemoved(row)?.let {
@@ -176,7 +182,7 @@ private fun Detail(row: CryptoMovementRow, portfolio: CryptoPortfolio) {
             CryptoDetailRow(stringResource(R.string.crypto_detail_note), out.note?.takeIf { it.isNotBlank() } ?: stringResource(R.string.crypto_not_income))
         }
 
-        BillCard(Modifier.padding(top = 10.dp).testTag("crypto-linked")) {
+        BillCard(Modifier.padding(top = 10.dp).riseIn(1, play).testTag("crypto-linked")) {
             ZarEyebrow(stringResource(R.string.crypto_linked), Modifier.padding(top = 12.dp))
             LinkedEntry(
                 title = stringResource(R.string.crypto_out_of, row.fromName),
