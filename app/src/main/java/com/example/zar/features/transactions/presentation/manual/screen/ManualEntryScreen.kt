@@ -157,7 +157,7 @@ internal class ManualEntryActions(
     val onTransferNote: (String) -> Unit,
     val onSave: () -> Unit,
     val onNewCategoryIcon: (CategoryIcon) -> Unit = {},
-    val onDeleteCategoryStart: (CustomExpenseCategory) -> Unit = {},
+    val onDeleteCategoryStart: (ExpenseCategoryChoice) -> Unit = {},
     val onDeleteCategoryCancel: () -> Unit = {},
     val onDeleteCategoryConfirm: () -> Unit = {},
     /** Opens the real Quick note window in place of this sheet. */
@@ -702,7 +702,7 @@ private fun CategoryGrid(
     selectedId: String?,
     onSelect: (ExpenseCategoryChoice) -> Unit,
     onAddCategory: () -> Unit,
-    onDeleteCategory: (CustomExpenseCategory) -> Unit,
+    onDeleteCategory: (ExpenseCategoryChoice) -> Unit,
 ) {
     val colors = ZarTheme.colors
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -728,8 +728,8 @@ private fun CategoryGrid(
                             category = category,
                             selected = category.id == selectedId,
                             onClick = { onSelect(category) },
-                            // Only the person's own categories can be deleted; built-ins have no delete.
-                            onDelete = (category as? CustomExpenseCategory)?.let { custom -> { onDeleteCategory(custom) } },
+                            // Every category has a cross, except the last one left: an expense always needs a category.
+                            onDelete = if (choices.size > 1) ({ onDeleteCategory(category) }) else null,
                             modifier = Modifier.weight(1f),
                         )
                     }
@@ -775,8 +775,8 @@ private fun CategoryTile(
             overflow = TextOverflow.Ellipsis,
         )
     }
-    if (onDelete != null && category is CustomExpenseCategory) {
-        val label = stringResource(R.string.manual_delete_category_label, category.name)
+    if (onDelete != null) {
+        val label = stringResource(R.string.manual_delete_category_label, category.labelText())
         Box(
             Modifier.align(Alignment.TopEnd).size(40.dp).clip(CircleShape)
                 .clickable(role = Role.Button, onClickLabel = label, onClick = onDelete)
@@ -784,7 +784,7 @@ private fun CategoryTile(
                 .testTag("manual-category-delete-${category.id}"),
             Alignment.Center,
         ) {
-            ZarIcon(R.drawable.ic_ph_trash, size = 16.dp, tint = if (selected) colors.textOnInverse else colors.iconMuted)
+            ZarIcon(R.drawable.ic_ph_x, size = 14.dp, tint = if (selected) colors.textOnInverse else colors.iconMuted)
         }
     }
     }

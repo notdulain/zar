@@ -19,6 +19,8 @@ import com.example.zar.core.presentation.theme.ZarTheme
 import com.example.zar.features.transactions.domain.category.ExpenseCategoryCatalog
 import com.example.zar.features.transactions.domain.manual.model.CategoryIcon
 import com.example.zar.features.transactions.domain.manual.model.CustomExpenseCategory
+import com.example.zar.features.transactions.domain.manual.model.ExpenseCategory
+import com.example.zar.features.transactions.domain.manual.model.ExpenseCategoryChoice
 import com.example.zar.features.transactions.presentation.manual.screen.ManualEntryActions
 import com.example.zar.features.transactions.presentation.manual.screen.ManualEntryContent
 import com.example.zar.features.transactions.presentation.manual.viewmodel.DeleteCategoryState
@@ -31,7 +33,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 
-/** Deleting a custom category from the All categories grid: only custom tiles offer it, and it asks first. */
+/** Removing a category from the All categories grid: every tile has a cross, and it asks first. */
 class CategoryDeleteUiTest {
     @get:Rule val compose = createComposeRule()
 
@@ -39,7 +41,7 @@ class CategoryDeleteUiTest {
     private val bank = Account(AccountId("bank"), "Bank", AccountType.BANK, Currencies.LKR, OpeningBalance.Unknown, opened)
     private val pets = CustomExpenseCategory("custom-pets-1", "Pets", "pets", Instant.ofEpochMilli(1_000), CategoryIcon.PIGGY_BANK)
 
-    private val started = mutableListOf<CustomExpenseCategory>()
+    private val started = mutableListOf<ExpenseCategoryChoice>()
     private var cancelled = 0
     private var confirmed = 0
 
@@ -52,11 +54,11 @@ class CategoryDeleteUiTest {
         bitmap.recycle()
     }
 
-    private fun show(deleting: Boolean = false, failed: Boolean = false) {
+    private fun show(deleting: Boolean = false, failed: Boolean = false, hidden: Set<String> = emptySet(), withPets: Boolean = true) {
         val state = mutableStateOf(
             ManualEntryUiState(
                 isLoading = false, kind = ManualEntryKind.EXPENSE, accounts = listOf(bank), accountId = bank.id,
-                categoryCatalog = ExpenseCategoryCatalog(listOf(pets)),
+                categoryCatalog = ExpenseCategoryCatalog(if (withPets) listOf(pets) else emptyList(), hiddenBuiltIns = hidden),
                 deletingCategory = if (deleting) DeleteCategoryState(pets, failed = failed) else null,
             ),
         )
@@ -79,14 +81,24 @@ class CategoryDeleteUiTest {
     }
 
     @Test
-    fun onlyCustomTilesOfferDeleteAndTappingItAsksToDelete() {
+    fun everyTileHasACrossAndTappingItAsksToDelete() {
         show()
         compose.onNodeWithText("All categories →").performScrollTo().performClick()
         compose.onNodeWithTag("manual-category-delete-custom-pets-1").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithTag("manual-category-delete-groceries").assertDoesNotExist()
+        compose.onNodeWithTag("manual-category-delete-groceries").performScrollTo().assertIsDisplayed()
         capture("grid")
         compose.onNodeWithTag("manual-category-delete-custom-pets-1").performClick()
-        compose.runOnIdle { assertEquals(listOf(pets), started) }
+        compose.onNodeWithTag("manual-category-delete-groceries").performScrollTo().performClick()
+        compose.runOnIdle { assertEquals(listOf<ExpenseCategoryChoice>(pets, ExpenseCategory.GROCERIES), started) }
+    }
+
+    @Test
+    fun theLastRemainingCategoryHasNoCross() {
+        // Everything but Groceries is removed; the one left cannot be.
+        show(hidden = ExpenseCategory.entries.map { it.id }.toSet() - "groceries", withPets = false)
+        compose.onNodeWithText("All categories →").performScrollTo().performClick()
+        compose.onNodeWithTag("manual-category-groceries").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("manual-category-delete-groceries").assertDoesNotExist()
     }
 
     @Test
