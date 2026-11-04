@@ -7,6 +7,7 @@ import com.example.zar.core.domain.model.Account
 import com.example.zar.core.domain.model.AccountId
 import com.example.zar.core.domain.model.LedgerError
 import com.example.zar.core.domain.model.RecordIds
+import com.example.zar.core.domain.model.TransactionId
 import com.example.zar.core.domain.model.TransferId
 import com.example.zar.core.domain.usecase.VoidTransactionUseCase
 import com.example.zar.features.crypto.domain.CryptoCheck
@@ -24,6 +25,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import java.time.Instant
 import java.time.LocalDate
 import javax.inject.Inject
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -50,11 +52,13 @@ data class CryptoUiState(
     val costInvalid: Boolean = false,
     val message: CryptoMessage? = null,
     val isSaving: Boolean = false,
+    /** The movement just undone (its out entry), so its detail screen can close. */
+    val undone: TransactionId? = null,
 )
 
 @HiltViewModel
 class CryptoViewModel @Inject constructor(
-    observeCrypto: ObserveCryptoUseCase,
+    private val observeCrypto: ObserveCryptoUseCase,
     private val setOpeningCost: SetOpeningCostUseCase,
     private val voidTransaction: VoidTransactionUseCase,
 ) : ViewModel() {
@@ -62,8 +66,21 @@ class CryptoViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(CryptoUiState())
     val uiState: StateFlow<CryptoUiState> = _uiState.asStateFlow()
 
+    private var loading: Job? = null
+
     init {
-        viewModelScope.launch {
+        load()
+    }
+
+    /** "Try again" after the crypto could not be loaded. */
+    fun retry() {
+        _uiState.update { it.copy(isLoading = true, loadFailed = false) }
+        load()
+    }
+
+    private fun load() {
+        loading?.cancel()
+        loading = viewModelScope.launch {
             observeCrypto()
                 .catch { _uiState.update { it.copy(isLoading = false, loadFailed = true) } }
                 .collect { portfolio -> _uiState.update { it.copy(isLoading = false, portfolio = portfolio, loadFailed = false) } }
@@ -75,7 +92,7 @@ class CryptoViewModel @Inject constructor(
         _uiState.update {
             it.copy(
                 editingCostFor = wallet,
-                costText = existing?.cost?.toDecimal()?.toPlainString().orEmpty(),
+                costText = existing?.cost?.toDecimal()?.stripTrailingZeros()?.toPlainString().orEmpty(),
                 costApproximate = existing?.isApproximate ?: false,
                 costInvalid = false,
             )
@@ -101,7 +118,9 @@ class CryptoViewModel @Inject constructor(
         }
     }
 
-    fun undo(row: CryptoMovementRow) = save { voidTransaction(row.outEntry, Instant.now()) }
+    fun undo(row: CryptoMovementRow) = save {
+        voidTransaction(row.outEntry, Instant.now()).onSuccess { _uiState.update { it.copy(undone = row.outEntry.id) } }
+    }
 
     private fun save(block: suspend () -> Result<Unit>) {
         if (_uiState.value.isSaving) return
