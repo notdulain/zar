@@ -5,7 +5,10 @@ import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.down
+import androidx.compose.ui.test.moveBy
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.up
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeLeft
 import androidx.compose.ui.test.swipeRight
@@ -66,6 +69,38 @@ class DatePickerMonthUiTest {
         compose.onNodeWithTag("date-calendar").performTouchInput { swipeRight() }
         compose.onNodeWithTag("date-month-title").assertTextContains(title(current.minusMonths(1)))
         compose.onNodeWithTag("date-calendar").performTouchInput { swipeLeft() }
+        compose.onNodeWithTag("date-month-title").assertTextContains(title(current))
+    }
+
+    @Test
+    fun aShortDragSpringsBackAndALongOneSlidesToTheEarlierMonth() {
+        show()
+        val current = YearMonth.from(today)
+        compose.onNodeWithTag("date-calendar").performTouchInput {
+            down(center)
+            moveBy(androidx.compose.ui.geometry.Offset(width * 0.1f, 0f))
+            up()
+        }
+        compose.waitForIdle()
+        compose.onNodeWithTag("date-month-title").assertTextContains(title(current))
+        compose.onNodeWithTag("date-calendar").performTouchInput {
+            down(center)
+            moveBy(androidx.compose.ui.geometry.Offset(width * 0.5f, 0f))
+            up()
+        }
+        compose.waitForIdle()
+        compose.onNodeWithTag("date-month-title").assertTextContains(title(current.minusMonths(1)))
+    }
+
+    @Test
+    fun theArrowsAlsoSlideAndLandOnTheNewMonth() {
+        show()
+        val current = YearMonth.from(today)
+        compose.onNodeWithContentDescription("Previous month").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithTag("date-month-title").assertTextContains(title(current.minusMonths(1)))
+        compose.onNodeWithContentDescription("Next month").performClick()
+        compose.waitForIdle()
         compose.onNodeWithTag("date-month-title").assertTextContains(title(current))
     }
 }

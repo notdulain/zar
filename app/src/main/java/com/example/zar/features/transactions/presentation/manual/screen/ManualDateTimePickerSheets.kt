@@ -7,6 +7,14 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import kotlinx.coroutines.launch
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.input.pointer.util.VelocityTracker
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.LayoutDirection
@@ -120,10 +128,42 @@ fun ManualDatePickerSheet(
     val colors = ZarTheme.colors
     val currentMonth = YearMonth.from(today)
     val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
-    // Swiping the calendar changes the month; the next month stays off past today, as the arrow does.
-    fun step(delta: Long) {
-        val target = month.plusMonths(delta)
-        if (target <= currentMonth) month = target
+    val policy = LocalZarMotion.current
+    val scope = rememberCoroutineScope()
+    // The days slide sideways: [slide] is how far the current month is from rest, in pixels, and a neighbouring month
+    // follows it in from the side. The next month stays off past today, as its arrow does.
+    val slide = remember { Animatable(0f) }
+    var dragX by remember { mutableFloatStateOf(0f) }
+    var dragging by remember { mutableStateOf(false) }
+    var gridWidth by remember { mutableIntStateOf(0) }
+    fun canStep(delta: Long) = month.plusMonths(delta) <= currentMonth
+    // Moving to the earlier month pushes the days toward the end of the reading direction (right in LTR).
+    fun restOffset(delta: Long): Float = (if ((delta < 0) != rtl) 1f else -1f) * gridWidth
+    /** Moves one month with the slide, from wherever the days are now. Reduced and instant motion change month directly. */
+    fun goTo(delta: Long) {
+        scope.launch {
+            if (dragging) { slide.snapTo(dragX); dragging = false }
+            if (canStep(delta)) {
+                if (policy.allowsSpatialMotion && gridWidth > 0) slide.animateTo(restOffset(delta), policy.spring(ZarSprings.Settle))
+                month = month.plusMonths(delta)
+            }
+            slide.snapTo(0f)
+        }
+    }
+    fun finishDrag(velocityX: Float) {
+        val moved = dragX
+        // Dragging toward the end of the reading direction shows the earlier month (right in LTR).
+        val delta = if ((moved > 0) != rtl) -1L else 1L
+        val far = gridWidth > 0 && (kotlin.math.abs(moved) > gridWidth * 0.3f || (kotlin.math.abs(velocityX) > 1200f && (velocityX > 0) == (moved > 0)))
+        if (far && canStep(delta)) {
+            goTo(delta)
+        } else {
+            scope.launch {
+                slide.snapTo(moved)
+                dragging = false
+                slide.animateTo(0f, policy.spring(ZarSprings.Settle))
+            }
+        }
     }
     PickerShell(title = "Date", onCancel = onCancel, action = "Set date", onAction = { onSetDate(selected) }, modifier = modifier) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -136,7 +176,28 @@ fun ManualDatePickerSheet(
         }
 
         Column(
-            Modifier.testTag("date-calendar").pointerInput(rtl, currentMonth) { detectMonthSwipes(rtl) { delta -> step(delta) } },
+            Modifier.testTag("date-calendar").pointerInput(rtl, currentMonth, policy) {
+                detectMonthDrags(
+                    onStart = { if (policy.allowsSpatialMotion) { dragX = slide.value; dragging = true } },
+                    onDrag = { dx ->
+                        if (policy.allowsSpatialMotion) {
+                            // Pulling toward a month that is not allowed gives way slowly, then springs back.
+                            val next = dragX + dx
+                            val blocked = !canStep(if ((next > 0) != rtl) -1L else 1L)
+                            dragX = if (blocked) dragX + dx * 0.3f else next
+                        }
+                    },
+                    onEnd = { velocity, total ->
+                        if (policy.allowsSpatialMotion) {
+                            finishDrag(velocity)
+                        } else if (kotlin.math.abs(total) >= 48.dp.toPx()) {
+                            // No travel: a long enough swipe only changes the month, as a tap on an arrow does.
+                            goTo(if ((total > 0) != rtl) -1L else 1L)
+                        }
+                    },
+                    onCancel = { if (dragging) finishDrag(0f) },
+                )
+            },
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             Row(Modifier.fillMaxWidth().padding(bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -152,9 +213,9 @@ fun ManualDatePickerSheet(
                     ZarIcon(R.drawable.ic_ph_caret_down, modifier = Modifier.rotate(if (choosingMonth) 180f else 0f), size = 14.dp, tint = colors.iconMuted)
                 }
                 if (!choosingMonth) {
-                    MonthArrow("Previous month", enabled = true, rotated = true) { month = month.minusMonths(1) }
+                    MonthArrow("Previous month", enabled = true, rotated = true) { goTo(-1) }
                     Spacer(Modifier.width(8.dp))
-                    MonthArrow("Next month", enabled = month < currentMonth) { month = month.plusMonths(1) }
+                    MonthArrow("Next month", enabled = month < currentMonth) { goTo(1) }
                 }
             }
             if (choosingMonth) {
@@ -173,38 +234,14 @@ fun ManualDatePickerSheet(
                     }
                 }
             }
-            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                val offset = month.atDay(1).dayOfWeek.value % 7
-                val count = month.lengthOfMonth()
-                val weekCount = (offset + count + 6) / 7
-                repeat(weekCount) { week ->
-                    Row(Modifier.fillMaxWidth()) {
-                        repeat(7) { weekday ->
-                            val number = week * 7 + weekday - offset + 1
-                            val candidate = if (number in 1..count) month.atDay(number) else null
-                            val enabled = candidate != null && candidate <= today
-                            val active = candidate == selected
-                            Box(Modifier.weight(1f).height(46.dp), Alignment.Center) {
-                                if (candidate != null) {
-                                    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                                        Box(
-                                            Modifier.size(38.dp).clip(CircleShape)
-                                                .background(if (active) colors.accentPrimary else Color.Transparent)
-                                                .clickable(enabled = enabled, role = Role.Button, onClickLabel = "Select $candidate") { selected = candidate },
-                                            Alignment.Center,
-                                        ) {
-                                            Text(
-                                                number.toString(),
-                                                style = ZarType.bodyM.copy(fontWeight = if (active) FontWeight.Medium else FontWeight.Normal),
-                                                color = when { active -> colors.textOnInverse; !enabled -> colors.textDisabled; else -> colors.textPrimary },
-                                            )
-                                        }
-                                        Box(Modifier.size(4.dp).background(if (candidate in datesWithEntries && enabled) colors.textPlaceholder else Color.Transparent, CircleShape))
-                                    }
-                                }
-                            }
-                        }
-                    }
+            // The days move; the title, weekday letters and legend stay put.
+            val shift = if (dragging) dragX else slide.value
+            Box(Modifier.fillMaxWidth().clipToBounds().onSizeChanged { gridWidth = it.width }) {
+                MonthDays(month, selected, today, datesWithEntries, { selected = it }, Modifier.graphicsLayer { translationX = shift })
+                if (shift != 0f) {
+                    val neighbour = month.plusMonths(if ((shift > 0) != rtl) -1L else 1L)
+                    val neighbourX = shift + if (shift > 0) -gridWidth else gridWidth
+                    MonthDays(neighbour, selected, today, datesWithEntries, { selected = it }, Modifier.graphicsLayer { translationX = neighbourX })
                 }
             }
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -369,6 +406,53 @@ private fun PickerShell(title: String, onCancel: () -> Unit, action: String, onA
     }
 }
 
+/** One month's days as a grid of weeks, with the Figma entry dots. Future days are off. */
+@Composable
+private fun MonthDays(
+    month: YearMonth,
+    selected: LocalDate,
+    today: LocalDate,
+    datesWithEntries: Set<LocalDate>,
+    onSelect: (LocalDate) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val colors = ZarTheme.colors
+    Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        val offset = month.atDay(1).dayOfWeek.value % 7
+        val count = month.lengthOfMonth()
+        val weekCount = (offset + count + 6) / 7
+        repeat(weekCount) { week ->
+            Row(Modifier.fillMaxWidth()) {
+                repeat(7) { weekday ->
+                    val number = week * 7 + weekday - offset + 1
+                    val candidate = if (number in 1..count) month.atDay(number) else null
+                    val enabled = candidate != null && candidate <= today
+                    val active = candidate == selected
+                    Box(Modifier.weight(1f).height(46.dp), Alignment.Center) {
+                        if (candidate != null) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                                Box(
+                                    Modifier.size(38.dp).clip(CircleShape)
+                                        .background(if (active) colors.accentPrimary else Color.Transparent)
+                                        .clickable(enabled = enabled, role = Role.Button, onClickLabel = "Select $candidate") { onSelect(candidate) },
+                                    Alignment.Center,
+                                ) {
+                                    Text(
+                                        number.toString(),
+                                        style = ZarType.bodyM.copy(fontWeight = if (active) FontWeight.Medium else FontWeight.Normal),
+                                        color = when { active -> colors.textOnInverse; !enabled -> colors.textDisabled; else -> colors.textPrimary },
+                                    )
+                                }
+                                Box(Modifier.size(4.dp).background(if (candidate in datesWithEntries && enabled) colors.textPlaceholder else Color.Transparent, CircleShape))
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 /** A year stepper over a 3 x 4 grid of months. Months after the current one are off, like future days. */
 @Composable
 private fun MonthChooser(selected: YearMonth, latest: YearMonth, locale: java.util.Locale, onChoose: (YearMonth) -> Unit) {
@@ -412,31 +496,35 @@ private fun MonthChooser(selected: YearMonth, latest: YearMonth, locale: java.ut
 }
 
 /**
- * A horizontal swipe of at least 48dp over the calendar moves one month: toward the start of the reading direction
- * goes back, toward its end goes forward. Vertical drags are left to the sheet's own scrolling.
+ * Follows a horizontal drag over the calendar and reports each move, then the release velocity (px/s). Vertical
+ * drags are left to the sheet's own scrolling, and a plain tap is left to the days.
  */
-private suspend fun PointerInputScope.detectMonthSwipes(rtl: Boolean, onStep: (Long) -> Unit) {
-    val threshold = 48.dp.toPx()
+private suspend fun PointerInputScope.detectMonthDrags(
+    onStart: () -> Unit,
+    onDrag: (Float) -> Unit,
+    onEnd: (velocityX: Float, totalDx: Float) -> Unit,
+    onCancel: () -> Unit,
+) {
     awaitEachGesture {
         val down = awaitFirstDown(requireUnconsumed = false)
+        val tracker = VelocityTracker()
+        tracker.addPosition(down.uptimeMillis, down.position)
         var total = 0f
-        var started = false
         val first = awaitHorizontalTouchSlopOrCancellation(down.id) { change, over ->
             change.consume()
             total += over
-            started = true
         } ?: return@awaitEachGesture
-        if (started) {
-            horizontalDrag(first.id) { change ->
-                total += change.positionChange().x
-                change.consume()
-            }
-            if (kotlin.math.abs(total) >= threshold) {
-                // Dragging right reveals the previous month in LTR; mirrored in RTL.
-                val back = if (rtl) total < 0 else total > 0
-                onStep(if (back) -1L else 1L)
-            }
+        onStart()
+        onDrag(total)
+        tracker.addPosition(first.uptimeMillis, first.position)
+        val completed = horizontalDrag(first.id) { change ->
+            val dx = change.positionChange().x
+            total += dx
+            tracker.addPosition(change.uptimeMillis, change.position)
+            onDrag(dx)
+            change.consume()
         }
+        if (completed) onEnd(tracker.calculateVelocity().x, total) else onCancel()
     }
 }
 
