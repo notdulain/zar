@@ -37,7 +37,7 @@ The review covered new reporting calculations, refund/void/FX reconciliation, st
 
 Figma handoff: [revised contract](https://www.figma.com/design/bBBJuQz1Cg8N34FcisKBs9/Zar-UI?node-id=768-22790), with explicit owner overrides for month placement, removed eye/disclaimer and Material splash bar. Source audit: `docs/design/refine-zar/handoff.md`. Representative app captures have been visually inspected; the design page's state studies do not establish complete runtime parity.
 
-**Still pending:** fresh physical 60Hz and 120Hz motion recordings on the integrated build, human motion/haptic judgment, TalkBack and exhaustive route/picker gesture cancel/commit coverage, all launcher masks across supported launchers, independent PR approval, and recovery verification for local-only data from the task5 cleanup incident. Emulator frames and policy tests do not count as physical refresh-rate proof. PR stays draft for those acceptance items. Production rules deployment and merge require separate authorization/review and were not performed.
+**Still pending:** 120Hz motion (this phone has no 120Hz mode; the 60Hz physical run is in `physical-60hz.md`), human motion/haptic judgment, TalkBack and exhaustive route/picker gesture cancel/commit coverage, all launcher masks across supported launchers, independent PR approval, and recovery verification for local-only data from the task5 cleanup incident. Emulator frames and policy tests do not count as physical refresh-rate proof. PR stays draft for those acceptance items. Production rules deployment and merge require separate authorization/review and were not performed.
 
 ## Remaining sign-off checklist
 
@@ -45,7 +45,7 @@ Figma handoff: [revised contract](https://www.figma.com/design/bBBJuQz1Cg8N34Fci
 |---|---|
 | 6.1 automated unit, SDK/rules and build checks | Complete for available local tooling |
 | 6.2 runtime/component/display evidence | Available emulator checks captured; exhaustive physical/TalkBack/mask checks pending |
-| 6.3 physical 60/120Hz and human feel | Pending; no emulator result is substituted |
+| 6.3 physical 60/120Hz and human feel | 60Hz measured on a physical Pixel 6a ([`physical-60hz.md`](physical-60hz.md)); 120Hz unavailable on this hardware; human feel pending |
 | 6.4 commits, pinned evidence and review | Draft PR prepared; independent approval pending |
 
 The task5 data-loss incident is retained in the PR's review notes. This turn did not reinstall or clear the user's primary phone app, change its settings, merge code or deploy production rules.

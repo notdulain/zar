@@ -79,7 +79,7 @@ mkdir -p "$OUT/traces"
 find "$RESULT_DIR" -name '*.perfetto-trace' -exec cp {} "$OUT/traces/" \;
 "$PYTHON" "$ROOT/tools/summarize-benchmark.py" "$OUT/benchmarkData.json" | tee "$OUT/summary.md"
 if ls "$OUT"/traces/*.perfetto-trace >/dev/null 2>&1; then
-  "$PYTHON" "$ROOT/tools/trace-frame-summary.py" "$OUT"/traces/*.perfetto-trace | tee "$OUT/trace-frame-summary.txt"
+  "$PYTHON" "$ROOT/tools/trace-frame-summary.py" ${ZAR_APP_ID_SUFFIX:+--package "com.example.zar$ZAR_APP_ID_SUFFIX"} "$OUT"/traces/*.perfetto-trace | tee "$OUT/trace-frame-summary.txt"
 fi
 
 echo "done: $OUT"
