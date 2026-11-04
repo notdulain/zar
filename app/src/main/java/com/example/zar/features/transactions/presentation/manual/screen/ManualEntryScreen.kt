@@ -58,6 +58,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.LayoutDirection
+import com.example.zar.core.presentation.components.SelectorIndicatorState
+import com.example.zar.core.presentation.components.rememberSelectorIndicator
+import com.example.zar.core.presentation.motion.ZarMotion
+import kotlin.math.roundToInt
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.focus.FocusRequester
@@ -145,8 +155,17 @@ internal class ManualEntryActions(
 )
 
 @Composable
-internal fun ManualEntryContent(uiState: ManualEntryUiState, focusNote: Boolean, actions: ManualEntryActions) {
+internal fun ManualEntryContent(
+    uiState: ManualEntryUiState,
+    focusNote: Boolean,
+    actions: ManualEntryActions,
+    typeIndicator: SelectorIndicatorState? = null,
+    sheetHeight: Dp? = null,
+) {
     val colors = ZarTheme.colors
+    val typeIndex = if (uiState.kind == ManualEntryKind.EXPENSE) 0 else 2
+    // The host hoists this above the Expense / Income body switch; a caller that does not owns one for this body.
+    val typeSlider = typeIndicator ?: rememberSelectorIndicator(typeIndex)
     val closeLabel = stringResource(R.string.manual_close)
     val noteFocus = remember { FocusRequester() }
     var quickNoteTaps by remember { mutableIntStateOf(0) }
@@ -185,7 +204,8 @@ internal fun ManualEntryContent(uiState: ManualEntryUiState, focusNote: Boolean,
             )
         } else {
         Column(
-            Modifier.align(Alignment.BottomCenter).sheetBackSlide(swipeEnabled = !uiState.isSaving).fillMaxWidth().heightIn(max = maxHeight - 48.dp)
+            Modifier.align(Alignment.BottomCenter).sheetBackSlide(swipeEnabled = !uiState.isSaving).fillMaxWidth()
+                .then(if (sheetHeight != null) Modifier.height(minOf(sheetHeight, maxHeight - 48.dp)) else Modifier.heightIn(max = maxHeight - 48.dp))
                 .clip(ZarShapes.sheet).background(colors.surface).pointerInput(Unit) { detectTapGestures {} }.padding(top = 10.dp),
         ) {
             Box(Modifier.fillMaxWidth(), Alignment.Center) {
@@ -214,7 +234,7 @@ internal fun ManualEntryContent(uiState: ManualEntryUiState, focusNote: Boolean,
                 stringResource(R.string.manual_kind_income),
                 stringResource(R.string.manual_kind_transfer),
             ),
-            selectedIndex = if (uiState.kind == ManualEntryKind.EXPENSE) 0 else 2,
+            selectedIndex = typeIndex,
             onSelect = { index ->
                 when (index) {
                     0 -> actions.onKind(ManualEntryKind.EXPENSE)
@@ -226,13 +246,15 @@ internal fun ManualEntryContent(uiState: ManualEntryUiState, focusNote: Boolean,
             segmentHeight = 38.dp,
             tagPrefix = "manual-kind",
             tags = listOf("expense", "income", "transfer"),
+            indicator = typeSlider,
         )
 
         if (uiState.isLoading) {
             Box(Modifier.weight(1f).fillMaxWidth(), Alignment.Center) { CircularProgressIndicator(color = colors.accentSelected) }
         } else {
             Column(
-                Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState()).padding(horizontal = 24.dp, vertical = 22.dp),
+                // A fixed-height sheet fills the room so Save stays pinned; the fields scroll when they are taller.
+                Modifier.weight(1f, fill = sheetHeight != null).verticalScroll(rememberScrollState()).padding(horizontal = 24.dp, vertical = 22.dp),
                 verticalArrangement = Arrangement.spacedBy(18.dp),
             ) {
                 if (!uiState.isOnline) OfflineBanner()
@@ -370,6 +392,8 @@ private fun ExpenseFields(state: ManualEntryUiState, actions: ManualEntryActions
             tagPrefix = "manual-class",
             tags = classes.map { it.name.lowercase() },
             showClassDots = true,
+            // Created where the Expense body appears, so returning to it shows the stored class with no replay.
+            indicator = rememberSelectorIndicator(classes.indexOf(state.spendingClass)),
         )
     }
     ZarDivider()
@@ -460,6 +484,38 @@ private fun Suggestions(state: ManualEntryUiState, onSelect: (EntrySuggestion) -
 
 // --- Transfer -------------------------------------------------------------------------------
 
+/**
+ * Figma Z12's swap row: a 36dp circle with a 16dp up/down arrow glyph, a 12dp gap and a 1dp divider on each side that
+ * share the rest of the width equally. The circle sits in a 48dp touch target.
+ */
+@Composable
+private fun SwapAccountsRow(canSwap: Boolean, onSwap: () -> Unit) {
+    val colors = ZarTheme.colors
+    val swapLabel = stringResource(R.string.manual_swap_accounts)
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+        ZarDivider(Modifier.weight(1f))
+        Box(
+            Modifier
+                .size(48.dp)
+                .clip(CircleShape)
+                .clickable(enabled = canSwap, role = Role.Button, onClickLabel = swapLabel, onClick = onSwap)
+                .semantics { contentDescription = swapLabel }
+                .testTag("manual-swap"),
+            Alignment.Center,
+        ) {
+            // Unavailable reads as an outlined, muted circle rather than only a fainter arrow.
+            Box(
+                Modifier.size(36.dp).clip(CircleShape)
+                    .then(if (canSwap) Modifier.background(colors.subtle) else Modifier.border(1.dp, colors.borderDefault, CircleShape)),
+                Alignment.Center,
+            ) {
+                ZarIcon(R.drawable.ic_ph_arrows_down_up, size = 16.dp, tint = if (canSwap) colors.iconStrong else colors.iconMuted)
+            }
+        }
+        ZarDivider(Modifier.weight(1f))
+    }
+}
+
 @Composable
 private fun TransferFields(state: ManualEntryUiState, actions: ManualEntryActions, onOpenDate: () -> Unit, onOpenTime: () -> Unit) {
     val problems = state.transferProblems
@@ -490,21 +546,7 @@ private fun TransferFields(state: ManualEntryUiState, actions: ManualEntryAction
         FieldError(if (TransferProblem.FROM_MISSING in problems) R.string.manual_error_from else null)
     }
 
-    Box(Modifier.fillMaxWidth(), Alignment.Center) {
-        val swapLabel = stringResource(R.string.manual_swap_accounts)
-        Box(
-            Modifier
-                .size(36.dp)
-                .clip(CircleShape)
-                .background(ZarTheme.colors.subtle)
-                .clickable(enabled = state.toAccount != null, role = Role.Button, onClickLabel = swapLabel, onClick = actions.onSwap)
-                .semantics { contentDescription = swapLabel }
-                .testTag("manual-swap"),
-            Alignment.Center,
-        ) {
-            ZarIcon(R.drawable.ic_ph_arrows_left_right, size = 18.dp)
-        }
-    }
+    SwapAccountsRow(canSwap = state.toAccount != null, onSwap = actions.onSwap)
 
     Section(stringResource(R.string.manual_field_to)) {
         if (state.accounts.isNotEmpty()) {
@@ -811,44 +853,86 @@ private fun OfflineBanner() {
     }
 }
 
-/** Equal-width segments on a subtle track; the selected one is a white tile. */
+/**
+ * The Add transaction sheet's one height, shared by Expense, Income and Transfer so switching tabs never resizes it.
+ * It is Income's natural height (the shortest tab, about 637dp at Figma's 412 x 915 frame); taller tabs scroll, and the
+ * window or keyboard can still make it shorter.
+ */
+internal val AddTransactionSheetHeight: Dp = 640.dp
+
+/**
+ * Equal-width segments on a subtle track; the selected one is a white tile.
+ *
+ * With an [indicator] the tile is one surface that slides behind the fixed slots and settles with a small spring bounce
+ * (Add transaction's two selectors). Without one, each selected slot paints its own tile, as the other callers expect.
+ */
 @Composable
 internal fun Segmented(
     labels: List<String>,
     selectedIndex: Int,
     onSelect: (Int) -> Unit,
-    segmentHeight: androidx.compose.ui.unit.Dp,
+    segmentHeight: Dp,
     tagPrefix: String,
     tags: List<String>,
     modifier: Modifier = Modifier,
     showClassDots: Boolean = false,
+    indicator: SelectorIndicatorState? = null,
 ) {
     val colors = ZarTheme.colors
-    Row(
-        modifier.fillMaxWidth().selectableGroup().clip(ZarShapes.md).background(colors.subtle).padding(4.dp),
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
-    ) {
-        labels.forEachIndexed { index, label ->
-            val selected = index == selectedIndex
+    val gap = 4.dp
+    Box(modifier.fillMaxWidth().selectableGroup().clip(ZarShapes.md).background(colors.subtle).padding(4.dp)) {
+        if (indicator != null) {
+            val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
             Box(
                 Modifier
-                    .weight(1f)
-                    .heightIn(min = segmentHeight)
-                    .then(if (selected) Modifier.shadow(2.dp, ZarShapes.sm, ambientColor = Color(0x140F1A2B), spotColor = Color(0x140F1A2B)) else Modifier)
-                    .clip(ZarShapes.sm)
-                    .background(if (selected) colors.surface else colors.subtle)
-                    .selectable(selected = selected, role = Role.RadioButton, onClick = { onSelect(index) })
-                    .padding(vertical = 8.dp)
-                    .testTag("$tagPrefix-${tags[index]}"),
-                Alignment.Center,
-            ) {
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-                    if (showClassDots) {
-                        val dot = when (index) { 0 -> colors.accentSelected; 1 -> colors.accentDiscretionary; else -> Color.Transparent }
-                        Box(Modifier.size(7.dp).clip(CircleShape).background(dot)
-                            .then(if (index == 2) Modifier.border(1.dp, colors.textTertiary, CircleShape) else Modifier))
+                    .matchParentSize()
+                    .layout { measurable, constraints ->
+                        val count = labels.size
+                        val gapPx = gap.roundToPx()
+                        val slot = (constraints.maxWidth - gapPx * (count - 1)) / count
+                        val tile = measurable.measure(Constraints.fixed(slot, constraints.maxHeight))
+                        layout(constraints.maxWidth, constraints.maxHeight) {
+                            val pitch = (slot + gapPx).toFloat()
+                            val cap = ZarMotion.AddSelectorMaxOvershoot.toPx() / pitch
+                            val x = (indicator.presentation(count - 1, cap) * pitch).roundToInt()
+                            val left = if (rtl) constraints.maxWidth - slot - x else x
+                            indicator.placedAt(Rect(left.toFloat(), 0f, (left + slot).toFloat(), constraints.maxHeight.toFloat()))
+                            tile.place(left, 0)
+                        }
                     }
-                    Text(label, style = ZarType.labelChip, color = if (selected) colors.textPrimary else colors.textTertiary)
+                    .shadow(2.dp, ZarShapes.sm, ambientColor = Color(0x140F1A2B), spotColor = Color(0x140F1A2B))
+                    .clip(ZarShapes.sm)
+                    .background(colors.surface),
+            )
+        }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(gap)) {
+            labels.forEachIndexed { index, label ->
+                val selected = index == selectedIndex
+                Box(
+                    Modifier
+                        .weight(1f)
+                        .heightIn(min = segmentHeight)
+                        .then(
+                            if (indicator != null) Modifier
+                            else Modifier
+                                .then(if (selected) Modifier.shadow(2.dp, ZarShapes.sm, ambientColor = Color(0x140F1A2B), spotColor = Color(0x140F1A2B)) else Modifier)
+                                .clip(ZarShapes.sm)
+                                .background(if (selected) colors.surface else colors.subtle),
+                        )
+                        // A moving indicator means a repeat tap changes nothing: no second selection, no replayed bounce.
+                        .selectable(selected = selected, role = Role.RadioButton, onClick = { if (indicator == null || !selected) onSelect(index) })
+                        .padding(vertical = 8.dp)
+                        .testTag("$tagPrefix-${tags[index]}"),
+                    Alignment.Center,
+                ) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                        if (showClassDots) {
+                            val dot = when (index) { 0 -> colors.accentSelected; 1 -> colors.accentDiscretionary; else -> Color.Transparent }
+                            Box(Modifier.size(7.dp).clip(CircleShape).background(dot)
+                                .then(if (index == 2) Modifier.border(1.dp, colors.textTertiary, CircleShape) else Modifier))
+                        }
+                        Text(label, style = ZarType.labelChip, color = if (selected) colors.textPrimary else colors.textTertiary)
+                    }
                 }
             }
         }

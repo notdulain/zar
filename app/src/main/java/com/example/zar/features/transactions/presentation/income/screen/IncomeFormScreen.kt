@@ -84,6 +84,8 @@ import com.example.zar.features.transactions.presentation.manual.screen.DateTime
 import com.example.zar.features.transactions.presentation.manual.screen.ManualDatePickerSheet
 import com.example.zar.features.transactions.presentation.manual.screen.ManualTimePickerSheet
 import com.example.zar.features.transactions.presentation.manual.screen.Section
+import com.example.zar.core.presentation.components.SelectorIndicatorState
+import com.example.zar.core.presentation.components.rememberSelectorIndicator
 import com.example.zar.features.transactions.presentation.manual.screen.Segmented
 import com.example.zar.features.transactions.presentation.manual.screen.TextInput
 import java.time.LocalTime
@@ -141,8 +143,15 @@ internal class IncomeFormActions(
 )
 
 @Composable
-internal fun IncomeFormContent(uiState: IncomeFormUiState, actions: IncomeFormActions) {
+internal fun IncomeFormContent(
+    uiState: IncomeFormUiState,
+    actions: IncomeFormActions,
+    typeIndicator: SelectorIndicatorState? = null,
+    sheetHeight: androidx.compose.ui.unit.Dp? = null,
+) {
     val colors = ZarTheme.colors
+    // The host hoists this above the Expense / Income body switch; a caller that does not owns one for this body.
+    val typeSlider = typeIndicator ?: rememberSelectorIndicator(selectedIndex = 1)
     var openPicker by rememberSaveable { mutableStateOf<String?>(null) }
 
     // Back closes an open date or time picker first, instead of dismissing the form and losing what was typed.
@@ -166,7 +175,7 @@ internal fun IncomeFormContent(uiState: IncomeFormUiState, actions: IncomeFormAc
                 onClear = if (uiState.time != null) ({ actions.onTimeSelect(null); openPicker = null }) else null,
             )
         } else {
-            IncomeSheet(uiState, actions, onOpenDate = { openPicker = "date" }, onOpenTime = { openPicker = "time" }, modifier = Modifier.align(Alignment.BottomCenter).sheetBackSlide(swipeEnabled = !uiState.isSaving), maxSheetHeight = maxHeight - 48.dp)
+            IncomeSheet(uiState, actions, typeSlider, onOpenDate = { openPicker = "date" }, onOpenTime = { openPicker = "time" }, modifier = Modifier.align(Alignment.BottomCenter).sheetBackSlide(swipeEnabled = !uiState.isSaving), maxSheetHeight = maxHeight - 48.dp, fixedHeight = sheetHeight)
         }
     }
 }
@@ -175,14 +184,17 @@ internal fun IncomeFormContent(uiState: IncomeFormUiState, actions: IncomeFormAc
 private fun IncomeSheet(
     uiState: IncomeFormUiState,
     actions: IncomeFormActions,
+    typeSlider: SelectorIndicatorState,
     onOpenDate: () -> Unit,
     onOpenTime: () -> Unit,
     maxSheetHeight: androidx.compose.ui.unit.Dp,
     modifier: Modifier = Modifier,
+    fixedHeight: androidx.compose.ui.unit.Dp? = null,
 ) {
     val colors = ZarTheme.colors
     Column(
-        modifier.fillMaxWidth().heightIn(max = maxSheetHeight)
+        modifier.fillMaxWidth()
+            .then(if (fixedHeight != null) Modifier.height(minOf(fixedHeight, maxSheetHeight)) else Modifier.heightIn(max = maxSheetHeight))
             .clip(ZarShapes.sheet).background(colors.surface).pointerInput(Unit) { detectTapGestures {} }
             .padding(top = 10.dp),
     ) {
@@ -224,6 +236,7 @@ private fun IncomeSheet(
                 segmentHeight = 38.dp,
                 tagPrefix = "income-kind",
                 tags = listOf("expense", "income", "transfer"),
+                indicator = typeSlider,
             )
         }
 
@@ -236,7 +249,7 @@ private fun IncomeSheet(
         } else {
             // Figma Z162 rhythm: 48dp rows pitched by hairlines, 17dp above a block, 16dp between its label and chips.
             Column(
-                Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState()).padding(start = 24.dp, end = 24.dp, top = if (uiState.isEditing) 0.dp else 18.dp, bottom = 10.dp),
+                Modifier.weight(1f, fill = fixedHeight != null).verticalScroll(rememberScrollState()).padding(start = 24.dp, end = 24.dp, top = if (uiState.isEditing) 0.dp else 18.dp, bottom = 10.dp),
             ) {
                 AmountRow(uiState, actions.onAmountChange, actions.onAccountSelect)
                 FieldError(amountError(uiState.problems), "income-amount-error")

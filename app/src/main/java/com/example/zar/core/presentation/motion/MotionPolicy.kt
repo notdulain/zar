@@ -34,6 +34,12 @@ object ZarSprings {
     /** The selected navbar capsule: a deliberately small bounce. */
     val NavSelection = SpringToken(dampingRatio = 0.75f, stiffness = 500f)
 
+    /**
+     * The sliding indicator of the Add transaction selectors (type and classification). Starts from [NavSelection]'s
+     * values; tune both selectors here.
+     */
+    val AddSelector = SpringToken(dampingRatio = 0.75f, stiffness = 500f)
+
     /** Release of a custom sheet only; never add it around a Material sheet's own spring. */
     val SheetSettle = SpringToken(dampingRatio = 0.9f, stiffness = 450f)
 
@@ -67,6 +73,9 @@ object ZarMotion {
 
     /** Furthest the selected capsule may overshoot its target when there is room. */
     val NavMaxOvershoot = 6.dp
+
+    /** Furthest an Add selector indicator may overshoot its target slot. */
+    val AddSelectorMaxOvershoot = 6.dp
 
     /** Fraction of the hero's scroll displacement each layer is compensated by, and its cap. */
     const val PARALLAX_BACKGROUND = 0.20f

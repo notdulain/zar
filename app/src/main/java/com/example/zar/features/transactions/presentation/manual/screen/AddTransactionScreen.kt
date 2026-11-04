@@ -8,6 +8,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.zar.core.presentation.components.rememberSelectorIndicator
 import com.example.zar.features.transactions.presentation.income.screen.IncomeFormActions
 import com.example.zar.features.transactions.presentation.income.screen.IncomeFormContent
 import com.example.zar.features.transactions.presentation.income.viewmodel.IncomeFormUiState
@@ -121,9 +122,11 @@ internal fun AddTransactionHostContent(
     manualActions: ManualEntryActions,
     incomeActions: IncomeFormActions,
 ) {
+    // One indicator for the whole session, so it keeps travelling when Income replaces the manual body and back.
+    val typeIndicator = rememberSelectorIndicator(selectedIndex = tab.ordinal)
     when (tab) {
-        AddTransactionTab.INCOME -> IncomeFormContent(incomeUi, incomeActions)
-        AddTransactionTab.EXPENSE, AddTransactionTab.TRANSFER -> ManualEntryContent(manualUi, focusNote, manualActions)
+        AddTransactionTab.INCOME -> IncomeFormContent(incomeUi, incomeActions, typeIndicator, AddTransactionSheetHeight)
+        AddTransactionTab.EXPENSE, AddTransactionTab.TRANSFER -> ManualEntryContent(manualUi, focusNote, manualActions, typeIndicator, AddTransactionSheetHeight)
     }
 }
 
