@@ -18,6 +18,7 @@ import com.example.zar.features.capture.data.auto.CaptureStagingDatabase
 import com.example.zar.features.capture.data.auto.RoomSmsStagingRepository
 import com.example.zar.features.capture.data.auto.SmsCipher
 import com.example.zar.features.capture.domain.CapturedDraftRules
+import com.example.zar.features.capture.domain.auto.CaptureNotifier
 import com.example.zar.features.capture.domain.auto.AutoCapturePreferences
 import com.example.zar.features.capture.domain.auto.AutoCaptureScheduler
 import com.example.zar.features.capture.domain.auto.ObserveAutoCaptureUseCase
@@ -117,7 +118,7 @@ class CaptureUserIsolationTest {
     private val realSession get() = FirebaseUserSessionProvider(client.auth)
 
     private fun process(session: UserSessionProvider): ProcessStagedSmsUseCase =
-        ProcessStagedSmsUseCase(session, staging, CaptureTextUseCase(BankSmsParser(), FirestoreDraftRepository(client.db, session), ObserveCaptureAccountsUseCase(FirestoreAccountRepository(client.db, session))))
+        ProcessStagedSmsUseCase(session, staging, CaptureTextUseCase(BankSmsParser(), FirestoreDraftRepository(client.db, session), ObserveCaptureAccountsUseCase(FirestoreAccountRepository(client.db, session))), CaptureNotifier { })
 
     private fun stageUseCase(prefs: Preferences, scheduler: Scheduler) =
         StageIncomingSmsUseCase(BankSmsParser(), realSession, prefs, staging, scheduler)
