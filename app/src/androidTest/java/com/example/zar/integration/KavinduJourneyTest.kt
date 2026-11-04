@@ -172,7 +172,7 @@ class KavinduJourneyTest {
         lateinit var capture: CaptureViewModel
         lateinit var review: CaptureReviewViewModel
         main {
-            capture = keep(CaptureViewModel(inbox, CaptureTextUseCase(BankSmsParser(), h.drafts),
+            capture = keep(CaptureViewModel(inbox, CaptureTextUseCase(BankSmsParser(), h.drafts, ObserveCaptureAccountsUseCase(h.accounts)),
                 ObserveCapturedDraftsUseCase(h.drafts), ObserveCaptureHealthUseCase(h.drafts)))
             route.value = "capture"
         }
