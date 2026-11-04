@@ -67,11 +67,16 @@ object IncomeRules {
                 receivedFrom = receivedFrom.ifEmpty { null },
                 category = input.category,
                 note = note.ifEmpty { null },
+                rateSource = if (rate != null) input.rateSource else RateSource.MANUAL,
+                rateAsOf = if (rate != null && input.rateSource == RateSource.PROVIDER) input.rateAsOf else null,
             ),
         )
     }
 
-    /** The LKR value stored with the record, fixed at save time. */
+    /**
+     * The LKR value stored with the record, fixed at save time. A typed rate is dated by [asOf], the time of saving;
+     * a rate from the provider keeps the time the provider published it.
+     */
     fun reportingConversion(
         details: IncomeDetails,
         asOf: Instant,
@@ -79,7 +84,7 @@ object IncomeRules {
     ): ReportingConversion {
         val rate = details.rateToReporting
             ?.takeIf { details.amount.currency != reporting }
-            ?.let { ExchangeRate(details.amount.currency, reporting, it, asOf, RateSource.MANUAL) }
+            ?.let { ExchangeRate(details.amount.currency, reporting, it, details.rateAsOf ?: asOf, details.rateSource) }
         return CurrencyConverter.toReporting(details.amount, rate, reporting)
     }
 

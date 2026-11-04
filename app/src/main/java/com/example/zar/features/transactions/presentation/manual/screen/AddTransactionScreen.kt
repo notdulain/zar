@@ -84,6 +84,8 @@ fun AddTransactionScreen(
             onSwap = manualViewModel::onSwapAccounts,
             onTransferNote = manualViewModel::onTransferNoteChange,
             onSave = manualViewModel::save,
+            onRate = manualViewModel::onRateChange,
+            onUseTodaysRate = manualViewModel::onUseTodaysRate,
         ),
         incomeActions = IncomeFormActions(
             onBack = onDone,
@@ -91,6 +93,7 @@ fun AddTransactionScreen(
             onAccountSelect = incomeViewModel::onAccountSelect,
             onDateSelect = incomeViewModel::onDateSelect,
             onRateChange = incomeViewModel::onRateChange,
+            onUseTodaysRate = incomeViewModel::onUseTodaysRate,
             onReceivedFromChange = incomeViewModel::onReceivedFromChange,
             onCategorySelect = incomeViewModel::onCategorySelect,
             onNoteChange = incomeViewModel::onNoteChange,

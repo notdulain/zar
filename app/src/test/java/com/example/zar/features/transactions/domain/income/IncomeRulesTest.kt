@@ -9,6 +9,7 @@ import com.example.zar.core.domain.model.FieldUpdate
 import com.example.zar.core.domain.model.TransactionId
 import com.example.zar.core.domain.model.TransactionType
 import com.example.zar.core.domain.model.money.Currencies
+import com.example.zar.core.domain.model.money.RateSource
 import com.example.zar.core.domain.model.money.ReportingConversion
 import com.example.zar.features.transactions.domain.income.model.IncomeCategory
 import com.example.zar.features.transactions.domain.income.model.IncomeDetails
@@ -88,6 +89,32 @@ class IncomeRulesTest {
         assertEquals(0, "300.5".toBigDecimal().compareTo(usd("300,5")))
         assertEquals(0, "1100".toBigDecimal().compareTo(usd("1,100")))
         assertEquals(setOf(IncomeProblem.RATE_INVALID), problems(input(amount = "400", currency = Currencies.USD, rate = "1,2,3")))
+    }
+
+    @Test
+    fun aProvidersRateKeepsItsSourceAndThePublishedTime() {
+        val published = java.time.Instant.parse("2026-10-14T00:02:31Z")
+        val provider = valid(input(amount = "400", currency = Currencies.USD, rate = "332.4449").copy(rateSource = RateSource.PROVIDER, rateAsOf = published))
+        val conversion = IncomeRules.newIncome(TransactionId("p1"), payoneer, provider, T0).reportingConversion as ReportingConversion.Converted
+        assertEquals(RateSource.PROVIDER, conversion.rate.source)
+        assertEquals(published, conversion.rate.asOf)
+        assertEquals(com.example.zar.core.domain.model.money.FiatMoney(13_297_796, Currencies.LKR), conversion.amount)
+    }
+
+    @Test
+    fun aTypedRateIsDatedBySavingEvenIfAProviderTimeIsPassedWithIt() {
+        val typed = valid(input(amount = "400", currency = Currencies.USD, rate = "330").copy(rateSource = RateSource.MANUAL, rateAsOf = java.time.Instant.EPOCH))
+        val conversion = IncomeRules.newIncome(TransactionId("p2"), payoneer, typed, T0).reportingConversion as ReportingConversion.Converted
+        assertEquals(RateSource.MANUAL, conversion.rate.source)
+        assertEquals(T0, conversion.rate.asOf)
+    }
+
+    @Test
+    fun theSourceIsIgnoredWithoutARate() {
+        val none = valid(input(amount = "400", currency = Currencies.USD).copy(rateSource = RateSource.PROVIDER, rateAsOf = T0))
+        assertNull(none.rateToReporting)
+        assertNull(none.rateAsOf)
+        assertEquals(RateSource.MANUAL, none.rateSource)
     }
 
     @Test

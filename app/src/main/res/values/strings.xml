@@ -28,6 +28,17 @@
     <string name="income_field_date">Date received</string>
     <string name="income_field_rate">1 %1$s = ? LKR</string>
     <string name="income_field_rate_hint">Leave empty if you don\'t know. It will show as a missing rate.</string>
+    <string name="rate_use_today">Use today\'s rate</string>
+    <string name="rate_getting">Getting today\'s rate…</string>
+    <string name="rate_try_again">Try again</string>
+    <string name="rate_hint_available">Fill it with today\'s rate, or type your own. If you leave it empty, it will show as a missing rate.</string>
+    <string name="rate_hint_fetching">This needs a connection. You can type a rate instead.</string>
+    <string name="rate_hint_failed">Couldn\'t get today\'s rate. Type one, or leave it empty.</string>
+    <string name="rate_hint_filled">Today\'s rate, updated %1$s. You can change it.</string>
+    <string name="rate_hint_typed">You typed this rate. Today\'s rate is %1$s.</string>
+    <string name="rate_hint_saved">Saved from today\'s rate, updated %1$s.</string>
+    <string name="rate_hint_earlier">Today\'s rate isn\'t offered for an earlier date. Type the rate for that day, or leave it empty.</string>
+    <string name="rate_attribution">Rates By Exchange Rate API</string>
     <string name="income_field_received_from">Received from (optional)</string>
     <string name="income_field_category">Category (optional)</string>
     <string name="income_field_note">Note (optional)</string>

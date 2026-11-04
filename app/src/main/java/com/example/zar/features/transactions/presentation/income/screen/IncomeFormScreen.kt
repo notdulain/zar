@@ -84,6 +84,7 @@ import com.example.zar.features.transactions.presentation.income.viewmodel.Incom
 import com.example.zar.features.transactions.presentation.manual.screen.DateTimeRow
 import com.example.zar.features.transactions.presentation.manual.screen.ManualDatePickerSheet
 import com.example.zar.features.transactions.presentation.manual.screen.ManualTimePickerSheet
+import com.example.zar.features.transactions.presentation.manual.screen.RateRow
 import com.example.zar.features.transactions.presentation.manual.screen.Section
 import com.example.zar.features.transactions.presentation.manual.screen.Segmented
 import com.example.zar.features.transactions.presentation.manual.screen.TextInput
@@ -118,6 +119,7 @@ fun IncomeFormScreen(
             onNoteChange = viewModel::onNoteChange,
             onSave = viewModel::save,
             onUndo = viewModel::undo,
+            onUseTodaysRate = viewModel::onUseTodaysRate,
         ),
     )
 }
@@ -139,6 +141,8 @@ internal class IncomeFormActions(
      * where the type switch is not shown at all: an edit is not a creation and must not offer the other types.
      */
     val onSelectKind: ((Int) -> Unit)? = null,
+    /** "Use today's rate" next to the rate field. */
+    val onUseTodaysRate: () -> Unit = {},
 )
 
 @Composable
@@ -245,7 +249,15 @@ private fun IncomeSheet(
                 FieldError(amountError(uiState.problems), "income-amount-error")
                 if (uiState.needsRate) {
                     Spacer(Modifier.height(10.dp))
-                    RateField(uiState, actions.onRateChange)
+                    RateRow(
+                        currency = uiState.currency,
+                        entry = uiState.rateEntry,
+                        canUseTodaysRate = uiState.canUseTodaysRate,
+                        invalid = IncomeProblem.RATE_INVALID in uiState.problems,
+                        onRateChange = actions.onRateChange,
+                        onUseTodaysRate = actions.onUseTodaysRate,
+                        inputTag = "income-rate",
+                    )
                 }
                 Spacer(Modifier.height(10.dp))
                 ZarDivider()
@@ -477,26 +489,6 @@ private fun CategorySection(selected: IncomeCategory?, onSelect: (IncomeCategory
                     modifier = Modifier.testTag("income-category-${category.name.lowercase()}"),
                 )
             }
-        }
-    }
-}
-
-@Composable
-private fun RateField(uiState: IncomeFormUiState, onRateChange: (String) -> Unit) {
-    val colors = ZarTheme.colors
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        ZarEyebrow(stringResource(R.string.income_field_rate, uiState.currency?.code.orEmpty()))
-        TextInput(
-            value = uiState.rate,
-            onValueChange = onRateChange,
-            placeholder = "0",
-            keyboardType = KeyboardType.Decimal,
-            modifier = Modifier.fillMaxWidth().testTag("income-rate"),
-        )
-        if (IncomeProblem.RATE_INVALID in uiState.problems) {
-            Text(stringResource(R.string.income_error_rate_invalid), style = ZarType.bodyCaption, color = colors.danger)
-        } else {
-            Text(stringResource(R.string.income_field_rate_hint), style = ZarType.bodyCaption, color = colors.textSecondary)
         }
     }
 }

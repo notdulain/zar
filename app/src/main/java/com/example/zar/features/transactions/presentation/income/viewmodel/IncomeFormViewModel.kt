@@ -14,6 +14,10 @@ import com.example.zar.core.domain.model.TransactionId
 import com.example.zar.core.domain.model.money.Currencies
 import com.example.zar.core.domain.model.money.Currency
 import com.example.zar.core.domain.usecase.VoidTransactionUseCase
+import com.example.zar.features.rates.domain.FetchTodaysRateUseCase
+import com.example.zar.features.rates.domain.RateEntry
+import com.example.zar.features.rates.domain.RateFetch
+import com.example.zar.features.rates.domain.TodaysRateRules
 import com.example.zar.features.transactions.domain.income.IncomeRules
 import com.example.zar.features.transactions.domain.income.model.IncomeCategory
 import com.example.zar.features.transactions.domain.income.model.IncomeFormInput
@@ -48,7 +52,8 @@ data class IncomeFormUiState(
     val amount: String = "",
     val date: LocalDate = ZarTime.today(),
     val time: LocalTime? = null,
-    val rate: String = "",
+    /** The rate field: what is typed, today's rate if it was fetched, and where a saved record's rate came from. */
+    val rateEntry: RateEntry = RateEntry(),
     val receivedFrom: String = "",
     val category: IncomeCategory? = null,
     val note: String = "",
@@ -60,6 +65,12 @@ data class IncomeFormUiState(
     val selectedAccount: Account? get() = accounts.firstOrNull { it.id == accountId }
     val currency: Currency? get() = lockedCurrency ?: selectedAccount?.currency
     val needsRate: Boolean get() = currency.let { it != null && it != Currencies.REPORTING }
+
+    /** The number in the rate field, as typed. */
+    val rate: String get() = rateEntry.text
+
+    /** Today's rate is only offered for an ordinary foreign currency on today's date. */
+    val canUseTodaysRate: Boolean get() = TodaysRateRules.canOffer(currency, date, ZarTime.today())
 }
 
 @HiltViewModel
@@ -70,6 +81,7 @@ class IncomeFormViewModel @Inject constructor(
     private val recordIncome: RecordIncomeUseCase,
     private val editIncome: EditIncomeUseCase,
     private val voidTransaction: VoidTransactionUseCase,
+    private val fetchTodaysRate: FetchTodaysRateUseCase,
 ) : ViewModel() {
 
     // Read by name instead of toRoute so the same ViewModel serves both the edit route and the income tab of the
@@ -118,7 +130,7 @@ class IncomeFormViewModel @Inject constructor(
                     amount = tx.amount.toDecimal().toPlainString(),
                     date = tx.date,
                     time = tx.time,
-                    rate = IncomeRules.storedRate(tx.reportingConversion)?.toPlainString().orEmpty(),
+                    rateEntry = RateEntry.of(tx.reportingConversion),
                     receivedFrom = tx.merchant.orEmpty(),
                     category = IncomeCategory.fromId(tx.categoryId),
                     note = tx.note.orEmpty(),
@@ -137,14 +149,37 @@ class IncomeFormViewModel @Inject constructor(
         val state = _uiState.value
         val account = state.accounts.firstOrNull { it.id == id && !it.isArchived } ?: return
         if (state.isEditing && account.currency != state.lockedCurrency) return
-        edit { copy(accountId = id, rate = if (isEditing) rate else "") }
+        edit { copy(accountId = id, rateEntry = if (isEditing) rateEntry else RateEntry()) }
     }
 
-    fun onDateSelect(value: LocalDate) = edit(IncomeProblem.DATE_IN_FUTURE) { copy(date = value) }
+    fun onDateSelect(value: LocalDate) =
+        edit(IncomeProblem.DATE_IN_FUTURE) { copy(date = value, rateEntry = rateEntry.onDateChanged(value, ZarTime.today())) }
 
     fun onTimeSelect(value: LocalTime?) = edit { copy(time = value) }
 
-    fun onRateChange(value: String) = edit(IncomeProblem.RATE_INVALID) { copy(rate = value) }
+    fun onRateChange(value: String) = edit(IncomeProblem.RATE_INVALID) { copy(rateEntry = rateEntry.typed(value)) }
+
+    /** Fills the rate field with today's rate. A failure only shows a message: the rate can still be typed or left empty. */
+    fun onUseTodaysRate() {
+        val state = _uiState.value
+        val currency = state.currency ?: return
+        if (!state.canUseTodaysRate || state.rateEntry.fetch == RateFetch.FETCHING) return
+        _uiState.update { it.copy(rateEntry = it.rateEntry.fetching()) }
+        viewModelScope.launch {
+            val result = fetchTodaysRate(currency)
+            _uiState.update { now ->
+                // The form may have moved on while the answer was on its way: another account or an earlier date.
+                if (now.currency != currency || !now.canUseTodaysRate) {
+                    now.copy(rateEntry = now.rateEntry.copy(fetch = RateFetch.IDLE))
+                } else {
+                    result.fold(
+                        onSuccess = { quote -> now.copy(rateEntry = now.rateEntry.fetched(quote), problems = now.problems - IncomeProblem.RATE_INVALID) },
+                        onFailure = { now.copy(rateEntry = now.rateEntry.failed()) },
+                    )
+                }
+            }
+        }
+    }
 
     fun onReceivedFromChange(value: String) = edit(IncomeProblem.RECEIVED_FROM_TOO_LONG) { copy(receivedFrom = value) }
 
@@ -165,6 +200,8 @@ class IncomeFormViewModel @Inject constructor(
             receivedFrom = state.receivedFrom,
             category = state.category,
             note = state.note,
+            rateSource = state.rateEntry.source,
+            rateAsOf = state.rateEntry.asOf,
         )
         when (val result = IncomeRules.validate(input, ZarTime.today())) {
             is IncomeFormResult.Invalid -> _uiState.update { it.copy(problems = result.problems) }

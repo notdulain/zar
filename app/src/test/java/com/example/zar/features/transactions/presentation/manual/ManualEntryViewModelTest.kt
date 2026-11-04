@@ -7,6 +7,16 @@ import com.example.zar.features.transactions.domain.category.CategoryNameProblem
 import com.example.zar.features.transactions.domain.category.usecase.CreateExpenseCategoryUseCase
 import com.example.zar.features.transactions.domain.category.usecase.ObserveExpenseCategoryCatalogUseCase
 import com.example.zar.features.transactions.domain.category.FakeExpenseCategoryRepository
+import com.example.zar.core.domain.calculation.ZarTime
+import com.example.zar.core.domain.model.money.Currencies
+import com.example.zar.core.domain.model.money.FiatMoney
+import com.example.zar.core.domain.model.money.RateSource
+import com.example.zar.core.domain.model.money.ReportingConversion
+import com.example.zar.features.rates.FakeExchangeRateRepository
+import com.example.zar.features.rates.domain.FetchTodaysRateUseCase
+import com.example.zar.features.rates.domain.RateFetch
+import com.example.zar.features.rates.domain.RateFetchError
+import com.example.zar.features.rates.domain.RateQuote
 import com.example.zar.features.rules.FakeCategoryRules
 import com.example.zar.features.rules.rule
 import com.example.zar.features.rules.newInbox
@@ -123,6 +133,7 @@ class ManualEntryViewModelTest {
     private val categoryRepo = FakeExpenseCategoryRepository()
     private val categoryCatalog = ObserveExpenseCategoryCatalogUseCase(categoryRepo)
     private val inbox = newInbox()
+    private val rateSource = FakeExchangeRateRepository()
 
     private fun viewModel(handle: SavedStateHandle = SavedStateHandle()): ManualEntryViewModel {
         val saveTransaction = SaveTransactionUseCase(ledger)
@@ -137,6 +148,7 @@ class ManualEntryViewModelTest {
             ruleInbox = inbox,
             observeCategories = categoryCatalog,
             createCategory = CreateExpenseCategoryUseCase(categoryRepo),
+            fetchTodaysRate = FetchTodaysRateUseCase(rateSource),
         )
     }
 
@@ -204,6 +216,7 @@ class ManualEntryViewModelTest {
             inbox,
             categoryCatalog,
             CreateExpenseCategoryUseCase(categoryRepo),
+            FetchTodaysRateUseCase(rateSource),
         )
 
         assertFalse(vm.uiState.value.isLoading)
@@ -968,5 +981,142 @@ class ManualEntryViewModelTest {
         assertTrue(vm.uiState.value.categoryCatalog.customs.isEmpty())
         categoryRepo.signInAs("alice")
         assertEquals(1, vm.uiState.value.categoryCatalog.customs.size)
+    }
+
+    // --- Rate of a foreign-currency expense (issue #46) -------------------------------------------------------------
+
+    private val todaysQuote = RateQuote(
+        Currencies.USD, Currencies.LKR, "332.444906".toBigDecimal(),
+        java.time.Instant.parse("2026-11-04T00:02:31Z"), java.time.Instant.parse("2026-11-05T00:18:21Z"),
+    )
+
+    /** A form on the USD account with a valid amount and category, ready to save. */
+    private fun usdExpense(): ManualEntryViewModel {
+        accounts.accounts.value = listOf(bank, cash, payoneer)
+        return viewModel().also {
+            it.onAccountSelect(payoneer.id)
+            it.onAmountChange("40")
+            it.onCategorySelect(ExpenseCategory.BILLS)
+        }
+    }
+
+    private fun savedConversion(vm: ManualEntryViewModel): ReportingConversion {
+        vm.save()
+        return ledger.saved.values.single().reportingConversion
+    }
+
+    @Test
+    fun onlyAForeignAccountHasARateField() {
+        val vm = viewModel()
+        vm.onAccountSelect(cash.id)
+        assertFalse(vm.uiState.value.needsRate)
+        accounts.accounts.value = listOf(bank, cash, payoneer)
+        vm.onAccountSelect(payoneer.id)
+        assertTrue(vm.uiState.value.needsRate)
+        assertTrue(vm.uiState.value.canUseTodaysRate)
+        vm.onKindSelect(ManualEntryKind.TRANSFER)
+        assertFalse(vm.uiState.value.needsRate)
+    }
+
+    @Test
+    fun todaysRateFillsTheFieldAndIsSavedAsTheProvidersRate() {
+        rateSource.answer = Result.success(todaysQuote)
+        val vm = usdExpense()
+
+        vm.onUseTodaysRate()
+        assertEquals("332.4449", vm.uiState.value.rate)
+        assertEquals(listOf(Currencies.USD to Currencies.LKR), rateSource.requests)
+
+        val conversion = savedConversion(vm) as ReportingConversion.Converted
+        assertEquals(RateSource.PROVIDER, conversion.rate.source)
+        assertEquals(todaysQuote.updatedAt, conversion.rate.asOf)
+        assertEquals(0, "332.4449".toBigDecimal().compareTo(conversion.rate.rate))
+        // USD 40 at 332.4449 is LKR 13,297.796, rounded to the cent.
+        assertEquals(FiatMoney(1_329_780, Currencies.LKR), conversion.amount)
+    }
+
+    @Test
+    fun aNumberTypedOverTodaysRateIsSavedAsTheUsersOwn() {
+        rateSource.answer = Result.success(todaysQuote)
+        val vm = usdExpense()
+        vm.onUseTodaysRate()
+        vm.onRateChange("330")
+
+        val conversion = savedConversion(vm) as ReportingConversion.Converted
+        assertEquals(RateSource.MANUAL, conversion.rate.source)
+        assertEquals(FiatMoney(1_320_000, Currencies.LKR), conversion.amount)
+    }
+
+    @Test
+    fun aCommaInATypedRateIsADecimalSeparator() {
+        val vm = usdExpense()
+        vm.onRateChange("300,5")
+        val conversion = savedConversion(vm) as ReportingConversion.Converted
+        assertEquals(0, "300.5".toBigDecimal().compareTo(conversion.rate.rate))
+    }
+
+    @Test
+    fun noRateIsSavedAsMissingAndAnInvalidRateIsRefused() {
+        val vm = usdExpense()
+        vm.onRateChange("abc")
+        vm.save()
+        assertTrue(ExpenseProblem.RATE_INVALID in vm.uiState.value.expenseProblems)
+        assertTrue(ledger.saved.isEmpty())
+
+        vm.onRateChange("")
+        assertFalse(ExpenseProblem.RATE_INVALID in vm.uiState.value.expenseProblems)
+        assertEquals(ReportingConversion.Missing(Currencies.LKR), savedConversion(vm))
+    }
+
+    @Test
+    fun aFailedFetchOnlyShowsAMessageAndSavingStillWorks() {
+        rateSource.answer = Result.failure(RateFetchError.Offline())
+        val vm = usdExpense()
+        vm.onUseTodaysRate()
+
+        assertEquals(RateFetch.FAILED, vm.uiState.value.rateEntry.fetch)
+        assertEquals("", vm.uiState.value.rate)
+        assertEquals(ReportingConversion.Missing(Currencies.LKR), savedConversion(vm))
+    }
+
+    @Test
+    fun todaysRateIsNotOfferedForAnEarlierDateAndAFetchedRateGoesWhenTheDateMoves() {
+        rateSource.answer = Result.success(todaysQuote)
+        val vm = usdExpense()
+        vm.onUseTodaysRate()
+        assertEquals("332.4449", vm.uiState.value.rate)
+
+        vm.onDateSelect(ZarTime.today().minusDays(1))
+        assertEquals("", vm.uiState.value.rate)
+        assertFalse(vm.uiState.value.canUseTodaysRate)
+
+        rateSource.requests.clear()
+        vm.onUseTodaysRate()
+        assertTrue("nothing is fetched for an earlier date", rateSource.requests.isEmpty())
+    }
+
+    @Test
+    fun anAnswerThatArrivesAfterTheDateMovedIsIgnored() {
+        rateSource.answer = Result.success(todaysQuote)
+        rateSource.gate = kotlinx.coroutines.CompletableDeferred()
+        val vm = usdExpense()
+        vm.onUseTodaysRate()
+        assertEquals(RateFetch.FETCHING, vm.uiState.value.rateEntry.fetch)
+
+        vm.onDateSelect(ZarTime.today().minusDays(1))
+        rateSource.gate!!.complete(Unit)
+
+        assertEquals("", vm.uiState.value.rate)
+        assertEquals(RateFetch.IDLE, vm.uiState.value.rateEntry.fetch)
+    }
+
+    @Test
+    fun anotherAccountStartsWithAnEmptyRateField() {
+        rateSource.answer = Result.success(todaysQuote)
+        val vm = usdExpense()
+        vm.onUseTodaysRate()
+        vm.onAccountSelect(cash.id)
+        vm.onAccountSelect(payoneer.id)
+        assertEquals("", vm.uiState.value.rate)
     }
 }
