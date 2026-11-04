@@ -28,7 +28,7 @@ Z38/Z43/Z44/keyboard copied in both modes. Dusk is invariant; Light CTA white, D
 
 The accompanying text inventories enumerate source paths/line numbers for all matched Back entry points/windows, elevation paths, Mono and launcher references. Mono source scan is empty. Back entry points converge on Zar route transitions, SheetBackHost/ZarModalSheet and ZarDialogWindowMotion; IME gets first Back, gesture cancellation restores the current screen, RTL still exits physically right, roots defer to Android. Inventory is static coverage, not proof of every runtime path.
 
-Remaining cast-depth matches belong to pickers/sheets, selected controls, floating FAB/chrome and the dedicated nav effect. These require classifying against the flat-card contract; a scan match alone is not a card defect. Plans bottom-action implementation remains task3.5: the existing app clearance104 is smaller than the revised two-row design188/196. No app implementation is silently changed by this design task.
+Remaining cast-depth matches belong to pickers/sheets, selected controls, floating FAB/chrome and the dedicated nav effect. These require classifying against the flat-card contract; a scan match alone is not a card defect. Plans bottom-action implementation was completed during task6 integration (`caf7cf2`): fixed tab bounds, separate bottom action and measured clearance. Main’s subsequently merged Add speed dial is preserved.
 
 Task5 was checked at owner request; the device-test cleanup incident and unverified data recovery remain documented in `docs/evidence/task5/README.md`. Integrated device acceptance remains task6.
 

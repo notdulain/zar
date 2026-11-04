@@ -1,0 +1,14 @@
+{
+  "production_source_commit": "78aa06c28ad7bffce95186676bbd1dce551cfefb",
+  "debug_apk_sha256": "7ab43cdbb43dafa2656bc118bbdc7d0e19336fe98798638349243d2a6ec29561",
+  "build_flags": [
+    "zar.useEmulators=true",
+    "zar.emulatorHost=10.0.2.2"
+  ],
+  "device": "Pixel_6a AVD, emulator-5556",
+  "android": "17, API 37",
+  "size": "1080x2400",
+  "density_dpi": 420,
+  "fixtures": "tools/task6-seed.mjs; local Auth/Firestore emulators only",
+  "phone": "Not modified during task 6"
+}
