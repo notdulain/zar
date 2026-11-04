@@ -148,6 +148,15 @@ class ManualEntryScreenUiTest {
     }
 
     @Test
+    fun expenseDatePickerOpensOverTheForm() {
+        show(state(), Recorder())
+
+        compose.onNodeWithTag("manual-date").performScrollTo().performClick()
+        compose.onNodeWithText("Date").assertIsDisplayed()
+        compose.onNodeWithText("Set date").assertIsDisplayed()
+    }
+
+    @Test
     fun everyMissingFieldShowsItsOwnMessage() {
         show(
             state {

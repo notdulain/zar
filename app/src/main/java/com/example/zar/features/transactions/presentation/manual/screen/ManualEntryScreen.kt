@@ -280,6 +280,7 @@ internal fun ManualEntryContent(
             )
         }
         }
+        }
         SheetSubSurface(visible = openPicker == "date") {
             ManualDatePickerSheet(
                 date = uiState.date,
@@ -329,7 +330,6 @@ internal fun ManualEntryContent(
             }
         }
     }
-}
 }
 
 // --- Expense --------------------------------------------------------------------------------
