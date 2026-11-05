@@ -8,6 +8,8 @@ import com.example.zar.core.domain.usecase.CorrectTransactionUseCase
 import com.example.zar.core.domain.usecase.SaveTransactionUseCase
 import com.example.zar.core.domain.usecase.VoidTransactionUseCase
 import com.example.zar.features.accounts.domain.usecase.ObserveActiveAccountsUseCase
+import com.example.zar.features.rates.FakeExchangeRateRepository
+import com.example.zar.features.rates.domain.FetchTodaysRateUseCase
 import com.example.zar.features.rules.FakeCategoryRules
 import com.example.zar.features.rules.newInbox
 import com.example.zar.features.transactions.domain.category.FakeExpenseCategoryRepository
@@ -84,6 +86,7 @@ class AddTransactionSessionTest {
             ruleInbox = inbox,
             observeCategories = categoryCatalog,
             createCategory = CreateExpenseCategoryUseCase(categoryRepo),
+            fetchTodaysRate = FetchTodaysRateUseCase(FakeExchangeRateRepository()),
         )
     }
 
@@ -96,6 +99,7 @@ class AddTransactionSessionTest {
             recordIncome = RecordIncomeUseCase(saveTransaction),
             editIncome = EditIncomeUseCase(CorrectTransactionUseCase(ledger, accounts)),
             voidTransaction = VoidTransactionUseCase(ledger),
+            fetchTodaysRate = FetchTodaysRateUseCase(FakeExchangeRateRepository()),
         )
     }
 

@@ -63,6 +63,8 @@ import com.example.zar.features.reminders.domain.ReminderPreferencesRepository
 import com.example.zar.features.quicknote.data.remote.QuickNoteDraftTransport
 import com.example.zar.features.quicknote.data.repository.CallableQuickNoteDraftRepository
 import com.example.zar.features.quicknote.domain.repository.QuickNoteDraftRepository
+import com.example.zar.features.rates.data.ExchangeRateApiRepository
+import com.example.zar.features.rates.domain.ExchangeRateRepository
 import com.example.zar.features.rules.data.FirestoreCategoryRuleRepository
 import com.example.zar.features.rules.data.InMemoryRuleOfferInbox
 import com.example.zar.features.rules.domain.repository.CategoryRuleRepository
@@ -144,6 +146,10 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun bindAmountPrivacyRepository(impl: SharedPreferencesAmountPrivacyRepository): AmountPrivacyRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindExchangeRateRepository(impl: ExchangeRateApiRepository): ExchangeRateRepository
 
     @Binds
     @Singleton

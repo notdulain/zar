@@ -32,6 +32,8 @@ These are the shared models, repository interfaces and saving rules that every f
 - One account holds one currency. A transaction's amount must use its account's currency.
 - Every record stores its `ReportingConversion` to LKR at save time: `SameCurrency`, `Converted` (with the rate used) or `Missing`. Old records keep their historical rate. A corrected amount reuses the same rate.
 - Totals return `ReportingTotal(amount, unresolvedCount)`. Show `unresolvedCount > 0` as "missing rate"; never guess.
+- A rate has a source and a time. A typed rate is `MANUAL`, dated by when it was saved. Today's rate fetched from the provider is `PROVIDER`, dated by when the provider published it; if the person changes the number it becomes `MANUAL`. Today's rate is only offered for today's date; an earlier date needs a typed rate. See [exchange-rates.md](exchange-rates.md).
+- A typed rate is read by `RateText.parse`: a comma before one or two digits is a decimal separator, digits grouped in threes are thousands, and anything unclear is rejected.
 
 ## Totals rules (`LedgerSummaryCalculator`)
 

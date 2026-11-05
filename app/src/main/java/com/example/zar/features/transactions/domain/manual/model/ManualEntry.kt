@@ -4,6 +4,9 @@ import com.example.zar.core.domain.model.Account
 import com.example.zar.core.domain.model.AccountId
 import com.example.zar.core.domain.model.SpendingClass
 import com.example.zar.core.domain.model.money.Money
+import com.example.zar.core.domain.model.money.RateSource
+import java.math.BigDecimal
+import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
 
@@ -44,6 +47,11 @@ data class ExpenseFormInput(
     val title: String,
     val description: String,
     val time: LocalTime? = null,
+    /** LKR per unit of the account's currency. Only read for a foreign account; blank means the rate is unknown. */
+    val rate: String = "",
+    /** Where the number in [rate] came from, as known by the form. */
+    val rateSource: RateSource = RateSource.MANUAL,
+    val rateAsOf: Instant? = null,
 )
 
 enum class ExpenseProblem {
@@ -54,6 +62,7 @@ enum class ExpenseProblem {
     DATE_IN_FUTURE,
     TITLE_TOO_LONG,
     DESCRIPTION_TOO_LONG,
+    RATE_INVALID,
 }
 
 /** Validated details of money that already left an account. */
@@ -69,6 +78,12 @@ data class ExpenseDetails(
     /** The category rule that filled in [category], when the person kept its choice. */
     val appliedRuleId: String? = null,
     val appliedRuleVersion: Int? = null,
+    /** LKR per unit of the account's currency. Null for an LKR account, or when the rate is unknown. */
+    val rateToReporting: BigDecimal? = null,
+    /** Typed by the person, or today's rate from the provider. Only meaningful with a [rateToReporting]. */
+    val rateSource: RateSource = RateSource.MANUAL,
+    /** When the provider published the rate. Null for a typed rate, which is dated by when it is saved. */
+    val rateAsOf: Instant? = null,
 )
 
 sealed interface ExpenseFormResult {
