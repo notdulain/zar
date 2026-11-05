@@ -208,7 +208,7 @@ private fun Detail(row: CryptoMovementRow, portfolio: CryptoPortfolio, play: Boo
                         CryptoMovementKind.MOVE -> R.string.crypto_linked_note_move
                     },
                 ),
-                style = ZarType.bodyCaption.copy(lineHeight = 15.sp),
+                style = ZarType.bodyCaption,
                 color = colors.textSecondary,
                 modifier = Modifier.padding(bottom = 14.dp),
             )

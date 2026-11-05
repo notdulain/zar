@@ -101,7 +101,7 @@ internal fun BillRow(
             Text(title, style = ZarType.labelButton.copy(lineHeight = 19.sp), color = colors.textPrimary, maxLines = 2, overflow = TextOverflow.Ellipsis)
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
                 if (dot != null) StatusDot(dot)
-                Text(meta, style = ZarType.bodyCaption.copy(lineHeight = 15.sp), color = colors.textSecondary, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                Text(meta, style = ZarType.bodyCaption, color = colors.textSecondary, maxLines = 2, overflow = TextOverflow.Ellipsis)
             }
         }
         when (end) {

@@ -243,7 +243,7 @@ private fun AmountRow(label: String, value: String, code: String?, error: String
 
 @Composable
 private fun Hint(text: String) {
-    Text(text, style = ZarType.bodyCaption.copy(lineHeight = 15.sp), color = ZarTheme.colors.textSecondary, modifier = Modifier.padding(top = 6.dp))
+    Text(text, style = ZarType.bodyCaption, color = ZarTheme.colors.textSecondary, modifier = Modifier.padding(top = 6.dp))
 }
 
 @Composable
@@ -393,7 +393,7 @@ internal fun OpeningCostSheet(
                 Text(stringResource(R.string.crypto_cost_approximate), style = ZarType.bodyM, color = colors.textPrimary, modifier = Modifier.weight(1f))
                 ZarSwitch(uiState.costApproximate, onApproximateChange, large = true)
             }
-            Text(stringResource(R.string.crypto_cost_estimate_note), style = ZarType.bodyCaption.copy(lineHeight = 15.sp), color = colors.textSecondary, modifier = Modifier.padding(top = 14.dp))
+            Text(stringResource(R.string.crypto_cost_estimate_note), style = ZarType.bodyCaption, color = colors.textSecondary, modifier = Modifier.padding(top = 14.dp))
             uiState.message?.let { FieldError(stringResource(it.textRes()), Modifier.padding(top = 10.dp)) }
             Row(Modifier.fillMaxWidth().padding(top = 20.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 ZarButton(stringResource(R.string.action_cancel), onClick = dismiss, modifier = Modifier.weight(1f), style = ZarButtonStyle.Soft)

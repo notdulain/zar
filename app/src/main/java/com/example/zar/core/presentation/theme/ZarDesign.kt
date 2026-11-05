@@ -267,7 +267,7 @@ object ZarType {
     val bodyL = TextStyle(fontFamily = GeistFamily, fontWeight = FontWeight.Normal, fontSize = 16.sp, lineHeight = 22.sp, letterSpacing = (-0.16).sp, lineHeightStyle = ReadingLines)
     val bodyM = TextStyle(fontFamily = GeistFamily, fontWeight = FontWeight.Normal, fontSize = 15.sp, lineHeight = 21.sp, lineHeightStyle = ReadingLines)
     val bodyS = TextStyle(fontFamily = GeistFamily, fontWeight = FontWeight.Normal, fontSize = 14.sp, lineHeight = 20.sp, letterSpacing = (-0.14).sp, lineHeightStyle = ReadingLines)
-    val bodyCaption = TextStyle(fontFamily = GeistFamily, fontWeight = FontWeight.Normal, fontSize = 12.sp, lineHeight = 16.sp, lineHeightStyle = ReadingLines)
+    val bodyCaption = TextStyle(fontFamily = GeistFamily, fontWeight = FontWeight.Normal, fontSize = 12.sp, lineHeight = 17.sp, lineHeightStyle = ReadingLines)
     val labelButton = TextStyle(fontFamily = GeistFamily, fontWeight = FontWeight.Medium, fontSize = 15.sp, lineHeight = 15.sp)
     val labelChip = TextStyle(fontFamily = GeistFamily, fontWeight = FontWeight.Medium, fontSize = 13.sp, lineHeight = 13.sp)
     val labelAction = labelChip
