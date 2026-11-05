@@ -1,5 +1,8 @@
 package com.example.zar.features.export.presentation.screen
 
+import com.example.zar.core.presentation.motion.ZarMotion
+import com.example.zar.core.presentation.components.heroParallax
+import com.example.zar.core.presentation.components.heroDisplacement
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -85,13 +88,16 @@ internal fun ExportContent(
 ) {
     val colors = ZarTheme.colors
     val backTop = maxOf(4.dp, 54.dp - WindowInsets.statusBars.asPaddingValues().calculateTopPadding())
+    val scroll = rememberScrollState()
+    val heroOffset = scroll.heroDisplacement()
     Box(Modifier.fillMaxSize().background(colors.canvas)) {
-        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).statusBarsPadding()) {
+        Column(Modifier.fillMaxSize().verticalScroll(scroll).statusBarsPadding()) {
             ZarBackButton(onBack, stringResource(R.string.export_back), Modifier.padding(start = 10.dp, top = backTop))
+            // No hero card here: the title block is the top header and drifts a little slower than the page, as on Accounts.
             ZarTitleBlock(
                 title = stringResource(R.string.export_title),
                 subtitle = stringResource(R.string.export_subtitle),
-                modifier = Modifier.padding(top = 6.dp),
+                modifier = Modifier.heroParallax(heroOffset, ZarMotion.PARALLAX_TEXT, ZarMotion.ParallaxTextCap).padding(top = 6.dp),
             )
             when {
                 state.isLoading -> Box(Modifier.fillMaxWidth().padding(top = 96.dp), Alignment.Center) {

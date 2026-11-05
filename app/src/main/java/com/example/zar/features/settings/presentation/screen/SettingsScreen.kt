@@ -1,5 +1,8 @@
 package com.example.zar.features.settings.presentation.screen
 
+import com.example.zar.core.presentation.motion.ZarMotion
+import com.example.zar.core.presentation.components.heroParallax
+import com.example.zar.core.presentation.components.heroDisplacement
 import com.example.zar.core.presentation.privacy.AmountPrivacyViewModel
 import com.example.zar.core.presentation.components.ZarSwitch
 import androidx.compose.foundation.background
@@ -113,9 +116,16 @@ internal fun SettingsContent(
     }
 
     val backTop = maxOf(4.dp, 54.dp - WindowInsets.statusBars.asPaddingValues().calculateTopPadding())
-    Column(Modifier.fillMaxSize().background(colors.canvas).statusBarsPadding().verticalScroll(rememberScrollState())) {
+    val scroll = rememberScrollState()
+    val heroOffset = scroll.heroDisplacement()
+    Column(Modifier.fillMaxSize().background(colors.canvas).statusBarsPadding().verticalScroll(scroll)) {
         ZarBackButton(onBack, stringResource(R.string.action_back), Modifier.padding(start = 10.dp, top = backTop))
-        ZarTitleBlock(stringResource(R.string.settings_title), stringResource(R.string.settings_subtitle), Modifier.padding(top = 6.dp))
+        // No hero card here: the title block is the top header and drifts a little slower than the page, as on Accounts.
+        ZarTitleBlock(
+            stringResource(R.string.settings_title),
+            stringResource(R.string.settings_subtitle),
+            Modifier.heroParallax(heroOffset, ZarMotion.PARALLAX_TEXT, ZarMotion.ParallaxTextCap).padding(top = 6.dp),
+        )
         Column(
             Modifier.fillMaxWidth().navigationBarsPadding().padding(start = 9.dp, end = 9.dp, top = 43.dp, bottom = 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
