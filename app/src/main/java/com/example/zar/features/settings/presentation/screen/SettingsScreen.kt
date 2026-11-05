@@ -1,5 +1,7 @@
 package com.example.zar.features.settings.presentation.screen
 
+import com.example.zar.core.presentation.motion.rememberRiseInOnFirstVisit
+import com.example.zar.core.presentation.motion.riseIn
 import com.example.zar.core.presentation.motion.ZarMotion
 import com.example.zar.core.presentation.components.heroParallax
 import com.example.zar.core.presentation.components.heroDisplacement
@@ -118,6 +120,7 @@ internal fun SettingsContent(
     val backTop = maxOf(4.dp, 54.dp - WindowInsets.statusBars.asPaddingValues().calculateTopPadding())
     val scroll = rememberScrollState()
     val heroOffset = scroll.heroDisplacement()
+    val play = rememberRiseInOnFirstVisit(loaded = true)
     Column(Modifier.fillMaxSize().background(colors.canvas).statusBarsPadding().verticalScroll(scroll)) {
         ZarBackButton(onBack, stringResource(R.string.action_back), Modifier.padding(start = 10.dp, top = backTop))
         // No hero card here: the title block is the top header and drifts a little slower than the page, as on Accounts.
@@ -130,7 +133,7 @@ internal fun SettingsContent(
             Modifier.fillMaxWidth().navigationBarsPadding().padding(start = 9.dp, end = 9.dp, top = 43.dp, bottom = 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            ZarCard(Modifier.fillMaxWidth(), contentPadding = PaddingValues(horizontal = 20.dp, vertical = 6.dp)) {
+            ZarCard(Modifier.fillMaxWidth().riseIn(0, play), contentPadding = PaddingValues(horizontal = 20.dp, vertical = 6.dp)) {
                 uiState.email?.let { email ->
                     SettingsRow(stringResource(R.string.settings_signed_in_as), email, Modifier.testTag("settings-email"))
                     ZarDivider()
@@ -142,7 +145,7 @@ internal fun SettingsContent(
                     onClick = { showAppearance = true },
                 )
             }
-            ZarCard(Modifier.fillMaxWidth(), contentPadding = PaddingValues(horizontal = 20.dp, vertical = 14.dp)) {
+            ZarCard(Modifier.fillMaxWidth().riseIn(1, play), contentPadding = PaddingValues(horizontal = 20.dp, vertical = 14.dp)) {
                 Text(
                     stringResource(R.string.settings_on_this_phone),
                     style = ZarType.labelAction,

@@ -1,5 +1,7 @@
 package com.example.zar.features.settings.presentation.screen
 
+import com.example.zar.core.presentation.motion.rememberRiseInOnFirstVisit
+import com.example.zar.core.presentation.motion.riseIn
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import androidx.compose.foundation.background
@@ -63,6 +65,8 @@ fun MoreScreen(
         heroUnderStatusBar = true,
     ) { padding ->
         val scrollState = rememberScrollState()
+        // The cards rise in one after another on the first visit; switching back to this tab shows them in place.
+        val play = rememberRiseInOnFirstVisit(loaded = true)
         Column(
             Modifier.fillMaxSize()
                 .background(ZarTheme.colors.canvas)
@@ -77,7 +81,7 @@ fun MoreScreen(
                 moreRows(
                     onOpenAccounts, onOpenIncome, onOpenFreelance, onOpenCrypto,
                     onOpenCapture, onOpenBills, onOpenRules, onOpenReminder, onOpenSettings, onOpenExport,
-                ).forEach { row -> MoreOption(row) }
+                ).forEachIndexed { index, row -> MoreOption(row, Modifier.riseIn(index, play)) }
             }
         }
     }
@@ -142,10 +146,10 @@ internal fun moreRows(
 )
 
 @Composable
-private fun MoreOption(row: MoreRow) {
+private fun MoreOption(row: MoreRow, modifier: Modifier = Modifier) {
     val colors = ZarTheme.colors
     ZarCard(
-        modifier = Modifier.fillMaxWidth().testTag(row.tag),
+        modifier = modifier.fillMaxWidth().testTag(row.tag),
         onClick = row.onClick,
         contentPadding = PaddingValues(start = 16.dp, end = 18.dp, top = 16.dp, bottom = 16.dp),
     ) {

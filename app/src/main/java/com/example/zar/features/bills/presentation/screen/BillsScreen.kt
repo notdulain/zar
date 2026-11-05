@@ -1,5 +1,7 @@
 package com.example.zar.features.bills.presentation.screen
 
+import com.example.zar.core.presentation.motion.rememberRiseInOnFirstVisit
+import com.example.zar.core.presentation.motion.riseIn
 import com.example.zar.core.presentation.motion.ZarMotion
 import com.example.zar.core.presentation.motion.LocalZarMotion
 import com.example.zar.core.presentation.components.heroParallax
@@ -285,6 +287,9 @@ private fun Sections(
     suggestions: @Composable () -> Unit,
 ) {
     val colors = ZarTheme.colors
+    // Each section's card rises in, one after another, on the first visit only.
+    val play = rememberRiseInOnFirstVisit(loaded = true)
+    var order = 0
     Column(modifier.padding(top = 18.dp)) {
         if (list.needsLook.isNotEmpty()) {
             BillSectionHeader(
@@ -293,18 +298,18 @@ private fun Sections(
                 action = if (list.paidThisMonth.isNotEmpty()) stringResource(R.string.bills_jump_paid) else null,
                 onAction = onJumpToPaid,
             )
-            BillRows(list.needsLook, Modifier.padding(top = 9.dp).testTag("bills-needs-look")) { item -> NeedsLookRow(item, onOpenBill, onOpenDueDate) }
+            BillRows(list.needsLook, Modifier.padding(top = 9.dp).riseIn(order++, play).testTag("bills-needs-look")) { item -> NeedsLookRow(item, onOpenBill, onOpenDueDate) }
             Gap()
         }
         suggestions()
         if (list.thisWeek.isNotEmpty()) {
             BillSectionHeader(stringResource(R.string.bills_section_this_week), value = BillFormat.totals(list.thisWeekTotal))
-            BillRows(list.thisWeek, Modifier.padding(top = 9.dp).testTag("bills-this-week")) { DueBillRow(it, accountNames, onOpenBill) }
+            BillRows(list.thisWeek, Modifier.padding(top = 9.dp).riseIn(order++, play).testTag("bills-this-week")) { DueBillRow(it, accountNames, onOpenBill) }
             Gap()
         }
         if (list.later.isNotEmpty()) {
             BillSectionHeader(stringResource(R.string.bills_section_later))
-            BillRows(list.later, Modifier.padding(top = 9.dp).testTag("bills-later")) { DueBillRow(it, accountNames, onOpenBill) }
+            BillRows(list.later, Modifier.padding(top = 9.dp).riseIn(order++, play).testTag("bills-later")) { DueBillRow(it, accountNames, onOpenBill) }
             Gap()
         }
         if (list.paidThisMonth.isNotEmpty()) {
@@ -312,7 +317,7 @@ private fun Sections(
                 stringResource(R.string.bills_section_paid),
                 Modifier.onGloballyPositioned { onPaidPlaced(it.positionInParent().y.toInt()) },
             )
-            BillRows(list.paidThisMonth, Modifier.padding(top = 9.dp).testTag("bills-paid")) { row ->
+            BillRows(list.paidThisMonth, Modifier.padding(top = 9.dp).riseIn(order++, play).testTag("bills-paid")) { row ->
                 val bill = row.summary.bill
                 BillRow(
                     icon = BillFormat.icon(bill.name),
@@ -327,7 +332,7 @@ private fun Sections(
         }
         if (list.otherRunning.isNotEmpty()) {
             BillSectionHeader(stringResource(R.string.bills_section_running))
-            BillRows(list.otherRunning, Modifier.padding(top = 9.dp).testTag("bills-other-running")) { summary ->
+            BillRows(list.otherRunning, Modifier.padding(top = 9.dp).riseIn(order++, play).testTag("bills-other-running")) { summary ->
                 val next = summary.next
                 val cancellation = summary.bill.cancellation
                 BillRow(
