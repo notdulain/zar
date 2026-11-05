@@ -25,7 +25,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.CornerRadius
@@ -210,7 +209,7 @@ private fun NavRow(
 }
 
 /**
- * One tab. Nothing here depends on [isSelected] except the semantics: weight, height, spacing, label style and clip
+ * One tab. Nothing here depends on [isSelected] except the semantics: weight, height, spacing and label style
  * are identical for every tab in every state, so selecting never reflows a neighbour.
  */
 @Composable
@@ -226,8 +225,8 @@ private fun NavItem(
     val label = stringResource(destination.label)
     val interactive = if (onClick != null) {
         Modifier
-            .clip(RoundedCornerShape(28.dp))
-            .selectable(selected = isSelected, role = Role.Tab, onClick = onClick)
+            // The moving capsule is the only feedback for a tab: no ripple on press.
+            .selectable(selected = isSelected, interactionSource = null, indication = null, role = Role.Tab, onClick = onClick)
             .semantics { contentDescription = label }
             .testTag("nav-${destination.name.lowercase()}")
     } else {
