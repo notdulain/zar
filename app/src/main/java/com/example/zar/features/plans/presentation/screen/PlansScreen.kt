@@ -356,8 +356,7 @@ internal fun PlansScreenContent(
                 }
                 // The weekly limit's status and coverage notes, once one is set (or when a caller supplies the section).
                 allowanceSection?.invoke()
-                // Only when there are other plans, so an empty wrapper never adds a gap.
-                state.overview?.takeIf { !state.isLoading && !state.loadFailed && it.otherGoals().isNotEmpty() }?.let { overview ->
+                state.overview?.takeIf { !state.isLoading && !state.loadFailed }?.let { overview ->
                     val goal = overview.goal
                     val progress = overview.progress
                     if (goal != null && progress != null) {
