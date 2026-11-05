@@ -132,6 +132,7 @@ class AuthViewModelsTest {
         ObserveDisplayPreferencesUseCase(FakeDisplayPreferences()),
         SetAppearanceUseCase(FakeDisplayPreferences()),
         SetReduceMotionUseCase(FakeDisplayPreferences()),
+        SendPasswordResetUseCase(repo),
     )
 
     @Test
