@@ -536,7 +536,9 @@ private fun SpendingDonutChart(overview: HomeOverview, modifier: Modifier = Modi
                 val topLeft = Offset(inset, inset)
                 val arcs = donut.arcFractions
                 if (arcs == null) {
-                    drawArc(freeColor, 0f, 360f, false, topLeft, arcSize, style = Stroke(stroke))
+                    // Overspent: everything received is spent, so the whole ring is the Spent colour.
+                    val ringColor = if (donut.status == DonutStatus.OVERSPENT && donut.spent.amount.minorUnits > 0L) spentColor else freeColor
+                    drawArc(ringColor, 0f, 360f, false, topLeft, arcSize, style = Stroke(stroke))
                 } else {
                     val shown = arcs.filter { it > 0f }
                     val gap = if (shown.size > 1) 3f else 0f
