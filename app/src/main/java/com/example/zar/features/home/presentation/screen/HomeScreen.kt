@@ -391,14 +391,18 @@ private fun ReceivedHero(
                 Spacer(Modifier.height(8.dp))
                 Box(Modifier.collapseLine(spec, statusLine)) { HeroStatus(overview) }
             }
-            Spacer(Modifier.weight(1f))
-            Column(Modifier.collapseShift(spec, HomeCollapse.CHART_RATE).collapseChartFade(spec)) {
-                val chartModifier = Modifier.fillMaxWidth().height(165.dp).padding(horizontal = 18.dp)
-                when {
-                    AmountMask.isHidden -> HiddenChart(chartModifier)
-                    chartMode == 0 -> ReceivedBarChart(overview, chartModifier)
-                    chartMode == 1 -> SpendingDonutChart(overview, chartModifier)
-                    else -> ReceivedLineChart(overview, chartModifier)
+            Column(Modifier.weight(1f).collapseShift(spec, HomeCollapse.CHART_RATE).collapseChartFade(spec)) {
+                // The bar and line charts sit on their axis. The donut is centred between the status line and its axis
+                // so the space above and below it matches.
+                val donut = chartMode == 1 && !AmountMask.isHidden
+                Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = if (donut) Alignment.Center else Alignment.BottomCenter) {
+                    val chartModifier = Modifier.fillMaxWidth().height(if (donut) 150.dp else 165.dp).padding(horizontal = 18.dp)
+                    when {
+                        AmountMask.isHidden -> HiddenChart(chartModifier)
+                        chartMode == 0 -> ReceivedBarChart(overview, chartModifier)
+                        chartMode == 1 -> SpendingDonutChart(overview, chartModifier)
+                        else -> ReceivedLineChart(overview, chartModifier)
+                    }
                 }
                 Spacer(Modifier.height(7.dp))
                 if (chartMode == 2 && overview.receivedByMonth.isNotEmpty()) {
@@ -561,14 +565,6 @@ private fun SpendingDonutChart(overview: HomeOverview, modifier: Modifier = Modi
             DonutLegendRow(spentColor, stringResource(R.string.home_donut_spent), spentText)
             DonutLegendRow(planColor, stringResource(R.string.home_donut_plans), plansText)
             DonutLegendRow(freeColor, stringResource(R.string.home_donut_free), freeText)
-            if (status != null) {
-                Text(
-                    status,
-                    style = ZarType.bodyCaption,
-                    color = colors.textOnInverse.copy(alpha = 0.75f),
-                    modifier = Modifier.testTag("donut-status"),
-                )
-            }
         }
     }
 }
