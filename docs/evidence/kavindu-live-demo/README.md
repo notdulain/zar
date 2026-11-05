@@ -9,5 +9,9 @@ Captured on 5 November 2026 from the running Zar debug APK on the separate `Kavi
 | [Crypto](crypto-profit-loss.png) | Two realized sales with net LKR 5,000 gain: Q1 ETH gain of LKR 55,000 and Q3 BNB loss of LKR 50,000; 200 USDT remain. Transfers are not counted as income. |
 | [Freelance](freelance-milestones.png) | LKR 105,000 clients owe, including LKR 45,000 overdue; one LKR 45,000 milestone is matched to a received payment. |
 | [Bills](bills-review.png) | Rent, gym, and Dialog Fibre schedules. The existing October expenses have not been linked to bill instances, so the screen truthfully asks for review; Netflix is suggested as a subscription. |
+| [Home donut, October](home-october-donut.png) | Ring drawn from the recorded amounts (50% still free) even though one USD receipt has no LKR rate. |
+| [Activity, October](activity-october.png) | Received/Spent split follows 190,037 : 94,332 with no seam. |
+| [Home donut, November](home-november-donut.png) | Spending (LKR 45,619) is above income (LKR 36,970), so the ring is fully Spent and reads Over. |
+| [Activity, November](activity-november.png) | Eight entries from 1 to 5 November, split 36,970 : 45,619. |
 
-The current month at capture time was November 2026. Its Home received figure is correctly zero because the 25 November salary has not happened. Select October 2026 in Home for the full scenario walkthrough. These are real app screenshots using synthetic financial data, not Figma images or generated mockups. The sign-in password is stored only in a local ignored file and is not in this directory.
+The current month at capture time was November 2026. Its Home received figure is correctly zero because the 25 November salary has not happened. The November entries come from `KavinduDemoNovemberSeed` (dated 1 to 5 November, none in the future). Select October 2026 in Home for the full scenario walkthrough. These are real app screenshots using synthetic financial data, not Figma images or generated mockups. The sign-in password is stored only in a local ignored file and is not in this directory.

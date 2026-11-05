@@ -13,6 +13,8 @@ The fixture accepts `-e live true` only for this email address. It checks for ex
 
 On 5 November 2026, the fixture passed against live `zar-app-35602` after the supplied Android configuration was installed. A fresh sign-in in the normal app loaded Home, Plans, Crypto, Freelance, and Bills. The [running-app screenshots](evidence/kavindu-live-demo/README.md) record the observations and their limits.
 
+`KavinduDemoNovemberSeed` adds the first five days of November (two receipts, six expenses) so the current month is not empty. Run it once after `KavinduDemoSeed`, with the same `-e live true`, email and password arguments; it refuses to run twice.
+
 ## What the records show
 
 | Assignment situation | Demo data |
