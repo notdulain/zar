@@ -19,6 +19,7 @@ import com.example.zar.core.domain.model.OpeningBalance
 import com.example.zar.core.domain.model.money.Currencies
 import com.example.zar.core.domain.model.money.FiatMoney
 import com.example.zar.core.presentation.theme.ZarTheme
+import com.example.zar.features.rates.domain.RateEntry
 import com.example.zar.features.transactions.domain.income.model.IncomeCategory
 import com.example.zar.features.transactions.presentation.income.screen.IncomeFormActions
 import com.example.zar.features.transactions.presentation.income.screen.IncomeFormContent
@@ -76,7 +77,7 @@ class FinalFigmaAlignmentUiTest {
     }
 
     @Test fun editModeKeepsUndoAndSaveAndTheEditedAccountCurrency() {
-        form(IncomeFormUiState(isLoading = false, isEditing = true, accounts = listOf(cash, usd), accountId = usd.id, lockedCurrency = Currencies.USD, amount = "100", rate = "300"))
+        form(IncomeFormUiState(isLoading = false, isEditing = true, accounts = listOf(cash, usd), accountId = usd.id, lockedCurrency = Currencies.USD, amount = "100", rateEntry = RateEntry(text = "300")))
         compose.onNodeWithTag("income-undo").assertExists()
         compose.onNodeWithTag("income-save").assertExists()
         compose.onNodeWithTag("income-rate").assertExists()

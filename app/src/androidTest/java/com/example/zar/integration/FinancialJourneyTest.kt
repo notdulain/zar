@@ -21,6 +21,10 @@ import com.example.zar.features.quicknote.domain.repository.QuickNoteDraftReposi
 import com.example.zar.features.quicknote.domain.usecase.GenerateQuickNoteDraftUseCase
 import com.example.zar.features.quicknote.presentation.screen.*
 import com.example.zar.features.quicknote.presentation.viewmodel.*
+import com.example.zar.features.rates.domain.ExchangeRateRepository
+import com.example.zar.features.rates.domain.FetchTodaysRateUseCase
+import com.example.zar.features.rates.domain.RateFetchError
+import com.example.zar.features.rates.domain.RateQuote
 import com.example.zar.features.rules.data.FirestoreCategoryRuleRepository
 import com.example.zar.features.rules.data.InMemoryRuleOfferInbox
 import com.example.zar.features.rules.domain.usecase.ObserveCategoryRulesUseCase
@@ -84,8 +88,13 @@ class FinancialJourneyTest {
         SavedStateHandle(mapOf("prefillTitle" to note)), ObserveActiveAccountsUseCase(h.accounts),
         ObserveEntrySuggestionsUseCase(h.ledger, categories), network,
         RecordExpenseUseCase(h.saveTransaction), RecordTransferUseCase(h.saveTransfer), rules, inbox,
-        categories, CreateExpenseCategoryUseCase(h.categories),
+        categories, CreateExpenseCategoryUseCase(h.categories), FetchTodaysRateUseCase(NoRates),
     ))
+
+    /** These journeys never ask for today's rate; if one did, it would behave as an offline phone. */
+    private object NoRates : ExchangeRateRepository {
+        override suspend fun todaysRate(base: Currency, quote: Currency): Result<RateQuote> = Result.failure(RateFetchError.Offline())
+    }
 
     private fun showDetail(id: String) {
         main {

@@ -290,7 +290,7 @@ Messages that are not read as transactions:
 - **Sharing is manual.** The user has to share each message. Zar cannot tell the difference between a quiet week and a missed message, so Capture sources shows the last capture time and never says "all caught up".
 - **Automatic capture** needs the SMS permission and only sees new messages, never the inbox. It is off by default. Google Play restricts the SMS permission, so treat it as a demo feature. Saving a structured draft requires a connection. Staged text older than 7 days is deleted on a background pass with a notice if it has not become a draft; already-created drafts are not deleted by this rule.
 - **Drafts are reviewed in Capture sources.** They do not appear in the Needs review list.
-- **Rates are typed by the user.** There is no live exchange-rate service, so income in USD stays "missing rate" until a rate is entered.
+- **Rates are typed by the user.** There is no live exchange-rate service, so income in USD stays "missing rate" until a rate is entered. *Update (issue #46, 4 Nov 2026): the income and expense forms can now fill in today's rate. This report describes the state when it was written; see [exchange-rates.md](../exchange-rates.md).*
 - **Reminders** run from a daily background job and need the notification permission. The exact minute is not guaranteed. If notifications are refused, no reminder is shown and the screen says so.
 - **Subscription suggestions** appear only after two expenses with the same merchant, account, currency and exact amount, 25 to 35 days apart. Anything else is not suggested.
 - **Test gaps** (from L10): one flaky capture UI test that passed on re-run, one lint error already on `main` in `PlansHero.kt`, no dark-mode or TalkBack pass, and no run against live Firebase (emulators only).
@@ -303,5 +303,5 @@ Messages that are not read as transactions:
 - Show captured drafts in the Needs review list as well.
 - Clean merchant names (country codes, terminal IDs).
 - Add a notification-listener route only if Google Play policy and the team agree it is worth the special access.
-- Add an optional exchange-rate source that fills the rate field and still saves the rate used with each record.
+- Add an optional exchange-rate source that fills the rate field and still saves the rate used with each record. *Done in issue #46, see [exchange-rates.md](../exchange-rates.md).*
 - Add UI tests for the freelance, crypto and reminder screens, which have unit tests only.

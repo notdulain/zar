@@ -9,7 +9,11 @@ import com.example.zar.core.domain.model.Transfer
 import com.example.zar.core.domain.model.TransferId
 import com.example.zar.core.domain.model.feeId
 import com.example.zar.core.domain.model.money.Currencies
+import com.example.zar.core.domain.model.money.ExchangeRate
 import com.example.zar.core.domain.model.money.Money
+import com.example.zar.core.domain.model.money.RateSource
+import com.example.zar.core.domain.model.money.ReportingConversion
+import com.example.zar.features.rates.domain.RateText
 import com.example.zar.features.transactions.domain.manual.model.ExpenseDetails
 import com.example.zar.features.transactions.domain.manual.model.ExpenseFormInput
 import com.example.zar.features.transactions.domain.manual.model.ExpenseFormResult
@@ -48,6 +52,13 @@ object ManualEntryRules {
         if (input.category == null) problems += ExpenseProblem.CATEGORY_MISSING
         if (input.date.isAfter(today)) problems += ExpenseProblem.DATE_IN_FUTURE
 
+        // A rate only applies to a foreign account; blank means "unknown" and stays visibly missing.
+        val rate = if (account == null || account.currency == Currencies.REPORTING || input.rate.isBlank()) {
+            null
+        } else {
+            RateText.parse(input.rate) ?: null.also { problems += ExpenseProblem.RATE_INVALID }
+        }
+
         val title = input.title.trim()
         if (title.length > MAX_TITLE) problems += ExpenseProblem.TITLE_TOO_LONG
         val description = input.description.trim()
@@ -66,6 +77,9 @@ object ManualEntryRules {
                 title = title.ifEmpty { null },
                 description = description.ifEmpty { null },
                 time = input.time,
+                rateToReporting = rate,
+                rateSource = if (rate != null) input.rateSource else RateSource.MANUAL,
+                rateAsOf = if (rate != null && input.rateSource == RateSource.PROVIDER) input.rateAsOf else null,
             ),
         )
     }
@@ -123,8 +137,9 @@ object ManualEntryRules {
     }
 
     /**
-     * The LKR value is fixed at save time. LKR amounts convert to themselves; any other currency is
-     * saved with a missing rate so totals report it as unresolved instead of guessing.
+     * The LKR value is fixed at save time. LKR amounts convert to themselves. Another currency is converted with the
+     * rate the form gave (a typed rate is dated by [createdAt]; the provider's rate keeps the time it was published),
+     * and without a rate it is saved as missing so totals report it as unresolved instead of guessing.
      */
     fun newExpense(id: TransactionId, details: ExpenseDetails, createdAt: Instant): Transaction = Transaction(
         id = id,
@@ -132,7 +147,7 @@ object ManualEntryRules {
         type = TransactionType.EXPENSE,
         amount = details.amount,
         date = details.date,
-        reportingConversion = CurrencyConverter.toReporting(details.amount, null),
+        reportingConversion = expenseConversion(details, createdAt),
         spendingClass = details.spendingClass,
         categoryId = details.category.id,
         merchant = details.title,
@@ -142,6 +157,14 @@ object ManualEntryRules {
         appliedRuleId = details.appliedRuleId,
         appliedRuleVersion = details.appliedRuleVersion,
     )
+
+    private fun expenseConversion(details: ExpenseDetails, savedAt: Instant): ReportingConversion {
+        val currency = details.amount.currency
+        val rate = details.rateToReporting
+            ?.takeIf { currency != Currencies.REPORTING }
+            ?.let { ExchangeRate(currency, Currencies.REPORTING, it, details.rateAsOf ?: savedAt, details.rateSource) }
+        return CurrencyConverter.toReporting(details.amount, rate)
+    }
 
     fun newTransfer(id: TransferId, details: TransferDetails, createdAt: Instant): Transfer {
         val conversion = CurrencyConverter.toReporting(details.amount, null)
