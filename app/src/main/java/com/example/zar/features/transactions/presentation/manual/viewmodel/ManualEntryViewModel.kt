@@ -577,7 +577,8 @@ class ManualEntryViewModel @Inject constructor(
     private fun ManualEntryUiState.withRule(): ManualEntryUiState {
         if (kind != ManualEntryKind.EXPENSE || categoryChosen) return this
         val rule = (CategoryRuleMatcher.match(rules, title, accountId) as? RuleMatch.Applied)?.rule
-        val filed = rule?.let { categoryCatalog.find(it.categoryId) }
+        // A removed category still resolves for old entries, but a rule must not file a new one under it.
+        val filed = rule?.let { categoryCatalog.find(it.categoryId) }?.takeIf { it in categoryCatalog.choices }
             ?: return if (appliedRule != null) copy(category = null, appliedRule = null) else this
         val usual = filed.usualClass
         return copy(

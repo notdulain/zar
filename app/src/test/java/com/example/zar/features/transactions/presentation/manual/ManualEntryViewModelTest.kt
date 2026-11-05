@@ -991,6 +991,19 @@ class ManualEntryViewModelTest {
     }
 
     @Test
+    fun aRuleNeverFilesAnExpenseUnderARemovedCategory() {
+        rules.rules.value = listOf(rule("Keells Super", category = "groceries"))
+        val vm = viewModel()
+        vm.onDeleteCategoryStart(ExpenseCategory.GROCERIES)
+        vm.onDeleteCategoryConfirm()
+
+        vm.onTitleChange("Keells Super")
+
+        assertNull(vm.uiState.value.category)
+        assertNull(vm.uiState.value.appliedRule)
+    }
+
+    @Test
     fun theLastRemainingCategoryCannotBeRemoved() {
         val vm = viewModel()
         ExpenseCategory.entries.dropLast(1).forEach {
