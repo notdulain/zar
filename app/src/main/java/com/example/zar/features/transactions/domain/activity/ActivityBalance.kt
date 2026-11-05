@@ -6,9 +6,12 @@ import java.math.RoundingMode
 
 /** The teal share of Activity's Received/Spent surface, using the same filtered totals as its labels. */
 object ActivityBalance {
-    /** No proportion is claimed for missing conversions, loading, or a selection with no money. */
+    /**
+     * Share of the recorded money that was received. Records without a known LKR rate are left out of both totals, as
+     * the screen's own note says, so the split still follows the figures shown. Null while loading or with no money.
+     */
     fun receivedFraction(summary: PeriodSummary?): Float? {
-        if (summary == null || !summary.received.isComplete || !summary.spent.total.isComplete) return null
+        if (summary == null) return null
         val received = summary.received.amount.toDecimal().max(BigDecimal.ZERO)
         val spent = summary.spent.total.amount.toDecimal().max(BigDecimal.ZERO)
         val total = received + spent

@@ -39,9 +39,21 @@ data class HomeDonut(
     val stillFreeMinor: Long
         get() = received.amount.minorUnits - spent.amount.minorUnits - (forPlans?.amount?.minorUnits ?: 0L)
 
+    /**
+     * Whether the ring can be drawn from the recorded amounts. Unresolved rates still draw it, because the figures
+     * shown beside it are the same recorded amounts and the screen flags the gap; it needs positive income that
+     * spending has not passed.
+     */
+    private val canDraw: Boolean
+        get() = when (status) {
+            DonutStatus.COMPLETE, DonutStatus.PLANS_UNAVAILABLE -> true
+            DonutStatus.UNRESOLVED_RATES -> received.amount.minorUnits > 0L && stillFreeMinor >= 0L
+            DonutStatus.OVERSPENT, DonutStatus.NO_INCOME -> false
+        }
+
     /** Whole-number Still free percentage of Received, or null when it would mislead. */
     val stillFreePercent: Int?
-        get() = if (status == DonutStatus.COMPLETE || status == DonutStatus.PLANS_UNAVAILABLE) {
+        get() = if (canDraw) {
             Math.round(stillFreeMinor.toDouble() / received.amount.minorUnits * 100.0).toInt().coerceIn(0, 100)
         } else {
             null
@@ -50,7 +62,7 @@ data class HomeDonut(
     /** Ring shares of Received as fractions in 0..1 for Spent, For plans and Still free; null when no ring should be drawn. */
     val arcFractions: List<Float>?
         get() {
-            if (status != DonutStatus.COMPLETE && status != DonutStatus.PLANS_UNAVAILABLE) return null
+            if (!canDraw) return null
             val total = received.amount.minorUnits.toDouble()
             val spentShare = (spent.amount.minorUnits / total).toFloat()
             val plansShare = ((forPlans?.amount?.minorUnits ?: 0L) / total).toFloat()

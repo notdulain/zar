@@ -419,18 +419,22 @@ private fun ReceivedHero(
                 Spacer(Modifier.height(8.dp))
                 Box(Modifier.collapseLine(spec, statusLine)) { HeroStatus(overview) }
             }
-            Spacer(Modifier.weight(1f))
-            Column(Modifier.collapseShift(spec, HomeCollapse.CHART_RATE).collapseChartFade(spec)) {
-                val chartModifier = Modifier.fillMaxWidth().height(165.dp).padding(horizontal = 18.dp)
-                Crossfade(
-                    targetState = overview,
-                    animationSpec = LocalZarMotion.current.fade(180), label = "received-month-chart",
-                ) { chartOverview ->
-                    when {
-                        AmountMask.isHidden -> HiddenChart(chartModifier)
-                        chartMode == 0 -> ReceivedBarChart(chartOverview, chartModifier)
-                        chartMode == 1 -> SpendingDonutChart(chartOverview, chartModifier)
-                        else -> ReceivedLineChart(chartOverview, chartModifier)
+            Column(Modifier.weight(1f).collapseShift(spec, HomeCollapse.CHART_RATE).collapseChartFade(spec)) {
+                // The bar and line charts sit on their axis. The donut is centred between the status line and its axis
+                // so the space above and below it matches.
+                val donut = chartMode == 1 && !AmountMask.isHidden
+                Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = if (donut) Alignment.Center else Alignment.BottomCenter) {
+                    val chartModifier = Modifier.fillMaxWidth().height(if (donut) 150.dp else 165.dp).padding(horizontal = 18.dp)
+                    Crossfade(
+                        targetState = overview,
+                        animationSpec = LocalZarMotion.current.fade(180), label = "received-month-chart",
+                    ) { chartOverview ->
+                        when {
+                            AmountMask.isHidden -> HiddenChart(chartModifier)
+                            chartMode == 0 -> ReceivedBarChart(chartOverview, chartModifier)
+                            chartMode == 1 -> SpendingDonutChart(chartOverview, chartModifier)
+                            else -> ReceivedLineChart(chartOverview, chartModifier)
+                        }
                     }
                 }
                 Spacer(Modifier.height(7.dp))
@@ -576,7 +580,9 @@ private fun SpendingDonutChart(overview: HomeOverview, modifier: Modifier = Modi
                 val topLeft = Offset(inset, inset)
                 val arcs = donut.arcFractions
                 if (arcs == null) {
-                    drawArc(freeColor, 0f, 360f, false, topLeft, arcSize, style = Stroke(stroke))
+                    // Overspent: everything received is spent, so the whole ring is the Spent colour.
+                    val ringColor = if (donut.status == DonutStatus.OVERSPENT && donut.spent.amount.minorUnits > 0L) spentColor else freeColor
+                    drawArc(ringColor, 0f, 360f, false, topLeft, arcSize, style = Stroke(stroke))
                 } else {
                     val shown = arcs.filter { it > 0f }
                     val gap = if (shown.size > 1) 3f else 0f
@@ -605,14 +611,6 @@ private fun SpendingDonutChart(overview: HomeOverview, modifier: Modifier = Modi
             DonutLegendRow(spentColor, stringResource(R.string.home_donut_spent), spentText)
             DonutLegendRow(planColor, stringResource(R.string.home_donut_plans), plansText)
             DonutLegendRow(freeColor, stringResource(R.string.home_donut_free), freeText)
-            if (status != null) {
-                Text(
-                    status,
-                    style = ZarType.bodyCaption,
-                    color = colors.textOnInverse.copy(alpha = 0.75f),
-                    modifier = Modifier.testTag("donut-status"),
-                )
-            }
         }
     }
 }

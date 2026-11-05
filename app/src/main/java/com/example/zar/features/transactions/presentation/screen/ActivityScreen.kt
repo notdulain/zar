@@ -139,6 +139,7 @@ import java.time.YearMonth
 import java.time.ZoneOffset
 import java.time.format.TextStyle
 import java.util.Locale
+import kotlin.math.roundToInt
 
 /**
  * Activity: every recorded entry for a month or a chosen range, filterable by account and date, with
@@ -425,10 +426,11 @@ private fun ActivityHero(
             .collapseMeasure(collapse)
             .testTag("activity-hero")
             .drawBehind {
-                val split = size.width * tealShare
+                // Spent fills the whole width and Received is painted over its share, so the two meet with no seam.
+                val split = (size.width * tealShare).roundToInt().toFloat()
                 val reach = 4000f
-                drawRect(if (receivedFraction == null) neutral else ReceivedStops.first().second, Offset(0f, -reach), Size(split, reach))
-                drawRect(if (receivedFraction == null) neutral else SpentStops.first().second, Offset(split, -reach), Size(size.width - split, reach))
+                drawRect(if (receivedFraction == null) neutral else SpentStops.first().second, Offset(0f, -reach), Size(size.width, reach))
+                if (receivedFraction != null && split > 0f) drawRect(ReceivedStops.first().second, Offset(0f, -reach), Size(split, reach))
             },
     ) {
         // The card collapses like Home's (see HomeCollapse): the gradient drifts at 0.35 of the scroll under a darkening
@@ -442,14 +444,11 @@ private fun ActivityHero(
                         if (receivedFraction == null) {
                             drawRect(neutral)
                         } else {
-                            val split = size.width * tealShare
+                            val split = (size.width * tealShare).roundToInt().toFloat()
+                            drawRect(Brush.verticalGradient(colorStops = SpentStops, endY = size.height * SpentSpan))
                             if (split > 0f) drawRect(
                                 Brush.verticalGradient(colorStops = ReceivedStops, endY = size.height * ReceivedSpan),
                                 size = Size(split, size.height),
-                            )
-                            if (split < size.width) drawRect(
-                                Brush.verticalGradient(colorStops = SpentStops, endY = size.height * SpentSpan),
-                                topLeft = Offset(split, 0f), size = Size(size.width - split, size.height),
                             )
                         }
                     },

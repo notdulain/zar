@@ -28,7 +28,10 @@ import com.example.zar.features.plans.domain.model.SavingsGoal
 import com.google.firebase.FirebaseApp
 import com.google.firebase.FirebaseOptions
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseAuthUserCollisionException
+import com.google.firebase.auth.UserProfileChangeRequest
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.Source
 import java.time.Instant
 import java.time.LocalDate
 import kotlinx.coroutines.runBlocking
@@ -37,9 +40,10 @@ import org.junit.Assume.assumeTrue
 import org.junit.Test
 
 /**
- * Not a test: loads Kavindu Silva's October 2026 (the assignment scenario) into the app's account on the local
- * Firebase emulators, through the production repositories and use cases, for the demo and report screenshots.
- * It only runs on an emulator build and when asked for by name with `-e email` and `-e password`:
+ * Not a test: loads Kavindu Silva's October 2026 assignment scenario through production repositories and use cases.
+ * Local Firebase emulators are the default. A live demo requires an explicit `-e live true`, a normal debug build,
+ * and the dedicated synthetic account below. Do not run against a personal account.
+ * It runs only when asked for by name with `-e email` and `-e password`:
  *
  *   adb shell am instrument -w -e class com.example.zar.demo.KavinduDemoSeed -e email … -e password … \
  *     com.example.zar.test/androidx.test.runner.AndroidJUnitRunner
@@ -56,17 +60,28 @@ class KavinduDemoSeed {
         val args = InstrumentationRegistry.getArguments()
         val email = args.getString("email")
         val password = args.getString("password")
-        assumeTrue("emulator build only", BuildConfig.USE_FIREBASE_EMULATORS)
+        val live = args.getString("live") == "true"
+        assumeTrue("Select the matching Firebase build", BuildConfig.USE_FIREBASE_EMULATORS != live)
         assumeTrue("pass -e email and -e password", email != null && password != null)
+        if (live) require(email == "kavindu.silva.demo@example.com") { "Live seeding is restricted to the demo account" }
 
-        // A client of our own, pointed at the emulators before first use, with the app's real project id so the
-        // app sees the data. It can never reach the live project.
+        // A separate client uses the app's Firebase project. It targets the emulators by default; live access
+        // requires the explicit guard above. The signed-in user's own Firestore rules still apply.
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val app = FirebaseApp.initializeApp(context, FirebaseOptions.fromResource(context)!!, "kavindu-seed-${System.nanoTime()}")
-        val auth = FirebaseAuth.getInstance(app).also { it.useEmulator(BuildConfig.EMULATOR_HOST, 9099) }
-        val db = FirebaseFirestore.getInstance(app).also { it.useEmulator(BuildConfig.EMULATOR_HOST, 8080) }
-        runCatching { auth.signInWithEmailAndPassword(email!!, password!!).await() }
-            .getOrElse { auth.createUserWithEmailAndPassword(email!!, password!!).await() }
+        val auth = FirebaseAuth.getInstance(app).also { if (!live) it.useEmulator(BuildConfig.EMULATOR_HOST, 9099) }
+        val db = FirebaseFirestore.getInstance(app).also { if (!live) it.useEmulator(BuildConfig.EMULATOR_HOST, 8080) }
+        try {
+            auth.createUserWithEmailAndPassword(email!!, password!!).await()
+        } catch (e: FirebaseAuthUserCollisionException) {
+            auth.signInWithEmailAndPassword(email!!, password!!).await()
+        }
+        auth.currentUser!!.updateProfile(UserProfileChangeRequest.Builder().setDisplayName("Kavindu Silva").build()).await()
+        if (live) {
+            val uid = auth.currentUser!!.uid
+            require(!db.collection("users").document(uid).collection("transactions")
+                .document("in-salary-oct").get(Source.SERVER).await().exists()) { "Demo account was already seeded" }
+        }
 
         val session = FirebaseUserSessionProvider(auth)
         val accounts = FirestoreAccountRepository(db, session)
@@ -79,12 +94,19 @@ class KavinduDemoSeed {
         fun account(id: String, name: String, type: AccountType, currency: Currency, opening: Money) =
             Account(AccountId(id), name, type, currency, OpeningBalance.Known(opening), LocalDate.of(2026, 9, 30))
         val combank = account("combank", "Commercial Bank", AccountType.BANK, Currencies.LKR, lkr(42_000))
-        val sampath = account("sampath", "Sampath Savings", AccountType.BANK, Currencies.LKR, lkr(11_200))
+        // After the LKR 6,500 gym debit, this account holds Kavindu's stated LKR 11,200 savings.
+        val sampath = account("sampath", "Sampath Savings", AccountType.BANK, Currencies.LKR, lkr(17_700))
         val cash = account("cash", "Cash", AccountType.CASH, Currencies.LKR, lkr(3_000))
         val payoneer = account("payoneer", "Payoneer USD", AccountType.FREELANCE, Currencies.USD, usd(0))
+        val tradingBank = Account(AccountId("trading-bank"), "Trading Bank", AccountType.BANK, Currencies.LKR,
+            OpeningBalance.Known(lkr(200_000)), LocalDate.of(2026, 1, 1))
         val binance = Account(AccountId("binance-usdt"), "Binance USDT", AccountType.CRYPTO, Currencies.USDT,
             OpeningBalance.Known(CryptoAmount.zero(Currencies.USDT)), LocalDate.of(2026, 9, 30))
-        listOf(combank, sampath, cash, payoneer, binance).forEach { accounts.saveAccount(it) }
+        val eth = Account(AccountId("binance-eth"), "Binance ETH", AccountType.CRYPTO, Currencies.ETH,
+            OpeningBalance.Known(CryptoAmount.zero(Currencies.ETH)), LocalDate.of(2026, 1, 1))
+        val bnb = Account(AccountId("binance-bnb"), "Binance BNB", AccountType.CRYPTO, Currencies.BNB,
+            OpeningBalance.Known(CryptoAmount.zero(Currencies.BNB)), LocalDate.of(2026, 1, 1))
+        listOf(combank, sampath, cash, payoneer, tradingBank, binance, eth, bnb).forEach { accounts.saveAccount(it) }
 
         // --- Received in October: four channels, two currencies ------------------------------------
         suspend fun income(id: String, acc: Account, amount: Money, day: Int, from: String, category: String, rate: String? = null) {
@@ -134,8 +156,18 @@ class KavinduDemoSeed {
         // --- Crypto: LKR into USDT on Binance (a transfer, never income or spending) ----------------
         val buy = CryptoMovementRules.newTransfer(TransferId("tr-usdt-buy"),
             CryptoMovement(CryptoMovementRules.kindOf(combank, binance)!!, combank, binance, lkr(60_000),
-                CryptoAmount.of("200".toBigDecimal(), Currencies.USDT), null, oct(5), null), at())
+                CryptoAmount.of("200".toBigDecimal(), Currencies.USDT), null, oct(26), null), at())
         transfer(buy, combank, binance).getOrThrow()
+        suspend fun cryptoMove(id: String, from: Account, to: Account, sent: Money, received: Money, date: LocalDate) {
+            val movement = CryptoMovement(CryptoMovementRules.kindOf(from, to)!!, from, to, sent, received, null, date, null)
+            transfer(CryptoMovementRules.newTransfer(TransferId(id), movement, at()), from, to).getOrThrow()
+        }
+        // Q1 realized gain: LKR 145,000 proceeds on LKR 90,000 ETH cost.
+        cryptoMove("tr-eth-buy-q1", tradingBank, eth, lkr(90_000), CryptoAmount.of("1".toBigDecimal(), Currencies.ETH), LocalDate.of(2026, 1, 10))
+        cryptoMove("tr-eth-sell-q1", eth, tradingBank, CryptoAmount.of("1".toBigDecimal(), Currencies.ETH), lkr(145_000), LocalDate.of(2026, 3, 10))
+        // Q3 realized loss: LKR 60,000 proceeds on LKR 110,000 BNB cost.
+        cryptoMove("tr-bnb-buy-q3", tradingBank, bnb, lkr(110_000), CryptoAmount.of("2".toBigDecimal(), Currencies.BNB), LocalDate.of(2026, 7, 10))
+        cryptoMove("tr-bnb-sell-q3", bnb, tradingBank, CryptoAmount.of("2".toBigDecimal(), Currencies.BNB), lkr(60_000), LocalDate.of(2026, 9, 10))
 
         // --- Bills: rent, the gym on the secondary account, internet -------------------------------
         val bills = FirestoreBillRepository(db, session)
@@ -164,6 +196,21 @@ class KavinduDemoSeed {
         FirestoreAllowanceRepository(db, session).saveSettings(AllowanceSettings(true, lkr(8_000)))
 
         db.waitForPendingWrites().await()
+        if (live) {
+            val uid = auth.currentUser!!.uid
+            val user = db.collection("users").document(uid)
+            for ((collection, id) in listOf(
+                "accounts" to "sampath", "transactions" to "in-salary-oct", "transactions" to "ex-rent",
+                "transactions" to "tr-eth-sell-q1-out", "transactions" to "tr-bnb-sell-q3-out",
+                "expectedPayments" to "m-tea-mvp", "paymentMatches" to "m-bakers-design_in-bakers-design",
+                "projects" to "p-bakers", "bills" to "bill-rent", "allowance" to "weekly",
+                "goals" to MACBOOK_GOAL_ID,
+            )) {
+                require(user.collection(collection).document(id).get(Source.SERVER).await().exists()) {
+                    "Live Firestore did not retain $collection/$id"
+                }
+            }
+        }
         db.terminate().await()
         app.delete()
     }
