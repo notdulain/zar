@@ -24,10 +24,10 @@ class ActivityBalanceTest {
         assertNull(ActivityBalance.receivedFraction(null))
         assertNull(ActivityBalance.receivedFraction(summary(0, 0)))
     }
-    @Test fun missingConversionHasNoClaimedProportion() {
-        assertNull(ActivityBalance.receivedFraction(summary(80, 20, unresolved = 1)))
+    @Test fun missingConversionStillSplitsByTheShownTotals() {
+        assertEquals(0.8f, ActivityBalance.receivedFraction(summary(80, 20, unresolved = 1)))
         val s = summary(80, 20)
-        assertNull(ActivityBalance.receivedFraction(s.copy(spent = s.spent.copy(unknown = ReportingTotal(FiatMoney.zero(Currencies.LKR), 1)))))
+        assertEquals(0.8f, ActivityBalance.receivedFraction(s.copy(spent = s.spent.copy(unknown = ReportingTotal(FiatMoney.zero(Currencies.LKR), 1)))))
     }
     @Test fun largeTotalsDoNotOverflowWhenCombined() = assertEquals(0.5f, ActivityBalance.receivedFraction(summary(Long.MAX_VALUE, Long.MAX_VALUE)))
 }
