@@ -60,6 +60,22 @@ class PlansScreenUiTest {
         screenshot("u05-plans-pace.png")
     }
 
+    @Test fun mainGoalLineSitsCloseUnderTheGoalNameAndChangeKeepsItsTouchTarget() {
+        var changes = 0
+        show(overview(), onEdit = { changes++ })
+        val name = compose.onNodeWithText("MacBook fund").getUnclippedBoundsInRoot()
+        val mainGoal = compose.onNodeWithText("Main goal").getUnclippedBoundsInRoot()
+        assertEquals("no gap between the two lines", 0f, (mainGoal.top - name.bottom).value, 1f)
+        // Shorter than 48dp on screen, still tappable across 48dp.
+        val change = compose.onNodeWithTag("plans-change-main").getUnclippedBoundsInRoot()
+        val height = change.bottom - change.top
+        assertEquals(true, height < 48.dp)
+        val reach = with(compose.density) { ((48.dp - height) / 2 - 2.dp).toPx() }
+        compose.onNodeWithTag("plans-change-main").performTouchInput { click(androidx.compose.ui.geometry.Offset(centerX, -reach)) }
+        compose.waitForIdle()
+        assertEquals(1, changes)
+    }
+
     @Test fun emptyStateCreatesGoal() {
         var edits = 0
         show(PlansOverview(null, emptyList()), onEdit = { edits++ })
