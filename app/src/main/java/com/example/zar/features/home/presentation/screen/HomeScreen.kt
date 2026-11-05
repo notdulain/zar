@@ -938,8 +938,6 @@ private fun GoalCard(
         onClick = onClick,
         contentPadding = androidx.compose.foundation.layout.PaddingValues(19.dp),
     ) {
-        Text(stringResource(R.string.home_goal).uppercase(), style = ZarType.label, color = colors.textTertiary)
-        Spacer(Modifier.height(6.dp))
         when (goal) {
             HomeGoalContent.Loading -> {
                 Text(stringResource(R.string.home_goal_loading), style = ZarType.bodyM, color = colors.textSecondary, modifier = Modifier.testTag("home-goal-loading"))

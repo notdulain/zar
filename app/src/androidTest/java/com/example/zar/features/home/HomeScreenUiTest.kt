@@ -422,6 +422,7 @@ class HomeScreenUiTest {
         compose.onNodeWithTag("home-goal-name", useUnmergedTree = true).performScrollTo().assertTextContains("Japan trip")
         compose.onNodeWithTag("home-goal-amounts", useUnmergedTree = true).assertTextContains("LKR 1,000 backed of LKR 4,000")
         compose.onNodeWithTag("home-goal-detail", useUnmergedTree = true).assertTextContains("25% backed", substring = true)
+        compose.onNodeWithText("GOAL", useUnmergedTree = true).assertDoesNotExist()
         compose.onNodeWithTag("home-goal").performSemanticsAction(SemanticsActions.OnClick)
         assertEquals(GoalId("trip"), opened)
     }
