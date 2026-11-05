@@ -2,7 +2,9 @@ package com.example.zar.features.settings.presentation
 
 import com.example.zar.features.auth.FakeAuthRepository
 import com.example.zar.features.auth.domain.repository.AuthRepository
+import com.example.zar.features.auth.domain.model.AuthError
 import com.example.zar.features.auth.domain.usecase.ObserveSessionUseCase
+import com.example.zar.features.auth.domain.usecase.SendPasswordResetUseCase
 import com.example.zar.features.auth.domain.usecase.SignInUseCase
 import com.example.zar.features.auth.domain.usecase.SignOutUseCase
 import com.example.zar.features.auth.domain.model.SessionState
@@ -13,6 +15,8 @@ import com.example.zar.features.settings.domain.usecase.ObserveAppPreferencesUse
 import com.example.zar.features.settings.domain.usecase.ObserveDisplayPreferencesUseCase
 import com.example.zar.features.settings.domain.usecase.SetAppearanceUseCase
 import com.example.zar.features.settings.domain.usecase.SetReduceMotionUseCase
+import com.example.zar.features.settings.presentation.viewmodel.PasswordResetPhase
+import com.example.zar.features.settings.presentation.viewmodel.PasswordResetUi
 import com.example.zar.features.settings.presentation.viewmodel.SettingsViewModel
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
@@ -40,6 +44,16 @@ class SettingsViewModelTest {
         var unsyncedChecks = 0
         var signOuts = 0
         var gate: CompletableDeferred<Unit>? = null
+        var resetSends = 0
+        var resetGate: CompletableDeferred<Unit>? = null
+        var resetError: AuthError? = null
+
+        override suspend fun sendPasswordReset(email: String) {
+            resetSends++
+            resetGate?.await()
+            resetError?.let { throw it }
+            inner.sendPasswordReset(email)
+        }
 
         override suspend fun hasUnsyncedChanges(): Boolean {
             unsyncedChecks++
@@ -71,6 +85,7 @@ class SettingsViewModelTest {
             ObserveDisplayPreferencesUseCase(display),
             SetAppearanceUseCase(display),
             SetReduceMotionUseCase(display),
+            SendPasswordResetUseCase(auth),
         )
         backgroundScope.launch { vm.uiState.collect {} }
         vm.uiState.first { !it.isLoading }
@@ -258,5 +273,169 @@ class SettingsViewModelTest {
         assertFalse(vm.uiState.value.displayPreferenceError)
         assertEquals(AppearanceMode.SYSTEM, vm.uiState.value.appearance)
         assertFalse(vm.uiState.value.reduceMotion)
+    }
+
+    @Test
+    fun resetPasswordOpensAConfirmationForTheSignedInEmailAndSendsNothing() = runTest {
+        val vm = signedInViewModel(unsynced = false)
+
+        vm.onResetPasswordClick()
+        advanceUntilIdle()
+
+        assertEquals(PasswordResetUi("nimal.test@example.com"), vm.uiState.value.passwordReset)
+        assertEquals(0, auth.resetSends)
+    }
+
+    @Test
+    fun confirmingSendsOneResetEmailAndShowsSent() = runTest {
+        val vm = signedInViewModel(unsynced = false)
+        vm.onResetPasswordClick()
+
+        vm.confirmPasswordReset()
+        advanceUntilIdle()
+
+        assertEquals(listOf("nimal.test@example.com"), fake.resetsSent)
+        assertEquals(PasswordResetPhase.Sent, vm.uiState.value.passwordReset?.phase)
+        // Asking for a link changes nothing about the session or the display choices.
+        assertTrue(fake.session.value is SessionState.SignedIn)
+        assertEquals(AppearanceMode.LIGHT, vm.uiState.value.appearance)
+        assertEquals(0, auth.signOuts)
+    }
+
+    @Test
+    fun aSecondConfirmWhileSendingOrAfterSentDoesNotSendAgain() = runTest {
+        val vm = signedInViewModel(unsynced = false)
+        auth.resetGate = CompletableDeferred()
+        vm.onResetPasswordClick()
+
+        vm.confirmPasswordReset()
+        vm.confirmPasswordReset()
+        assertEquals(PasswordResetPhase.Sending, vm.uiState.value.passwordReset?.phase)
+        auth.resetGate?.complete(Unit)
+        advanceUntilIdle()
+        vm.confirmPasswordReset()
+        advanceUntilIdle()
+
+        assertEquals(1, auth.resetSends)
+        assertEquals(PasswordResetPhase.Sent, vm.uiState.value.passwordReset?.phase)
+    }
+
+    @Test
+    fun aFailedSendKeepsTheSheetWithAnErrorAndRetrySendsAgain() = runTest {
+        val vm = signedInViewModel(unsynced = false)
+        auth.resetError = AuthError.Network()
+        vm.onResetPasswordClick()
+
+        vm.confirmPasswordReset()
+        advanceUntilIdle()
+        val failed = vm.uiState.value.passwordReset
+        assertEquals(PasswordResetPhase.Confirming, failed?.phase)
+        assertTrue(failed?.error is AuthError.Network)
+        assertTrue(fake.resetsSent.isEmpty())
+
+        auth.resetError = null
+        vm.confirmPasswordReset()
+        advanceUntilIdle()
+
+        assertEquals(2, auth.resetSends)
+        assertEquals(PasswordResetPhase.Sent, vm.uiState.value.passwordReset?.phase)
+        assertEquals(null, vm.uiState.value.passwordReset?.error)
+    }
+
+    @Test
+    fun anUnexpectedFailureIsMappedToAnUnknownError() = runTest {
+        val vm = signedInViewModel(unsynced = false)
+        vm.onResetPasswordClick()
+        auth.resetError = AuthError.Unknown(IllegalStateException("boom"))
+
+        vm.confirmPasswordReset()
+        advanceUntilIdle()
+
+        assertTrue(vm.uiState.value.passwordReset?.error is AuthError.Unknown)
+    }
+
+    @Test
+    fun dismissingBeforeSendingSendsNothingAndReopeningStartsFresh() = runTest {
+        val vm = signedInViewModel(unsynced = false)
+        vm.onResetPasswordClick()
+        vm.dismissPasswordReset()
+        advanceUntilIdle()
+        assertEquals(null, vm.uiState.value.passwordReset)
+
+        vm.onResetPasswordClick()
+        advanceUntilIdle()
+
+        assertEquals(PasswordResetPhase.Confirming, vm.uiState.value.passwordReset?.phase)
+        assertEquals(0, auth.resetSends)
+    }
+
+    @Test
+    fun dismissingWhileSendingNeitherRepeatsNorResurrectsTheSheetAndReopeningShowsTheSendInFlight() = runTest {
+        val vm = signedInViewModel(unsynced = false)
+        auth.resetGate = CompletableDeferred()
+        vm.onResetPasswordClick()
+        vm.confirmPasswordReset()
+
+        vm.dismissPasswordReset()
+        vm.onResetPasswordClick()
+        advanceUntilIdle()
+        assertEquals(PasswordResetPhase.Sending, vm.uiState.value.passwordReset?.phase)
+        vm.confirmPasswordReset()
+        assertEquals(1, auth.resetSends)
+
+        vm.dismissPasswordReset()
+        auth.resetGate?.complete(Unit)
+        advanceUntilIdle()
+        assertEquals(null, vm.uiState.value.passwordReset)
+        assertEquals(1, auth.resetSends)
+    }
+
+    @Test
+    fun signingOutOrChangingAccountClosesTheSheetAndNeverSendsToTheNewOne() = runTest {
+        val vm = signedInViewModel(unsynced = false)
+        vm.onResetPasswordClick()
+
+        fake.session.value = SessionState.SignedOut
+        advanceUntilIdle()
+        assertEquals(null, vm.uiState.value.passwordReset)
+        vm.confirmPasswordReset()
+        vm.onResetPasswordClick()
+        advanceUntilIdle()
+        assertEquals(null, vm.uiState.value.passwordReset)
+        assertEquals(0, auth.resetSends)
+    }
+
+    @Test
+    fun switchingAccountsWhileSendingCancelsTheSendAndDropsItsResult() = runTest {
+        val vm = signedInViewModel(unsynced = false)
+        auth.resetGate = CompletableDeferred()
+        vm.onResetPasswordClick()
+        vm.confirmPasswordReset()
+
+        fake.accounts["other@example.com"] = "password1"
+        SignInUseCase(fake)("other@example.com", "password1")
+        advanceUntilIdle()
+        auth.resetGate?.complete(Unit)
+        advanceUntilIdle()
+
+        assertEquals(null, vm.uiState.value.passwordReset)
+        assertTrue(fake.resetsSent.isEmpty())
+        vm.onResetPasswordClick()
+        assertEquals(PasswordResetUi("other@example.com"), vm.uiState.value.passwordReset)
+    }
+
+    @Test
+    fun withoutASignedInEmailTheResetCannotOpen() = runTest {
+        val vm = signedInViewModel(unsynced = false)
+        fake.session.value = SessionState.SignedOut
+        advanceUntilIdle()
+
+        vm.onResetPasswordClick()
+        vm.confirmPasswordReset()
+        advanceUntilIdle()
+
+        assertEquals(null, vm.uiState.value.email)
+        assertEquals(null, vm.uiState.value.passwordReset)
+        assertEquals(0, auth.resetSends)
     }
 }
