@@ -53,15 +53,16 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 /**
- * The Plans hero from Figma Z04 (`160:2421`), exactly. A 420dp box drawn under the status bar with 32dp bottom corners,
- * and one vertical gradient from y = -9.82dp to y = 481dp of the hero with stops 0 / 0.10 / 0.70 / 1 (the navy mid-stop is
- * at 70%, so the text over the coral edge keeps its contrast). The box grows rather than clipping when text is larger.
+ * The Plans hero from Figma Z04 (`160:2421`): a 420dp box drawn under the status bar with 32dp bottom corners, painted with
+ * the Figma paint style Surface/Goal, one vertical gradient from y = -9.82dp to y = 481dp of the hero with stops
+ * 0 / 0.10 / 0.4943 / 1. The long navy-to-coral run is what makes it read smooth. The box grows rather than clipping when
+ * text is larger.
  */
 object PlansHeroSpec {
     val Height = 420.dp
     const val GRADIENT_START_DP = -9.82f
     const val GRADIENT_END_DP = 481f
-    val StopFractions = floatArrayOf(0f, 0.10f, 0.70f, 1f)
+    val StopFractions = floatArrayOf(0f, 0.10f, 0.4943f, 1f)
     val StopColors = listOf(Color(0xFF05070B), Color(0xFF0B1524), Color(0xFF14304A), Color(0xFFF3A78F))
 }
 
