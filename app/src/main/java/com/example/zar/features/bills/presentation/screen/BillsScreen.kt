@@ -1,5 +1,9 @@
 package com.example.zar.features.bills.presentation.screen
 
+import com.example.zar.core.presentation.motion.ZarMotion
+import com.example.zar.core.presentation.motion.LocalZarMotion
+import com.example.zar.core.presentation.components.heroParallax
+import com.example.zar.core.presentation.components.heroDisplacement
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -106,6 +110,15 @@ internal fun BillsContent(
     var heroHeightPx by remember { mutableIntStateOf(0) }
     val topInset = with(LocalDensity.current) { WindowInsets.statusBars.asPaddingValues().calculateTopPadding().roundToPx() }
 
+    // While the page scrolls, the hero's words drift up a little slower than the page and fade, as on Home.
+    val heroOffset = scroll.heroDisplacement()
+    val motion = LocalZarMotion.current
+    val heroContent = Modifier
+        .heroParallax(heroOffset, ZarMotion.PARALLAX_TEXT, ZarMotion.ParallaxTextCap)
+        .graphicsLayer {
+            if (motion.allowsSpatialMotion && heroHeightPx > 0) alpha = (1f - scroll.value / (heroHeightPx * 0.7f)).coerceIn(0f, 1f)
+        }
+
     Box(Modifier.fillMaxSize().background(colors.canvas)) {
         Column(Modifier.fillMaxSize().verticalScroll(scroll)) {
             val list = uiState.list
@@ -115,6 +128,7 @@ internal fun BillsContent(
                 onBack = onBack,
                 onNeedsLook = { scope.launch { scroll.animateScrollTo(needsLookY) } },
                 modifier = Modifier.onSizeChanged { heroHeightPx = it.height },
+                contentModifier = heroContent,
             )
             when {
                 uiState.isLoading -> Box(Modifier.fillMaxWidth().padding(top = 72.dp), Alignment.Center) {
@@ -168,7 +182,15 @@ private fun StatusBarFade(scroll: ScrollState, heroHeightPx: Int) {
 }
 
 @Composable
-private fun Hero(list: BillList?, loadFailed: Boolean, onBack: () -> Unit, onNeedsLook: () -> Unit, modifier: Modifier = Modifier) {
+private fun Hero(
+    list: BillList?,
+    loadFailed: Boolean,
+    onBack: () -> Unit,
+    onNeedsLook: () -> Unit,
+    modifier: Modifier = Modifier,
+    /** Moves the sentence and status link together, e.g. a slower drift and fade while the page scrolls. */
+    contentModifier: Modifier = Modifier,
+) {
     val statusBar = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     Box(
         modifier.fillMaxWidth().heightIn(min = HeroHeight)
@@ -187,7 +209,7 @@ private fun Hero(list: BillList?, loadFailed: Boolean, onBack: () -> Unit, onNee
         if (list != null && !loadFailed) {
             val (lead, follow) = heroSentence(list)
             // Keep the Figma spacing at normal text size; let the hero grow when text wraps.
-            Column(Modifier.fillMaxWidth().padding(top = 152.dp, bottom = 27.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Column(contentModifier.fillMaxWidth().padding(top = 152.dp, bottom = 27.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 Box(Modifier.fillMaxWidth().padding(horizontal = 32.dp).heightIn(min = 120.dp), contentAlignment = Alignment.TopCenter) {
                     Text(
                         text = buildAnnotatedString {
