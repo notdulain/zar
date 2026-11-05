@@ -4,7 +4,9 @@ import com.example.zar.core.domain.calculation.ReportingTotal
 import com.example.zar.core.domain.model.LedgerEntry
 import com.example.zar.core.domain.model.money.Currency
 import com.example.zar.core.domain.model.money.Money
+import com.example.zar.core.domain.model.money.RateSource
 import java.math.BigDecimal
+import java.time.Instant
 import java.time.LocalTime
 import java.time.LocalDate
 
@@ -32,6 +34,10 @@ data class IncomeDetails(
     val category: IncomeCategory?,
     val note: String?,
     val time: LocalTime? = null,
+    /** Typed by the person, or today's rate from the provider. Only meaningful with a [rateToReporting]. */
+    val rateSource: RateSource = RateSource.MANUAL,
+    /** When the provider published the rate. Null for a typed rate, which is dated by when it is saved. */
+    val rateAsOf: Instant? = null,
 )
 
 /** What the user typed into the income form. */
@@ -44,6 +50,9 @@ data class IncomeFormInput(
     val category: IncomeCategory?,
     val note: String,
     val time: LocalTime? = null,
+    /** Where the number in [rate] came from, as known by the form. */
+    val rateSource: RateSource = RateSource.MANUAL,
+    val rateAsOf: Instant? = null,
 )
 
 enum class IncomeProblem {
