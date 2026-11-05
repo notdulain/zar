@@ -401,6 +401,7 @@
     <string name="plans_no_deadline">No deadline</string>
     <string name="plans_by_month">By %1$s</string>
     <string name="plans_card_set_aside">%1$s set aside</string>
+    <string name="plans_card_set_aside_label">set aside</string>
     <string name="plans_card_percent">%1$d%% of %2$s</string>
     <string name="plans_card_unknown_backing">Balance needs checking</string>
     <string name="plans_choose_main_hint">Pick the goal Home and the top of Plans show. Nothing else changes.</string>

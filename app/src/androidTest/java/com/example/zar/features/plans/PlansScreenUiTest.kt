@@ -76,6 +76,28 @@ class PlansScreenUiTest {
         assertEquals(1, changes)
     }
 
+    @Test fun yourPlansCardsSitCloseUnderTheirHeadingAndShareAHeight() {
+        val short = SavingsGoal(GoalId("phone"), "New phone", money(120_000), emptyList(), today.plusDays(90))
+        val long = SavingsGoal(GoalId("fund"), "Emergency fund for the whole family", money(50_000), listOf(GoalAllocation(account.id, money(1_000))), null)
+        val goals = listOf(goal, short, long)
+        var seeAll = 0
+        compose.setContent {
+            ZarTheme(darkTheme = false) {
+                PlansScreenContent(
+                    PlansUiState(isLoading = false, overview = PlansOverview(goal, emptyList(), null, goals, GoalBackingCalculator.calculateAll(goals, listOf(account), emptyList(), today))),
+                    {}, {}, {}, {}, {}, onSeeAll = { seeAll++ },
+                )
+            }
+        }
+        val first = compose.onNodeWithTag("plan-card-phone").performScrollTo().getUnclippedBoundsInRoot()
+        val second = compose.onNodeWithTag("plan-card-fund").getUnclippedBoundsInRoot()
+        assertEquals("same height with a two-line name beside a one-line name", (first.bottom - first.top).value, (second.bottom - second.top).value, 1f)
+        val header = compose.onNodeWithTag("plans-see-all").getUnclippedBoundsInRoot()
+        assertEquals("10dp from the heading to the cards", 10f, (first.top - header.bottom).value, 2f)
+        compose.onNodeWithTag("plans-see-all").performClick()
+        assertEquals(1, seeAll)
+    }
+
     @Test fun emptyStateCreatesGoal() {
         var edits = 0
         show(PlansOverview(null, emptyList()), onEdit = { edits++ })

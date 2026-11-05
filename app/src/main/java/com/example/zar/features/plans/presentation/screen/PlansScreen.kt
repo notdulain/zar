@@ -320,32 +320,34 @@ internal fun PlansScreenContent(
             ) {
                 // Other saved plans beside the main goal. A failed load shows the error hero above, never an empty list.
                 state.overview?.takeIf { !state.isLoading && !state.loadFailed }?.let { YourPlansSection(it, onSeeAll, onOpenPlan) }
-                ZarEyebrow(stringResource(R.string.plans_other_plans).uppercase(), Modifier.padding(start = 12.dp))
-                // One grouped card, a row per plan kind (Figma Z04): each opens its real screen or editor.
-                ZarCard(Modifier.fillMaxWidth(), contentPadding = PaddingValues(vertical = 4.dp)) {
-                    PlanRow(
-                        icon = R.drawable.ic_ph_wallet,
-                        title = stringResource(R.string.plans_weekly_limit_title),
-                        subtitle = weeklyLimitSummary ?: stringResource(R.string.plans_weekly_limit_unset),
-                        onClick = onEditWeeklyLimit,
-                        tag = "plans-weekly-limit-row",
-                    )
-                    ZarDivider(Modifier.padding(start = 70.dp))
-                    PlanRow(
-                        icon = R.drawable.ic_ph_receipt,
-                        title = stringResource(R.string.plans_bills_title),
-                        subtitle = countText(counts.bills, R.plurals.plans_bills_count, R.string.plans_bills_empty),
-                        onClick = onOpenBills,
-                        tag = "plans-bills-card",
-                    )
-                    ZarDivider(Modifier.padding(start = 70.dp))
-                    PlanRow(
-                        icon = R.drawable.ic_ph_briefcase,
-                        title = stringResource(R.string.plans_freelance_title),
-                        subtitle = countText(counts.projects, R.plurals.plans_projects_count, R.string.plans_freelance_empty),
-                        onClick = onOpenFreelance,
-                        tag = "plans-freelance-card",
-                    )
+                Column(verticalArrangement = Arrangement.spacedBy(PlanSectionGap)) {
+                    ZarEyebrow(stringResource(R.string.plans_other_plans).uppercase(), Modifier.padding(start = 12.dp))
+                    // One grouped card, a row per plan kind (Figma Z04): each opens its real screen or editor.
+                    ZarCard(Modifier.fillMaxWidth(), contentPadding = PaddingValues(vertical = 4.dp)) {
+                        PlanRow(
+                            icon = R.drawable.ic_ph_wallet,
+                            title = stringResource(R.string.plans_weekly_limit_title),
+                            subtitle = weeklyLimitSummary ?: stringResource(R.string.plans_weekly_limit_unset),
+                            onClick = onEditWeeklyLimit,
+                            tag = "plans-weekly-limit-row",
+                        )
+                        ZarDivider(Modifier.padding(start = 70.dp))
+                        PlanRow(
+                            icon = R.drawable.ic_ph_receipt,
+                            title = stringResource(R.string.plans_bills_title),
+                            subtitle = countText(counts.bills, R.plurals.plans_bills_count, R.string.plans_bills_empty),
+                            onClick = onOpenBills,
+                            tag = "plans-bills-card",
+                        )
+                        ZarDivider(Modifier.padding(start = 70.dp))
+                        PlanRow(
+                            icon = R.drawable.ic_ph_briefcase,
+                            title = stringResource(R.string.plans_freelance_title),
+                            subtitle = countText(counts.projects, R.plurals.plans_projects_count, R.string.plans_freelance_empty),
+                            onClick = onOpenFreelance,
+                            tag = "plans-freelance-card",
+                        )
+                    }
                 }
                 // The weekly limit's status and coverage notes, once one is set (or when a caller supplies the section).
                 allowanceSection?.invoke()
