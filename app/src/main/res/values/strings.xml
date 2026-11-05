@@ -1191,7 +1191,7 @@
     <string name="capture_health_label">CAPTURE STATUS</string>
     <string name="capture_health_never">Nothing captured yet</string>
     <string name="capture_health_last">Last captured %1$s</string>
-    <string name="capture_health_caption">Zar only sees messages you share, paste, or that arrive while automatic capture is on.</string>
+    <string name="capture_health_caption">Zar only sees messages you share, paste, or that arrive while automatic capture is on. A quiet week doesn\'t mean nothing was spent.</string>
     <plurals name="capture_waiting">
         <item quantity="one">%d message waiting for review</item>
         <item quantity="other">%d messages waiting for review</item>
