@@ -7,6 +7,7 @@ import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontVariation
@@ -249,6 +250,12 @@ private fun geist(weight: Int) = Font(
 
 val GeistFamily = FontFamily(geist(300), geist(400), geist(500))
 
+/**
+ * Body text that wraps gets about 1.4x line spacing so paragraphs breathe. The extra space is trimmed above the first
+ * line and below the last, so a single line keeps the same height as before and rows do not grow.
+ */
+private val ReadingLines = LineHeightStyle(LineHeightStyle.Alignment.Center, LineHeightStyle.Trim.Both)
+
 /** Figma text styles. Percentage tracking is converted to sp at each size. */
 object ZarType {
     val amountXL = TextStyle(fontFamily = GeistFamily, fontWeight = FontWeight.Light, fontSize = 52.sp, lineHeight = 52.sp, letterSpacing = (-1.04).sp)
@@ -257,10 +264,10 @@ object ZarType {
     val amountM = TextStyle(fontFamily = GeistFamily, fontWeight = FontWeight.Light, fontSize = 28.sp, lineHeight = 28.sp, letterSpacing = (-0.56).sp)
     val amountS = TextStyle(fontFamily = GeistFamily, fontWeight = FontWeight.Light, fontSize = 23.sp, lineHeight = 23.sp, letterSpacing = (-0.46).sp)
     val headingSheet = TextStyle(fontFamily = GeistFamily, fontWeight = FontWeight.Medium, fontSize = 18.sp, lineHeight = 18.sp, letterSpacing = (-0.18).sp)
-    val bodyL = TextStyle(fontFamily = GeistFamily, fontWeight = FontWeight.Normal, fontSize = 16.sp, lineHeight = 16.sp, letterSpacing = (-0.16).sp)
-    val bodyM = TextStyle(fontFamily = GeistFamily, fontWeight = FontWeight.Normal, fontSize = 15.sp, lineHeight = 15.sp)
-    val bodyS = TextStyle(fontFamily = GeistFamily, fontWeight = FontWeight.Normal, fontSize = 14.sp, lineHeight = 14.sp, letterSpacing = (-0.14).sp)
-    val bodyCaption = TextStyle(fontFamily = GeistFamily, fontWeight = FontWeight.Normal, fontSize = 12.sp, lineHeight = 12.sp)
+    val bodyL = TextStyle(fontFamily = GeistFamily, fontWeight = FontWeight.Normal, fontSize = 16.sp, lineHeight = 22.sp, letterSpacing = (-0.16).sp, lineHeightStyle = ReadingLines)
+    val bodyM = TextStyle(fontFamily = GeistFamily, fontWeight = FontWeight.Normal, fontSize = 15.sp, lineHeight = 21.sp, lineHeightStyle = ReadingLines)
+    val bodyS = TextStyle(fontFamily = GeistFamily, fontWeight = FontWeight.Normal, fontSize = 14.sp, lineHeight = 20.sp, letterSpacing = (-0.14).sp, lineHeightStyle = ReadingLines)
+    val bodyCaption = TextStyle(fontFamily = GeistFamily, fontWeight = FontWeight.Normal, fontSize = 12.sp, lineHeight = 17.sp, lineHeightStyle = ReadingLines)
     val labelButton = TextStyle(fontFamily = GeistFamily, fontWeight = FontWeight.Medium, fontSize = 15.sp, lineHeight = 15.sp)
     val labelChip = TextStyle(fontFamily = GeistFamily, fontWeight = FontWeight.Medium, fontSize = 13.sp, lineHeight = 13.sp)
     val labelAction = labelChip

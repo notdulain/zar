@@ -284,7 +284,7 @@ private fun HoldingCard(position: AssetPosition, modifier: Modifier = Modifier) 
             if (position.unknownCostQuantity.isPositive) {
                 Text(
                     stringResource(R.string.crypto_cost_unknown_for, position.unknownCostQuantity.withCode()),
-                    style = ZarType.bodyCaption.copy(lineHeight = 15.sp),
+                    style = ZarType.bodyCaption,
                     color = colors.danger,
                 )
             }
@@ -303,7 +303,7 @@ private fun currencyName(code: String): Int = when (code) {
 
 @Composable
 private fun Caption(text: String) {
-    Text(text, style = ZarType.bodyCaption.copy(lineHeight = 15.sp), color = ZarTheme.colors.textSecondary)
+    Text(text, style = ZarType.bodyCaption, color = ZarTheme.colors.textSecondary)
 }
 
 /** Z89/Z90 wallet: what it opened with and what that cost; "Set cost" when coins have no cost yet. */
@@ -380,7 +380,7 @@ private fun MovementCard(row: CryptoMovementRow, onClick: () -> Unit, modifier: 
         Column(Modifier.padding(bottom = 14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(amounts, style = ZarType.bodyS.copy(lineHeight = 18.sp), color = colors.textPrimary)
             listOfNotNull(result, noValue).forEach { (text, color) ->
-                Text(text, style = ZarType.bodyCaption.copy(lineHeight = 15.sp), color = color)
+                Text(text, style = ZarType.bodyCaption, color = color)
             }
         }
     }

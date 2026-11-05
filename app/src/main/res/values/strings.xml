@@ -108,12 +108,12 @@
     <string name="auth_error_unknown">Something went wrong. Try again.</string>
 
     <!-- Sign out -->
-    <string name="settings_subtitle">Your sign-in and where Zar keeps your settings.</string>
+    <string name="settings_subtitle">Your sign-in and preferences.</string>
     <string name="amounts_hide">Hide amounts</string>
     <string name="amounts_show">Show amounts</string>
     <string name="home_chart_hidden">Chart hidden while amounts are hidden</string>
     <string name="settings_hide_amounts">Hide amounts</string>
-    <string name="settings_hide_amounts_detail">Replaces every amount with •••• on every screen, chart and notification. Your records are not changed.</string>
+    <string name="settings_hide_amounts_detail">Shows •••• instead of amounts everywhere. Your records stay the same.</string>
     <string name="settings_signed_in_as">Signed in as</string>
     <string name="settings_appearance">Appearance</string>
     <string name="settings_appearance_light">Light</string>
@@ -125,9 +125,9 @@
     <string name="settings_appearance_retry">Try again →</string>
     <string name="settings_on_this_phone">On this phone</string>
     <string name="settings_reduce_motion">Reduce motion</string>
-    <string name="settings_reduce_motion_detail">Turns off sliding, bouncing and depth effects. Zar does this too when Android animations are off.</string>
+    <string name="settings_reduce_motion_detail">Turns off sliding and bouncing effects.</string>
     <string name="settings_where_title">Where your settings live</string>
-    <string name="settings_where_body">Your accounts and entries sync to your Zar account. Appearance, Reduce motion and Hide amounts stay on this phone after you sign out.</string>
+    <string name="settings_where_body">Accounts and entries sync to your Zar account. The settings above stay on this phone.</string>
     <string name="settings_sign_out">Sign out</string>
     <string name="sign_out_unsynced_title">Some changes haven’t synced</string>
     <string name="sign_out_unsynced_body">Your latest changes are only on this phone. If you sign out now they will be lost. Connect to the internet and wait a moment, or sign out anyway.</string>
@@ -1191,14 +1191,14 @@
     <string name="capture_health_label">CAPTURE STATUS</string>
     <string name="capture_health_never">Nothing captured yet</string>
     <string name="capture_health_last">Last captured %1$s</string>
-    <string name="capture_health_caption">Zar only knows about messages you share or paste, or that arrive while automatic capture is on. A quiet week doesn\'t mean nothing was spent.</string>
+    <string name="capture_health_caption">Zar only sees messages you share, paste, or that arrive while automatic capture is on. A quiet week doesn\'t mean nothing was spent.</string>
     <plurals name="capture_waiting">
         <item quantity="one">%d message waiting for review</item>
         <item quantity="other">%d messages waiting for review</item>
     </plurals>
     <string name="capture_paste_label">PASTE A BANK MESSAGE</string>
     <string name="capture_paste_field">Bank SMS text</string>
-    <string name="capture_paste_hint">Tip: in Messages, long-press the SMS → Share → Zar. The text is read on this phone and never uploaded. Connect to save the structured draft.</string>
+    <string name="capture_paste_hint">Tip: long-press the SMS → Share → Zar. The text stays on this phone.</string>
     <string name="capture_read">Read message</string>
     <string name="capture_from_share">Shared from another app</string>
     <string name="capture_drafted">Read: %1$s on %2$s. Review it below to save it.</string>
@@ -1221,8 +1221,8 @@
     <string name="auto_capture_state_on">On · new messages only</string>
     <string name="auto_capture_state_no_access">On, but SMS access is off</string>
     <string name="auto_capture_state_unavailable">This phone can\'t receive SMS</string>
-    <string name="auto_capture_explain_off">When it\'s on, Zar reads bank messages as they arrive and makes drafts for you to review. Past messages are never read. It needs SMS access; sharing and pasting work without it.</string>
-    <string name="auto_capture_explain_on">Only tested bank formats are kept, encrypted on this phone, until they become drafts. Then the message text is deleted. Credits and unclear payments always wait for your choice. Turning this off deletes messages still waiting.</string>
+    <string name="auto_capture_explain_off">Zar turns new bank messages into drafts for you to review. Past messages are never read.</string>
+    <string name="auto_capture_explain_on">Bank messages are kept encrypted on this phone until they become drafts, then deleted. Turning this off deletes any still waiting.</string>
     <string name="auto_capture_allow">Allow SMS access</string>
     <string name="auto_capture_refused">SMS access was refused, so automatic capture stays off. Sharing and pasting still work.</string>
     <plurals name="auto_capture_waiting">

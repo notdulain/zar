@@ -1,5 +1,7 @@
 package com.example.zar.features.plans.presentation.screen
 
+import com.example.zar.core.presentation.motion.rememberRiseInOnFirstVisit
+import com.example.zar.core.presentation.motion.riseIn
 import com.example.zar.core.presentation.privacy.AmountMask
 import com.example.zar.core.presentation.privacy.amountFieldTransformation
 import androidx.compose.foundation.background
@@ -290,6 +292,8 @@ internal fun PlansScreenContent(
     ) { padding ->
         val scrollState = rememberScrollState()
         val heroOffset = scrollState.heroDisplacement()
+        // The cards under the hero rise in one after another on the first visit; switching tabs shows them in place.
+        val play = rememberRiseInOnFirstVisit(loaded = !state.isLoading)
         val layoutDirection = androidx.compose.ui.platform.LocalLayoutDirection.current
         Column(
             modifier = Modifier
@@ -319,10 +323,13 @@ internal fun PlansScreenContent(
                 verticalArrangement = Arrangement.spacedBy(ZarDimens.SpaceMd),
             ) {
                 // Other saved plans beside the main goal. A failed load shows the error hero above, never an empty list.
-                state.overview?.takeIf { !state.isLoading && !state.loadFailed }?.let { YourPlansSection(it, onSeeAll, onOpenPlan) }
-                ZarEyebrow(stringResource(R.string.plans_other_plans).uppercase(), Modifier.padding(start = 12.dp))
+                // Only when there are other plans, so an empty wrapper never adds a gap.
+                state.overview?.takeIf { !state.isLoading && !state.loadFailed && it.otherGoals().isNotEmpty() }?.let {
+                    Box(Modifier.riseIn(0, play)) { YourPlansSection(it, onSeeAll, onOpenPlan) }
+                }
+                ZarEyebrow(stringResource(R.string.plans_other_plans).uppercase(), Modifier.padding(start = 12.dp).riseIn(1, play))
                 // One grouped card, a row per plan kind (Figma Z04): each opens its real screen or editor.
-                ZarCard(Modifier.fillMaxWidth(), contentPadding = PaddingValues(vertical = 4.dp)) {
+                ZarCard(Modifier.fillMaxWidth().riseIn(1, play), contentPadding = PaddingValues(vertical = 4.dp)) {
                     PlanRow(
                         icon = R.drawable.ic_ph_wallet,
                         title = stringResource(R.string.plans_weekly_limit_title),
