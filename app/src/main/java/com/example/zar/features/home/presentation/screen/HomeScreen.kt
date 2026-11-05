@@ -877,6 +877,7 @@ private fun SpendingCard(overview: HomeOverview, onClick: () -> Unit) {
             committed = summary.committed.amount.minorUnits.toFloat(),
             discretionary = summary.discretionary.amount.minorUnits.toFloat(),
             unknown = summary.unknown.amount.minorUnits.toFloat(),
+            modifier = Modifier.testTag("spent-split-bar"),
         )
         if (overview.hasIncompleteData) {
             Text(
@@ -885,9 +886,10 @@ private fun SpendingCard(overview: HomeOverview, onClick: () -> Unit) {
                 color = colors.textSecondary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.testTag("unknown-warning"),
+                modifier = Modifier.padding(top = 8.dp).testTag("unknown-warning"),
             )
         }
+        Spacer(Modifier.height(16.dp))
         Text(
             stringResource(R.string.home_see_breakdown),
             style = ZarType.labelAction,
@@ -971,7 +973,7 @@ private fun GoalCard(
                 Box(Modifier.fillMaxWidth().height(5.dp).background(colors.borderHairline, RoundedCornerShape(3.dp))) {
                     if (fraction > 0f) Box(Modifier.fillMaxWidth(fraction).height(5.dp).background(colors.textSelected, RoundedCornerShape(3.dp)))
                 }
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(16.dp))
                 val detail = listOfNotNull(
                     when {
                         hidden -> stringResource(R.string.home_goal_hidden)

@@ -428,6 +428,22 @@ class HomeScreenUiTest {
     }
 
     @Test
+    fun seeBreakdownHasRoomBelowTheSplitBar() {
+        compose.setContent {
+            ZarTheme {
+                HomeScreenContent(
+                    state = HomeUiState(month, true, HomeContent.Ready(emptyOverview())),
+                    onPreviousMonth = {}, onNextMonth = {}, onRetry = {}, onNavigate = {}, onAddOption = {},
+                )
+            }
+        }
+        compose.onNodeWithTag("spent-card").performScrollTo()
+        val bar = compose.onNodeWithTag("spent-split-bar", useUnmergedTree = true).getUnclippedBoundsInRoot()
+        val action = compose.onNodeWithText("See breakdown →", useUnmergedTree = true).getUnclippedBoundsInRoot()
+        assertEquals(16f, (action.top - bar.bottom).value, 1f)
+    }
+
+    @Test
     fun goalCardExplainsEmptyAndFailedStatesAndRetries() {
         var retries = 0
         var goalState by mutableStateOf<HomeGoalContent>(HomeGoalContent.Empty)
