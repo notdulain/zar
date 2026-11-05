@@ -19,6 +19,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
@@ -26,6 +27,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -36,13 +38,18 @@ import androidx.compose.ui.unit.sp
 import com.example.zar.R
 import com.example.zar.core.domain.model.money.Currencies
 import com.example.zar.core.domain.model.money.FiatMoney
-import com.example.zar.core.presentation.components.HeroScrollOffset
+import com.example.zar.core.presentation.components.CollapseLine
+import com.example.zar.core.presentation.components.CollapseOverlay
+import com.example.zar.core.presentation.components.HomeCollapse
+import com.example.zar.core.presentation.components.HomeCollapseSpec
 import com.example.zar.core.presentation.components.ZarButton
 import com.example.zar.core.presentation.components.ZarButtonStyle
 import com.example.zar.core.presentation.components.ZarIcon
-import com.example.zar.core.presentation.components.heroParallax
+import com.example.zar.core.presentation.components.collapseClip
+import com.example.zar.core.presentation.components.collapseLine
+import com.example.zar.core.presentation.components.collapseMeasure
+import com.example.zar.core.presentation.components.collapseShift
 import com.example.zar.core.presentation.format.formatWithCode
-import com.example.zar.core.presentation.motion.ZarMotion
 import com.example.zar.core.presentation.privacy.AmountMask
 import com.example.zar.core.presentation.theme.GeistFamily
 import com.example.zar.core.presentation.theme.ZarType
@@ -53,45 +60,71 @@ import com.example.zar.features.plans.domain.model.SavingsGoal
 import java.time.format.DateTimeFormatter
 
 /**
- * The Plans hero from Figma Z04 (`160:2421`), exactly. A 420dp box drawn under the status bar with 32dp bottom corners,
- * and one vertical gradient from y = -9.82dp to y = 481dp of the hero with stops 0 / 0.10 / 0.70 / 1 (the navy mid-stop is
- * at 70%, so the text over the coral edge keeps its contrast). The box grows rather than clipping when text is larger.
+ * The Plans hero from Figma Z04 (`160:2421`): a 420dp box drawn under the status bar with 32dp bottom corners, painted with
+ * the Figma paint style Surface/Goal, one vertical gradient from y = -9.82dp to y = 481dp of the hero with stops
+ * 0 / 0.10 / 0.4943 / 1. The long navy-to-coral run is what makes it read smooth. The box grows rather than clipping when
+ * text is larger.
  */
 object PlansHeroSpec {
     val Height = 420.dp
     const val GRADIENT_START_DP = -9.82f
     const val GRADIENT_END_DP = 481f
-    val StopFractions = floatArrayOf(0f, 0.10f, 0.70f, 1f)
+    val StopFractions = floatArrayOf(0f, 0.10f, 0.4943f, 1f)
     val StopColors = listOf(Color(0xFF05070B), Color(0xFF0B1524), Color(0xFF14304A), Color(0xFFF3A78F))
 }
 
+// Four sizes with one job each: the amount leads, then the page title, the goal's name, and everything else at 14sp.
 private val HeroTitle = TextStyle(fontFamily = GeistFamily, fontWeight = FontWeight.Light, fontSize = 32.sp, lineHeight = 38.sp, letterSpacing = (-0.64).sp)
-private val HeroGoalName = TextStyle(fontFamily = GeistFamily, fontWeight = FontWeight.Light, fontSize = 28.sp, lineHeight = 34.sp, letterSpacing = (-0.56).sp)
+private val HeroGoalName = TextStyle(fontFamily = GeistFamily, fontWeight = FontWeight.Light, fontSize = 23.sp, lineHeight = 28.sp, letterSpacing = (-0.46).sp)
 private val HeroAmount = TextStyle(fontFamily = GeistFamily, fontWeight = FontWeight.Light, fontSize = 40.sp, lineHeight = 48.sp, letterSpacing = (-0.8).sp)
-private val HeroBody15 = TextStyle(fontFamily = GeistFamily, fontWeight = FontWeight.Normal, fontSize = 15.sp, lineHeight = 20.sp)
-private val HeroBody14 = TextStyle(fontFamily = GeistFamily, fontWeight = FontWeight.Normal, fontSize = 14.sp, lineHeight = 20.sp)
-private val HeroMedium15 = TextStyle(fontFamily = GeistFamily, fontWeight = FontWeight.Medium, fontSize = 15.sp, lineHeight = 20.sp)
+private val HeroBody = TextStyle(fontFamily = GeistFamily, fontWeight = FontWeight.Normal, fontSize = 14.sp, lineHeight = 20.sp)
+private val HeroAction = HeroBody.copy(fontWeight = FontWeight.Medium)
+private val HeroSecondary = ZarWhite.copy(alpha = 0.85f)
 
+/**
+ * The hero card. It collapses into the status bar like Home's top card (see `HomeCollapse`): the gradient drifts at 0.35 of
+ * the scroll, a dark overlay builds, the text group follows at 0.30 and fades line by line, the bottom corners flatten, and a
+ * pinned band (drawn by the screen) takes over. Everything is read in the layer phase, so scrolling never recomposes it.
+ * [content] is the text group, already below the status bar; the card keeps its 420dp minimum.
+ */
 @Composable
-internal fun PlansHeroBox(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
-    Column(
+internal fun PlansHeroBox(collapse: HomeCollapseSpec, modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
+    val fullRadiusPx = with(LocalDensity.current) { 32.dp.toPx() }
+    Box(
         modifier
             .fillMaxWidth()
-            .heightIn(min = PlansHeroSpec.Height)
-            .clip(RoundedCornerShape(bottomStart = 32.dp, bottomEnd = 32.dp))
-            .drawBehind {
-                drawRect(
-                    Brush.verticalGradient(
-                        colorStops = PlansHeroSpec.StopFractions.zip(PlansHeroSpec.StopColors).toTypedArray(),
-                        startY = PlansHeroSpec.GRADIENT_START_DP.dp.toPx(),
-                        endY = PlansHeroSpec.GRADIENT_END_DP.dp.toPx(),
-                    ),
-                )
-            }
-            .padding(start = 22.dp, end = 22.dp, top = 62.dp, bottom = 28.dp),
-        content = content,
-    )
+            .collapseMeasure(collapse)
+            .collapseClip(collapse, fullRadiusPx)
+            .background(HeroBase),
+    ) {
+        Box(
+            Modifier.matchParentSize()
+                .collapseShift(collapse, HomeCollapse.BACKGROUND_RATE)
+                .drawBehind {
+                    drawRect(
+                        Brush.verticalGradient(
+                            colorStops = PlansHeroSpec.StopFractions.zip(PlansHeroSpec.StopColors).toTypedArray(),
+                            startY = PlansHeroSpec.GRADIENT_START_DP.dp.toPx(),
+                            endY = PlansHeroSpec.GRADIENT_END_DP.dp.toPx(),
+                        ),
+                    )
+                },
+        )
+        CollapseOverlay(collapse, Modifier.matchParentSize())
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .heightIn(min = PlansHeroSpec.Height)
+                .collapseShift(collapse, HomeCollapse.TEXT_RATE)
+                .padding(start = 22.dp, end = 22.dp, bottom = 28.dp),
+        ) {
+            Spacer(Modifier.height(62.dp))
+            content()
+        }
+    }
 }
+
+private val HeroBase = Color(0xFF05070B)
 
 /** Plans title; creation is the contextual action above the fixed bottom tabs. */
 @Composable
@@ -105,17 +138,23 @@ internal fun GoalHero(
     onNewPlan: () -> Unit,
     onEditGoal: () -> Unit,
     onAllocate: () -> Unit,
-    heroOffset: HeroScrollOffset,
+    collapse: HomeCollapseSpec,
     onChangeMain: () -> Unit = {},
     onViewGoal: () -> Unit = {},
 ) {
     val goal = overview.goal
     val progress = overview.progress
-    val textLayer = Modifier.heroParallax(heroOffset, ZarMotion.PARALLAX_TEXT, ZarMotion.ParallaxTextCap)
-    PlansHeroBox(Modifier.testTag("plans-hero")) {
-        Column(textLayer) {
-            PlansHeroHeader(onNewPlan)
-            Spacer(Modifier.height(14.dp))
+    // Each line fades by its own distance from the status bar and stops taking taps once it has gone.
+    val titleLine = remember { CollapseLine() }
+    val goalLine = remember { CollapseLine() }
+    val amountLine = remember { CollapseLine() }
+    val targetLine = remember { CollapseLine() }
+    val progressLine = remember { CollapseLine() }
+    val actionsLine = remember { CollapseLine() }
+    PlansHeroBox(collapse, Modifier.testTag("plans-hero")) {
+        Box(Modifier.fillMaxWidth().collapseLine(collapse, titleLine)) { PlansHeroHeader(onNewPlan) }
+        Spacer(Modifier.height(20.dp))
+        Box(Modifier.fillMaxWidth().collapseLine(collapse, goalLine)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(Modifier.size(40.dp).clip(CircleShape).background(ZarWhite.copy(alpha = 0.14f)), Alignment.Center) {
                     ZarIcon(R.drawable.ic_ph_piggy_bank, size = 20.dp, tint = ZarWhite)
@@ -124,43 +163,50 @@ internal fun GoalHero(
                 Column {
                     Text(goal?.name ?: stringResource(R.string.plans_goal_name), style = HeroGoalName, color = ZarWhite, maxLines = 2)
                     if (goal != null) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(stringResource(R.string.plans_main_goal), style = HeroBody14, color = ZarWhite.copy(alpha = 0.75f))
-                            Box(
-                                Modifier.heightIn(min = 48.dp).clickable(role = Role.Button, onClick = onChangeMain)
-                                    .padding(horizontal = 10.dp).testTag("plans-change-main"),
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                Text(
-                                    stringResource(R.string.plans_change),
-                                    style = TextStyle(fontFamily = GeistFamily, fontWeight = FontWeight.Medium, fontSize = 13.sp, lineHeight = 18.sp),
-                                    color = ZarWhite,
-                                )
-                            }
+                        Row {
+                            Text(stringResource(R.string.plans_main_goal), style = HeroBody, color = HeroSecondary, modifier = Modifier.alignByBaseline())
+                            // No minimum height here: it would push this line away from the name. A clickable shorter than
+                            // 48dp keeps a 48dp touch target anyway, because Compose expands small pointer targets.
+                            Text(
+                                stringResource(R.string.plans_change),
+                                style = HeroAction,
+                                color = ZarWhite,
+                                modifier = Modifier.alignByBaseline()
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .clickable(role = Role.Button, onClick = onChangeMain)
+                                    .padding(horizontal = 8.dp)
+                                    .testTag("plans-change-main"),
+                            )
                         }
                     } else {
-                        Text(stringResource(R.string.plans_not_created_yet), style = HeroBody14, color = ZarWhite.copy(alpha = 0.75f))
+                        Text(stringResource(R.string.plans_not_created_yet), style = HeroBody, color = HeroSecondary)
                     }
                 }
             }
-            Spacer(Modifier.height(20.dp))
+        }
+        Spacer(Modifier.height(28.dp))
+        Box(Modifier.fillMaxWidth().collapseLine(collapse, amountLine)) {
             Text(
                 progress?.backed?.formatWithCode() ?: FiatMoney(0, Currencies.LKR).formatWithCode(),
                 style = HeroAmount, color = ZarWhite, modifier = Modifier.testTag("plans-backed"), maxLines = 1,
             )
-            Spacer(Modifier.height(8.dp))
+        }
+        Spacer(Modifier.height(4.dp))
+        Box(Modifier.fillMaxWidth().collapseLine(collapse, targetLine)) {
             Text(
                 goal?.let { goalTarget(it) } ?: stringResource(R.string.plans_goal_not_created),
-                style = HeroBody15, color = ZarWhite.copy(alpha = 0.8f),
+                style = HeroBody, color = HeroSecondary,
             )
-            Spacer(Modifier.height(22.dp))
+        }
+        Spacer(Modifier.height(20.dp))
+        Column(Modifier.fillMaxWidth().collapseLine(collapse, progressLine)) {
             if (!AmountMask.isHidden) {
                 // With no goal the track is drawn empty, as Figma Z196 does.
                 HeroTrack(if (goal != null && progress != null) progress.backedFraction(goal.target) else 0f)
             } else {
                 Spacer(Modifier.height(8.dp))
             }
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(10.dp))
             Text(
                 when {
                     goal == null -> stringResource(R.string.plans_create_note)
@@ -169,32 +215,35 @@ internal fun GoalHero(
                     progress?.isApproximate == true -> stringResource(R.string.plans_estimated_backing)
                     else -> stringResource(R.string.plans_recorded_backing)
                 },
-                style = HeroBody14, color = ZarWhite.copy(alpha = 0.85f),
+                style = HeroBody, color = HeroSecondary,
             )
         }
-        Spacer(Modifier.height(24.dp))
+        // The actions stay at the foot of the hero however short the text above them is.
+        Spacer(Modifier.heightIn(min = 8.dp).weight(1f))
         val enabled = goal == null || overview.allocationAccounts.isNotEmpty()
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            if (goal != null) {
-                Box(Modifier.heightIn(min = 48.dp).clickable(role = Role.Button, onClick = onViewGoal).testTag("plans-view-goal"), contentAlignment = Alignment.CenterStart) {
-                    Text(stringResource(R.string.plans_view_goal) + " →", style = HeroMedium15, color = ZarWhite)
+        Column(Modifier.fillMaxWidth().collapseLine(collapse, actionsLine)) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                if (goal != null) {
+                    Box(Modifier.heightIn(min = 48.dp).clickable(role = Role.Button, onClick = onViewGoal).testTag("plans-view-goal"), contentAlignment = Alignment.CenterStart) {
+                        Text(stringResource(R.string.plans_view_goal) + " →", style = HeroAction, color = ZarWhite)
+                    }
+                }
+                Box(
+                    Modifier.heightIn(min = 48.dp)
+                        .clickable(enabled = enabled, role = Role.Button) { if (goal == null) onEditGoal() else onAllocate() }
+                        .testTag("plans-set-aside"),
+                    contentAlignment = Alignment.CenterStart,
+                ) {
+                    Text(
+                        stringResource(if (goal == null) R.string.plans_create_action else R.string.plans_allocate_action) + " →",
+                        style = HeroAction,
+                        color = ZarWhite.copy(alpha = if (enabled) 1f else 0.4f),
+                    )
                 }
             }
-            Box(
-                Modifier.heightIn(min = 48.dp)
-                    .clickable(enabled = enabled, role = Role.Button) { if (goal == null) onEditGoal() else onAllocate() }
-                    .testTag("plans-set-aside"),
-                contentAlignment = Alignment.CenterStart,
-            ) {
-                Text(
-                    stringResource(if (goal == null) R.string.plans_create_action else R.string.plans_allocate_action) + " →",
-                    style = HeroMedium15,
-                    color = ZarWhite.copy(alpha = if (enabled) 1f else 0.4f),
-                )
+            if (goal != null && overview.allocationAccounts.isEmpty()) {
+                Text(stringResource(R.string.plans_no_accounts), style = HeroBody, color = HeroSecondary)
             }
-        }
-        if (goal != null && overview.allocationAccounts.isEmpty()) {
-            Text(stringResource(R.string.plans_no_accounts), style = ZarType.bodyS, color = ZarWhite.copy(alpha = 0.8f))
         }
     }
 }
@@ -215,14 +264,14 @@ private fun HeroTrack(fraction: Float) {
 }
 
 @Composable
-internal fun LoadingHero(heroOffset: HeroScrollOffset, onNewPlan: () -> Unit) = PlansHeroBox {
+internal fun LoadingHero(collapse: HomeCollapseSpec, onNewPlan: () -> Unit) = PlansHeroBox(collapse) {
     PlansHeroHeader(onNewPlan)
     Spacer(Modifier.height(48.dp))
     CircularProgressIndicator(color = ZarWhite, modifier = Modifier.align(Alignment.CenterHorizontally))
 }
 
 @Composable
-internal fun ErrorHero(onRetry: () -> Unit, heroOffset: HeroScrollOffset, onNewPlan: () -> Unit) = PlansHeroBox {
+internal fun ErrorHero(onRetry: () -> Unit, collapse: HomeCollapseSpec, onNewPlan: () -> Unit) = PlansHeroBox(collapse) {
     PlansHeroHeader(onNewPlan)
     Spacer(Modifier.height(32.dp))
     Text(stringResource(R.string.plans_load_failed), style = ZarType.bodyL, color = ZarWhite)

@@ -7,6 +7,20 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import kotlinx.coroutines.launch
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.input.pointer.util.VelocityTracker
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.ui.input.pointer.positionChange
+import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.foundation.gestures.horizontalDrag
+import androidx.compose.foundation.gestures.awaitHorizontalTouchSlopOrCancellation
 import androidx.compose.foundation.gestures.awaitTouchSlopOrCancellation
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.drag
@@ -40,6 +54,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.clipPath
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.draw.rotate
@@ -58,6 +77,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
@@ -104,7 +124,47 @@ fun ManualDatePickerSheet(
     val today = remember { ZarTime.today() }
     var selected by remember(date) { mutableStateOf(date.coerceAtMost(today)) }
     var month by remember(date) { mutableStateOf(YearMonth.from(selected)) }
+    var choosingMonth by remember { mutableStateOf(false) }
     val colors = ZarTheme.colors
+    val currentMonth = YearMonth.from(today)
+    val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
+    val policy = LocalZarMotion.current
+    val scope = rememberCoroutineScope()
+    // The days slide sideways: [slide] is how far the current month is from rest, in pixels, and a neighbouring month
+    // follows it in from the side. The next month stays off past today, as its arrow does.
+    val slide = remember { Animatable(0f) }
+    var dragX by remember { mutableFloatStateOf(0f) }
+    var dragging by remember { mutableStateOf(false) }
+    var gridWidth by remember { mutableIntStateOf(0) }
+    fun canStep(delta: Long) = month.plusMonths(delta) <= currentMonth
+    // Moving to the earlier month pushes the days toward the end of the reading direction (right in LTR).
+    fun restOffset(delta: Long): Float = (if ((delta < 0) != rtl) 1f else -1f) * gridWidth
+    /** Moves one month with the slide, from wherever the days are now. Reduced and instant motion change month directly. */
+    fun goTo(delta: Long) {
+        scope.launch {
+            if (dragging) { slide.snapTo(dragX); dragging = false }
+            if (canStep(delta)) {
+                if (policy.allowsSpatialMotion && gridWidth > 0) slide.animateTo(restOffset(delta), policy.spring(ZarSprings.Settle))
+                month = month.plusMonths(delta)
+            }
+            slide.snapTo(0f)
+        }
+    }
+    fun finishDrag(velocityX: Float) {
+        val moved = dragX
+        // Dragging toward the end of the reading direction shows the earlier month (right in LTR).
+        val delta = if ((moved > 0) != rtl) -1L else 1L
+        val far = gridWidth > 0 && (kotlin.math.abs(moved) > gridWidth * 0.3f || (kotlin.math.abs(velocityX) > 1200f && (velocityX > 0) == (moved > 0)))
+        if (far && canStep(delta)) {
+            goTo(delta)
+        } else {
+            scope.launch {
+                slide.snapTo(moved)
+                dragging = false
+                slide.animateTo(0f, policy.spring(ZarSprings.Settle))
+            }
+        }
+    }
     PickerShell(title = "Date", onCancel = onCancel, action = "Set date", onAction = { onSetDate(selected) }, modifier = modifier) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             listOf("Today" to today, "Yesterday" to today.minusDays(1), "2 days ago" to today.minusDays(2)).forEach { (label, value) ->
@@ -115,15 +175,57 @@ fun ManualDatePickerSheet(
             }
         }
 
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Column(
+            Modifier.testTag("date-calendar").pointerInput(rtl, currentMonth, policy) {
+                detectMonthDrags(
+                    onStart = { if (policy.allowsSpatialMotion) { dragX = slide.value; dragging = true } },
+                    onDrag = { dx ->
+                        if (policy.allowsSpatialMotion) {
+                            // Pulling toward a month that is not allowed gives way slowly, then springs back.
+                            val next = dragX + dx
+                            val blocked = !canStep(if ((next > 0) != rtl) -1L else 1L)
+                            dragX = if (blocked) dragX + dx * 0.3f else next
+                        }
+                    },
+                    onEnd = { velocity, total ->
+                        if (policy.allowsSpatialMotion) {
+                            finishDrag(velocity)
+                        } else if (kotlin.math.abs(total) >= 48.dp.toPx()) {
+                            // No travel: a long enough swipe only changes the month, as a tap on an arrow does.
+                            goTo(if ((total > 0) != rtl) -1L else 1L)
+                        }
+                    },
+                    onCancel = { if (dragging) finishDrag(0f) },
+                )
+            },
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
             Row(Modifier.fillMaxWidth().padding(bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-                Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Row(
+                    Modifier.weight(1f).heightIn(min = 44.dp).clip(ZarShapes.sm)
+                        .clickable(role = Role.Button, onClickLabel = "Choose month") { choosingMonth = !choosingMonth }
+                        .semantics { stateDescription = if (choosingMonth) "Choosing month" else "Showing days" }
+                        .testTag("date-month-title"),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
                     Text(month.format(DateTimeFormatter.ofPattern("MMMM yyyy", locale)), style = ZarType.bodyL.copy(fontWeight = FontWeight.Medium), color = colors.textPrimary)
-                    ZarIcon(R.drawable.ic_ph_caret_down, size = 14.dp, tint = colors.iconMuted)
+                    ZarIcon(R.drawable.ic_ph_caret_down, modifier = Modifier.rotate(if (choosingMonth) 180f else 0f), size = 14.dp, tint = colors.iconMuted)
                 }
-                MonthArrow("Previous month", enabled = true, rotated = true) { month = month.minusMonths(1) }
-                Spacer(Modifier.width(8.dp))
-                MonthArrow("Next month", enabled = month < YearMonth.from(today)) { month = month.plusMonths(1) }
+                if (!choosingMonth) {
+                    MonthArrow("Previous month", enabled = true, rotated = true) { goTo(-1) }
+                    Spacer(Modifier.width(8.dp))
+                    MonthArrow("Next month", enabled = month < currentMonth) { goTo(1) }
+                }
+            }
+            if (choosingMonth) {
+                MonthChooser(
+                    selected = month,
+                    latest = currentMonth,
+                    locale = locale,
+                    onChoose = { month = it; choosingMonth = false },
+                )
+                return@Column
             }
             Row(Modifier.fillMaxWidth()) {
                 listOf("S", "M", "T", "W", "T", "F", "S").forEach { day ->
@@ -132,38 +234,14 @@ fun ManualDatePickerSheet(
                     }
                 }
             }
-            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                val offset = month.atDay(1).dayOfWeek.value % 7
-                val count = month.lengthOfMonth()
-                val weekCount = (offset + count + 6) / 7
-                repeat(weekCount) { week ->
-                    Row(Modifier.fillMaxWidth()) {
-                        repeat(7) { weekday ->
-                            val number = week * 7 + weekday - offset + 1
-                            val candidate = if (number in 1..count) month.atDay(number) else null
-                            val enabled = candidate != null && candidate <= today
-                            val active = candidate == selected
-                            Box(Modifier.weight(1f).height(46.dp), Alignment.Center) {
-                                if (candidate != null) {
-                                    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                                        Box(
-                                            Modifier.size(38.dp).clip(CircleShape)
-                                                .background(if (active) colors.accentPrimary else Color.Transparent)
-                                                .clickable(enabled = enabled, role = Role.Button, onClickLabel = "Select $candidate") { selected = candidate },
-                                            Alignment.Center,
-                                        ) {
-                                            Text(
-                                                number.toString(),
-                                                style = ZarType.bodyM.copy(fontWeight = if (active) FontWeight.Medium else FontWeight.Normal),
-                                                color = when { active -> colors.textOnInverse; !enabled -> colors.textDisabled; else -> colors.textPrimary },
-                                            )
-                                        }
-                                        Box(Modifier.size(4.dp).background(if (candidate in datesWithEntries && enabled) colors.textPlaceholder else Color.Transparent, CircleShape))
-                                    }
-                                }
-                            }
-                        }
-                    }
+            // The days move; the title, weekday letters and legend stay put.
+            val shift = if (dragging) dragX else slide.value
+            Box(Modifier.fillMaxWidth().clipToBounds().onSizeChanged { gridWidth = it.width }) {
+                MonthDays(month, selected, today, datesWithEntries, { selected = it }, Modifier.graphicsLayer { translationX = shift })
+                if (shift != 0f) {
+                    val neighbour = month.plusMonths(if ((shift > 0) != rtl) -1L else 1L)
+                    val neighbourX = shift + if (shift > 0) -gridWidth else gridWidth
+                    MonthDays(neighbour, selected, today, datesWithEntries, { selected = it }, Modifier.graphicsLayer { translationX = neighbourX })
                 }
             }
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -246,7 +324,7 @@ fun ManualTimePickerSheet(
                 selected = if (activeHour) {
                     selected.withHour(detent + if (selected.hour >= 12) 12 else 0)
                 } else {
-                    selected.withMinute(detent * 5)
+                    selected.withMinute(detent)
                 }
             }, onSelectionFinished = { if (activeHour) activeHour = false })
         } else {
@@ -328,10 +406,132 @@ private fun PickerShell(title: String, onCancel: () -> Unit, action: String, onA
     }
 }
 
+/** One month's days as a grid of weeks, with the Figma entry dots. Future days are off. */
+@Composable
+private fun MonthDays(
+    month: YearMonth,
+    selected: LocalDate,
+    today: LocalDate,
+    datesWithEntries: Set<LocalDate>,
+    onSelect: (LocalDate) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val colors = ZarTheme.colors
+    Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        val offset = month.atDay(1).dayOfWeek.value % 7
+        val count = month.lengthOfMonth()
+        val weekCount = (offset + count + 6) / 7
+        repeat(weekCount) { week ->
+            Row(Modifier.fillMaxWidth()) {
+                repeat(7) { weekday ->
+                    val number = week * 7 + weekday - offset + 1
+                    val candidate = if (number in 1..count) month.atDay(number) else null
+                    val enabled = candidate != null && candidate <= today
+                    val active = candidate == selected
+                    Box(Modifier.weight(1f).height(46.dp), Alignment.Center) {
+                        if (candidate != null) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                                Box(
+                                    Modifier.size(38.dp).clip(CircleShape)
+                                        .background(if (active) colors.accentPrimary else Color.Transparent)
+                                        .clickable(enabled = enabled, role = Role.Button, onClickLabel = "Select $candidate") { onSelect(candidate) },
+                                    Alignment.Center,
+                                ) {
+                                    Text(
+                                        number.toString(),
+                                        style = ZarType.bodyM.copy(fontWeight = if (active) FontWeight.Medium else FontWeight.Normal),
+                                        color = when { active -> colors.textOnInverse; !enabled -> colors.textDisabled; else -> colors.textPrimary },
+                                    )
+                                }
+                                Box(Modifier.size(4.dp).background(if (candidate in datesWithEntries && enabled) colors.textPlaceholder else Color.Transparent, CircleShape))
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** A year stepper over a 3 x 4 grid of months. Months after the current one are off, like future days. */
+@Composable
+private fun MonthChooser(selected: YearMonth, latest: YearMonth, locale: java.util.Locale, onChoose: (YearMonth) -> Unit) {
+    val colors = ZarTheme.colors
+    var year by remember(selected) { mutableStateOf(selected.year) }
+    Column(Modifier.testTag("date-month-grid"), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            MonthArrow("Previous year", enabled = true, rotated = true) { year-- }
+            Text(
+                year.toString(),
+                modifier = Modifier.weight(1f),
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                style = ZarType.bodyL.copy(fontWeight = FontWeight.Medium),
+                color = colors.textPrimary,
+            )
+            MonthArrow("Next year", enabled = year < latest.year) { year++ }
+        }
+        repeat(4) { row ->
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                repeat(3) { column ->
+                    val candidate = YearMonth.of(year, row * 3 + column + 1)
+                    val enabled = candidate <= latest
+                    val active = candidate == selected
+                    Box(
+                        Modifier.weight(1f).height(46.dp).clip(ZarShapes.sm)
+                            .background(if (active) colors.accentPrimary else colors.subtle)
+                            .clickable(enabled = enabled, role = Role.Button, onClickLabel = "Show ${candidate.month.getDisplayName(java.time.format.TextStyle.FULL, locale)} $year") { onChoose(candidate) }
+                            .testTag("date-month-${candidate.monthValue}"),
+                        Alignment.Center,
+                    ) {
+                        Text(
+                            candidate.month.getDisplayName(java.time.format.TextStyle.SHORT, locale),
+                            style = ZarType.bodyM.copy(fontWeight = if (active) FontWeight.Medium else FontWeight.Normal),
+                            color = when { active -> colors.textOnInverse; !enabled -> colors.textDisabled; else -> colors.textPrimary },
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Follows a horizontal drag over the calendar and reports each move, then the release velocity (px/s). Vertical
+ * drags are left to the sheet's own scrolling, and a plain tap is left to the days.
+ */
+private suspend fun PointerInputScope.detectMonthDrags(
+    onStart: () -> Unit,
+    onDrag: (Float) -> Unit,
+    onEnd: (velocityX: Float, totalDx: Float) -> Unit,
+    onCancel: () -> Unit,
+) {
+    awaitEachGesture {
+        val down = awaitFirstDown(requireUnconsumed = false)
+        val tracker = VelocityTracker()
+        tracker.addPosition(down.uptimeMillis, down.position)
+        var total = 0f
+        val first = awaitHorizontalTouchSlopOrCancellation(down.id) { change, over ->
+            change.consume()
+            total += over
+        } ?: return@awaitEachGesture
+        onStart()
+        onDrag(total)
+        tracker.addPosition(first.uptimeMillis, first.position)
+        val completed = horizontalDrag(first.id) { change ->
+            val dx = change.positionChange().x
+            total += dx
+            tracker.addPosition(change.uptimeMillis, change.position)
+            onDrag(dx)
+            change.consume()
+        }
+        if (completed) onEnd(tracker.calculateVelocity().x, total) else onCancel()
+    }
+}
+
 @Composable
 private fun MonthArrow(label: String, enabled: Boolean, rotated: Boolean = false, onClick: () -> Unit) {
     val colors = ZarTheme.colors
-    Box(Modifier.size(44.dp).clip(CircleShape).background(colors.subtle).clickable(enabled = enabled, role = Role.Button, onClickLabel = label, onClick = onClick), Alignment.Center) {
+    Box(Modifier.size(44.dp).clip(CircleShape).background(colors.subtle).clickable(enabled = enabled, role = Role.Button, onClickLabel = label, onClick = onClick).semantics { contentDescription = label }, Alignment.Center) {
         ZarIcon(R.drawable.ic_ph_caret_right, modifier = if (rotated) Modifier.rotate(180f) else Modifier, size = 18.dp, tint = if (enabled) colors.iconStrong else colors.textDisabled)
     }
 }
@@ -359,50 +559,57 @@ private fun TimeNumber(value: String, selected: Boolean, onClick: () -> Unit, on
 private fun ClockDial(time: LocalTime, hourMode: Boolean, onSelect: (Int) -> Unit, onSelectionFinished: () -> Unit) {
     val colors = ZarTheme.colors
     val density = LocalDensity.current
-    // Typed minutes keep their exact arm angle; hours rest on their detent.
-    val restingAngle = if (hourMode) ClockGeometry.angleOfDetent(time.hour % 12) else time.minute * 6f
-    val selectedIndex = ClockGeometry.detentOf(restingAngle)
+    // Hours step through 12 positions, minutes through all 60, so every minute is reachable and ticks.
+    val detents = if (hourMode) 12 else 60
+    val labelStep = detents / 12
+    val restingAngle = ClockGeometry.angleOfDetent(if (hourMode) time.hour % 12 else time.minute, detents)
+    val selectedIndex = if (hourMode) time.hour % 12 else time.minute
     val policy = LocalZarMotion.current
-    var dragAngle by remember { mutableStateOf<Float?>(null) }
-    // The arm tracks the finger directly; only the release settles, along the shortest path to the resting detent,
+    var dragging by remember { mutableStateOf(false) }
+    // The arm and its end knob are one shape drawn at one angle. It sits on the selected position while a finger drags,
+    // so it never leads or trails the selection; only a tap or a typed change settles to it, along the shortest path
     // with the shared settle spring. Reduced motion and disabled system animations resolve immediately.
     val settle = remember { Animatable(restingAngle) }
-    LaunchedEffect(dragAngle, restingAngle, policy) {
-        val current = dragAngle
-        if (current != null) {
-            settle.snapTo(current)
+    LaunchedEffect(dragging, restingAngle, policy) {
+        val delta = ClockGeometry.signedDelta(settle.value, restingAngle)
+        if (!dragging && delta != 0f && policy.allowsSpatialMotion) {
+            settle.animateTo(settle.value + delta, policy.spring(ZarSprings.Settle))
         } else {
-            val delta = ClockGeometry.signedDelta(settle.value, restingAngle)
-            if (delta != 0f && policy.allowsSpatialMotion) {
-                settle.animateTo(settle.value + delta, policy.spring(ZarSprings.Settle))
-            } else {
-                settle.snapTo(restingAngle)
-            }
+            settle.snapTo(restingAngle)
         }
     }
-    val armAngle = dragAngle ?: settle.value
+    val armAngle = settle.value
     val theta = armAngle * PI / 180 - PI / 2
+    // The arm always ends in the same big knob. Between numbers (a single minute) a small dot marks its centre.
+    val onNumber = selectedIndex % labelStep == 0
     val latestAngle by rememberUpdatedState(restingAngle)
     val latestIndex by rememberUpdatedState(selectedIndex)
     val latestSelect by rememberUpdatedState(onSelect)
     val latestFinished by rememberUpdatedState(onSelectionFinished)
     val ticks = rememberSelectionTicker()
-    val input = remember(density, ticks) {
+    val input = remember(density, ticks, detents) {
         with(density) {
             ClockDialInput(
-                config = ClockDialConfig(armLength = 100.dp.toPx(), centerDeadzone = 24.dp.toPx(), armGrabRadius = 24.dp.toPx()),
+                config = ClockDialConfig(
+                    armLength = 100.dp.toPx(),
+                    centerDeadzone = 24.dp.toPx(),
+                    armGrabRadius = 24.dp.toPx(),
+                    // A minute is only 6 degrees wide, so the dead band past its edge must be small.
+                    hysteresisDegrees = if (detents == 12) 3f else 1f,
+                    detents = detents,
+                ),
                 restingArmAngle = { latestAngle },
                 currentDetent = { latestIndex },
                 onSelectDetent = { latestSelect(it) },
                 onFinished = { latestFinished() },
                 ticks = ticks,
-                onArmAngle = { dragAngle = it },
+                onArmAngle = { dragging = it != null },
             )
         }
     }
     Box(Modifier.fillMaxWidth(), Alignment.Center) {
         Box(
-            Modifier.size(256.dp).clip(CircleShape).background(colors.subtle)
+            Modifier.size(256.dp).clip(CircleShape).background(colors.subtle).testTag("time-dial")
                 .pointerInput(input) { detectClockGestures(input) },
             Alignment.Center,
         ) {
@@ -414,25 +621,29 @@ private fun ClockDial(time: LocalTime, hourMode: Boolean, onSelect: (Int) -> Uni
                 )
                 drawLine(colors.accentPrimary, centre, end, strokeWidth = 2.dp.toPx(), cap = StrokeCap.Round)
                 drawCircle(colors.accentPrimary, radius = 4.dp.toPx(), center = centre)
+                drawCircle(colors.accentPrimary, radius = 22.dp.toPx(), center = end)
+                if (!onNumber) drawCircle(colors.textOnInverse, radius = 2.5.dp.toPx(), center = end)
             }
             repeat(12) { index ->
                 val label = if (hourMode) (if (index == 0) 12 else index).toString() else "%02d".format(index * 5)
                 val angle = 2 * PI * index / 12 - PI / 2
                 val x = (100 * cos(angle)).dp
                 val y = (100 * sin(angle)).dp
-                // Touches are resolved by sector on the dial itself; this node is the TalkBack/keyboard alternative.
+                val detent = index * labelStep
+                val chosen = selectedIndex == detent
+                // Touches are resolved by position on the dial itself; this node is the TalkBack/keyboard alternative.
                 var focused by remember { mutableStateOf(false) }
                 Box(Modifier.align(Alignment.Center)
                     .offset(x = x, y = y)
                     .size(48.dp)
                     .onFocusChanged { focused = it.isFocused }
                     .onKeyEvent { event ->
-                        // Real keyboard activation: Enter/Space/centre-Dpad select this detent exactly like a tap.
+                        // Real keyboard activation: Enter/Space/centre-Dpad select this position exactly like a tap.
                         if (event.type == KeyEventType.KeyUp &&
                             (event.key == Key.Enter || event.key == Key.NumPadEnter ||
                                 event.key == Key.Spacebar || event.key == Key.DirectionCenter)
                         ) {
-                            input.clickDetent(index)
+                            input.clickDetent(detent)
                             true
                         } else {
                             false
@@ -441,14 +652,33 @@ private fun ClockDial(time: LocalTime, hourMode: Boolean, onSelect: (Int) -> Uni
                     .focusable()
                     .semantics(mergeDescendants = true) {
                         role = Role.Button
-                        selected = selectedIndex == index
-                        onClick(label = "Select $label") { input.clickDetent(index); true }
+                        selected = chosen
+                        onClick(label = "Select $label") { input.clickDetent(detent); true }
                     }, Alignment.Center) {
                     Box(Modifier.size(44.dp).clip(CircleShape)
-                        .then(if (focused) Modifier.border(2.dp, colors.accentPrimary, CircleShape) else Modifier)
-                        .background(if (selectedIndex == index) colors.accentPrimary else Color.Transparent), Alignment.Center) {
-                        Text(label, style = ZarType.bodyL.copy(fontWeight = if (selectedIndex == index) FontWeight.Medium else FontWeight.Normal),
-                            color = if (selectedIndex == index) colors.textOnInverse else colors.textPrimary)
+                        .then(if (focused) Modifier.border(2.dp, colors.accentPrimary, CircleShape) else Modifier), Alignment.Center) {
+                        Text(label, style = ZarType.bodyL.copy(fontWeight = if (chosen) FontWeight.Medium else FontWeight.Normal),
+                            color = colors.textPrimary)
+                    }
+                }
+            }
+            // The same numbers again in the knob's text colour, visible only inside the knob, so a number it covers
+            // (fully or partly) reads correctly. Decorative: the touch and accessibility nodes are the ones above.
+            Box(
+                Modifier.size(256.dp).clearAndSetSemantics {}.drawWithContent {
+                    val end = Offset(
+                        size.width / 2 + 100.dp.toPx() * cos(theta).toFloat(),
+                        size.height / 2 + 100.dp.toPx() * sin(theta).toFloat(),
+                    )
+                    clipPath(Path().apply { addOval(Rect(center = end, radius = 22.dp.toPx())) }) { this@drawWithContent.drawContent() }
+                },
+                Alignment.Center,
+            ) {
+                repeat(12) { index ->
+                    val label = if (hourMode) (if (index == 0) 12 else index).toString() else "%02d".format(index * 5)
+                    val angle = 2 * PI * index / 12 - PI / 2
+                    Box(Modifier.align(Alignment.Center).offset(x = (100 * cos(angle)).dp, y = (100 * sin(angle)).dp).size(48.dp), Alignment.Center) {
+                        Text(label, style = ZarType.bodyL.copy(fontWeight = FontWeight.Medium), color = colors.textOnInverse)
                     }
                 }
             }

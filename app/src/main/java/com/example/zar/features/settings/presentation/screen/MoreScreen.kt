@@ -11,6 +11,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -20,9 +22,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
@@ -34,9 +38,16 @@ import com.example.zar.core.presentation.components.ZarCard
 import com.example.zar.core.presentation.components.ZarIcon
 import com.example.zar.core.presentation.components.ZarIconChip
 import com.example.zar.core.presentation.components.ZarScreenScaffold
-import com.example.zar.core.presentation.components.heroDisplacement
-import com.example.zar.core.presentation.components.heroParallax
-import com.example.zar.core.presentation.motion.ZarMotion
+import com.example.zar.core.presentation.components.CollapseLine
+import com.example.zar.core.presentation.components.CollapseOverlay
+import com.example.zar.core.presentation.components.CollapseStatusBand
+import com.example.zar.core.presentation.components.HomeCollapse
+import com.example.zar.core.presentation.components.HomeCollapseSpec
+import com.example.zar.core.presentation.components.collapseClip
+import com.example.zar.core.presentation.components.collapseLine
+import com.example.zar.core.presentation.components.collapseMeasure
+import com.example.zar.core.presentation.components.collapseShift
+import com.example.zar.core.presentation.components.rememberHomeCollapse
 import com.example.zar.core.presentation.theme.ZarTheme
 import com.example.zar.core.presentation.theme.ZarGradients
 import com.example.zar.core.presentation.theme.ZarType
@@ -65,50 +76,60 @@ fun MoreScreen(
         heroUnderStatusBar = true,
     ) { padding ->
         val scrollState = rememberScrollState()
-        // The cards rise in one after another on the first visit; switching back to this tab shows them in place.
         val play = rememberRiseInOnFirstVisit(loaded = true)
-        Column(
-            Modifier.fillMaxSize()
-                .background(ZarTheme.colors.canvas)
-                .verticalScroll(scrollState)
-                .padding(bottom = padding.calculateBottomPadding()),
-        ) {
-            MoreHero(scrollState)
+        // The hero collapses into the status bar as the page scrolls, like Home's top card.
+        val collapse = rememberHomeCollapse(scrollState, cardHeight = MoreHeroHeight, fadeMargin = 8.dp)
+        Box(Modifier.fillMaxSize()) {
             Column(
-                Modifier.fillMaxWidth().padding(start = 10.dp, end = 10.dp, top = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
+                Modifier.fillMaxSize()
+                    .background(ZarTheme.colors.canvas)
+                    .verticalScroll(scrollState)
+                    .padding(bottom = padding.calculateBottomPadding()),
             ) {
-                moreRows(
-                    onOpenAccounts, onOpenIncome, onOpenFreelance, onOpenCrypto,
-                    onOpenCapture, onOpenBills, onOpenRules, onOpenReminder, onOpenSettings, onOpenExport,
-                ).forEachIndexed { index, row -> MoreOption(row, Modifier.riseIn(index, play)) }
+                MoreHero(collapse)
+                Column(
+                    Modifier.fillMaxWidth().padding(start = 10.dp, end = 10.dp, top = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    moreRows(
+                        onOpenAccounts, onOpenIncome, onOpenFreelance, onOpenCrypto,
+                        onOpenCapture, onOpenBills, onOpenRules, onOpenReminder, onOpenSettings, onOpenExport,
+                    ).forEachIndexed { index, row -> MoreOption(row, Modifier.riseIn(index, play)) }
+                }
             }
+            CollapseStatusBand(collapse, "more-status-band", Modifier.align(Alignment.TopCenter))
         }
     }
 }
 
+private val MoreHeroHeight = 168.dp
+
 @Composable
-private fun MoreHero(scrollState: ScrollState) {
-    // Title/subtitle are the text layer; the dusk surface is the card itself and stays put. Resting positions are
-    // unchanged: at zero displacement the layers sit exactly where the padding puts them.
-    val heroOffset = scrollState.heroDisplacement()
-    val textLayer = Modifier.heroParallax(heroOffset, ZarMotion.PARALLAX_TEXT, ZarMotion.ParallaxTextCap)
+private fun MoreHero(collapse: HomeCollapseSpec) {
+    // The card collapses like Home's (see HomeCollapse): the dusk gradient drifts at 0.35 of the scroll under a darkening
+    // overlay, the title and subtitle follow at 0.30 and fade line by line, and the bottom corners flatten.
+    val fullRadiusPx = with(LocalDensity.current) { 40.dp.toPx() }
+    val titleLine = remember { CollapseLine() }
+    val subtitleLine = remember { CollapseLine() }
     Box(
-        Modifier.fillMaxWidth().height(168.dp)
-            .background(ZarGradients.dusk, RoundedCornerShape(bottomStart = 40.dp, bottomEnd = 40.dp)),
+        Modifier.fillMaxWidth().heightIn(min = MoreHeroHeight)
+            .collapseMeasure(collapse)
+            .collapseClip(collapse, fullRadiusPx)
+            .background(Color(0xFF05070B))
+            .testTag("more-hero"),
     ) {
-        Text(
-            stringResource(R.string.nav_more),
-            style = ZarType.displayTitle,
-            color = Color.White,
-            modifier = textLayer.padding(start = 22.dp, top = 62.dp),
-        )
-        Text(
-            stringResource(R.string.more_hero_subtitle),
-            style = ZarType.bodyS,
-            color = Color.White,
-            modifier = textLayer.padding(start = 22.dp, top = 108.dp),
-        )
+        Box(Modifier.matchParentSize().collapseShift(collapse, HomeCollapse.BACKGROUND_RATE).background(ZarGradients.dusk))
+        CollapseOverlay(collapse, Modifier.matchParentSize())
+        Column(Modifier.collapseShift(collapse, HomeCollapse.TEXT_RATE).padding(start = 22.dp, bottom = 16.dp)) {
+            Spacer(Modifier.height(62.dp))
+            Box(Modifier.collapseLine(collapse, titleLine)) {
+                Text(stringResource(R.string.nav_more), style = ZarType.displayTitle, color = Color.White, modifier = Modifier.testTag("more-title"))
+            }
+            Spacer(Modifier.height(14.dp))
+            Box(Modifier.collapseLine(collapse, subtitleLine)) {
+                Text(stringResource(R.string.more_hero_subtitle), style = ZarType.bodyS, color = Color.White)
+            }
+        }
     }
 }
 

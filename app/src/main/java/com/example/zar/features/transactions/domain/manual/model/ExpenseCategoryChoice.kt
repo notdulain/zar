@@ -16,6 +16,35 @@ interface ExpenseCategoryChoice {
 }
 
 /**
+ * The icon a person picks for their own category. [key] is the stored name: never rename or reuse one, because
+ * documents and the Firestore rules hold it. An unknown or missing key reads as [RECEIPT], the original generic icon.
+ */
+enum class CategoryIcon(val key: String) {
+    RECEIPT("receipt"),
+    FORK_KNIFE("fork_knife"),
+    COFFEE("coffee"),
+    BASKET("basket"),
+    GROCERIES("groceries"),
+    CAR("car"),
+    BANK("bank"),
+    HOUSE("house"),
+    BARBELL("barbell"),
+    TELEVISION("television"),
+    PHONE("phone"),
+    WIFI("wifi"),
+    LIGHTNING("lightning"),
+    PIGGY_BANK("piggy_bank"),
+    BRIEFCASE("briefcase"),
+    WALLET("wallet");
+
+    companion object {
+        val DEFAULT = RECEIPT
+
+        fun fromKey(key: String?): CategoryIcon = entries.firstOrNull { it.key == key } ?: DEFAULT
+    }
+}
+
+/**
  * A category the person added. It carries no usual class, so it never infers a spending class from its name
  * (a custom "Rent" is not committed unless the person says so). [nameKey] is the normalised comparison key.
  */
@@ -24,6 +53,12 @@ data class CustomExpenseCategory(
     val name: String,
     val nameKey: String,
     val createdAt: Instant,
+    val icon: CategoryIcon = CategoryIcon.DEFAULT,
+    /**
+     * Deleted by the person: hidden from every picker but still stored, so an expense that used it keeps its name.
+     * Never reversed on the same document; adding the name again makes a new category.
+     */
+    val archived: Boolean = false,
 ) : ExpenseCategoryChoice {
     override val usualClass: SpendingClass? get() = null
 }

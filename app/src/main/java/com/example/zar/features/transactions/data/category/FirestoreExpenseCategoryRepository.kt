@@ -73,11 +73,13 @@ class FirestoreExpenseCategoryRepository @Inject constructor(
                 close(error)
                 return@addSnapshotListener
             }
-            val categories = snapshot?.documents.orEmpty().mapNotNull { doc ->
+            val documents = snapshot?.documents.orEmpty()
+            val hidden = documents.mapNotNull { doc -> doc.data?.let(HiddenBuiltInDocumentMapper::idOf) }.toSet()
+            val categories = documents.filter { doc -> doc.data?.let(HiddenBuiltInDocumentMapper::idOf) == null }.mapNotNull { doc ->
                 doc.data?.let(ExpenseCategoryDocumentMapper::fromMap)
                     .also { if (it == null) Log.w(TAG, "Skipping malformed category ${doc.id}") }
             }
-            trySend(CustomCategorySnapshot(categories))
+            trySend(CustomCategorySnapshot(categories, hiddenBuiltIns = hidden))
         }
         awaitClose { registration.remove() }
     }
@@ -108,6 +110,34 @@ class FirestoreExpenseCategoryRepository @Inject constructor(
         // The write may have failed in the instant between the timeout and the flag; the listener missed it.
         if (write.isComplete && !write.isSuccessful) late.tryEmit(category)
         if (session.currentUserId() != uid) throw LedgerError.NotSignedIn()
+    }
+
+    override suspend fun archive(id: String) {
+        val uid = session.currentUserId() ?: throw LedgerError.NotSignedIn()
+        val write = categoriesOf(uid.value).document(id).update("archived", true)
+        // Accepted locally at once and works offline; wait briefly so a fast server rejection reaches the caller.
+        withTimeoutOrNull(WAIT_FOR_SERVER_MS) { write.await() }
+        if (write.isComplete && !write.isSuccessful) throw write.exception ?: LedgerError.InvalidRecord("Could not delete the category")
+        if (session.currentUserId() != uid) throw LedgerError.NotSignedIn()
+    }
+
+    override suspend fun hideBuiltIn(id: String) {
+        val uid = session.currentUserId() ?: throw LedgerError.NotSignedIn()
+        val write = categoriesOf(uid.value).document(id).set(HiddenBuiltInDocumentMapper.toMap(id, System.currentTimeMillis()))
+        awaitQuickly(write)
+        if (session.currentUserId() != uid) throw LedgerError.NotSignedIn()
+    }
+
+    override suspend fun restoreBuiltIn(id: String) {
+        val uid = session.currentUserId() ?: throw LedgerError.NotSignedIn()
+        awaitQuickly(categoriesOf(uid.value).document(id).delete())
+        if (session.currentUserId() != uid) throw LedgerError.NotSignedIn()
+    }
+
+    /** Accepted locally at once and works offline; wait briefly so a fast server rejection reaches the caller. */
+    private suspend fun awaitQuickly(write: com.google.android.gms.tasks.Task<Void>) {
+        withTimeoutOrNull(WAIT_FOR_SERVER_MS) { write.await() }
+        if (write.isComplete && !write.isSuccessful) throw write.exception ?: LedgerError.InvalidRecord("The change was refused")
     }
 
     private fun categoriesOf(uid: String): CollectionReference =

@@ -78,7 +78,6 @@ import com.example.zar.core.domain.model.OpeningBalance
 import com.example.zar.core.domain.model.money.Currencies
 import com.example.zar.core.domain.model.money.FiatMoney
 import com.example.zar.core.presentation.components.AddEntryOption
-import com.example.zar.core.presentation.components.HeroScrollOffset
 import com.example.zar.core.presentation.components.TopLevelDestination
 import com.example.zar.core.presentation.components.ZarButton
 import com.example.zar.core.presentation.components.ZarButtonSize
@@ -87,10 +86,9 @@ import com.example.zar.core.presentation.components.ZarCard
 import com.example.zar.core.presentation.components.ZarDivider
 import com.example.zar.core.presentation.components.ZarEyebrow
 import com.example.zar.core.presentation.components.ZarScreenScaffold
-import com.example.zar.core.presentation.components.heroDisplacement
-import com.example.zar.core.presentation.components.heroParallax
+import com.example.zar.core.presentation.components.CollapseStatusBand
+import com.example.zar.core.presentation.components.rememberHomeCollapse
 import com.example.zar.core.presentation.format.formatWithCode
-import com.example.zar.core.presentation.motion.ZarMotion
 import com.example.zar.core.presentation.theme.ZarDimens
 import com.example.zar.core.presentation.theme.ZarGradients
 import com.example.zar.core.presentation.theme.ZarShapes
@@ -178,7 +176,7 @@ fun PlansScreen(
             onDismissRequest = {},
             properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
         ) {
-            SheetBackHost(onPop = { showNewPlan = false }) { dismiss ->
+            SheetBackHost(onPop = { showNewPlan = false }, slideUpOnEnter = true) { dismiss ->
                 NewPlanSheet(
                     hasWeeklyLimit = allowance.overview?.settings?.isEnabled == true,
                     // Disabled until the plans have loaded: nothing is written while the catalog is unknown.
@@ -291,84 +289,88 @@ internal fun PlansScreenContent(
         heroUnderStatusBar = true,
     ) { padding ->
         val scrollState = rememberScrollState()
-        val heroOffset = scrollState.heroDisplacement()
-        // The cards under the hero rise in one after another on the first visit; switching tabs shows them in place.
+        // The hero collapses into the status bar as the page scrolls, like Home's top card.
+        val collapse = rememberHomeCollapse(scrollState, cardHeight = PlansHeroSpec.Height, fadeMargin = 8.dp)
         val play = rememberRiseInOnFirstVisit(loaded = !state.isLoading)
         val layoutDirection = androidx.compose.ui.platform.LocalLayoutDirection.current
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(
-                    start = padding.calculateStartPadding(layoutDirection),
-                    end = padding.calculateEndPadding(layoutDirection),
-                    top = padding.calculateTopPadding(),
-                )
-                .verticalScroll(scrollState),
-        ) {
-            when {
-                state.isLoading -> LoadingHero(heroOffset, onNewPlan)
-                state.loadFailed -> ErrorHero(onRetry, heroOffset, onNewPlan)
-                else -> GoalHero(
-                    overview = state.overview ?: PlansOverview(null, emptyList()),
-                    onNewPlan = onNewPlan,
-                    onEditGoal = onEditGoal,
-                    onAllocate = onAllocate,
-                    heroOffset = heroOffset,
-                    onChangeMain = onChangeMain,
-                    onViewGoal = onViewGoal,
-                )
-            }
+        Box(Modifier.fillMaxSize()) {
             Column(
-                Modifier.padding(horizontal = ZarDimens.ScreenGutter).padding(top = 18.dp),
-                verticalArrangement = Arrangement.spacedBy(ZarDimens.SpaceMd),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(
+                        start = padding.calculateStartPadding(layoutDirection),
+                        end = padding.calculateEndPadding(layoutDirection),
+                        top = padding.calculateTopPadding(),
+                    )
+                    .verticalScroll(scrollState),
             ) {
-                // Other saved plans beside the main goal. A failed load shows the error hero above, never an empty list.
-                // Only when there are other plans, so an empty wrapper never adds a gap.
-                state.overview?.takeIf { !state.isLoading && !state.loadFailed && it.otherGoals().isNotEmpty() }?.let {
-                    Box(Modifier.riseIn(0, play)) { YourPlansSection(it, onSeeAll, onOpenPlan) }
-                }
-                ZarEyebrow(stringResource(R.string.plans_other_plans).uppercase(), Modifier.padding(start = 12.dp).riseIn(1, play))
-                // One grouped card, a row per plan kind (Figma Z04): each opens its real screen or editor.
-                ZarCard(Modifier.fillMaxWidth().riseIn(1, play), contentPadding = PaddingValues(vertical = 4.dp)) {
-                    PlanRow(
-                        icon = R.drawable.ic_ph_wallet,
-                        title = stringResource(R.string.plans_weekly_limit_title),
-                        subtitle = weeklyLimitSummary ?: stringResource(R.string.plans_weekly_limit_unset),
-                        onClick = onEditWeeklyLimit,
-                        tag = "plans-weekly-limit-row",
-                    )
-                    ZarDivider(Modifier.padding(start = 70.dp))
-                    PlanRow(
-                        icon = R.drawable.ic_ph_receipt,
-                        title = stringResource(R.string.plans_bills_title),
-                        subtitle = countText(counts.bills, R.plurals.plans_bills_count, R.string.plans_bills_empty),
-                        onClick = onOpenBills,
-                        tag = "plans-bills-card",
-                    )
-                    ZarDivider(Modifier.padding(start = 70.dp))
-                    PlanRow(
-                        icon = R.drawable.ic_ph_briefcase,
-                        title = stringResource(R.string.plans_freelance_title),
-                        subtitle = countText(counts.projects, R.plurals.plans_projects_count, R.string.plans_freelance_empty),
-                        onClick = onOpenFreelance,
-                        tag = "plans-freelance-card",
+                when {
+                    state.isLoading -> LoadingHero(collapse, onNewPlan)
+                    state.loadFailed -> ErrorHero(onRetry, collapse, onNewPlan)
+                    else -> GoalHero(
+                        overview = state.overview ?: PlansOverview(null, emptyList()),
+                        onNewPlan = onNewPlan,
+                        onEditGoal = onEditGoal,
+                        onAllocate = onAllocate,
+                        collapse = collapse,
+                        onChangeMain = onChangeMain,
+                        onViewGoal = onViewGoal,
                     )
                 }
-                // The weekly limit's status and coverage notes, once one is set (or when a caller supplies the section).
-                allowanceSection?.invoke()
-                state.overview?.takeIf { !state.isLoading && !state.loadFailed }?.let { overview ->
-                    val goal = overview.goal
-                    val progress = overview.progress
-                    if (goal != null && progress != null) {
-                        Text(
-                            stringResource(R.string.plans_allocated_label, progress.allocated.formatWithCode()),
-                            style = ZarType.bodyS, color = ZarTheme.colors.textSecondary, modifier = Modifier.padding(start = 12.dp),
-                        )
-                        GoalProgressDetails(goal, progress)
+                Column(
+                    Modifier.padding(horizontal = ZarDimens.ScreenGutter).padding(top = 18.dp),
+                    verticalArrangement = Arrangement.spacedBy(ZarDimens.SpaceMd),
+                ) {
+                    // Other saved plans beside the main goal. A failed load shows the error hero above, never an empty list.
+                    state.overview?.takeIf { !state.isLoading && !state.loadFailed && it.otherGoals().isNotEmpty() }?.let {
+                        Box(Modifier.riseIn(0, play)) { YourPlansSection(it, onSeeAll, onOpenPlan) }
+                    }
+                    Column(Modifier.riseIn(1, play), verticalArrangement = Arrangement.spacedBy(PlanSectionGap)) {
+                        ZarEyebrow(stringResource(R.string.plans_other_plans).uppercase(), Modifier.padding(start = 12.dp))
+                        // One grouped card, a row per plan kind (Figma Z04): each opens its real screen or editor.
+                        ZarCard(Modifier.fillMaxWidth(), contentPadding = PaddingValues(vertical = 4.dp)) {
+                            PlanRow(
+                                icon = R.drawable.ic_ph_wallet,
+                                title = stringResource(R.string.plans_weekly_limit_title),
+                                subtitle = weeklyLimitSummary ?: stringResource(R.string.plans_weekly_limit_unset),
+                                onClick = onEditWeeklyLimit,
+                                tag = "plans-weekly-limit-row",
+                            )
+                            ZarDivider(Modifier.padding(start = 70.dp))
+                            PlanRow(
+                                icon = R.drawable.ic_ph_receipt,
+                                title = stringResource(R.string.plans_bills_title),
+                                subtitle = countText(counts.bills, R.plurals.plans_bills_count, R.string.plans_bills_empty),
+                                onClick = onOpenBills,
+                                tag = "plans-bills-card",
+                            )
+                            ZarDivider(Modifier.padding(start = 70.dp))
+                            PlanRow(
+                                icon = R.drawable.ic_ph_briefcase,
+                                title = stringResource(R.string.plans_freelance_title),
+                                subtitle = countText(counts.projects, R.plurals.plans_projects_count, R.string.plans_freelance_empty),
+                                onClick = onOpenFreelance,
+                                tag = "plans-freelance-card",
+                            )
+                        }
+                    }
+                    // The weekly limit's status and coverage notes, once one is set (or when a caller supplies the section).
+                    allowanceSection?.invoke()
+                    state.overview?.takeIf { !state.isLoading && !state.loadFailed }?.let { overview ->
+                        val goal = overview.goal
+                        val progress = overview.progress
+                        if (goal != null && progress != null) {
+                            Text(
+                                stringResource(R.string.plans_allocated_label, progress.allocated.formatWithCode()),
+                                style = ZarType.bodyS, color = ZarTheme.colors.textSecondary, modifier = Modifier.padding(start = 12.dp),
+                            )
+                            GoalProgressDetails(goal, progress)
+                        }
                     }
                 }
+                Spacer(Modifier.height(padding.calculateBottomPadding()))
             }
-            Spacer(Modifier.height(padding.calculateBottomPadding()))
+            CollapseStatusBand(collapse, "plans-status-band", Modifier.align(Alignment.TopCenter))
         }
     }
 }

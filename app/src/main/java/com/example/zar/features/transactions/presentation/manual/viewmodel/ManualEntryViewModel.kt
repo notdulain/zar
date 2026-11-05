@@ -34,6 +34,7 @@ import com.example.zar.features.transactions.domain.category.usecase.CreateExpen
 import com.example.zar.features.transactions.domain.category.usecase.ObserveExpenseCategoryCatalogUseCase
 import com.example.zar.features.transactions.domain.manual.EntrySuggestions
 import com.example.zar.features.transactions.domain.manual.ManualEntryRules
+import com.example.zar.features.transactions.domain.manual.model.CategoryIcon
 import com.example.zar.features.transactions.domain.manual.model.CustomCategoryIds
 import com.example.zar.features.transactions.domain.manual.model.CustomExpenseCategory
 import com.example.zar.features.transactions.domain.manual.model.EntrySuggestion
@@ -72,8 +73,16 @@ enum class ManualEntryMessage { NOT_SIGNED_IN, ACCOUNT_ARCHIVED, FAILED }
  */
 data class NewCategoryState(
     val name: String = "",
+    val icon: CategoryIcon = CategoryIcon.DEFAULT,
     val problem: CategoryNameProblem? = null,
     val isSaving: Boolean = false,
+    val failed: Boolean = false,
+)
+
+/** The "Delete category" confirmation while it is open. [failed] means the delete was refused, so it can be retried. */
+data class DeleteCategoryState(
+    val category: ExpenseCategoryChoice,
+    val isDeleting: Boolean = false,
     val failed: Boolean = false,
 )
 
@@ -94,6 +103,8 @@ data class ManualEntryUiState(
     val categoryCatalog: ExpenseCategoryCatalog = ExpenseCategoryCatalog.BUILT_IN_ONLY,
     /** Non-null while the Add category form is open. */
     val newCategory: NewCategoryState? = null,
+    /** Non-null while the Delete category confirmation is open. */
+    val deletingCategory: DeleteCategoryState? = null,
     /** True once the user picked the category themselves, so a remembered rule no longer fills it in. */
     val categoryChosen: Boolean = false,
     /** The rule that filled in [category] for the typed title. Cleared as soon as the user picks another category. */
@@ -320,6 +331,51 @@ class ManualEntryViewModel @Inject constructor(
         state.newCategory?.let { state.copy(newCategory = it.copy(name = value, problem = null, failed = false)) } ?: state
     }
 
+    /**
+     * Asks to remove a category (one of the person's own or a built-in) from their lists. Nothing changes until it is
+     * confirmed. The last remaining category cannot be removed, so an expense can always be given one.
+     */
+    fun onDeleteCategoryStart(category: ExpenseCategoryChoice) {
+        _uiState.update {
+            if (it.categoryCatalog.choices.size <= 1) it else it.copy(deletingCategory = DeleteCategoryState(category))
+        }
+    }
+
+    fun onDeleteCategoryCancel() = _uiState.update { it.copy(deletingCategory = null) }
+
+    /**
+     * Deletes the category. If it was the selected one the selection is cleared so the draft cannot point at a
+     * category that has gone from the pickers; every other field of the draft stays. Entries already saved with it
+     * keep its name. A refused delete keeps the confirmation open for a retry.
+     */
+    fun onDeleteCategoryConfirm() {
+        val pending = _uiState.value.deletingCategory ?: return
+        if (pending.isDeleting) return
+        _uiState.update { it.copy(deletingCategory = pending.copy(isDeleting = true, failed = false)) }
+        viewModelScope.launch {
+            createCategory.remove(pending.category).fold(
+                onSuccess = {
+                    _uiState.update {
+                        val wasSelected = it.category?.id == pending.category.id
+                        it.copy(
+                            deletingCategory = null,
+                            category = if (wasSelected) null else it.category,
+                            categoryChosen = if (wasSelected) false else it.categoryChosen,
+                        ).withRule()
+                    }
+                },
+                onFailure = {
+                    _uiState.update { it.copy(deletingCategory = it.deletingCategory?.copy(isDeleting = false, failed = true)) }
+                },
+            )
+        }
+    }
+
+    /** Picks the icon the new category will show. Only the open form changes; the draft is untouched. */
+    fun onNewCategoryIconSelect(value: CategoryIcon) = _uiState.update { state ->
+        state.newCategory?.let { state.copy(newCategory = it.copy(icon = value)) } ?: state
+    }
+
     /** Closes the form without creating anything; the selection and every typed field stay. */
     fun onAddCategoryCancel() {
         pendingCategoryId = null
@@ -336,7 +392,7 @@ class ManualEntryViewModel @Inject constructor(
         val id = pendingCategoryId ?: CustomCategoryIds.newId().also { pendingCategoryId = it }
         _uiState.update { it.copy(newCategory = form.copy(isSaving = true, problem = null, failed = false)) }
         viewModelScope.launch {
-            val outcome = createCategory(id, form.name, _uiState.value.categoryCatalog, Instant.now())
+            val outcome = createCategory(id, form.name, _uiState.value.categoryCatalog, Instant.now(), form.icon)
             outcome.fold(
                 onSuccess = { created ->
                     pendingCategoryId = null
@@ -366,7 +422,7 @@ class ManualEntryViewModel @Inject constructor(
             it.copy(
                 category = null,
                 categoryChosen = false,
-                newCategory = it.newCategory ?: NewCategoryState(name = rejected.name, failed = true),
+                newCategory = it.newCategory ?: NewCategoryState(name = rejected.name, icon = rejected.icon, failed = true),
             ).withRule()
         }
     }
@@ -521,7 +577,8 @@ class ManualEntryViewModel @Inject constructor(
     private fun ManualEntryUiState.withRule(): ManualEntryUiState {
         if (kind != ManualEntryKind.EXPENSE || categoryChosen) return this
         val rule = (CategoryRuleMatcher.match(rules, title, accountId) as? RuleMatch.Applied)?.rule
-        val filed = rule?.let { categoryCatalog.find(it.categoryId) }
+        // A removed category still resolves for old entries, but a rule must not file a new one under it.
+        val filed = rule?.let { categoryCatalog.find(it.categoryId) }?.takeIf { it in categoryCatalog.choices }
             ?: return if (appliedRule != null) copy(category = null, appliedRule = null) else this
         val usual = filed.usualClass
         return copy(

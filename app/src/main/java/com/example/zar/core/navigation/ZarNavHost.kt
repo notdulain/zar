@@ -186,6 +186,8 @@ fun ZarNavHost(
                             onOpenBills = { navController.navigate(BillsRoute) },
                             onOpenBill = { id -> navController.navigate(BillRoute(id)) },
                             onOpenSpending = { month -> navController.navigate(SpendingRoute(month.toString())) },
+                            onOpenAccounts = { navController.navigate(AccountsRoute) },
+                            onOpenAccount = { id -> navController.navigate(AccountRoute(id)) },
                         )
                         TopLevelDestination.Activity -> ActivityScreen(
                             onNavigate = onNavigate,
@@ -235,6 +237,7 @@ fun ZarNavHost(
                     controller = capsuleController,
                     driveCapsule = false,
                     enabled = !childCovers && onHomeTop,
+                    pageMoving = { tabs.isMoving },
                     onMenuOpenChange = onMenuOpenChange,
                     modifier = Modifier.align(Alignment.BottomCenter),
                 )
@@ -313,6 +316,10 @@ fun ZarNavHost(
                     initialKind = route.initialKind,
                     onDone = dismiss,
                     onAddAccount = { navController.navigate(AccountFormRoute()) },
+                    // The same Quick note window the Add menu opens; it replaces this sheet rather than stacking on it.
+                    onOpenQuickNote = {
+                        navController.navigate(QuickNoteRoute) { popUpTo<ManualEntryRoute> { inclusive = true } }
+                    },
                 )
             }
         }

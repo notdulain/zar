@@ -6,7 +6,10 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -30,7 +33,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.zar.R
@@ -54,6 +59,13 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
+/** Between a Plans section's heading and its card, and between side-by-side cards (Figma Z04). */
+internal val PlanSectionGap = 10.dp
+
+private val PlanCardName = ZarType.labelButton.copy(lineHeight = 20.sp)
+private val PlanCardAmount = ZarType.bodyM.copy(lineHeight = 20.sp)
+private val PlanCardDetail = ZarType.bodyCaption.copy(lineHeight = 16.sp)
+
 /** How many other plans sit beside the main goal on the Plans page before "See all" takes over. */
 internal const val PLAN_CARDS_SHOWN = 2
 
@@ -66,41 +78,56 @@ internal fun YourPlansSection(overview: PlansOverview, onSeeAll: () -> Unit, onO
     val others = overview.otherGoals()
     if (others.isEmpty()) return
     val colors = ZarTheme.colors
-    Column(verticalArrangement = Arrangement.spacedBy(ZarDimens.SpaceMd), modifier = Modifier.testTag("plans-your-plans")) {
+    Column(verticalArrangement = Arrangement.spacedBy(PlanSectionGap), modifier = Modifier.testTag("plans-your-plans")) {
         Row(Modifier.fillMaxWidth().padding(start = 12.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             ZarEyebrow(stringResource(R.string.plans_your_plans))
-            Box(
-                Modifier.heightIn(min = 48.dp).clickable(role = Role.Button, onClick = onSeeAll).padding(horizontal = 12.dp).testTag("plans-see-all"),
-                contentAlignment = Alignment.Center,
-            ) { Text(stringResource(R.string.plans_see_all) + " →", style = ZarType.labelChip, color = colors.textSelected) }
+            // Laid out at its text height so it can't push the cards away; Compose keeps a 48dp touch target anyway.
+            Text(
+                stringResource(R.string.plans_see_all) + " →",
+                style = ZarType.labelChip,
+                color = colors.textSelected,
+                modifier = Modifier.clickable(role = Role.Button, onClick = onSeeAll).padding(horizontal = 12.dp).testTag("plans-see-all"),
+            )
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(ZarDimens.SpaceMd)) {
+        // Side-by-side cards share one height, so a two-line name never leaves its neighbour short.
+        Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(PlanSectionGap)) {
             others.take(PLAN_CARDS_SHOWN).forEach { goal ->
-                PlanCard(goal, overview.progressFor(goal.id), { onOpen(goal.id) }, Modifier.weight(1f))
+                PlanCard(goal, overview.progressFor(goal.id), { onOpen(goal.id) }, Modifier.weight(1f).fillMaxHeight())
             }
             if (others.size == 1) Spacer(Modifier.weight(1f))
         }
     }
 }
 
+/** Figma Z04's plan card: a 15sp name, then everything else at 12sp, with only the amount back at 15sp. */
 @Composable
 private fun PlanCard(goal: SavingsGoal, progress: BackedGoalProgress?, onClick: () -> Unit, modifier: Modifier) {
     val colors = ZarTheme.colors
     val open = stringResource(R.string.plans_open_plan, goal.name)
-    ZarCard(modifier.semantics { contentDescription = open }.testTag("plan-card-${goal.id.value}"), onClick = onClick) {
-        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text(goal.name, style = ZarType.bodyL.copy(lineHeight = 20.sp), color = colors.textPrimary, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            Text(deadlineText(goal.targetDate), style = ZarType.bodyS, color = colors.textSecondary)
-            Spacer(Modifier.height(4.dp))
-            if (progress == null || progress.hasUnknownBalance) {
-                Text(stringResource(R.string.plans_card_unknown_backing), style = ZarType.bodyS, color = colors.textSecondary)
-            } else {
-                Text(stringResource(R.string.plans_card_set_aside, progress.backed.formatWithCode()), style = ZarType.bodyM, color = colors.textPrimary)
-                if (!AmountMask.isHidden) {
-                    MiniTrack(progress.backedFraction(goal.target))
-                    val percent = (progress.backedFraction(goal.target) * 100).toInt()
-                    Text(stringResource(R.string.plans_card_percent, percent, goal.target.formatWithCode()), style = ZarType.bodyCaption, color = colors.textTertiary)
-                }
+    ZarCard(modifier.semantics { contentDescription = open }.testTag("plan-card-${goal.id.value}"), onClick = onClick, contentPadding = PaddingValues(15.dp)) {
+        Text(goal.name, style = PlanCardName, color = colors.textPrimary, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        Spacer(Modifier.height(2.dp))
+        Text(deadlineText(goal.targetDate), style = PlanCardDetail, color = colors.textSecondary)
+        Spacer(Modifier.height(10.dp))
+        if (progress == null || progress.hasUnknownBalance) {
+            Text(stringResource(R.string.plans_card_unknown_backing), style = PlanCardDetail, color = colors.textSecondary)
+        } else {
+            val label = stringResource(R.string.plans_card_set_aside_label)
+            Text(
+                buildAnnotatedString {
+                    append(progress.backed.formatWithCode())
+                    append("  ")
+                    withStyle(PlanCardDetail.toSpanStyle().copy(color = colors.textSecondary)) { append(label) }
+                },
+                style = PlanCardAmount,
+                color = colors.textPrimary,
+            )
+            if (!AmountMask.isHidden) {
+                Spacer(Modifier.height(8.dp))
+                MiniTrack(progress.backedFraction(goal.target))
+                Spacer(Modifier.height(8.dp))
+                val percent = (progress.backedFraction(goal.target) * 100).toInt()
+                Text(stringResource(R.string.plans_card_percent, percent, goal.target.formatWithCode()), style = PlanCardDetail, color = colors.textTertiary)
             }
         }
     }

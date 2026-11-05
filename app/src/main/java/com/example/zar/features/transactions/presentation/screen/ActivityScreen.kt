@@ -40,6 +40,13 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.animation.Crossfade
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.foundation.layout.width
+import com.example.zar.core.presentation.components.ZarMonthPicker
+import com.example.zar.core.presentation.motion.LocalZarMotion
+import com.example.zar.features.transactions.domain.activity.forMonth
+import com.example.zar.features.transactions.domain.activity.wholeMonth
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDefaults
@@ -54,6 +61,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -80,7 +88,11 @@ import com.example.zar.R
 import com.example.zar.core.domain.model.Account
 import com.example.zar.core.domain.model.TransactionType
 import com.example.zar.core.presentation.components.AddEntryOption
-import com.example.zar.core.presentation.components.HeroScrollOffset
+import com.example.zar.core.presentation.components.CollapseLine
+import com.example.zar.core.presentation.components.CollapseOverlay
+import com.example.zar.core.presentation.components.CollapseStatusBand
+import com.example.zar.core.presentation.components.HomeCollapse
+import com.example.zar.core.presentation.components.HomeCollapseSpec
 import com.example.zar.core.presentation.components.TopLevelDestination
 import com.example.zar.core.presentation.components.ZarButton
 import com.example.zar.core.presentation.components.ZarButtonStyle
@@ -91,9 +103,11 @@ import com.example.zar.core.presentation.components.ZarIconChip
 import com.example.zar.core.presentation.components.ZarScreenScaffold
 import com.example.zar.core.presentation.components.ZarSwitch
 import com.example.zar.core.presentation.components.ZarHeroItemKey
-import com.example.zar.core.presentation.components.heroDisplacement
-import com.example.zar.core.presentation.components.heroParallax
-import com.example.zar.core.presentation.motion.ZarMotion
+import com.example.zar.core.presentation.components.collapseClip
+import com.example.zar.core.presentation.components.collapseLine
+import com.example.zar.core.presentation.components.collapseMeasure
+import com.example.zar.core.presentation.components.collapseShift
+import com.example.zar.core.presentation.components.rememberHomeCollapse
 import com.example.zar.core.presentation.theme.ZarDimens
 import com.example.zar.core.presentation.theme.ZarShapes
 import com.example.zar.core.presentation.theme.ZarTheme
@@ -191,153 +205,158 @@ internal fun ActivityBody(
     val layoutDirection = LocalLayoutDirection.current
     val gutter = Modifier.padding(horizontal = ListGutter)
     val listState = rememberLazyListState()
-    val heroOffset = listState.heroDisplacement()
-    // The first rows rise in one after another the first time the list loads; filtering or scrolling shows rows in place.
+    // The hero collapses into the status bar as the list scrolls, like Home's top card.
+    val collapse = rememberHomeCollapse(listState, cardHeight = HeroHeight, fadeMargin = 8.dp)
     val play = rememberRiseInForLazyList(loaded = list != null)
 
     // The hero runs under the status bar and the list scrolls behind the floating nav, so only the sides are
     // inset here; the bottom clearance becomes scroll padding that lets the last row end 24dp above the nav.
-    LazyColumn(
-        state = listState,
-        modifier = modifier
-            .fillMaxSize()
-            .padding(
-                start = contentPadding.calculateStartPadding(layoutDirection),
-                end = contentPadding.calculateEndPadding(layoutDirection),
-            ),
-        contentPadding = PaddingValues(bottom = contentPadding.calculateBottomPadding()),
-        verticalArrangement = Arrangement.spacedBy(ZarDimens.SpaceXs),
-    ) {
-        item(key = ZarHeroItemKey) {
-            val summary = list?.summary
-            ActivityHero(
-                received = summary?.let { EntryDisplay.money(it.received.amount) } ?: stringResource(R.string.activity_amount_pending),
-                spent = summary?.let { EntryDisplay.money(it.spent.total.amount) } ?: stringResource(R.string.activity_amount_pending),
-                receivedFraction = ActivityBalance.receivedFraction(summary),
-                rangeLabel = heroRangeLabel(state),
-                onRange = { showFilters = true },
-                heroOffset = heroOffset,
-            )
-        }
-        item {
-            FilterRow(
-                state = state,
-                onOpenFilters = { showFilters = true },
-                onToggleSearch = {
-                    searchOpen = !searchOpen
-                    focusSearch = searchOpen
-                },
-                onApplyFilter = actions.onApplyFilter,
-                modifier = gutter.padding(top = 10.dp),
-            )
-        }
-        if (searchOpen) {
-            item { SearchField(state.filter.query, actions.onQuery, focusSearch, gutter) }
-        }
-        item { RangeLine(state, list, actions.onClearFilters, Modifier.padding(start = 16.dp, end = 16.dp, top = 10.dp, bottom = 2.dp)) }
-        if (!state.isOnline) {
-            item {
-                InfoBanner(
-                    title = stringResource(R.string.activity_offline_title),
-                    body = stringResource(R.string.activity_offline_body),
-                    modifier = gutter.testTag("activity-offline"),
-                )
-            }
-        }
-        items(state.rejectedWrites, key = { "rejected-${it.id}" }) { write ->
-            val first = write.transactions.first()
-            InfoBanner(
-                title = stringResource(
-                    R.string.activity_rejected_title,
-                    "${entryTitle(first)} · ${EntryDisplay.money(first.amount)}",
+    Box(Modifier.fillMaxSize()) {
+        LazyColumn(
+            state = listState,
+            modifier = modifier
+                .fillMaxSize()
+                .padding(
+                    start = contentPadding.calculateStartPadding(layoutDirection),
+                    end = contentPadding.calculateEndPadding(layoutDirection),
                 ),
-                body = stringResource(R.string.activity_rejected_body),
-                modifier = gutter.testTag("activity-rejected"),
-                icon = R.drawable.ic_ph_info,
-                actions = {
-                    BannerAction(
-                        stringResource(R.string.activity_rejected_retry),
-                        onClick = { actions.onRetryRejected(write.id) },
-                        modifier = Modifier.testTag("activity-rejected-retry"),
-                    )
-                    BannerAction(
-                        stringResource(R.string.activity_rejected_dismiss),
-                        onClick = { actions.onDismissRejected(write.id) },
-                        modifier = Modifier.testTag("activity-rejected-dismiss"),
-                        filled = false,
-                    )
-                },
-            )
-        }
-        if (list != null) {
-            val unresolved = list.summary.received.unresolvedCount + list.summary.spent.total.unresolvedCount
-            if (unresolved > 0) {
-                item {
-                    Text(
-                        pluralStringResource(R.plurals.income_header_unresolved, unresolved, unresolved),
-                        style = ZarType.bodyCaption,
-                        color = ZarTheme.colors.textSecondary,
-                        modifier = gutter.testTag("activity-unresolved"),
-                    )
-                }
-            }
-            if (list.summary.unclassifiedAdjustmentCount > 0) {
-                item {
-                    Text(
-                        stringResource(R.string.activity_has_adjustments_note),
-                        style = ZarType.bodyCaption,
-                        color = ZarTheme.colors.textSecondary,
-                        modifier = gutter.testTag("activity-adjustments"),
-                    )
-                }
-            }
-        }
-        when (val content = state.content) {
-            ActivityContent.Loading -> item {
-                Box(Modifier.fillMaxWidth().padding(vertical = 48.dp), Alignment.Center) {
-                    CircularProgressIndicator(color = ZarTheme.colors.accentSelected)
-                }
-            }
-            ActivityContent.Error -> item {
-                EmptyCard(
-                    icon = R.drawable.ic_ph_info,
-                    title = stringResource(R.string.activity_error_title),
-                    body = stringResource(R.string.activity_error_body),
-                    action = stringResource(R.string.activity_retry),
-                    onAction = actions.onRetry,
-                    modifier = gutter.testTag("activity-error"),
+            contentPadding = PaddingValues(bottom = contentPadding.calculateBottomPadding()),
+            verticalArrangement = Arrangement.spacedBy(ZarDimens.SpaceXs),
+        ) {
+            item(key = ZarHeroItemKey) {
+                val summary = list?.summary
+                ActivityHero(
+                    received = summary?.let { EntryDisplay.money(it.received.amount) } ?: stringResource(R.string.activity_amount_pending),
+                    spent = summary?.let { EntryDisplay.money(it.spent.total.amount) } ?: stringResource(R.string.activity_amount_pending),
+                    receivedFraction = ActivityBalance.receivedFraction(summary),
+                    rangeLabel = heroRangeLabel(state),
+                    month = YearMonth.from(ActivityQuery.rangeOf(state.filter, state.today).endInclusive),
+                    latestMonth = YearMonth.from(state.today),
+                    onMonthSelected = { month -> actions.onApplyFilter(state.filter.forMonth(month, state.today)) },
+                    collapse = collapse,
                 )
             }
-            is ActivityContent.Ready -> {
-                if (content.list.rows.isEmpty()) {
+            item {
+                FilterRow(
+                    state = state,
+                    onOpenFilters = { showFilters = true },
+                    onToggleSearch = {
+                        searchOpen = !searchOpen
+                        focusSearch = searchOpen
+                    },
+                    onApplyFilter = actions.onApplyFilter,
+                    modifier = gutter.padding(top = 10.dp),
+                )
+            }
+            if (searchOpen) {
+                item { SearchField(state.filter.query, actions.onQuery, focusSearch, gutter) }
+            }
+            item { RangeLine(state, list, actions.onClearFilters, Modifier.padding(start = 16.dp, end = 16.dp, top = 10.dp, bottom = 2.dp)) }
+            if (!state.isOnline) {
+                item {
+                    InfoBanner(
+                        title = stringResource(R.string.activity_offline_title),
+                        body = stringResource(R.string.activity_offline_body),
+                        modifier = gutter.testTag("activity-offline"),
+                    )
+                }
+            }
+            items(state.rejectedWrites, key = { "rejected-${it.id}" }) { write ->
+                val first = write.transactions.first()
+                InfoBanner(
+                    title = stringResource(
+                        R.string.activity_rejected_title,
+                        "${entryTitle(first)} · ${EntryDisplay.money(first.amount)}",
+                    ),
+                    body = stringResource(R.string.activity_rejected_body),
+                    modifier = gutter.testTag("activity-rejected"),
+                    icon = R.drawable.ic_ph_info,
+                    actions = {
+                        BannerAction(
+                            stringResource(R.string.activity_rejected_retry),
+                            onClick = { actions.onRetryRejected(write.id) },
+                            modifier = Modifier.testTag("activity-rejected-retry"),
+                        )
+                        BannerAction(
+                            stringResource(R.string.activity_rejected_dismiss),
+                            onClick = { actions.onDismissRejected(write.id) },
+                            modifier = Modifier.testTag("activity-rejected-dismiss"),
+                            filled = false,
+                        )
+                    },
+                )
+            }
+            if (list != null) {
+                val unresolved = list.summary.received.unresolvedCount + list.summary.spent.total.unresolvedCount
+                if (unresolved > 0) {
                     item {
-                        if (!content.list.hasAnyEntries) {
-                            EmptyCard(
-                                icon = R.drawable.ic_ph_tray,
-                                title = stringResource(R.string.activity_empty_title),
-                                body = stringResource(R.string.activity_empty_body),
-                                action = stringResource(R.string.activity_empty_action),
-                                onAction = actions.onAddEntry,
-                                modifier = gutter.testTag("activity-empty"),
-                            )
-                        } else {
-                            EmptyCard(
-                                icon = R.drawable.ic_ph_funnel,
-                                title = stringResource(R.string.activity_no_results_title),
-                                body = stringResource(R.string.activity_no_results_body),
-                                action = stringResource(R.string.activity_clear_filters),
-                                onAction = actions.onClearFilters,
-                                modifier = gutter.testTag("activity-no-results"),
-                            )
+                        Text(
+                            pluralStringResource(R.plurals.income_header_unresolved, unresolved, unresolved),
+                            style = ZarType.bodyCaption,
+                            color = ZarTheme.colors.textSecondary,
+                            modifier = gutter.testTag("activity-unresolved"),
+                        )
+                    }
+                }
+                if (list.summary.unclassifiedAdjustmentCount > 0) {
+                    item {
+                        Text(
+                            stringResource(R.string.activity_has_adjustments_note),
+                            style = ZarType.bodyCaption,
+                            color = ZarTheme.colors.textSecondary,
+                            modifier = gutter.testTag("activity-adjustments"),
+                        )
+                    }
+                }
+            }
+            when (val content = state.content) {
+                ActivityContent.Loading -> item {
+                    Box(Modifier.fillMaxWidth().padding(vertical = 48.dp), Alignment.Center) {
+                        CircularProgressIndicator(color = ZarTheme.colors.accentSelected)
+                    }
+                }
+                ActivityContent.Error -> item {
+                    EmptyCard(
+                        icon = R.drawable.ic_ph_info,
+                        title = stringResource(R.string.activity_error_title),
+                        body = stringResource(R.string.activity_error_body),
+                        action = stringResource(R.string.activity_retry),
+                        onAction = actions.onRetry,
+                        modifier = gutter.testTag("activity-error"),
+                    )
+                }
+                is ActivityContent.Ready -> {
+                    if (content.list.rows.isEmpty()) {
+                        item {
+                            if (!content.list.hasAnyEntries) {
+                                EmptyCard(
+                                    icon = R.drawable.ic_ph_tray,
+                                    title = stringResource(R.string.activity_empty_title),
+                                    body = stringResource(R.string.activity_empty_body),
+                                    action = stringResource(R.string.activity_empty_action),
+                                    onAction = actions.onAddEntry,
+                                    modifier = gutter.testTag("activity-empty"),
+                                )
+                            } else {
+                                EmptyCard(
+                                    icon = R.drawable.ic_ph_funnel,
+                                    title = stringResource(R.string.activity_no_results_title),
+                                    body = stringResource(R.string.activity_no_results_body),
+                                    action = stringResource(R.string.activity_clear_filters),
+                                    onAction = actions.onClearFilters,
+                                    modifier = gutter.testTag("activity-no-results"),
+                                )
+                            }
+                        }
+                    } else {
+                        itemsIndexed(content.list.rows, key = { _, it -> it.entry.id.value }) { index, row ->
+                            EntryRow(row, onClick = { actions.onOpenEntry(row.entry.id.value) }, modifier = gutter.riseIn(index, play))
                         }
                     }
-                } else {
-                    itemsIndexed(content.list.rows, key = { _, it -> it.entry.id.value }) { index, row ->
-                        EntryRow(row, onClick = { actions.onOpenEntry(row.entry.id.value) }, modifier = gutter.riseIn(index, play))
-                    }
                 }
             }
         }
+        CollapseStatusBand(collapse, "activity-status-band", Modifier.align(Alignment.TopCenter))
     }
 
     if (showFilters) {
@@ -383,8 +402,10 @@ private fun ActivityHero(
     spent: String,
     receivedFraction: Float?,
     rangeLabel: String,
-    onRange: () -> Unit,
-    heroOffset: HeroScrollOffset,
+    month: YearMonth,
+    latestMonth: YearMonth,
+    onMonthSelected: (YearMonth) -> Unit,
+    collapse: HomeCollapseSpec,
 ) {
     val tealShare by animateFloatAsState(
         targetValue = receivedFraction ?: 0.5f,
@@ -392,12 +413,16 @@ private fun ActivityHero(
         label = "Activity received share",
     )
     val neutral = Color(0xFF0C1625)
+    val fullRadiusPx = with(LocalDensity.current) { HeroRadius.toPx() }
+    val titleLine = remember { CollapseLine() }
+    val totalsLine = remember { CollapseLine() }
     // Figma's hero spans the status bar. Pulling the list down past its top reveals the area above the hero,
     // so each half's first colour is also painted far above it and the gradient never ends.
     Box(
         Modifier
             .fillMaxWidth()
             .height(HeroHeight)
+            .collapseMeasure(collapse)
             .testTag("activity-hero")
             .drawBehind {
                 val split = size.width * tealShare
@@ -406,69 +431,82 @@ private fun ActivityHero(
                 drawRect(if (receivedFraction == null) neutral else SpentStops.first().second, Offset(split, -reach), Size(size.width - split, reach))
             },
     ) {
-        // The gradient is the decorative background layer: it drifts at the background rate while the text groups move
-        // at the text rate. The solid first-stop colours painted above the hero cover the strip it uncovers.
-        Box(
-            Modifier.fillMaxSize()
-                .heroParallax(heroOffset, ZarMotion.PARALLAX_BACKGROUND, ZarMotion.ParallaxBackgroundCap)
-                .clip(RoundedCornerShape(bottomStart = HeroRadius, bottomEnd = HeroRadius))
-                .drawBehind {
-                    if (receivedFraction == null) {
-                        drawRect(neutral)
-                    } else {
-                        val split = size.width * tealShare
-                        if (split > 0f) drawRect(
-                            Brush.verticalGradient(colorStops = ReceivedStops, endY = size.height * ReceivedSpan),
-                            size = Size(split, size.height),
-                        )
-                        if (split < size.width) drawRect(
-                            Brush.verticalGradient(colorStops = SpentStops, endY = size.height * SpentSpan),
-                            topLeft = Offset(split, 0f), size = Size(size.width - split, size.height),
-                        )
-                    }
-                },
-        )
-        val textLayer = Modifier.heroParallax(heroOffset, ZarMotion.PARALLAX_TEXT, ZarMotion.ParallaxTextCap)
-        Row(
-            textLayer
-                .padding(start = 22.dp, end = 22.dp, top = 62.dp)
-                .fillMaxWidth()
-                .height(42.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                stringResource(R.string.nav_activity),
-                style = ZarType.displayTitle.copy(lineHeight = 42.sp),
-                color = ZarWhite,
+        // The card collapses like Home's (see HomeCollapse): the gradient drifts at 0.35 of the scroll under a darkening
+        // overlay, the text follows at 0.30 and fades line by line, and the bottom corners flatten. The solid first-stop
+        // colours painted above the hero cover the strip the drifting gradient uncovers.
+        Box(Modifier.fillMaxSize().collapseClip(collapse, fullRadiusPx)) {
+            Box(
+                Modifier.fillMaxSize()
+                    .collapseShift(collapse, HomeCollapse.BACKGROUND_RATE)
+                    .drawBehind {
+                        if (receivedFraction == null) {
+                            drawRect(neutral)
+                        } else {
+                            val split = size.width * tealShare
+                            if (split > 0f) drawRect(
+                                Brush.verticalGradient(colorStops = ReceivedStops, endY = size.height * ReceivedSpan),
+                                size = Size(split, size.height),
+                            )
+                            if (split < size.width) drawRect(
+                                Brush.verticalGradient(colorStops = SpentStops, endY = size.height * SpentSpan),
+                                topLeft = Offset(split, 0f), size = Size(size.width - split, size.height),
+                            )
+                        }
+                    },
             )
-            val changeRange = stringResource(R.string.activity_change_range)
+            CollapseOverlay(collapse, Modifier.fillMaxSize())
+        }
+        Box(Modifier.fillMaxSize().collapseShift(collapse, HomeCollapse.TEXT_RATE)) {
             Row(
                 Modifier
-                    // The padding makes a roomy touch target; the offset pulls the label back to Figma's 22dp edge.
-                    .offset(x = 8.dp)
-                    .clip(CircleShape)
-                    .clickable(role = Role.Button, onClickLabel = changeRange, onClick = onRange)
-                    .padding(horizontal = 8.dp, vertical = 8.dp)
-                    .testTag("activity-range"),
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    .padding(start = 22.dp, end = 22.dp, top = 62.dp)
+                    .fillMaxWidth()
+                    .height(42.dp)
+                    .collapseLine(collapse, titleLine),
+                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(rangeLabel.uppercase(), style = ZarType.label.copy(lineHeight = 14.sp), color = ZarWhite)
-                ZarIcon(R.drawable.ic_ph_caret_down, size = 12.dp, tint = ZarWhite)
+                Text(
+                    stringResource(R.string.nav_activity),
+                    style = ZarType.displayTitle.copy(lineHeight = 42.sp),
+                    color = ZarWhite,
+                )
+                var showMonths by remember { mutableStateOf(false) }
+                val changeRange = stringResource(R.string.activity_change_range)
+                Box {
+                    Row(
+                        Modifier.offset(x = 8.dp).clip(CircleShape)
+                            .clickable(role = Role.Button, onClickLabel = changeRange) { showMonths = true }
+                            .padding(horizontal = 8.dp, vertical = 8.dp).testTag("activity-range"),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Crossfade(rangeLabel.uppercase(), animationSpec = LocalZarMotion.current.fade(180), label = "activity-month") { label ->
+                            Text(label, style = ZarType.label.copy(lineHeight = 14.sp), color = ZarWhite)
+                        }
+                        ZarIcon(R.drawable.ic_ph_caret_down, size = 12.dp, tint = ZarWhite)
+                    }
+                    DropdownMenu(
+                        expanded = showMonths, onDismissRequest = { showMonths = false },
+                        shape = RoundedCornerShape(20.dp), containerColor = ZarTheme.colors.canvas, tonalElevation = 0.dp,
+                    ) {
+                        Box(Modifier.width(280.dp)) {
+                            ZarMonthPicker(month, latestMonth, onMonthSelected, onDark = false)
+                        }
+                    }
+                }
             }
-        }
-        Row(
-            Modifier
-                .align(Alignment.BottomStart)
-                .fillMaxWidth()
-                .heroParallax(heroOffset, ZarMotion.PARALLAX_TEXT, ZarMotion.ParallaxTextCap)
-                .padding(start = 22.dp, end = 22.dp, bottom = 22.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.Bottom,
-        ) {
-            HeroTotal(received, stringResource(R.string.home_received), Alignment.Start, "activity-received", Modifier.weight(1f))
-            HeroTotal(spent, stringResource(R.string.home_spent), Alignment.End, "activity-spent", Modifier.weight(1f))
+            Row(
+                Modifier
+                    .align(Alignment.BottomStart)
+                    .fillMaxWidth()
+                    .padding(start = 22.dp, end = 22.dp, bottom = 22.dp)
+                    .collapseLine(collapse, totalsLine),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Bottom,
+            ) {
+                HeroTotal(received, stringResource(R.string.home_received), Alignment.Start, "activity-received", Modifier.weight(1f))
+                HeroTotal(spent, stringResource(R.string.home_spent), Alignment.End, "activity-spent", Modifier.weight(1f))
+            }
         }
     }
 }
@@ -476,14 +514,14 @@ private fun ActivityHero(
 @Composable
 private fun HeroTotal(amount: String, label: String, align: Alignment.Horizontal, tag: String, modifier: Modifier) {
     Column(modifier, horizontalAlignment = align, verticalArrangement = Arrangement.spacedBy(3.dp)) {
-        Text(
-            amount,
+        Crossfade(amount, animationSpec = LocalZarMotion.current.fade(180), label = tag) { value -> Text(
+            value,
             style = ZarType.amountM.copy(lineHeight = 36.sp),
             color = ZarWhite,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.testTag(tag),
-        )
+        ) }
         Text(
             label.uppercase(),
             style = ZarType.caption.copy(lineHeight = 13.sp, letterSpacing = 1.sp),
@@ -848,19 +886,27 @@ private fun DateField(label: String, date: LocalDate, onPick: (LocalDate) -> Uni
 
 /** The short label in the hero: OCT, SEP, 7 DAYS or CUSTOM. */
 @Composable
-private fun heroRangeLabel(state: ActivityUiState): String = when (state.filter.preset) {
-    DatePreset.THIS_MONTH -> monthName(YearMonth.from(state.today), short = true)
-    DatePreset.LAST_MONTH -> monthName(YearMonth.from(state.today).minusMonths(1), short = true)
-    DatePreset.LAST_7_DAYS -> stringResource(R.string.activity_hero_7_days)
-    DatePreset.CUSTOM -> stringResource(R.string.activity_hero_custom)
+private fun heroRangeLabel(state: ActivityUiState): String {
+    state.filter.wholeMonth(state.today)?.let { month ->
+        return monthName(month, short = true) + if (month.year != state.today.year) " ${month.year}" else ""
+    }
+    return when (state.filter.preset) {
+        DatePreset.THIS_MONTH -> monthName(YearMonth.from(state.today), short = true)
+        DatePreset.LAST_MONTH -> monthName(YearMonth.from(state.today).minusMonths(1), short = true)
+        DatePreset.LAST_7_DAYS -> stringResource(R.string.activity_hero_7_days)
+        DatePreset.CUSTOM -> stringResource(R.string.activity_hero_custom)
+    }
 }
 
 /** The line above the list: OCTOBER (with the year only when it is not this year), or the exact days of a range. */
 @Composable
-private fun rangeLabel(state: ActivityUiState): String = when (state.filter.preset) {
-    DatePreset.THIS_MONTH -> monthLine(YearMonth.from(state.today), state.today)
-    DatePreset.LAST_MONTH -> monthLine(YearMonth.from(state.today).minusMonths(1), state.today)
-    else -> rangeText(ActivityQuery.rangeOf(state.filter, state.today))
+private fun rangeLabel(state: ActivityUiState): String {
+    state.filter.wholeMonth(state.today)?.let { return monthLine(it, state.today) }
+    return when (state.filter.preset) {
+        DatePreset.THIS_MONTH -> monthLine(YearMonth.from(state.today), state.today)
+        DatePreset.LAST_MONTH -> monthLine(YearMonth.from(state.today).minusMonths(1), state.today)
+        else -> rangeText(ActivityQuery.rangeOf(state.filter, state.today))
+    }
 }
 
 private fun monthLine(month: YearMonth, today: LocalDate): String =

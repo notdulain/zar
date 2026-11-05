@@ -68,9 +68,10 @@ internal fun monthsToReach(today: LocalDate, by: LocalDate): Long = ChronoUnit.M
 
 /**
  * The Z21 "New plan" sheet. The type chips map to the flows that exist: a savings goal (any number can coexist; each save
- * creates its own plan and never touches another), the weekly limit, a bill and a freelance project. [onDismiss] slides the
- * sheet right (see `SheetBackHost`); the other callbacks close it and open the real editor or form. A failed save keeps the
- * form as typed and shows [message]; retrying reuses the same plan ID.
+ * creates its own plan and never touches another), the weekly limit, a bill and a freelance project. The sheet rises on
+ * entry and supports pulling down to dismiss. [onDismiss] slides it right on Back (see `SheetBackHost`); the other
+ * callbacks close it and open the real editor or form. A failed save keeps the form as typed and shows [message];
+ * retrying reuses the same plan ID.
  */
 @Composable
 fun NewPlanSheet(
@@ -88,7 +89,7 @@ fun NewPlanSheet(
     BoxWithConstraints(Modifier.fillMaxSize().imePadding()) {
         Box(Modifier.fillMaxSize().sheetBackScrim().background(colors.scrim.copy(alpha = 0.64f)).clickable(onClick = onDismiss))
         Column(
-            Modifier.align(Alignment.BottomCenter).sheetBackSlide().fillMaxWidth().heightIn(max = maxHeight - 48.dp)
+            Modifier.align(Alignment.BottomCenter).sheetBackSlide(swipeEnabled = !isSaving).fillMaxWidth().heightIn(max = maxHeight - 48.dp)
                 .clip(ZarShapes.sheet).background(colors.surface).pointerInput(Unit) { detectTapGestures {} }
                 .navigationBarsPadding().padding(top = 10.dp).testTag("new-plan-sheet"),
         ) {

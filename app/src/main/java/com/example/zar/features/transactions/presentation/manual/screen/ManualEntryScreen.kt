@@ -16,6 +16,8 @@ import androidx.compose.material3.TextButton
 import java.time.Instant
 import java.time.ZoneOffset
 import androidx.compose.foundation.background
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.selection.selectable
@@ -58,6 +60,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.LayoutDirection
+import com.example.zar.core.presentation.components.SelectorIndicatorState
+import com.example.zar.core.presentation.components.rememberSelectorIndicator
+import com.example.zar.core.presentation.motion.ZarMotion
+import kotlin.math.roundToInt
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.focus.FocusRequester
@@ -81,6 +93,7 @@ import com.example.zar.core.domain.model.Account
 import com.example.zar.core.domain.model.AccountId
 import com.example.zar.core.domain.model.SpendingClass
 import com.example.zar.core.domain.model.money.Money
+import com.example.zar.features.transactions.domain.manual.model.CategoryIcon
 import com.example.zar.core.presentation.components.ZarButton
 import com.example.zar.core.presentation.components.ZarButtonStyle
 import com.example.zar.core.presentation.components.ZarChip
@@ -107,6 +120,7 @@ import com.example.zar.features.transactions.presentation.income.IncomeFormat
 import com.example.zar.features.transactions.presentation.manual.viewmodel.ManualEntryKind
 import com.example.zar.features.transactions.presentation.manual.viewmodel.ManualEntryMessage
 import com.example.zar.features.transactions.presentation.manual.viewmodel.ManualEntryUiState
+import com.example.zar.features.transactions.presentation.manual.viewmodel.DeleteCategoryState
 import com.example.zar.features.transactions.presentation.manual.viewmodel.NewCategoryState
 import java.time.LocalDate
 import java.time.LocalTime
@@ -142,6 +156,12 @@ internal class ManualEntryActions(
     val onSwap: () -> Unit,
     val onTransferNote: (String) -> Unit,
     val onSave: () -> Unit,
+    val onNewCategoryIcon: (CategoryIcon) -> Unit = {},
+    val onDeleteCategoryStart: (ExpenseCategoryChoice) -> Unit = {},
+    val onDeleteCategoryCancel: () -> Unit = {},
+    val onDeleteCategoryConfirm: () -> Unit = {},
+    /** Opens the real Quick note window in place of this sheet. */
+    val onQuickNote: () -> Unit = {},
     /** The rate field of an expense on a foreign-currency account. */
     val onRate: (String) -> Unit = {},
     /** "Use today's rate" next to the rate field. */
@@ -149,21 +169,29 @@ internal class ManualEntryActions(
 )
 
 @Composable
-internal fun ManualEntryContent(uiState: ManualEntryUiState, focusNote: Boolean, actions: ManualEntryActions) {
+internal fun ManualEntryContent(
+    uiState: ManualEntryUiState,
+    focusNote: Boolean,
+    actions: ManualEntryActions,
+    typeIndicator: SelectorIndicatorState? = null,
+    sheetHeight: Dp? = null,
+) {
     val colors = ZarTheme.colors
+    val typeIndex = if (uiState.kind == ManualEntryKind.EXPENSE) 0 else 2
+    // The host hoists this above the Expense / Income body switch; a caller that does not owns one for this body.
+    val typeSlider = typeIndicator ?: rememberSelectorIndicator(typeIndex)
     val closeLabel = stringResource(R.string.manual_close)
     val noteFocus = remember { FocusRequester() }
     val sheet = com.example.zar.core.presentation.components.LocalSheetBack.current
-    var quickNoteTaps by remember { mutableIntStateOf(0) }
     var openedWithFocus by rememberSaveable { mutableStateOf(false) }
     var openPicker by rememberSaveable { mutableStateOf<String?>(null) }
 
     // Back closes an open date or time picker first, instead of dismissing the whole form and losing what was typed.
     BackHandler(enabled = openPicker != null) { openPicker = null }
 
-    // "Quick note" focuses the note once; the field may not exist yet if the form was on Transfer.
-    LaunchedEffect(uiState.isLoading, uiState.kind, quickNoteTaps) {
-        val wanted = quickNoteTaps > 0 || (focusNote && !openedWithFocus)
+    // Opened from Quick note's "fill the form" path: focus the note once the sheet has settled.
+    LaunchedEffect(uiState.isLoading, uiState.kind) {
+        val wanted = focusNote && !openedWithFocus
         if (wanted && !uiState.isLoading && uiState.kind == ManualEntryKind.EXPENSE) {
             sheet?.awaitEntrance()
             runCatching { noteFocus.requestFocus() }
@@ -175,7 +203,8 @@ internal fun ManualEntryContent(uiState: ManualEntryUiState, focusNote: Boolean,
         Box(Modifier.fillMaxSize().sheetBackScrim().background(colors.scrim.copy(alpha = 0.64f)).clickable(onClick = actions.onClose))
         if (openPicker == null) {
         Column(
-            Modifier.align(Alignment.BottomCenter).sheetBackSlide(swipeEnabled = !uiState.isSaving).fillMaxWidth().heightIn(max = maxHeight - 48.dp)
+            Modifier.align(Alignment.BottomCenter).sheetBackSlide(swipeEnabled = !uiState.isSaving).fillMaxWidth()
+                .then(if (sheetHeight != null) Modifier.height(minOf(sheetHeight, maxHeight - 48.dp)) else Modifier.heightIn(max = maxHeight - 48.dp))
                 .clip(ZarShapes.sheet).background(colors.surface).pointerInput(Unit) { detectTapGestures {} }.padding(top = 10.dp),
         ) {
             Box(Modifier.fillMaxWidth(), Alignment.Center) {
@@ -204,7 +233,7 @@ internal fun ManualEntryContent(uiState: ManualEntryUiState, focusNote: Boolean,
                 stringResource(R.string.manual_kind_income),
                 stringResource(R.string.manual_kind_transfer),
             ),
-            selectedIndex = if (uiState.kind == ManualEntryKind.EXPENSE) 0 else 2,
+            selectedIndex = typeIndex,
             onSelect = { index ->
                 when (index) {
                     0 -> actions.onKind(ManualEntryKind.EXPENSE)
@@ -216,13 +245,15 @@ internal fun ManualEntryContent(uiState: ManualEntryUiState, focusNote: Boolean,
             segmentHeight = 38.dp,
             tagPrefix = "manual-kind",
             tags = listOf("expense", "income", "transfer"),
+            indicator = typeSlider,
         )
 
         if (uiState.isLoading) {
             Box(Modifier.weight(1f).fillMaxWidth(), Alignment.Center) { CircularProgressIndicator(color = colors.accentSelected) }
         } else {
             Column(
-                Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState()).padding(horizontal = 24.dp, vertical = 22.dp),
+                // A fixed-height sheet fills the room so Save stays pinned; the fields scroll when they are taller.
+                Modifier.weight(1f, fill = sheetHeight != null).verticalScroll(rememberScrollState()).padding(horizontal = 24.dp, vertical = 22.dp),
                 verticalArrangement = Arrangement.spacedBy(18.dp),
             ) {
                 if (!uiState.isOnline) OfflineBanner()
@@ -240,10 +271,7 @@ internal fun ManualEntryContent(uiState: ManualEntryUiState, focusNote: Boolean,
         ) {
             ZarButton(
                 text = stringResource(R.string.manual_quick_note),
-                onClick = {
-                    actions.onKind(ManualEntryKind.EXPENSE)
-                    quickNoteTaps++
-                },
+                onClick = actions.onQuickNote,
                 modifier = Modifier.weight(1f).testTag("manual-quick-note"),
                 style = ZarButtonStyle.Soft,
                 icon = R.drawable.ic_ph_note_pencil,
@@ -254,6 +282,7 @@ internal fun ManualEntryContent(uiState: ManualEntryUiState, focusNote: Boolean,
                 modifier = Modifier.weight(1f).testTag("manual-save"),
                 enabled = !uiState.isSaving && !uiState.isLoading && uiState.accounts.isNotEmpty(),
             )
+        }
         }
         }
         SheetSubSurface(visible = openPicker == "date") {
@@ -283,13 +312,28 @@ internal fun ManualEntryContent(uiState: ManualEntryUiState, focusNote: Boolean,
                 AddCategorySheet(
                     state = state,
                     onName = actions.onNewCategoryName,
+                    onIcon = actions.onNewCategoryIcon,
                     onCancel = actions.onAddCategoryCancel,
                     onSave = actions.onAddCategorySave,
                 )
             }
         }
+        // Same hold-until-gone treatment for the delete confirmation.
+        val shownDeleting = remember { arrayOfNulls<DeleteCategoryState>(1) }
+        uiState.deletingCategory?.let { shownDeleting[0] = it }
+        if (uiState.deletingCategory != null) {
+            Box(Modifier.fillMaxSize().background(colors.scrim.copy(alpha = 0.64f)).clickable(onClick = actions.onDeleteCategoryCancel))
+        }
+        SheetSubSurface(visible = uiState.deletingCategory != null) {
+            shownDeleting[0]?.let { state ->
+                DeleteCategorySheet(
+                    state = state,
+                    onCancel = actions.onDeleteCategoryCancel,
+                    onConfirm = actions.onDeleteCategoryConfirm,
+                )
+            }
+        }
     }
-}
 }
 
 // --- Expense --------------------------------------------------------------------------------
@@ -350,6 +394,7 @@ private fun ExpenseFields(state: ManualEntryUiState, actions: ManualEntryActions
                 selectedId = state.category?.id,
                 onSelect = { actions.onCategory(it); allCategories = false },
                 onAddCategory = actions.onAddCategoryStart,
+                onDeleteCategory = actions.onDeleteCategoryStart,
             )
         } else {
             Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -393,6 +438,8 @@ private fun ExpenseFields(state: ManualEntryUiState, actions: ManualEntryActions
             tagPrefix = "manual-class",
             tags = classes.map { it.name.lowercase() },
             showClassDots = true,
+            // Created where the Expense body appears, so returning to it shows the stored class with no replay.
+            indicator = rememberSelectorIndicator(classes.indexOf(state.spendingClass)),
         )
     }
     ZarDivider()
@@ -483,6 +530,38 @@ private fun Suggestions(state: ManualEntryUiState, onSelect: (EntrySuggestion) -
 
 // --- Transfer -------------------------------------------------------------------------------
 
+/**
+ * Figma Z12's swap row: a 36dp circle with a 16dp up/down arrow glyph, a 12dp gap and a 1dp divider on each side that
+ * share the rest of the width equally. The circle sits in a 48dp touch target.
+ */
+@Composable
+private fun SwapAccountsRow(canSwap: Boolean, onSwap: () -> Unit) {
+    val colors = ZarTheme.colors
+    val swapLabel = stringResource(R.string.manual_swap_accounts)
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+        ZarDivider(Modifier.weight(1f))
+        Box(
+            Modifier
+                .size(48.dp)
+                .clip(CircleShape)
+                .clickable(enabled = canSwap, role = Role.Button, onClickLabel = swapLabel, onClick = onSwap)
+                .semantics { contentDescription = swapLabel }
+                .testTag("manual-swap"),
+            Alignment.Center,
+        ) {
+            // Unavailable reads as an outlined, muted circle rather than only a fainter arrow.
+            Box(
+                Modifier.size(36.dp).clip(CircleShape)
+                    .then(if (canSwap) Modifier.background(colors.subtle) else Modifier.border(1.dp, colors.borderDefault, CircleShape)),
+                Alignment.Center,
+            ) {
+                ZarIcon(R.drawable.ic_ph_arrows_down_up, size = 16.dp, tint = if (canSwap) colors.iconStrong else colors.iconMuted)
+            }
+        }
+        ZarDivider(Modifier.weight(1f))
+    }
+}
+
 @Composable
 private fun TransferFields(state: ManualEntryUiState, actions: ManualEntryActions, onOpenDate: () -> Unit, onOpenTime: () -> Unit) {
     val problems = state.transferProblems
@@ -513,21 +592,7 @@ private fun TransferFields(state: ManualEntryUiState, actions: ManualEntryAction
         FieldError(if (TransferProblem.FROM_MISSING in problems) R.string.manual_error_from else null)
     }
 
-    Box(Modifier.fillMaxWidth(), Alignment.Center) {
-        val swapLabel = stringResource(R.string.manual_swap_accounts)
-        Box(
-            Modifier
-                .size(36.dp)
-                .clip(CircleShape)
-                .background(ZarTheme.colors.subtle)
-                .clickable(enabled = state.toAccount != null, role = Role.Button, onClickLabel = swapLabel, onClick = actions.onSwap)
-                .semantics { contentDescription = swapLabel }
-                .testTag("manual-swap"),
-            Alignment.Center,
-        ) {
-            ZarIcon(R.drawable.ic_ph_arrows_left_right, size = 18.dp)
-        }
-    }
+    SwapAccountsRow(canSwap = state.toAccount != null, onSwap = actions.onSwap)
 
     Section(stringResource(R.string.manual_field_to)) {
         if (state.accounts.isNotEmpty()) {
@@ -666,6 +731,7 @@ private fun CategoryGrid(
     selectedId: String?,
     onSelect: (ExpenseCategoryChoice) -> Unit,
     onAddCategory: () -> Unit,
+    onDeleteCategory: (ExpenseCategoryChoice) -> Unit,
 ) {
     val colors = ZarTheme.colors
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -691,6 +757,8 @@ private fun CategoryGrid(
                             category = category,
                             selected = category.id == selectedId,
                             onClick = { onSelect(category) },
+                            // Every category has a cross, except the last one left: an expense always needs a category.
+                            onDelete = if (choices.size > 1) ({ onDeleteCategory(category) }) else null,
                             modifier = Modifier.weight(1f),
                         )
                     }
@@ -706,11 +774,14 @@ private fun CategoryTile(
     category: ExpenseCategoryChoice,
     selected: Boolean,
     onClick: () -> Unit,
+    onDelete: (() -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
     val colors = ZarTheme.colors
+    Box(modifier) {
     Column(
-        modifier
+        Modifier
+            .fillMaxWidth()
             .heightIn(min = 64.dp)
             .clip(ZarShapes.sm)
             .background(if (selected) colors.accentSelected else colors.subtle)
@@ -733,6 +804,66 @@ private fun CategoryTile(
             overflow = TextOverflow.Ellipsis,
         )
     }
+    if (onDelete != null) {
+        val label = stringResource(R.string.manual_delete_category_label, category.labelText())
+        Box(
+            Modifier.align(Alignment.TopEnd).size(40.dp).clip(CircleShape)
+                .clickable(role = Role.Button, onClickLabel = label, onClick = onDelete)
+                .semantics { contentDescription = label }
+                .testTag("manual-category-delete-${category.id}"),
+            Alignment.Center,
+        ) {
+            ZarIcon(R.drawable.ic_ph_x, size = 14.dp, tint = if (selected) colors.textOnInverse else colors.iconMuted)
+        }
+    }
+    }
+}
+
+/** Confirms deleting one of the person's own categories. It never touches the draft or entries already saved. */
+@Composable
+private fun DeleteCategorySheet(
+    state: DeleteCategoryState,
+    onCancel: () -> Unit,
+    onConfirm: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val colors = ZarTheme.colors
+    Column(
+        modifier.fillMaxWidth()
+            .shadow(14.dp, ZarShapes.sheet, ambientColor = Color(0x1F000000), spotColor = Color(0x1F000000))
+            .clip(ZarShapes.sheet).background(colors.surface).pointerInput(Unit) { detectTapGestures {} }
+            .navigationBarsPadding()
+            .padding(start = 24.dp, end = 24.dp, top = 10.dp, bottom = 22.dp)
+            .testTag("manual-delete-category-sheet"),
+        verticalArrangement = Arrangement.spacedBy(22.dp),
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            Box(Modifier.fillMaxWidth(), Alignment.Center) {
+                Box(Modifier.size(36.dp, 4.dp).background(colors.handle, RoundedCornerShape(2.dp)))
+            }
+            Text(stringResource(R.string.manual_delete_category_title), style = ZarType.headingSheet, color = colors.textPrimary)
+            Text(
+                stringResource(R.string.manual_delete_category_body, state.category.labelText()),
+                style = ZarType.bodyM,
+                color = colors.textSecondary,
+            )
+            FieldError(if (state.failed) R.string.manual_delete_category_error else null, Modifier.testTag("manual-delete-category-error"))
+        }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            ZarButton(
+                text = stringResource(R.string.action_cancel),
+                onClick = onCancel,
+                modifier = Modifier.weight(1f).testTag("manual-delete-category-cancel"),
+                style = ZarButtonStyle.Soft,
+            )
+            ZarButton(
+                text = stringResource(R.string.manual_delete_category_action),
+                onClick = onConfirm,
+                modifier = Modifier.weight(1f).testTag("manual-delete-category-confirm"),
+                enabled = !state.isDeleting,
+            )
+        }
+    }
 }
 
 /** The Add category form. It never saves the transaction; a name problem or a failed write keeps the typed name. */
@@ -740,6 +871,7 @@ private fun CategoryTile(
 private fun AddCategorySheet(
     state: NewCategoryState,
     onName: (String) -> Unit,
+    onIcon: (CategoryIcon) -> Unit,
     onCancel: () -> Unit,
     onSave: () -> Unit,
     modifier: Modifier = Modifier,
@@ -748,7 +880,7 @@ private fun AddCategorySheet(
     val nameFocus = remember { FocusRequester() }
     LaunchedEffect(Unit) { runCatching { nameFocus.requestFocus() } }
     Column(
-        modifier.fillMaxWidth().heightIn(max = 420.dp)
+        modifier.fillMaxWidth().heightIn(max = 600.dp)
             .shadow(14.dp, ZarShapes.sheet, ambientColor = Color(0x1F000000), spotColor = Color(0x1F000000))
             .clip(ZarShapes.sheet).background(colors.surface).pointerInput(Unit) { detectTapGestures {} }
             .navigationBarsPadding().imePadding()
@@ -762,17 +894,21 @@ private fun AddCategorySheet(
             }
             Text(stringResource(R.string.manual_new_category_title), style = ZarType.headingSheet, color = colors.textPrimary)
         }
-        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Box(Modifier.fillMaxWidth().clip(ZarShapes.md).background(colors.subtle).padding(horizontal = 14.dp)) {
-                TextInput(
-                    value = state.name,
-                    onValueChange = onName,
-                    placeholder = stringResource(R.string.manual_new_category_hint),
-                    modifier = Modifier.fillMaxWidth().focusRequester(nameFocus).testTag("manual-new-category-name"),
-                )
+        // The name and icons scroll together, so the buttons stay in reach with the keyboard open or large text.
+        Column(Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(18.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Box(Modifier.fillMaxWidth().clip(ZarShapes.md).background(colors.subtle).padding(horizontal = 14.dp)) {
+                    TextInput(
+                        value = state.name,
+                        onValueChange = onName,
+                        placeholder = stringResource(R.string.manual_new_category_hint),
+                        modifier = Modifier.fillMaxWidth().focusRequester(nameFocus).testTag("manual-new-category-name"),
+                    )
+                }
+                val problemRes = state.problem?.let { it.textRes() } ?: if (state.failed) R.string.manual_category_error_failed else null
+                FieldError(problemRes, Modifier.testTag("manual-new-category-error"))
             }
-            val problemRes = state.problem?.let { it.textRes() } ?: if (state.failed) R.string.manual_category_error_failed else null
-            FieldError(problemRes, Modifier.testTag("manual-new-category-error"))
+            CategoryIconPicker(selected = state.icon, onSelect = onIcon)
         }
         Row(Modifier.fillMaxWidth().padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             ZarButton(
@@ -787,6 +923,35 @@ private fun AddCategorySheet(
                 modifier = Modifier.weight(1f).testTag("manual-new-category-save"),
                 enabled = !state.isSaving && state.name.isNotBlank(),
             )
+        }
+    }
+}
+
+/** Every icon a custom category can show, as a grid of equal tiles with exactly one selected. */
+@Composable
+private fun CategoryIconPicker(selected: CategoryIcon, onSelect: (CategoryIcon) -> Unit) {
+    val colors = ZarTheme.colors
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        ZarEyebrow(stringResource(R.string.manual_new_category_icon))
+        Column(Modifier.fillMaxWidth().selectableGroup(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            CategoryIcon.entries.chunked(4).forEach { row ->
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    row.forEach { icon ->
+                        val chosen = icon == selected
+                        val label = stringResource(icon.labelRes())
+                        Box(
+                            Modifier.weight(1f).heightIn(min = 48.dp).clip(ZarShapes.sm)
+                                .background(if (chosen) colors.accentSelected else colors.subtle)
+                                .selectable(selected = chosen, role = Role.RadioButton, onClick = { onSelect(icon) })
+                                .semantics { contentDescription = label }
+                                .testTag("manual-new-category-icon-${icon.key}"),
+                            Alignment.Center,
+                        ) {
+                            ZarIcon(icon.drawableRes(), size = 22.dp, tint = if (chosen) colors.textOnInverse else colors.iconStrong)
+                        }
+                    }
+                }
+            }
         }
     }
 }
@@ -834,44 +999,93 @@ private fun OfflineBanner() {
     }
 }
 
-/** Equal-width segments on a subtle track; the selected one is a white tile. */
+/**
+ * The Add transaction sheet's one height, shared by Expense, Income and Transfer so switching tabs never resizes it.
+ * It is Income's natural height (the shortest tab, about 637dp at Figma's 412 x 915 frame); taller tabs scroll, and the
+ * window or keyboard can still make it shorter.
+ */
+internal val AddTransactionSheetHeight: Dp = 640.dp
+
+/**
+ * Equal-width segments on a subtle track; the selected one is a white tile.
+ *
+ * With an [indicator] the tile is one surface that slides behind the fixed slots and settles with a small spring bounce
+ * (Add transaction's two selectors). Without one, each selected slot paints its own tile, as the other callers expect.
+ */
 @Composable
 internal fun Segmented(
     labels: List<String>,
     selectedIndex: Int,
     onSelect: (Int) -> Unit,
-    segmentHeight: androidx.compose.ui.unit.Dp,
+    segmentHeight: Dp,
     tagPrefix: String,
     tags: List<String>,
     modifier: Modifier = Modifier,
     showClassDots: Boolean = false,
+    indicator: SelectorIndicatorState? = null,
 ) {
     val colors = ZarTheme.colors
-    Row(
-        modifier.fillMaxWidth().selectableGroup().clip(ZarShapes.md).background(colors.subtle).padding(4.dp),
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
-    ) {
-        labels.forEachIndexed { index, label ->
-            val selected = index == selectedIndex
+    val gap = 4.dp
+    Box(modifier.fillMaxWidth().selectableGroup().clip(ZarShapes.md).background(colors.subtle).padding(4.dp)) {
+        if (indicator != null) {
+            val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
             Box(
                 Modifier
-                    .weight(1f)
-                    .heightIn(min = segmentHeight)
-                    .then(if (selected) Modifier.shadow(2.dp, ZarShapes.sm, ambientColor = Color(0x140F1A2B), spotColor = Color(0x140F1A2B)) else Modifier)
-                    .clip(ZarShapes.sm)
-                    .background(if (selected) colors.surface else colors.subtle)
-                    .selectable(selected = selected, role = Role.RadioButton, onClick = { onSelect(index) })
-                    .padding(vertical = 8.dp)
-                    .testTag("$tagPrefix-${tags[index]}"),
-                Alignment.Center,
-            ) {
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-                    if (showClassDots) {
-                        val dot = when (index) { 0 -> colors.accentSelected; 1 -> colors.accentDiscretionary; else -> Color.Transparent }
-                        Box(Modifier.size(7.dp).clip(CircleShape).background(dot)
-                            .then(if (index == 2) Modifier.border(1.dp, colors.textTertiary, CircleShape) else Modifier))
+                    .matchParentSize()
+                    .layout { measurable, constraints ->
+                        val count = labels.size
+                        val gapPx = gap.roundToPx()
+                        val slot = (constraints.maxWidth - gapPx * (count - 1)) / count
+                        val tile = measurable.measure(Constraints.fixed(slot, constraints.maxHeight))
+                        layout(constraints.maxWidth, constraints.maxHeight) {
+                            val pitch = (slot + gapPx).toFloat()
+                            val cap = ZarMotion.AddSelectorMaxOvershoot.toPx() / pitch
+                            val x = (indicator.presentation(count - 1, cap) * pitch).roundToInt()
+                            val left = if (rtl) constraints.maxWidth - slot - x else x
+                            indicator.placedAt(Rect(left.toFloat(), 0f, (left + slot).toFloat(), constraints.maxHeight.toFloat()))
+                            tile.place(left, 0)
+                        }
                     }
-                    Text(label, style = ZarType.labelChip, color = if (selected) colors.textPrimary else colors.textTertiary)
+                    .shadow(2.dp, ZarShapes.sm, ambientColor = Color(0x140F1A2B), spotColor = Color(0x140F1A2B))
+                    .clip(ZarShapes.sm)
+                    .background(colors.surface),
+            )
+        }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(gap)) {
+            labels.forEachIndexed { index, label ->
+                val selected = index == selectedIndex
+                Box(
+                    Modifier
+                        .weight(1f)
+                        .heightIn(min = segmentHeight)
+                        .then(
+                            if (indicator != null) Modifier
+                            else Modifier
+                                .then(if (selected) Modifier.shadow(2.dp, ZarShapes.sm, ambientColor = Color(0x140F1A2B), spotColor = Color(0x140F1A2B)) else Modifier)
+                                .clip(ZarShapes.sm)
+                                .background(if (selected) colors.surface else colors.subtle),
+                        )
+                        // With a moving indicator the slide is the only feedback: no press ripple, which would flash on the
+                        // target before the indicator arrives. A repeat tap changes nothing: no second selection or bounce.
+                        .selectable(
+                            selected = selected,
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = if (indicator == null) LocalIndication.current else null,
+                            role = Role.RadioButton,
+                            onClick = { if (indicator == null || !selected) onSelect(index) },
+                        )
+                        .padding(vertical = 8.dp)
+                        .testTag("$tagPrefix-${tags[index]}"),
+                    Alignment.Center,
+                ) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                        if (showClassDots) {
+                            val dot = when (index) { 0 -> colors.accentSelected; 1 -> colors.accentDiscretionary; else -> Color.Transparent }
+                            Box(Modifier.size(7.dp).clip(CircleShape).background(dot)
+                                .then(if (index == 2) Modifier.border(1.dp, colors.textTertiary, CircleShape) else Modifier))
+                        }
+                        Text(label, style = ZarType.labelChip, color = if (selected) colors.textPrimary else colors.textTertiary)
+                    }
                 }
             }
         }
@@ -1026,8 +1240,50 @@ internal fun ExpenseCategory.labelRes(): Int = when (this) {
     ExpenseCategory.OTHER -> R.string.manual_category_other
 }
 
-/** A custom category has no icon of its own yet; the picker design supplies one generic icon for all of them. */
-private fun ExpenseCategoryChoice.iconRes(): Int = (this as? ExpenseCategory)?.iconRes() ?: R.drawable.ic_ph_receipt
+/** A built-in category has a fixed icon; a custom one shows the icon its owner picked (the receipt by default). */
+private fun ExpenseCategoryChoice.iconRes(): Int = when (this) {
+    is ExpenseCategory -> iconRes()
+    is CustomExpenseCategory -> icon.drawableRes()
+    else -> R.drawable.ic_ph_receipt
+}
+
+private fun CategoryIcon.drawableRes(): Int = when (this) {
+    CategoryIcon.RECEIPT -> R.drawable.ic_ph_receipt
+    CategoryIcon.FORK_KNIFE -> R.drawable.ic_ph_fork_knife
+    CategoryIcon.COFFEE -> R.drawable.ic_figma_coffee
+    CategoryIcon.BASKET -> R.drawable.ic_ph_basket
+    CategoryIcon.GROCERIES -> R.drawable.ic_figma_groceries
+    CategoryIcon.CAR -> R.drawable.ic_ph_car
+    CategoryIcon.BANK -> R.drawable.ic_ph_bank
+    CategoryIcon.HOUSE -> R.drawable.ic_ph_house_inactive
+    CategoryIcon.BARBELL -> R.drawable.ic_ph_barbell
+    CategoryIcon.TELEVISION -> R.drawable.ic_ph_television
+    CategoryIcon.PHONE -> R.drawable.ic_ph_device_mobile
+    CategoryIcon.WIFI -> R.drawable.ic_ph_wifi_high
+    CategoryIcon.LIGHTNING -> R.drawable.ic_ph_lightning
+    CategoryIcon.PIGGY_BANK -> R.drawable.ic_ph_piggy_bank
+    CategoryIcon.BRIEFCASE -> R.drawable.ic_ph_briefcase
+    CategoryIcon.WALLET -> R.drawable.ic_ph_wallet
+}
+
+private fun CategoryIcon.labelRes(): Int = when (this) {
+    CategoryIcon.RECEIPT -> R.string.manual_icon_receipt
+    CategoryIcon.FORK_KNIFE -> R.string.manual_icon_fork_knife
+    CategoryIcon.COFFEE -> R.string.manual_icon_coffee
+    CategoryIcon.BASKET -> R.string.manual_icon_basket
+    CategoryIcon.GROCERIES -> R.string.manual_icon_groceries
+    CategoryIcon.CAR -> R.string.manual_icon_car
+    CategoryIcon.BANK -> R.string.manual_icon_bank
+    CategoryIcon.HOUSE -> R.string.manual_icon_house
+    CategoryIcon.BARBELL -> R.string.manual_icon_barbell
+    CategoryIcon.TELEVISION -> R.string.manual_icon_television
+    CategoryIcon.PHONE -> R.string.manual_icon_phone
+    CategoryIcon.WIFI -> R.string.manual_icon_wifi
+    CategoryIcon.LIGHTNING -> R.string.manual_icon_lightning
+    CategoryIcon.PIGGY_BANK -> R.string.manual_icon_piggy_bank
+    CategoryIcon.BRIEFCASE -> R.string.manual_icon_briefcase
+    CategoryIcon.WALLET -> R.string.manual_icon_wallet
+}
 
 private fun ExpenseCategory.iconRes(): Int = when (this) {
     ExpenseCategory.COFFEE_DINING -> R.drawable.ic_figma_coffee
