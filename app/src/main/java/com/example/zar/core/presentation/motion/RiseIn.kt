@@ -50,3 +50,21 @@ fun rememberRiseInOnFirstVisit(loaded: Boolean): Boolean {
     LaunchedEffect(loaded) { if (loaded) firstVisit = false }
     return play
 }
+
+/**
+ * The same as [rememberRiseInOnFirstVisit], for lazy lists. A lazy item is composed again whenever it scrolls back into
+ * view, so the rise-in is only offered while the first cards are arriving; anything composed after that window, by
+ * scrolling, is simply there.
+ */
+@Composable
+fun rememberRiseInForLazyList(loaded: Boolean): Boolean {
+    val play = rememberRiseInOnFirstVisit(loaded)
+    var open by remember { mutableStateOf(play) }
+    LaunchedEffect(loaded) {
+        if (loaded && open) {
+            delay(ZarMotion.RISE_IN_MAX_ORDER * ZarMotion.RISE_IN_STAGGER_MILLIS + ZarMotion.RISE_IN_MILLIS + 100L)
+            open = false
+        }
+    }
+    return open
+}
