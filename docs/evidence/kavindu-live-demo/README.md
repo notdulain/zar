@@ -2,6 +2,8 @@
 
 Captured on 5 November 2026 from the running Zar debug APK on the separate `Kavindu_Demo` Android emulator (Pixel 6a profile, API 37.1), signed into the synthetic Kavindu Silva account on live Firebase project `zar-app-35602`. No Firebase emulators were used for these images. The account was populated by the explicit `KavinduDemoSeed` instrumentation fixture; its representative records were read back from the live Firestore server before the fixture passed. The app itself loaded the records after a fresh email/password sign-in. Notification permission was enabled on this demo emulator before the Freelance screenshot.
 
+The Home donut and Activity images for October and November are the exception: they were captured later the same day on a physical Pixel 6a, from the debug build with `main` merged, signed into the same account.
+
 | Image | What it demonstrates |
 | --- | --- |
 | [Home, October](home-october.png) | LKR 190,037 received from salary, freelance, and converted AdSense; LKR 94,332 spent, split into committed, discretionary, and unknown. One USD receipt has no LKR rate, so the total is explicitly incomplete. |
