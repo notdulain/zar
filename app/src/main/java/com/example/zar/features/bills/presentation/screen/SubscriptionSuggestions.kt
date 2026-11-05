@@ -97,7 +97,7 @@ private fun SuggestionRow(suggestion: RecurringSuggestion, onConfirm: () -> Unit
                             BillFormat.dayMonth(suggestion.previousDate),
                             BillFormat.dayMonth(suggestion.lastDate),
                         ),
-                        style = ZarType.bodyCaption.copy(lineHeight = 15.sp),
+                        style = ZarType.bodyCaption,
                         color = colors.textSecondary,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,

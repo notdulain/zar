@@ -1,5 +1,8 @@
 package com.example.zar.features.transactions.presentation.screen
 
+import androidx.compose.foundation.lazy.itemsIndexed
+import com.example.zar.core.presentation.motion.rememberRiseInForLazyList
+import com.example.zar.core.presentation.motion.riseIn
 import com.example.zar.features.transactions.presentation.category.ProvideExpenseCategoryCatalog
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -204,6 +207,7 @@ internal fun ActivityBody(
     val listState = rememberLazyListState()
     // The hero collapses into the status bar as the list scrolls, like Home's top card.
     val collapse = rememberHomeCollapse(listState, cardHeight = HeroHeight, fadeMargin = 8.dp)
+    val play = rememberRiseInForLazyList(loaded = list != null)
 
     // The hero runs under the status bar and the list scrolls behind the floating nav, so only the sides are
     // inset here; the bottom clearance becomes scroll padding that lets the last row end 24dp above the nav.
@@ -345,8 +349,8 @@ internal fun ActivityBody(
                             }
                         }
                     } else {
-                        items(content.list.rows, key = { it.entry.id.value }) { row ->
-                            EntryRow(row, onClick = { actions.onOpenEntry(row.entry.id.value) }, modifier = gutter)
+                        itemsIndexed(content.list.rows, key = { _, it -> it.entry.id.value }) { index, row ->
+                            EntryRow(row, onClick = { actions.onOpenEntry(row.entry.id.value) }, modifier = gutter.riseIn(index, play))
                         }
                     }
                 }

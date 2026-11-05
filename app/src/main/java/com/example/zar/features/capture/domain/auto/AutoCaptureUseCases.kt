@@ -4,6 +4,7 @@ import com.example.zar.core.domain.model.DraftSource
 import com.example.zar.core.domain.repository.UserSessionProvider
 import com.example.zar.features.auth.domain.repository.SignOutHandler
 import com.example.zar.features.capture.domain.parser.BankSmsParser
+import com.example.zar.features.capture.domain.usecase.CaptureOutcome
 import com.example.zar.features.capture.domain.usecase.CaptureTextUseCase
 import java.time.Instant
 import javax.inject.Inject
@@ -62,6 +63,7 @@ class ProcessStagedSmsUseCase @Inject constructor(
     private val session: UserSessionProvider,
     private val staging: SmsStagingRepository,
     private val captureText: CaptureTextUseCase,
+    private val notifier: CaptureNotifier,
 ) {
     suspend operator fun invoke(now: Instant): ProcessResult {
         val expired = staging.expire(AutoCaptureRules.expiryCutoff(now))
@@ -73,9 +75,13 @@ class ProcessStagedSmsUseCase @Inject constructor(
             if (session.currentUserId() != owner) return ProcessResult(processed, left, expired, paused = true)
             // Bound to the owner checked above: a switch after the check cannot redirect the draft to the new user.
             captureText(message.text, DraftSource.SMS, message.receivedAt, owner).fold(
-                onSuccess = {
+                onSuccess = { outcome ->
                     staging.clear(message.id)
                     processed++
+                    // Only a new draft asks for review; a message already shared or reviewed stays quiet.
+                    if (outcome is CaptureOutcome.Drafted && outcome.isNew) {
+                        notifier.draftWaiting(CapturedForReview(outcome.draftId, outcome.parsed.amount, outcome.parsed.counterparty, outcome.account?.name))
+                    }
                 },
                 onFailure = { left++ },
             )

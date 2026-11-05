@@ -22,6 +22,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Brush
@@ -57,7 +58,6 @@ import com.example.zar.features.plans.domain.model.BackedGoalProgress
 import com.example.zar.features.plans.domain.model.PlansOverview
 import com.example.zar.features.plans.domain.model.SavingsGoal
 import java.time.format.DateTimeFormatter
-import java.util.Locale
 
 /**
  * The Plans hero from Figma Z04 (`160:2421`): a 420dp box drawn under the status bar with 32dp bottom corners, painted with
@@ -252,7 +252,7 @@ internal fun GoalHero(
 private fun goalTarget(goal: SavingsGoal): String {
     val of = stringResource(R.string.plans_of_target, goal.target.formatWithCode())
     val date = goal.targetDate ?: return of
-    return of + " · " + stringResource(R.string.plans_by_date, date.format(DateTimeFormatter.ofPattern("d MMM yyyy", Locale.getDefault())))
+    return of + " · " + stringResource(R.string.plans_by_date, date.format(DateTimeFormatter.ofPattern("d MMM yyyy", LocalConfiguration.current.locales[0])))
 }
 
 /** 8dp track, white at 35%, filled white. */

@@ -1,5 +1,7 @@
 package com.example.zar.features.settings.presentation.screen
 
+import com.example.zar.core.presentation.motion.rememberRiseInOnFirstVisit
+import com.example.zar.core.presentation.motion.riseIn
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import androidx.compose.foundation.background
@@ -74,6 +76,7 @@ fun MoreScreen(
         heroUnderStatusBar = true,
     ) { padding ->
         val scrollState = rememberScrollState()
+        val play = rememberRiseInOnFirstVisit(loaded = true)
         // The hero collapses into the status bar as the page scrolls, like Home's top card.
         val collapse = rememberHomeCollapse(scrollState, cardHeight = MoreHeroHeight, fadeMargin = 8.dp)
         Box(Modifier.fillMaxSize()) {
@@ -91,7 +94,7 @@ fun MoreScreen(
                     moreRows(
                         onOpenAccounts, onOpenIncome, onOpenFreelance, onOpenCrypto,
                         onOpenCapture, onOpenBills, onOpenRules, onOpenReminder, onOpenSettings, onOpenExport,
-                    ).forEach { row -> MoreOption(row) }
+                    ).forEachIndexed { index, row -> MoreOption(row, Modifier.riseIn(index, play)) }
                 }
             }
             CollapseStatusBand(collapse, "more-status-band", Modifier.align(Alignment.TopCenter))
@@ -164,10 +167,10 @@ internal fun moreRows(
 )
 
 @Composable
-private fun MoreOption(row: MoreRow) {
+private fun MoreOption(row: MoreRow, modifier: Modifier = Modifier) {
     val colors = ZarTheme.colors
     ZarCard(
-        modifier = Modifier.fillMaxWidth().testTag(row.tag),
+        modifier = modifier.fillMaxWidth().testTag(row.tag),
         onClick = row.onClick,
         contentPadding = PaddingValues(start = 16.dp, end = 18.dp, top = 16.dp, bottom = 16.dp),
     ) {

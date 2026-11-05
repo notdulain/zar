@@ -8,9 +8,11 @@ import com.example.zar.features.capture.data.auto.CaptureStagingDatabase
 import com.example.zar.features.capture.data.auto.DataStoreAutoCapturePreferences
 import com.example.zar.features.capture.data.auto.RoomSmsStagingRepository
 import com.example.zar.features.capture.data.auto.StagedSmsDao
+import com.example.zar.features.capture.data.auto.AndroidCaptureNotifier
 import com.example.zar.features.capture.data.auto.WorkManagerAutoCaptureScheduler
 import com.example.zar.features.capture.domain.auto.AutoCapturePreferences
 import com.example.zar.features.capture.domain.auto.AutoCaptureScheduler
+import com.example.zar.features.capture.domain.auto.CaptureNotifier
 import com.example.zar.features.capture.domain.auto.PauseAutoCaptureOnSignOut
 import com.example.zar.features.capture.domain.auto.SmsStagingRepository
 import dagger.Provides
@@ -61,6 +63,8 @@ import com.example.zar.features.reminders.domain.ReminderPreferencesRepository
 import com.example.zar.features.quicknote.data.remote.QuickNoteDraftTransport
 import com.example.zar.features.quicknote.data.repository.CallableQuickNoteDraftRepository
 import com.example.zar.features.quicknote.domain.repository.QuickNoteDraftRepository
+import com.example.zar.features.rates.data.ExchangeRateApiRepository
+import com.example.zar.features.rates.domain.ExchangeRateRepository
 import com.example.zar.features.rules.data.FirestoreCategoryRuleRepository
 import com.example.zar.features.rules.data.InMemoryRuleOfferInbox
 import com.example.zar.features.rules.domain.repository.CategoryRuleRepository
@@ -142,6 +146,10 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun bindAmountPrivacyRepository(impl: SharedPreferencesAmountPrivacyRepository): AmountPrivacyRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindExchangeRateRepository(impl: ExchangeRateApiRepository): ExchangeRateRepository
 
     @Binds
     @Singleton
@@ -233,6 +241,10 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun bindAutoCaptureScheduler(impl: WorkManagerAutoCaptureScheduler): AutoCaptureScheduler
+
+    @Binds
+    @Singleton
+    abstract fun bindCaptureNotifier(impl: AndroidCaptureNotifier): CaptureNotifier
 
     @Binds
     @IntoSet

@@ -40,6 +40,7 @@ class TimePickerMinuteUiTest {
         // 17 minutes is 102 degrees clockwise from 12.
         compose.onNodeWithTag("time-dial").performTouchInput { click(center.onDial(102f, width * 0.39f)) }
         compose.waitForIdle()
+        com.example.zar.core.presentation.evidence.PrScreenshots.capture("time-picker-17-minutes")
         compose.onNodeWithText("Set time").performClick()
         compose.runOnIdle { assertEquals(LocalTime.of(3, 17), set) }
     }

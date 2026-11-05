@@ -229,7 +229,7 @@ fun ZarTopLevelChrome(
                 }
             }
 
-            if (!keyboardOpen) BoxWithConstraints(
+            if (!keyboardOpen) Box(
                 Modifier.align(Alignment.BottomCenter)
                     .onSizeChanged { size -> contextActions?.clearance = with(density) { size.height.toDp() } + ZarDimens.NavContentGap }
                     .fillMaxWidth()

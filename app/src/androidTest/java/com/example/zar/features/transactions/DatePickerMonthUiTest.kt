@@ -36,9 +36,11 @@ class DatePickerMonthUiTest {
     @Test
     fun monthTitleOpensAChooserAndPickingAMonthShowsIt() {
         show()
+        com.example.zar.core.presentation.evidence.PrScreenshots.capture("date-picker")
         compose.onNodeWithTag("date-month-grid").assertDoesNotExist()
         compose.onNodeWithTag("date-month-title").performClick()
         compose.onNodeWithTag("date-month-grid").assertIsDisplayed()
+        com.example.zar.core.presentation.evidence.PrScreenshots.capture("date-month-chooser")
         // A month of the previous year, so it is never in the future.
         compose.onNodeWithContentDescription("Previous year").performClick()
         compose.onNodeWithTag("date-month-3").performClick()

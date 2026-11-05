@@ -26,7 +26,7 @@ import com.example.zar.core.presentation.theme.ZarType
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
-import java.util.Locale
+import androidx.compose.ui.platform.LocalConfiguration
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 
@@ -38,6 +38,7 @@ internal fun ZarMonthPicker(
     onMonthSelected: (YearMonth) -> Unit,
     onDark: Boolean,
 ) {
+    val locale = LocalConfiguration.current.locales[0]
     val stripHeight = 56.dp * LocalDensity.current.fontScale.coerceAtLeast(1f)
     val color = if (onDark) Color.White else ZarTheme.colors.textPrimary
     // Anchor the pages for this picker session, even while the dashboard loads another month.
@@ -73,7 +74,7 @@ internal fun ZarMonthPicker(
         }
         HorizontalPager(pager, modifier = Modifier.weight(1f).width(184.dp).height(stripHeight).testTag("month-pager"), beyondViewportPageCount = 1) { page ->
             Text(
-                origin.plusMonths(page.toLong()).format(DateTimeFormatter.ofPattern("MMMM yyyy", Locale.getDefault())),
+                origin.plusMonths(page.toLong()).format(DateTimeFormatter.ofPattern("MMMM yyyy", locale)),
                 modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp).testTag("month-label"),
                 textAlign = TextAlign.Center, style = ZarType.labelAction, color = color,
             )

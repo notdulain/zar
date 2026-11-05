@@ -1,5 +1,7 @@
 package com.example.zar.features.accounts.presentation.screen
 
+import com.example.zar.core.presentation.motion.rememberRiseInOnFirstVisit
+import com.example.zar.core.presentation.motion.riseIn
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.PaddingValues
@@ -158,13 +160,15 @@ private fun DetailContent(detail: AccountDetail, onEdit: (String) -> Unit, heroO
     val colors = ZarTheme.colors
     // Title block and balance card are the top summary group; they drift together at the bounded text rate.
     val summaryLayer = Modifier.heroParallax(heroOffset, ZarMotion.PARALLAX_TEXT, ZarMotion.ParallaxTextCap)
+    // The cards rise in one after another on the first visit; coming back from an entry shows them in place.
+    val play = rememberRiseInOnFirstVisit(loaded = true)
     ZarTitleBlock(
         title = account.name,
         subtitle = "${stringResource(account.type.longLabelRes())} · ${account.currency.code}",
         modifier = summaryLayer.padding(top = 6.dp),
     )
-    BalanceCard(detail, Modifier.heroParallax(heroOffset, ZarMotion.PARALLAX_TEXT, ZarMotion.ParallaxTextCap).padding(horizontal = 10.dp).padding(top = 18.dp))
-    DetailsCard(detail, onEdit, Modifier.padding(horizontal = 10.dp).padding(top = 12.dp))
+    BalanceCard(detail, Modifier.heroParallax(heroOffset, ZarMotion.PARALLAX_TEXT, ZarMotion.ParallaxTextCap).padding(horizontal = 10.dp).padding(top = 18.dp).riseIn(0, play))
+    DetailsCard(detail, onEdit, Modifier.padding(horizontal = 10.dp).padding(top = 12.dp).riseIn(1, play))
     ZarSectionHeader(stringResource(R.string.account_recent), Modifier.padding(top = 18.dp))
     if (detail.recent.isEmpty()) {
         Text(
@@ -174,7 +178,7 @@ private fun DetailContent(detail: AccountDetail, onEdit: (String) -> Unit, heroO
             modifier = Modifier.padding(start = 22.dp, end = 22.dp, top = 10.dp),
         )
     } else {
-        ZarCard(Modifier.padding(horizontal = 10.dp).padding(top = 10.dp).fillMaxWidth(), contentPadding = PaddingValues(0.dp)) {
+        ZarCard(Modifier.padding(horizontal = 10.dp).padding(top = 10.dp).riseIn(2, play).fillMaxWidth(), contentPadding = PaddingValues(0.dp)) {
             Column(Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
                 detail.recent.forEachIndexed { index, entry ->
                     if (index > 0) ZarDivider()

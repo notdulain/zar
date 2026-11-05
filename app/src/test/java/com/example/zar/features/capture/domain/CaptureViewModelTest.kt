@@ -1,5 +1,7 @@
 package com.example.zar.features.capture.domain
 
+import com.example.zar.core.domain.FakeAccountRepository
+import com.example.zar.features.capture.domain.usecase.ObserveCaptureAccountsUseCase
 import androidx.lifecycle.viewModelScope
 import com.example.zar.core.domain.model.*
 import com.example.zar.core.domain.repository.DraftRepository
@@ -33,7 +35,7 @@ class CaptureViewModelTest {
     @After fun teardown()=Dispatchers.resetMain()
     @Test fun sharesArrivingWhileAlreadyOpenAndBusyAreReadThenCleared()=runTest {
         val drafts=Drafts();val inbox=SharedTextInbox()
-        val vm=CaptureViewModel(inbox,CaptureTextUseCase(BankSmsParser(),drafts),ObserveCapturedDraftsUseCase(drafts),ObserveCaptureHealthUseCase(drafts))
+        val vm=CaptureViewModel(inbox,CaptureTextUseCase(BankSmsParser(),drafts,ObserveCaptureAccountsUseCase(FakeAccountRepository())),ObserveCapturedDraftsUseCase(drafts),ObserveCaptureHealthUseCase(drafts))
         try {
             vm.setActive(true)
             drafts.gate=CompletableDeferred()

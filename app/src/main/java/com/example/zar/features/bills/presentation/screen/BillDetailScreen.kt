@@ -1,5 +1,7 @@
 package com.example.zar.features.bills.presentation.screen
 
+import com.example.zar.core.presentation.motion.rememberRiseInOnFirstVisit
+import com.example.zar.core.presentation.motion.riseIn
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -220,7 +222,7 @@ private fun Detail(
         )
         Text(subtitle(summary, today), style = ZarType.bodyS.copy(lineHeight = 18.sp), color = colors.textSecondary, modifier = Modifier.padding(start = 22.dp, end = 22.dp, top = 4.dp))
 
-        BillCard(Modifier.padding(top = 19.dp).testTag("bill-details")) {
+        BillCard(Modifier.padding(top = 19.dp).riseIn(0, rememberRiseInOnFirstVisit(loaded = true)).testTag("bill-details")) {
             BillDetailRow(stringResource(R.string.bill_row_amount), stringResource(R.string.bill_amount_expected, IncomeFormat.withCode(bill.amount)), onEdit)
             ZarDivider()
             BillDetailRow(stringResource(R.string.bill_row_repeats), repeats(bill), onEdit)

@@ -59,15 +59,18 @@ class AddSheetHeightUiTest {
         fun top(tag: String) = compose.onNodeWithTag(tag).getUnclippedBoundsInRoot().top
         compose.waitForIdle()
         val expenseTop = top("manual-kind-expense")
+        com.example.zar.core.presentation.evidence.PrScreenshots.capture("add-expense")
         // The longest field is reachable by scrolling, so a fixed sheet never hides it.
         compose.onNodeWithTag("manual-description").performScrollTo()
 
         compose.runOnIdle { tab.value = AddTransactionTab.INCOME }
         compose.waitForIdle()
+        com.example.zar.core.presentation.evidence.PrScreenshots.capture("add-income")
         assertEquals(expenseTop.value, top("income-kind-expense").value, 0.5f)
 
         compose.runOnIdle { tab.value = AddTransactionTab.TRANSFER }
         compose.waitForIdle()
+        com.example.zar.core.presentation.evidence.PrScreenshots.capture("add-transfer")
         assertEquals(expenseTop.value, top("manual-kind-expense").value, 0.5f)
         compose.onNodeWithTag("manual-save").assertIsDisplayed()
     }

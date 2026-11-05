@@ -11,6 +11,7 @@ import com.example.zar.core.domain.model.TransactionId
 import com.example.zar.core.domain.model.TransactionType
 import com.example.zar.core.domain.model.TransferId
 import com.example.zar.core.domain.model.money.Currencies
+import com.example.zar.core.domain.model.money.RateSource
 import com.example.zar.core.domain.model.money.ReportingConversion
 import com.example.zar.features.transactions.domain.manual.model.ExpenseCategory
 import com.example.zar.features.transactions.domain.manual.model.ExpenseFormInput
@@ -19,6 +20,7 @@ import com.example.zar.features.transactions.domain.manual.model.ExpenseProblem
 import com.example.zar.features.transactions.domain.manual.model.TransferFormInput
 import com.example.zar.features.transactions.domain.manual.model.TransferFormResult
 import com.example.zar.features.transactions.domain.manual.model.TransferProblem
+import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
 import org.junit.Assert.assertEquals
@@ -142,6 +144,52 @@ class ManualEntryRulesTest {
         val tx = ManualEntryRules.newExpense(TransactionId("e2"), details, T0)
         assertEquals(usd(12), tx.amount)
         assertEquals(ReportingConversion.Missing(Currencies.LKR), tx.reportingConversion)
+    }
+
+    private fun usdExpense(rate: String, source: RateSource = RateSource.MANUAL, asOf: Instant? = null) =
+        expense(amount = "12", account = payoneer).copy(rate = rate, rateSource = source, rateAsOf = asOf)
+
+    @Test
+    fun foreignCurrencyExpenseWithATypedRateIsConvertedAndDatedBySaving() {
+        val details = (ManualEntryRules.validateExpense(usdExpense("330"), today) as ExpenseFormResult.Valid).details
+        val tx = ManualEntryRules.newExpense(TransactionId("e3"), details, T0)
+        val conversion = tx.reportingConversion as ReportingConversion.Converted
+        assertEquals(lkr(3_960), conversion.amount)
+        assertEquals(RateSource.MANUAL, conversion.rate.source)
+        assertEquals(T0, conversion.rate.asOf)
+    }
+
+    @Test
+    fun aProvidersRateKeepsItsSourceAndThePublishedTime() {
+        val published = Instant.parse("2026-10-15T00:02:31Z")
+        val details = (ManualEntryRules.validateExpense(usdExpense("332.4449", RateSource.PROVIDER, published), today) as ExpenseFormResult.Valid).details
+        val conversion = ManualEntryRules.newExpense(TransactionId("e4"), details, T0).reportingConversion as ReportingConversion.Converted
+        assertEquals(RateSource.PROVIDER, conversion.rate.source)
+        assertEquals(published, conversion.rate.asOf)
+        // USD 12 at 332.4449 is LKR 3,989.3388, rounded to the cent.
+        assertEquals(com.example.zar.core.domain.model.money.FiatMoney(398_934, Currencies.LKR), conversion.amount)
+    }
+
+    @Test
+    fun aCommaInTheRateIsADecimalSeparator() {
+        val details = (ManualEntryRules.validateExpense(usdExpense("300,5"), today) as ExpenseFormResult.Valid).details
+        assertEquals(0, "300.5".toBigDecimal().compareTo(details.rateToReporting))
+    }
+
+    @Test
+    fun anInvalidRateIsRefusedForAForeignAccountAndIgnoredForLkr() {
+        assertEquals(setOf(ExpenseProblem.RATE_INVALID), problems(ManualEntryRules.validateExpense(usdExpense("abc"), today)))
+        assertEquals(setOf(ExpenseProblem.RATE_INVALID), problems(ManualEntryRules.validateExpense(usdExpense("0"), today)))
+        val lkrExpense = (ManualEntryRules.validateExpense(expense().copy(rate = "abc"), today) as ExpenseFormResult.Valid).details
+        assertNull(lkrExpense.rateToReporting)
+        assertEquals(ReportingConversion.SameCurrency, ManualEntryRules.newExpense(TransactionId("e5"), lkrExpense, T0).reportingConversion)
+    }
+
+    @Test
+    fun aBlankRateOnAForeignAccountIsStillMissing() {
+        val details = (ManualEntryRules.validateExpense(usdExpense("  "), today) as ExpenseFormResult.Valid).details
+        assertNull(details.rateToReporting)
+        assertEquals(ReportingConversion.Missing(Currencies.LKR), ManualEntryRules.newExpense(TransactionId("e6"), details, T0).reportingConversion)
     }
 
     @Test

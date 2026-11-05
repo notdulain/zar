@@ -118,6 +118,19 @@ test('owner can create and read a transaction', async () => {
   await assertSucceeds(getDocs(collection(alice(), 'users/alice/transactions')));
 });
 
+test('a rate from the provider is accepted with its source and time, and an unknown source is not (issue 46)', async () => {
+  const withRate = (id, over) => {
+    const base = usdIncome(id);
+    return { ...base, conversion: { ...base.conversion, rate: { ...base.conversion.rate, ...over } } };
+  };
+  const p = (id) => doc(alice(), path('alice', 'transactions', id));
+  // Today's rate as the app saves it: four decimals, the provider's own publish time.
+  await assertSucceeds(setDoc(p('prov'), withRate('prov', { rate: '332.4449', asOf: 1793750551000, source: 'PROVIDER' })));
+  await assertFails(setDoc(p('guess'), withRate('guess', { source: 'GUESS' })));
+  await assertFails(setDoc(p('comma'), withRate('comma', { rate: '300,5' })));    // a comma never reaches the ledger
+  await assertFails(setDoc(p('zero-time'), withRate('zero-time', { asOf: 'yesterday' })));
+});
+
 test('other users and signed-out users get nothing', async () => {
   await assertFails(setDoc(doc(bob(), path('alice', 'transactions', 't1')), tx('t1')));
   await assertFails(setDoc(doc(anon(), path('alice', 'transactions', 't1')), tx('t1')));

@@ -1,5 +1,8 @@
 package com.example.zar.features.home.presentation.screen
 
+import com.example.zar.core.presentation.motion.rememberRiseInOnFirstVisit
+import com.example.zar.core.presentation.motion.riseIn
+
 import com.example.zar.features.accounts.presentation.viewmodel.AccountsViewModel
 import com.example.zar.features.accounts.presentation.viewmodel.AccountsUiState
 import com.example.zar.core.presentation.privacy.AmountPrivacyViewModel
@@ -204,6 +207,8 @@ internal fun HomeScreenContent(
     ) { padding ->
         // The hero reads this same state for its bounded parallax; nothing else about the scroll changes.
         val scrollState = rememberScrollState()
+        // The cards under the hero rise in once, the first time Home has data; changing month or tab shows them in place.
+        val play = rememberRiseInOnFirstVisit(loaded = state.content is HomeContent.Ready)
         val layoutDirection = androidx.compose.ui.platform.LocalLayoutDirection.current
         Box(Modifier.fillMaxSize()) {
         Column(
@@ -249,6 +254,7 @@ internal fun HomeScreenContent(
                     onOpenGoal = onOpenGoal,
                     onToggleAmounts = onToggleAmounts,
                     scrollState = scrollState,
+                    play = play,
                     accounts = accounts,
                     onOpenAccounts = onOpenAccounts,
                     onOpenAccount = onOpenAccount,
@@ -304,6 +310,7 @@ private fun OverviewBlock(
     onOpenGoal: (GoalId) -> Unit,
     onToggleAmounts: () -> Unit,
     scrollState: ScrollState,
+    play: Boolean = false,
     accounts: AccountsUiState,
     onOpenAccounts: () -> Unit,
     onOpenAccount: (String) -> Unit,
@@ -314,16 +321,16 @@ private fun OverviewBlock(
         Modifier.fillMaxWidth().padding(horizontal = 9.dp).padding(top = 12.dp, bottom = 28.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        QuickNavigation(onNavigate)
+        Box(Modifier.fillMaxWidth().riseIn(0, play)) { QuickNavigation(onNavigate) }
         if (overview.hasIncompleteData) {
-            ReviewPrompt(overview, onClick = onOpenReview)
+            Box(Modifier.fillMaxWidth().riseIn(1, play)) { ReviewPrompt(overview, onClick = onOpenReview) }
         }
-        SpendingCard(overview, onClick = { onOpenSpending(overview.month) })
-        GoalCard(goal, onOpenGoal = onOpenGoal, onOpenPlans = { onNavigate(TopLevelDestination.Plans) }, onRetry = onRetry)
-        RecentActivity(overview.recent)
+        Box(Modifier.fillMaxWidth().riseIn(2, play)) { SpendingCard(overview, onClick = { onOpenSpending(overview.month) }) }
+        Box(Modifier.fillMaxWidth().riseIn(3, play)) { GoalCard(goal, onOpenGoal = onOpenGoal, onOpenPlans = { onNavigate(TopLevelDestination.Plans) }, onRetry = onRetry) }
+        Box(Modifier.fillMaxWidth().riseIn(4, play)) { RecentActivity(overview.recent) }
         HomeAccountsCard(accounts, onOpenAccounts, onOpenAccount)
         // Both cards measure to the taller one, so long or empty content in either never leaves them mismatched.
-        Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min).riseIn(5, play), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             NextBillCard(
                 commitments = commitments,
                 onOpenBill = onOpenBill,

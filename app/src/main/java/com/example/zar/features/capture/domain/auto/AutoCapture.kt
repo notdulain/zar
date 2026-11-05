@@ -1,5 +1,7 @@
 package com.example.zar.features.capture.domain.auto
 
+import com.example.zar.core.domain.model.money.FiatMoney
+import com.example.zar.core.domain.model.DraftId
 import com.example.zar.core.domain.model.UserId
 import com.example.zar.features.capture.domain.model.SmsParseResult
 import java.security.MessageDigest
@@ -63,6 +65,20 @@ interface AutoCaptureScheduler {
 
     /** Stops the pending pass, e.g. on sign-out. The regular pass keeps expiring old messages. */
     fun cancelPending()
+}
+
+/** A captured message waiting for review, as the phone's notification describes it. Never the message text. */
+data class CapturedForReview(
+    val draftId: DraftId,
+    val amount: FiatMoney,
+    val counterparty: String?,
+    /** The account matched from the message, if one was. */
+    val accountName: String?,
+)
+
+/** Tells the person a message was captured in the background and needs their review. */
+fun interface CaptureNotifier {
+    fun draftWaiting(capture: CapturedForReview)
 }
 
 object AutoCaptureRules {

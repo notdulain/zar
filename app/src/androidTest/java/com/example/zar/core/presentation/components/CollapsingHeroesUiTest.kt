@@ -130,8 +130,8 @@ class CollapsingHeroesUiTest {
         assertTrue("pinned band is #05070B once the card has gone, got $c", c.red < 0.05f && c.green < 0.06f && c.blue < 0.08f)
     }
 
-    @Test fun plansTextDriftsFadesAndComesBack() { showPlans(full); drifts("plans-backed", fadesAway = true) }
-    @Test fun moreTextDriftsFadesAndComesBack() { showMore(full); drifts("more-title", fadesAway = true) }
+    @Test fun plansTextDriftsFadesAndComesBack() { showPlans(full); compose.waitForIdle(); com.example.zar.core.presentation.evidence.PrScreenshots.capture("plans-hero"); drifts("plans-backed", fadesAway = true) }
+    @Test fun moreTextDriftsFadesAndComesBack() { showMore(full); compose.waitForIdle(); com.example.zar.core.presentation.evidence.PrScreenshots.capture("more-hero"); drifts("more-title", fadesAway = true) }
     @Test fun activityTextDriftsFadesAndComesBack() { showActivity(full); drifts("activity-received", fadesAway = false) }
 
     @Test fun activityTotalsFadeAway() {

@@ -1,5 +1,6 @@
 package com.example.zar.features.capture.presentation
 
+import com.example.zar.core.domain.model.AccountId
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import com.example.zar.core.domain.FakeLedgerRepository
@@ -141,6 +142,29 @@ class CaptureReviewViewModelTest {
     private suspend fun transfer(id: String = "t1") {
         ledger.saveTransaction(tx("$id-out", TransactionType.TRANSFER_OUT, lkr(25_000), cash, OCT_10, transferId = id))
         ledger.saveTransaction(tx("$id-in", TransactionType.TRANSFER_IN, lkr(25_000), bank, OCT_10, transferId = id))
+    }
+
+    // --- Account matched from the message ---------------------------------------------------
+
+    private fun suggestedDraft(account: String) = purchaseDraft().let { d ->
+        val p = d.proposals.single() as DraftProposal.ActualTransaction
+        d.copy(proposals = listOf(p.copy(accountId = AccountId(account), uncertainFields = p.uncertainFields + DraftField.ACCOUNT)))
+    }
+
+    @Test
+    fun theAccountMatchedFromTheMessageIsAlreadyPicked() = runTest {
+        drafts.saveDraft(suggestedDraft("bank"))
+        val vm = viewModel(); runCurrent()
+
+        assertEquals(bank.id, vm.uiState.value.accountId)
+    }
+
+    @Test
+    fun aMatchedAccountThatIsNoLongerThereIsNotPicked() = runTest {
+        drafts.saveDraft(suggestedDraft("closed"))
+        val vm = viewModel(); runCurrent()
+
+        assertNull(vm.uiState.value.accountId)
     }
 
     // --- Possible duplicates ---------------------------------------------------------------

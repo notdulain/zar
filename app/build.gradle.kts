@@ -66,6 +66,8 @@ android {
             appIdSuffix?.let { applicationIdSuffix = it }
             buildConfigField("boolean", "USE_FIREBASE_EMULATORS", useEmulators.toString())
             buildConfigField("String", "EMULATOR_HOST", "\"$emulatorHost\"")
+            // Opt-in JaCoCo report for unit tests: ./gradlew createDebugUnitTestCoverageReport -Pzar.coverage=true
+            enableUnitTestCoverage = providers.gradleProperty("zar.coverage").orNull == "true"
         }
         release {
             buildConfigField("boolean", "USE_FIREBASE_EMULATORS", "false")

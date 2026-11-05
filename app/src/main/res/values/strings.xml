@@ -28,6 +28,17 @@
     <string name="income_field_date">Date received</string>
     <string name="income_field_rate">1 %1$s = ? LKR</string>
     <string name="income_field_rate_hint">Leave empty if you don\'t know. It will show as a missing rate.</string>
+    <string name="rate_use_today">Use today\'s rate</string>
+    <string name="rate_getting">Getting today\'s rate…</string>
+    <string name="rate_try_again">Try again</string>
+    <string name="rate_hint_available">Fill it with today\'s rate, or type your own. If you leave it empty, it will show as a missing rate.</string>
+    <string name="rate_hint_fetching">This needs a connection. You can type a rate instead.</string>
+    <string name="rate_hint_failed">Couldn\'t get today\'s rate. Type one, or leave it empty.</string>
+    <string name="rate_hint_filled">Today\'s rate, updated %1$s. You can change it.</string>
+    <string name="rate_hint_typed">You typed this rate. Today\'s rate is %1$s.</string>
+    <string name="rate_hint_saved">Saved from today\'s rate, updated %1$s.</string>
+    <string name="rate_hint_earlier">Today\'s rate isn\'t offered for an earlier date. Type the rate for that day, or leave it empty.</string>
+    <string name="rate_attribution">Rates By Exchange Rate API</string>
     <string name="income_field_received_from">Received from (optional)</string>
     <string name="income_field_category">Category (optional)</string>
     <string name="income_field_note">Note (optional)</string>
@@ -97,12 +108,12 @@
     <string name="auth_error_unknown">Something went wrong. Try again.</string>
 
     <!-- Sign out -->
-    <string name="settings_subtitle">Your sign-in and where Zar keeps your settings.</string>
+    <string name="settings_subtitle">Your sign-in and preferences.</string>
     <string name="amounts_hide">Hide amounts</string>
     <string name="amounts_show">Show amounts</string>
     <string name="home_chart_hidden">Chart hidden while amounts are hidden</string>
     <string name="settings_hide_amounts">Hide amounts</string>
-    <string name="settings_hide_amounts_detail">Replaces every amount with •••• on every screen, chart and notification. Your records are not changed.</string>
+    <string name="settings_hide_amounts_detail">Shows •••• instead of amounts everywhere. Your records stay the same.</string>
     <string name="settings_signed_in_as">Signed in as</string>
     <string name="settings_appearance">Appearance</string>
     <string name="settings_appearance_light">Light</string>
@@ -114,9 +125,9 @@
     <string name="settings_appearance_retry">Try again →</string>
     <string name="settings_on_this_phone">On this phone</string>
     <string name="settings_reduce_motion">Reduce motion</string>
-    <string name="settings_reduce_motion_detail">Turns off sliding, bouncing and depth effects. Zar does this too when Android animations are off.</string>
+    <string name="settings_reduce_motion_detail">Turns off sliding and bouncing effects.</string>
     <string name="settings_where_title">Where your settings live</string>
-    <string name="settings_where_body">Your accounts and entries sync to your Zar account. Appearance, Reduce motion and Hide amounts stay on this phone after you sign out.</string>
+    <string name="settings_where_body">Accounts and entries sync to your Zar account. The settings above stay on this phone.</string>
     <string name="settings_sign_out">Sign out</string>
     <string name="sign_out_unsynced_title">Some changes haven’t synced</string>
     <string name="sign_out_unsynced_body">Your latest changes are only on this phone. If you sign out now they will be lost. Connect to the internet and wait a moment, or sign out anyway.</string>
@@ -1082,7 +1093,6 @@
         <item quantity="one">%d sale is missing a cost or value and is not included</item>
         <item quantity="other">%d sales are missing a cost or value and are not included</item>
     </plurals>
-    <string name="crypto_no_wallets">No crypto wallets yet. Add one under More → Accounts (type Crypto), then record your movements here.</string>
     <string name="crypto_load_failed">Could not load your crypto. Check your connection and try again.</string>
     <string name="crypto_holdings">HOLDINGS</string>
     <string name="crypto_wallets">WALLETS</string>
@@ -1090,13 +1100,12 @@
     <string name="crypto_no_movements">No movements yet. Tap + to record a buy, sale, trade or move.</string>
     <string name="crypto_at_least">at least %1$s</string>
     <string name="crypto_cost">Cost %1$s</string>
-    <string name="crypto_avg_cost">avg %1$s</string>
+    <string name="crypto_avg_cost">Avg %1$s / %2$s</string>
     <string name="crypto_approximate">approximate</string>
     <string name="crypto_cost_unknown_for">Cost unknown for %1$s</string>
-    <string name="crypto_realized_asset">Realized %1$s</string>
     <string name="crypto_opening">Opening %1$s</string>
     <string name="crypto_opening_unknown">Opening amount unknown</string>
-    <string name="crypto_opening_cost">opening cost %1$s</string>
+    <string name="crypto_opening_cost">Opening cost %1$s</string>
     <string name="crypto_opening_cost_missing">opening cost not set</string>
     <string name="crypto_set_cost">Set cost</string>
     <string name="crypto_kind_buy">Bought %1$s</string>
@@ -1107,10 +1116,8 @@
     <string name="crypto_profit">Profit %1$s</string>
     <string name="crypto_loss">Loss %1$s</string>
     <string name="crypto_result_unknown">Profit/loss unknown</string>
-    <string name="crypto_add_movement">Add crypto movement</string>
     <string name="crypto_undo_title">Undo this movement?</string>
-    <string name="crypto_undo_body">Both sides are removed from your balances, holdings and profit or loss. This can\'t be reversed.</string>
-    <string name="crypto_undo">Undo</string>
+    <string name="crypto_undo_body">Both sides are removed from your balances, holdings and profit or loss. Undoing a movement is final.</string>
 
     <string name="crypto_cost_title">Opening cost of %1$s</string>
     <string name="crypto_cost_body">What did the coins this wallet started with cost you in LKR? Leave empty if you don\'t know.</string>
@@ -1118,16 +1125,14 @@
     <string name="crypto_cost_approximate">This is an estimate</string>
     <string name="crypto_cost_invalid">Enter a valid amount above zero, or leave it empty</string>
 
-    <string name="crypto_movement_title">Crypto movement</string>
     <string name="crypto_from">From</string>
     <string name="crypto_to">To</string>
     <string name="crypto_sent">Amount sent</string>
     <string name="crypto_received">Amount received</string>
-    <string name="crypto_received_same">Same as sent if left empty</string>
-    <string name="crypto_value">Value in LKR (optional)</string>
+    <string name="crypto_received_same">Same as sent if left empty. Less than sent counts as a network fee.</string>
+    <string name="crypto_value">Value in LKR, optional</string>
     <string name="crypto_value_hint">What it was worth in LKR at the time. Leave empty if unknown; profit/loss will show as unknown.</string>
     <string name="crypto_date">Date</string>
-    <string name="crypto_note">Note (optional)</string>
     <string name="crypto_explain_buy">Buying crypto. It is a transfer between your accounts, not spending.</string>
     <string name="crypto_explain_sell">Selling crypto. Not income: only the profit or loss is worked out, on the Crypto screen.</string>
     <string name="crypto_explain_trade">Trading one coin for another. Profit or loss is worked out on the coin you give up.</string>
@@ -1142,20 +1147,80 @@
     <string name="crypto_error_too_long">Too long</string>
     <string name="crypto_message_not_signed_in">Sign in to save.</string>
     <string name="crypto_message_failed">Could not save. Please try again.</string>
+    <string name="crypto_back">Back</string>
+    <string name="crypto_status_no_wallets">No crypto wallets</string>
+    <string name="crypto_status_opening_only">Opening balances only</string>
+    <string name="crypto_status_no_sales">No sales yet</string>
+    <string name="crypto_status_known_only">Known results only</string>
+    <string name="crypto_status_connection">Connection issue</string>
+    <plurals name="crypto_status_realized">
+        <item quantity="one">%d realized sale</item>
+        <item quantity="other">%d realized sales</item>
+    </plurals>
+    <plurals name="crypto_status_realized_approximate">
+        <item quantity="one">%d realized sale · approximate cost</item>
+        <item quantity="other">%d realized sales · approximate cost</item>
+    </plurals>
+    <string name="crypto_unavailable">Your crypto totals are unavailable.</string>
+    <string name="crypto_load_failed_title">Could not load your crypto.</string>
+    <string name="crypto_load_failed_body">Check your connection and try again.</string>
+    <string name="crypto_try_again">Try again</string>
+    <string name="crypto_no_wallets_title">No crypto wallets yet.</string>
+    <string name="crypto_no_wallets_body">Add one under More → Accounts (type Crypto), then record your movements here.</string>
+    <string name="crypto_add_account">Add crypto account</string>
+    <string name="crypto_record_movement">Record movement</string>
+    <string name="crypto_name_btc">Bitcoin</string>
+    <string name="crypto_name_eth">Ether</string>
+    <string name="crypto_name_usdt">Tether</string>
+    <string name="crypto_name_other">Crypto</string>
+    <string name="crypto_movement_amounts">− %1$s → + %2$s</string>
+    <string name="crypto_movement_gone">This movement is no longer here.</string>
+    <string name="crypto_detail_value">LKR value</string>
+    <string name="crypto_detail_cost_removed">Cost removed</string>
+    <string name="crypto_detail_realized_profit">Realized profit</string>
+    <string name="crypto_detail_realized_loss">Realized loss</string>
+    <string name="crypto_detail_cost_method">Cost method</string>
+    <string name="crypto_cost_method">Average cost</string>
+    <string name="crypto_cost_method_approximate">Average cost · approximate</string>
+    <string name="crypto_detail_note">Note</string>
+    <string name="crypto_not_income">Not income</string>
+    <string name="crypto_linked">Linked entries</string>
+    <string name="crypto_out_of">Out of %1$s</string>
+    <string name="crypto_into">Into %1$s</string>
+    <string name="crypto_wallet_meta">Crypto wallet · %1$s</string>
+    <string name="crypto_money_meta">Money account · %1$s</string>
+    <string name="crypto_linked_note_buy">Both entries belong to this purchase. Neither entry counts as income or spending.</string>
+    <string name="crypto_linked_note_sell">Both entries belong to this sale. Neither entry counts as income or spending.</string>
+    <string name="crypto_linked_note_trade">Both entries belong to this trade. Neither entry counts as income or spending.</string>
+    <string name="crypto_linked_note_move">Both entries belong to this move. Neither entry counts as income or spending.</string>
+    <string name="crypto_undo_hint">Undo restores both balances and the cost basis.</string>
+    <string name="crypto_undo_movement">Undo movement</string>
+    <string name="crypto_choose_account">Choose account</string>
+    <string name="crypto_from_account">From account</string>
+    <string name="crypto_to_account">To account</string>
+    <string name="crypto_group_wallets">Crypto wallets</string>
+    <string name="crypto_group_money">Money accounts</string>
+    <string name="crypto_selected">Selected</string>
+    <string name="crypto_done">Done</string>
+    <string name="crypto_saving">Saving…</string>
+    <string name="crypto_note_label">Note</string>
+    <string name="crypto_optional">Optional</string>
+    <string name="crypto_cost_placeholder">Amount</string>
+    <string name="crypto_cost_estimate_note">Without a cost, profit or loss on these coins stays unknown.</string>
 
     <!-- Capture: share or paste bank text (L09) -->
     <string name="capture_title">Capture sources</string>
     <string name="capture_health_label">CAPTURE STATUS</string>
     <string name="capture_health_never">Nothing captured yet</string>
     <string name="capture_health_last">Last captured %1$s</string>
-    <string name="capture_health_caption">Zar only knows about messages you share or paste, or that arrive while automatic capture is on. A quiet week doesn\'t mean nothing was spent.</string>
+    <string name="capture_health_caption">Zar only sees messages you share, paste, or that arrive while automatic capture is on. A quiet week doesn\'t mean nothing was spent.</string>
     <plurals name="capture_waiting">
         <item quantity="one">%d message waiting for review</item>
         <item quantity="other">%d messages waiting for review</item>
     </plurals>
     <string name="capture_paste_label">PASTE A BANK MESSAGE</string>
     <string name="capture_paste_field">Bank SMS text</string>
-    <string name="capture_paste_hint">Tip: in Messages, long-press the SMS → Share → Zar. The text is read on this phone and never uploaded. Connect to save the structured draft.</string>
+    <string name="capture_paste_hint">Tip: long-press the SMS → Share → Zar. The text stays on this phone.</string>
     <string name="capture_read">Read message</string>
     <string name="capture_from_share">Shared from another app</string>
     <string name="capture_drafted">Read: %1$s on %2$s. Review it below to save it.</string>
@@ -1178,8 +1243,8 @@
     <string name="auto_capture_state_on">On · new messages only</string>
     <string name="auto_capture_state_no_access">On, but SMS access is off</string>
     <string name="auto_capture_state_unavailable">This phone can\'t receive SMS</string>
-    <string name="auto_capture_explain_off">When it\'s on, Zar reads bank messages as they arrive and makes drafts for you to review. Past messages are never read. It needs SMS access; sharing and pasting work without it.</string>
-    <string name="auto_capture_explain_on">Only tested bank formats are kept, encrypted on this phone, until they become drafts. Then the message text is deleted. Credits and unclear payments always wait for your choice. Turning this off deletes messages still waiting.</string>
+    <string name="auto_capture_explain_off">Zar turns new bank messages into drafts for you to review. Past messages are never read.</string>
+    <string name="auto_capture_explain_on">Bank messages are kept encrypted on this phone until they become drafts, then deleted. Turning this off deletes any still waiting.</string>
     <string name="auto_capture_allow">Allow SMS access</string>
     <string name="auto_capture_refused">SMS access was refused, so automatic capture stays off. Sharing and pasting still work.</string>
     <plurals name="auto_capture_waiting">
@@ -1205,6 +1270,7 @@
     <string name="capture_review_discard">Discard</string>
     <string name="capture_review_gone">This message was already reviewed.</string>
     <string name="capture_review_pick_account">Choose an account</string>
+    <string name="capture_review_account_matched">Picked from the bank in the message. Tap another account if it\'s wrong.</string>
     <string name="capture_review_pick_type">Choose a type</string>
     <string name="capture_type_expense">Expense</string>
     <string name="capture_type_income">Income</string>
@@ -1597,4 +1663,11 @@
     <string name="auth_registration_password_placeholder">Password (at least %1$d characters)</string>
     <string name="auth_already_have_account">Already have an account?</string>
     <string name="auth_registering">Creating account…</string>
+    <string name="capture_notify_channel_name">Captured bank messages</string>
+    <string name="capture_notify_channel_description">Asks you to review each bank message Zar saved in the background.</string>
+    <string name="capture_notify_title_at">%1$s at %2$s</string>
+    <string name="capture_notify_title">%1$s from a bank message</string>
+    <string name="capture_notify_body_account">%1$s · Tap to review and confirm.</string>
+    <string name="capture_notify_body">Tap to review and confirm.</string>
+    <string name="capture_notify_public_title">A bank message is waiting for review</string>
 </resources>

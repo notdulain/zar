@@ -162,6 +162,10 @@ internal class ManualEntryActions(
     val onDeleteCategoryConfirm: () -> Unit = {},
     /** Opens the real Quick note window in place of this sheet. */
     val onQuickNote: () -> Unit = {},
+    /** The rate field of an expense on a foreign-currency account. */
+    val onRate: (String) -> Unit = {},
+    /** "Use today's rate" next to the rate field. */
+    val onUseTodaysRate: () -> Unit = {},
 )
 
 @Composable
@@ -349,6 +353,17 @@ private fun ExpenseFields(state: ManualEntryUiState, actions: ManualEntryActions
     }
     AmountRow(state.amount, state.currency.code, actions.onAmount)
     FieldError(if (ExpenseProblem.AMOUNT_MISSING in problems || ExpenseProblem.AMOUNT_INVALID in problems) R.string.manual_error_amount else null)
+    if (state.needsRate) {
+        RateRow(
+            currency = state.selectedAccount?.currency,
+            entry = state.rateEntry,
+            canUseTodaysRate = state.canUseTodaysRate,
+            invalid = ExpenseProblem.RATE_INVALID in problems,
+            onRateChange = actions.onRate,
+            onUseTodaysRate = actions.onUseTodaysRate,
+            inputTag = "manual-rate",
+        )
+    }
     ZarDivider()
 
     if (state.accountLocked) LockedAccountRow(state) else Section(stringResource(R.string.manual_field_account), stringResource(R.string.manual_all_accounts), { allAccounts = !allAccounts }) {

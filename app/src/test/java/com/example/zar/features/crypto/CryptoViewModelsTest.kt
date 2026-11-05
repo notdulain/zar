@@ -80,6 +80,13 @@ class CryptoViewModelsTest {
         override suspend fun saveAccount(account: Account) = Unit
     }
 
+    /** Fails until [broken] is turned off, like a phone that comes back online. */
+    private class FlakyAccounts(vararg val accounts: Account) : AccountRepository {
+        var broken = true
+        override fun observeAccounts() = flow { if (broken) throw IOException("Offline") else emit(accounts.toList()) }
+        override suspend fun saveAccount(account: Account) = Unit
+    }
+
     private val ledger = Ledger()
     private val costs = Costs()
 
@@ -105,6 +112,52 @@ class CryptoViewModelsTest {
         val vm = overview(BrokenAccounts())
         assertTrue(vm.uiState.value.loadFailed)
         assertNull(vm.uiState.value.portfolio)
+        vm.viewModelScope.cancel()
+    }
+
+    @Test
+    fun tryAgainLoadsTheCryptoOnceTheConnectionIsBack() = runTest {
+        val accounts = FlakyAccounts(bank, wallet)
+        val vm = overview(accounts)
+        assertTrue(vm.uiState.value.loadFailed)
+
+        accounts.broken = false
+        vm.retry()
+        assertFalse(vm.uiState.value.loadFailed)
+        assertEquals(listOf(wallet), vm.uiState.value.portfolio!!.wallets)
+        vm.viewModelScope.cancel()
+    }
+
+    @Test
+    fun undoingAMovementRemovesItAndSaysItIsDone() = runTest {
+        val record = movement()
+        record.onFromSelect(bank.id)
+        record.onToSelect(wallet.id)
+        record.onSentChange("50000")
+        record.onReceivedChange("0.0025")
+        record.save()
+        val vm = overview()
+        val row = vm.uiState.value.portfolio!!.movements.single()
+        assertNull(vm.uiState.value.undone)
+
+        vm.undo(row)
+        assertTrue(vm.uiState.value.portfolio!!.movements.isEmpty())
+        assertEquals(row.outEntry.id, vm.uiState.value.undone)
+        record.viewModelScope.cancel()
+        vm.viewModelScope.cancel()
+    }
+
+    @Test
+    fun editingASavedOpeningCostStartsFromItWithoutTrailingZeros() = runTest {
+        val vm = overview()
+        vm.editCost(wallet)
+        vm.onCostChange("140000")
+        vm.onCostApproximateChange(true)
+        vm.saveCost()
+
+        vm.editCost(wallet)
+        assertEquals("140000", vm.uiState.value.costText)
+        assertTrue(vm.uiState.value.costApproximate)
         vm.viewModelScope.cancel()
     }
 

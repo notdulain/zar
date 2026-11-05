@@ -41,6 +41,7 @@ class NewPlanMotionUiTest {
         val entering = top()
         frames(50)
         val rest = top()
+        com.example.zar.core.presentation.evidence.PrScreenshots.capture("new-plan-open")
         assertTrue("New plan enters from below", entering > rest + 20f)
         val sheet = compose.onNodeWithTag("new-plan-sheet")
         sheet.performTouchInput { swipe(Offset(centerX, 12f), Offset(centerX, 50f), 500) }

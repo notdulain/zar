@@ -16,6 +16,10 @@ import com.example.zar.core.domain.model.money.Currency
 import com.example.zar.core.domain.model.money.Money
 import com.example.zar.core.navigation.ManualEntryRoute
 import com.example.zar.features.accounts.domain.usecase.ObserveActiveAccountsUseCase
+import com.example.zar.features.rates.domain.FetchTodaysRateUseCase
+import com.example.zar.features.rates.domain.RateEntry
+import com.example.zar.features.rates.domain.RateFetch
+import com.example.zar.features.rates.domain.TodaysRateRules
 import com.example.zar.features.rules.domain.CategoryRuleMatcher
 import com.example.zar.features.rules.domain.RuleOfferRules
 import com.example.zar.features.rules.domain.model.CategoryRule
@@ -110,6 +114,8 @@ data class ManualEntryUiState(
     val spendingClassChosen: Boolean = false,
     val title: String = "",
     val description: String = "",
+    /** The rate field of a foreign-currency expense: what is typed and, if it was fetched, today's rate. */
+    val rateEntry: RateEntry = RateEntry(),
     val suggestions: List<EntrySuggestion> = emptyList(),
     val expenseProblems: Set<ExpenseProblem> = emptySet(),
     // Transfer
@@ -131,6 +137,16 @@ data class ManualEntryUiState(
     val selectedAccount: Account? get() = accounts.firstOrNull { it.id == accountId }
     val fromAccount: Account? get() = accounts.firstOrNull { it.id == fromId }
     val toAccount: Account? get() = accounts.firstOrNull { it.id == toId }
+
+    /** An expense on a foreign-currency account has a rate field, as foreign income does. */
+    val needsRate: Boolean get() = kind == ManualEntryKind.EXPENSE && selectedAccount?.currency.let { it != null && it != Currencies.REPORTING }
+
+    /** The number in the rate field, as typed. */
+    val rate: String get() = rateEntry.text
+
+    /** Today's rate is only offered for an ordinary foreign currency on today's date. */
+    val canUseTodaysRate: Boolean
+        get() = kind == ManualEntryKind.EXPENSE && TodaysRateRules.canOffer(selectedAccount?.currency, date, ZarTime.today())
 
     /** The currency the amount is typed in: always the account's, never chosen separately. */
     val currency: Currency
@@ -170,6 +186,7 @@ class ManualEntryViewModel @Inject constructor(
     private val ruleInbox: RuleOfferInbox,
     observeCategories: ObserveExpenseCategoryCatalogUseCase,
     private val createCategory: CreateExpenseCategoryUseCase,
+    private val fetchTodaysRate: FetchTodaysRateUseCase,
 ) : ViewModel() {
 
     // Read by name instead of toRoute so the ViewModel can be created in plain unit tests.
@@ -242,6 +259,7 @@ class ManualEntryViewModel @Inject constructor(
     fun onDateSelect(value: LocalDate) = _uiState.update {
         it.copy(
             date = value,
+            rateEntry = it.rateEntry.onDateChanged(value, ZarTime.today()),
             expenseProblems = it.expenseProblems - ExpenseProblem.DATE_IN_FUTURE,
             transferProblems = it.transferProblems - TransferProblem.DATE_IN_FUTURE,
         )
@@ -253,7 +271,43 @@ class ManualEntryViewModel @Inject constructor(
 
     fun onAccountSelect(id: AccountId) = _uiState.update {
         if (it.accountLocked) return@update it
-        it.copy(accountId = id, expenseProblems = it.expenseProblems - ExpenseProblem.ACCOUNT_MISSING).withRule()
+        it.copy(
+            accountId = id,
+            // A rate belongs to one currency: another account starts with an empty rate field.
+            rateEntry = if (it.accountId == id) it.rateEntry else RateEntry(),
+            expenseProblems = it.expenseProblems - setOf(ExpenseProblem.ACCOUNT_MISSING, ExpenseProblem.RATE_INVALID),
+        ).withRule()
+    }
+
+    fun onRateChange(value: String) = _uiState.update {
+        it.copy(rateEntry = it.rateEntry.typed(value), expenseProblems = it.expenseProblems - ExpenseProblem.RATE_INVALID)
+    }
+
+    /** Fills the rate field with today's rate. A failure only shows a message: the rate can still be typed or left empty. */
+    fun onUseTodaysRate() {
+        val state = _uiState.value
+        val currency = state.selectedAccount?.currency ?: return
+        if (!state.canUseTodaysRate || state.rateEntry.fetch == RateFetch.FETCHING) return
+        _uiState.update { it.copy(rateEntry = it.rateEntry.fetching()) }
+        viewModelScope.launch {
+            val result = fetchTodaysRate(currency)
+            _uiState.update { now ->
+                // The form may have moved on while the answer was on its way: another account, an earlier date, or a
+                // rate the person typed meanwhile (typing ends the fetch). A late answer must not replace what they typed.
+                if (now.rateEntry.fetch != RateFetch.FETCHING) {
+                    now
+                } else if (now.selectedAccount?.currency != currency || !now.canUseTodaysRate) {
+                    now.copy(rateEntry = now.rateEntry.copy(fetch = RateFetch.IDLE))
+                } else {
+                    result.fold(
+                        onSuccess = { quote ->
+                            now.copy(rateEntry = now.rateEntry.fetched(quote), expenseProblems = now.expenseProblems - ExpenseProblem.RATE_INVALID)
+                        },
+                        onFailure = { now.copy(rateEntry = now.rateEntry.failed()) },
+                    )
+                }
+            }
+        }
     }
 
     fun onCategorySelect(value: ExpenseCategoryChoice) = _uiState.update {
@@ -399,6 +453,7 @@ class ManualEntryViewModel @Inject constructor(
             category = suggestion.category ?: it.category,
             appliedRule = if (suggestion.category != null) null else it.appliedRule,
             accountId = account.id,
+            rateEntry = if (it.accountId == account.id) it.rateEntry else RateEntry(),
             amount = it.amount.ifBlank { suggestion.amount.toDecimal().stripTrailingZeros().toPlainString() },
             spendingClass = suggestion.spendingClass,
             spendingClassChosen = true,
@@ -465,6 +520,9 @@ class ManualEntryViewModel @Inject constructor(
             spendingClass = state.spendingClass,
             title = state.title,
             description = state.description,
+            rate = state.rate,
+            rateSource = state.rateEntry.source,
+            rateAsOf = state.rateEntry.asOf,
         )
         when (val result = ManualEntryRules.validateExpense(input, ZarTime.today())) {
             is ExpenseFormResult.Invalid -> _uiState.update { it.copy(expenseProblems = result.problems, message = null) }
@@ -548,6 +606,7 @@ class ManualEntryViewModel @Inject constructor(
             isLoading = false,
             accounts = list,
             accountId = expenseAccount?.id,
+            rateEntry = if (expenseAccount?.id == accountId) rateEntry else RateEntry(),
             accountLocked = locked != null,
             gapAmount = if (locked != null) prefillAmount else null,
             fromId = from?.id,

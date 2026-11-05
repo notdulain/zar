@@ -1,5 +1,7 @@
 package com.example.zar.features.transactions.presentation.income.screen
 
+import com.example.zar.core.presentation.motion.rememberRiseInForLazyList
+import com.example.zar.core.presentation.motion.riseIn
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -93,6 +95,8 @@ internal fun IncomeListContent(
     Box(Modifier.fillMaxSize().background(colors.canvas)) {
         val listState = rememberLazyListState()
         val heroOffset = listState.heroDisplacement()
+        // The summary and the first months rise in one after another on the first visit only.
+        val play = rememberRiseInForLazyList(loaded = !uiState.isLoading)
         LazyColumn(
             state = listState,
             modifier = Modifier.fillMaxSize().statusBarsPadding().testTag("income-list"),
@@ -114,7 +118,7 @@ internal fun IncomeListContent(
                 }
                 uiState.loadFailed -> item { LoadFailedCard(onRetry) }
                 else -> {
-                    item { ReceivedSummary(uiState.receivedThisMonth ?: ReportingTotal.zero(), Modifier.padding(top = 16.dp)) }
+                    item { ReceivedSummary(uiState.receivedThisMonth ?: ReportingTotal.zero(), Modifier.padding(top = 16.dp).riseIn(0, play)) }
                     if (uiState.months.isEmpty()) {
                         item {
                             Text(
@@ -126,8 +130,8 @@ internal fun IncomeListContent(
                             )
                         }
                     }
-                    uiState.months.forEach { month ->
-                        item(key = month.month.toString()) { MonthGroup(month, onOpenIncome) }
+                    uiState.months.forEachIndexed { index, month ->
+                        item(key = month.month.toString()) { MonthGroup(month, onOpenIncome, Modifier.riseIn(index + 1, play)) }
                     }
                 }
             }
@@ -168,8 +172,8 @@ private fun ReceivedSummary(total: ReportingTotal, modifier: Modifier = Modifier
 }
 
 @Composable
-private fun MonthGroup(month: IncomeMonth, onOpenIncome: (String) -> Unit) {
-    Column(Modifier.padding(top = 22.dp)) {
+private fun MonthGroup(month: IncomeMonth, onOpenIncome: (String) -> Unit, modifier: Modifier = Modifier) {
+    Column(modifier.padding(top = 22.dp)) {
         ZarSectionHeader(IncomeFormat.month(month.month))
         ZarCard(Modifier.padding(horizontal = 10.dp).padding(top = 10.dp).fillMaxWidth(), contentPadding = PaddingValues(0.dp)) {
             Column(Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
