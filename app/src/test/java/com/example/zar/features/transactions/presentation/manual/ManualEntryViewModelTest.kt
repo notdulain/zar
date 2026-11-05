@@ -1111,6 +1111,21 @@ class ManualEntryViewModelTest {
     }
 
     @Test
+    fun anAnswerThatArrivesAfterTheUserTypedARateDoesNotReplaceIt() {
+        rateSource.answer = Result.success(todaysQuote)
+        rateSource.gate = kotlinx.coroutines.CompletableDeferred()
+        val vm = usdExpense()
+        vm.onUseTodaysRate()
+        assertEquals(RateFetch.FETCHING, vm.uiState.value.rateEntry.fetch)
+
+        vm.onRateChange("330")
+        rateSource.gate!!.complete(Unit)
+
+        assertEquals("330", vm.uiState.value.rate)
+        assertEquals(RateFetch.IDLE, vm.uiState.value.rateEntry.fetch)
+    }
+
+    @Test
     fun anotherAccountStartsWithAnEmptyRateField() {
         rateSource.answer = Result.success(todaysQuote)
         val vm = usdExpense()

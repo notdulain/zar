@@ -61,5 +61,7 @@ class RateTextTest {
         assertNull(parsed("300,5,5"))
         assertNull(parsed("12,3456"))
         assertNull(parsed("300.5.5"))
+        // A decimal comma after a dot grouping: reading it as thousands would be 1.1005, a thousand times too low.
+        assertNull(parsed("1.100,50"))
     }
 }

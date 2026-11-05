@@ -157,6 +157,22 @@ class IncomeFormViewModelRateTest {
     }
 
     @Test
+    fun anAnswerThatArrivesAfterTheUserTypedARateDoesNotReplaceIt() {
+        rateSource.answer = Result.success(quote)
+        rateSource.gate = CompletableDeferred()
+        val vm = usdIncome()
+        vm.onUseTodaysRate()
+        assertEquals(RateFetch.FETCHING, vm.uiState.value.rateEntry.fetch)
+
+        vm.onRateChange("330")
+        rateSource.gate!!.complete(Unit)
+
+        assertEquals("330", vm.uiState.value.rate)
+        assertEquals(RateFetch.IDLE, vm.uiState.value.rateEntry.fetch)
+        assertEquals(RateSource.MANUAL, savedConversion(vm).let { (it as ReportingConversion.Converted).rate.source })
+    }
+
+    @Test
     fun aLkrAccountHasNoTodaysRate() {
         val vm = viewModel()
         vm.onAccountSelect(bank.id)

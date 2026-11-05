@@ -168,8 +168,11 @@ class IncomeFormViewModel @Inject constructor(
         viewModelScope.launch {
             val result = fetchTodaysRate(currency)
             _uiState.update { now ->
-                // The form may have moved on while the answer was on its way: another account or an earlier date.
-                if (now.currency != currency || !now.canUseTodaysRate) {
+                // The form may have moved on while the answer was on its way: another account, an earlier date, or a
+                // rate the person typed meanwhile (typing ends the fetch). A late answer must not replace what they typed.
+                if (now.rateEntry.fetch != RateFetch.FETCHING) {
+                    now
+                } else if (now.currency != currency || !now.canUseTodaysRate) {
                     now.copy(rateEntry = now.rateEntry.copy(fetch = RateFetch.IDLE))
                 } else {
                     result.fold(

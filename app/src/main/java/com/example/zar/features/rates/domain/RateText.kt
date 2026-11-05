@@ -10,7 +10,8 @@ object RateText {
     /**
      * The rate as a positive number, or null when the text is empty, not a number, or ambiguous.
      *
-     * - A dot means commas are thousands separators: 1,100.50 is 1100.50.
+     * - A dot means commas are thousands separators: 1,100.50 is 1100.50. A comma after the last dot (1.100,50) is
+     *   ambiguous, so it is rejected.
      * - Digits grouped in threes are thousands: 1,100 is 1100 (no currency is worth about 1.1 LKR).
      * - One comma before one or two digits is a decimal separator, as typed from the decimal key of a phone set to a
      *   comma-decimal language: 300,5 is 300.5. It used to be dropped, which turned 300,5 into 3005.
@@ -19,7 +20,8 @@ object RateText {
         val typed = text.trim()
         if (typed.isEmpty()) return null
         val normal = when {
-            '.' in typed -> typed.replace(",", "")
+            // A comma after the last dot is a decimal comma ("1.100,50"): reading it as thousands would be 1000 times off.
+            '.' in typed -> if (',' in typed.substringAfterLast('.')) return null else typed.replace(",", "")
             ',' !in typed -> typed
             thousandsGroups.matches(typed) -> typed.replace(",", "")
             typed.count { it == ',' } == 1 && typed.substringAfter(',').length in 1..2 -> typed.replace(',', '.')

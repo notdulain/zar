@@ -10,7 +10,7 @@ On the Income form and on the Expense form, when the account is not in LKR, the 
 |---|---|
 | Empty, today's date | The link is shown. The hint says the rate can be filled in, typed, or left empty (then the record shows "No LKR rate"). |
 | Tap the link | "Getting today's rate…" while the app asks the provider. |
-| Fetched | The field holds the provider's number to four decimals, for example `332.4449`. The hint says when the provider published it and that it can be changed. |
+| Fetched | If the person typed a rate while the answer was on its way, the answer is dropped and the typed rate stays. Otherwise the field holds the provider's number to four decimals, for example `332.4449`. The hint says when the provider published it and that it can be changed. |
 | Typed over | The number is the person's own. The hint says "You typed this rate. Today's rate is 332.4449." The link stays so today's rate can be filled in again. |
 | Could not get it | "Couldn't get today's rate. Type one, or leave it empty." with **Try again**. Saving is never blocked. |
 | Earlier date | The link is not offered, because today's rate could be wrong for that day. The person types the rate for that day, or leaves it empty. Moving the date away from today also takes a fetched rate out of the field; a typed number stays. |
@@ -51,8 +51,8 @@ Code: `features/rates` (`domain`: `RateQuote`, `RateEntry`, `RateText`, `FetchTo
 | `300.5`, `300` | 300.5, 300 |
 | `300,5`, `300,50` | 300.5, 300.50 (a comma before one or two digits is a decimal separator) |
 | `1,100`, `1,234,567` | 1100, 1234567 (digits grouped in threes are thousands) |
-| `1,100.50` | 1100.50 (a comma next to a dot is a thousands separator) |
-| `0`, `-5`, `abc`, `1,2,3`, `12,3456` | rejected: "Enter a valid rate above zero, or leave it empty" |
+| `1,100.50` | 1100.50 (a comma before a dot is a thousands separator; a comma after the last dot, as in `1.100,50`, is ambiguous and rejected) |
+| `0`, `-5`, `abc`, `1,2,3`, `12,3456`, `1.100,50` | rejected: "Enter a valid rate above zero, or leave it empty" |
 
 ## Not covered
 
