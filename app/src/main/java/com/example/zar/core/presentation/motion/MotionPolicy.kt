@@ -40,6 +40,9 @@ object ZarSprings {
      */
     val AddSelector = SpringToken(dampingRatio = 0.75f, stiffness = 500f)
 
+    /** The Add button stretching into "New plan" and back: soft and a little under-damped, so it wobbles like jelly. */
+    val AddButtonStretch = SpringToken(dampingRatio = 0.58f, stiffness = 220f)
+
     /** Release of a custom sheet only; never add it around a Material sheet's own spring. */
     val SheetSettle = SpringToken(dampingRatio = 0.9f, stiffness = 450f)
 
@@ -76,6 +79,13 @@ object ZarMotion {
 
     /** Furthest an Add selector indicator may overshoot its target slot. */
     val AddSelectorMaxOvershoot = 6.dp
+
+    /** How long Plans must stay still before the Add button stretches into "New plan", so passing through never reshapes the row. */
+    const val NEW_PLAN_DWELL_MILLIS = 2_000L
+
+    /** The stretching Add button flattens with its speed (in stretches per second), up to this much, then recovers. */
+    const val ADD_BUTTON_SQUASH_PER_SPEED = 0.008f
+    const val ADD_BUTTON_MAX_SQUASH = 0.06f
 
     /** Fraction of the hero's scroll displacement each layer is compensated by, and its cap. */
     const val PARALLAX_BACKGROUND = 0.20f

@@ -157,6 +157,22 @@ class TabPagerTest {
     }
 
     @Test
+    fun aTapCountsAsMovingUntilThePageAndCapsuleHaveArrived() {
+        show()
+        compose.waitForIdle()
+        assertFalse(tabs.isMoving)
+
+        compose.mainClock.autoAdvance = false
+        compose.onNodeWithTag("nav-activity").performClick()
+        repeat(4) { compose.mainClock.advanceTimeByFrame() }
+        assertTrue(tabs.isMoving)
+
+        compose.mainClock.autoAdvance = true
+        compose.waitForIdle()
+        assertFalse(tabs.isMoving)
+    }
+
+    @Test
     fun idleWarmUpComposesEveryTabSoASwipeComposesNothingNew() {
         show(warmUp = true)
         compose.mainClock.advanceTimeBy(5_000)

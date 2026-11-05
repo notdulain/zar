@@ -45,7 +45,17 @@ import com.example.zar.core.presentation.theme.ZarDimens
 import com.example.zar.core.presentation.theme.ZarLightColors
 import com.example.zar.core.presentation.theme.ZarTheme
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.height
+import androidx.compose.material3.Text
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.constrainWidth
+import androidx.compose.ui.util.lerp
+import com.example.zar.core.presentation.theme.ZarType
+import kotlin.math.roundToInt
 
 /**
  * Layout shared by the four main screens.
@@ -136,8 +146,21 @@ internal fun Context.findActivity(): Activity? = when (this) {
     else -> null
 }
 
+/**
+ * The Add button, one element in both of its forms: the 68dp plus and, as [stretch] goes from 0 to 1, Figma "Add button ·
+ * New plan", a 68dp-high pill with an 18dp plus and [label]. [stretch] may swing past either end. It is read in the layout and
+ * draw phases, so a spring frame re-lays out this button and never recomposes the chrome.
+ */
 @Composable
-internal fun ZarAddButton(description: String, modifier: Modifier = Modifier, rotation: () -> Float = { 0f }, onClick: () -> Unit) {
+internal fun ZarAddButton(
+    description: String,
+    label: String,
+    modifier: Modifier = Modifier,
+    tag: String = "add-entry",
+    rotation: () -> Float = { 0f },
+    stretch: () -> Float = { 0f },
+    onClick: () -> Unit,
+) {
     val colors = ZarTheme.colors
     val press = remember { MutableInteractionSource() }
     val focused by press.collectIsFocusedAsState()
@@ -146,17 +169,72 @@ internal fun ZarAddButton(description: String, modifier: Modifier = Modifier, ro
         interactionSource = press,
         modifier = modifier
             .drawBehind {
-                if (focused) drawCircle(colors.borderSelected, radius = size.minDimension / 2 + 4.dp.toPx(), style = Stroke(2.dp.toPx()))
+                if (focused) {
+                    val ring = 4.dp.toPx()
+                    drawRoundRect(
+                        colors.borderSelected,
+                        topLeft = Offset(-ring, -ring),
+                        size = Size(size.width + 2 * ring, size.height + 2 * ring),
+                        cornerRadius = CornerRadius(size.minDimension / 2 + ring),
+                        style = Stroke(2.dp.toPx()),
+                    )
+                }
             }
             .pressScale(press)
-            .size(ZarDimens.AddButtonSize)
-            .testTag("add-entry")
+            .height(ZarDimens.AddButtonSize)
+            .testTag(tag)
             .semantics { contentDescription = description },
         shape = CircleShape,
         containerColor = colors.accentPrimary,
         contentColor = colors.textOnInverse,
         elevation = FloatingActionButtonDefaults.elevation(4.dp, 4.dp, 4.dp, 4.dp),
     ) {
-        PlusIcon(tint = colors.textOnInverse, modifier = Modifier.graphicsLayer { rotationZ = rotation() })
+        Layout(
+            content = {
+                PlusIcon(
+                    tint = colors.textOnInverse,
+                    modifier = Modifier.graphicsLayer {
+                        rotationZ = rotation()
+                        val scale = lerp(1f, PILL_PLUS_SIZE / PLUS_SIZE, stretch().coerceIn(0f, 1f))
+                        scaleX = scale
+                        scaleY = scale
+                    },
+                )
+                Text(
+                    label,
+                    style = ZarType.labelButton,
+                    color = colors.textOnInverse,
+                    maxLines = 1,
+                    softWrap = false,
+                    modifier = Modifier
+                        .clearAndSetSemantics {}
+                        .graphicsLayer { alpha = ((stretch() - LABEL_FADE_START) / (1f - LABEL_FADE_START)).coerceIn(0f, 1f) },
+                )
+            },
+        ) { measurables, constraints ->
+            val plus = measurables[0].measure(Constraints())
+            val text = measurables[1].measure(Constraints())
+            val circle = ZarDimens.AddButtonSize.roundToPx()
+            val textStart = (PILL_START + PILL_PLUS_SIZE + PILL_GAP).dp.roundToPx()
+            val pill = textStart + text.width + PILL_END.dp.roundToPx()
+            val amount = stretch()
+            layout(constraints.constrainWidth(lerp(circle.toFloat(), pill.toFloat(), amount).roundToInt()), circle) {
+                // The plus is scaled about its centre: this lands its visible 18dp at the pill's 16dp start padding.
+                val inPill = (PILL_START - (PLUS_SIZE - PILL_PLUS_SIZE) / 2).dp.toPx()
+                val x = lerp((circle - plus.width) / 2f, inPill, amount.coerceIn(0f, 1f))
+                plus.placeRelative(x.roundToInt(), (circle - plus.height) / 2)
+                text.placeRelative(textStart, (circle - text.height) / 2)
+            }
+        }
     }
 }
+
+private const val PLUS_SIZE = 26f
+private const val PILL_PLUS_SIZE = 18f
+private const val PILL_START = 16f
+private const val PILL_GAP = 6f
+private const val PILL_END = 18f
+
+/** The label stays clear until the pill has opened this far, so it is revealed by the stretch, not squeezed by it. */
+private const val LABEL_FADE_START = 0.3f
+

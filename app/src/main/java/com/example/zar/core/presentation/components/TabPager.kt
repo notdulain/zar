@@ -147,6 +147,9 @@ class TabPagerController internal constructor(
 
     val selected: TopLevelDestination get() = TopLevelDestination.entries[selectedIndex.coerceIn(0, TopLevelDestination.entries.size - 1)]
 
+    /** True while any page is travelling: a finger or fling, a tap's slide (which is not a pager scroll), or a Back slide. */
+    val isMoving: Boolean get() = tapTarget != null || backFrom >= 0 || pagerState.isScrollInProgress
+
     /**
      * Brings [destination] on screen with the same push/pop for every tab distance.
      * Only the source and destination are drawn during travel. Reduced motion resolves instantly.

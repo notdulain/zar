@@ -225,6 +225,7 @@ fun ZarNavHost(
                     controller = capsuleController,
                     driveCapsule = false,
                     enabled = !childCovers && onHomeTop,
+                    pageMoving = { tabs.isMoving },
                     onMenuOpenChange = onMenuOpenChange,
                     modifier = Modifier.align(Alignment.BottomCenter),
                 )
