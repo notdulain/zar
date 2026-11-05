@@ -1,6 +1,12 @@
 package com.example.zar.core.presentation.components
 
-import com.example.zar.core.presentation.motion.pressScale
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.LocalRippleConfiguration
+import androidx.compose.runtime.CompositionLocalProvider
+import com.example.zar.core.presentation.motion.LocalZarMotion
+import com.example.zar.core.presentation.motion.ZarSprings
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import android.app.Activity
@@ -31,6 +37,8 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalView
@@ -151,6 +159,7 @@ internal fun Context.findActivity(): Activity? = when (this) {
  * New plan", a 68dp-high pill with an 18dp plus and [label]. [stretch] may swing past either end. It is read in the layout and
  * draw phases, so a spring frame re-lays out this button and never recomposes the chrome.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun ZarAddButton(
     description: String,
@@ -164,66 +173,81 @@ internal fun ZarAddButton(
     val colors = ZarTheme.colors
     val press = remember { MutableInteractionSource() }
     val focused by press.collectIsFocusedAsState()
-    FloatingActionButton(
-        onClick = onClick,
-        interactionSource = press,
-        modifier = modifier
-            .drawBehind {
-                if (focused) {
-                    val ring = 4.dp.toPx()
-                    drawRoundRect(
-                        colors.borderSelected,
-                        topLeft = Offset(-ring, -ring),
-                        size = Size(size.width + 2 * ring, size.height + 2 * ring),
-                        cornerRadius = CornerRadius(size.minDimension / 2 + ring),
-                        style = Stroke(2.dp.toPx()),
-                    )
-                }
-            }
-            .pressScale(press)
-            .height(ZarDimens.AddButtonSize)
-            .testTag(tag)
-            .semantics { contentDescription = description },
-        shape = CircleShape,
-        containerColor = colors.accentPrimary,
-        contentColor = colors.textOnInverse,
-        elevation = FloatingActionButtonDefaults.elevation(4.dp, 4.dp, 4.dp, 4.dp),
-    ) {
-        Layout(
-            content = {
-                PlusIcon(
-                    tint = colors.textOnInverse,
-                    modifier = Modifier.graphicsLayer {
-                        rotationZ = rotation()
-                        val scale = lerp(1f, PILL_PLUS_SIZE / PLUS_SIZE, stretch().coerceIn(0f, 1f))
-                        scaleX = scale
-                        scaleY = scale
-                    },
-                )
-                Text(
-                    label,
-                    style = ZarType.labelButton,
-                    color = colors.textOnInverse,
-                    maxLines = 1,
-                    softWrap = false,
-                    modifier = Modifier
-                        .clearAndSetSemantics {}
-                        .graphicsLayer { alpha = ((stretch() - LABEL_FADE_START) / (1f - LABEL_FADE_START)).coerceIn(0f, 1f) },
-                )
+    val pressed by press.collectIsPressedAsState()
+    val motion = LocalZarMotion.current
+    val haptics = LocalHapticFeedback.current
+    val pressScale by animateFloatAsState(
+        targetValue = if (pressed && motion.allowsSpatialMotion) 0.92f else 1f,
+        animationSpec = motion.spring(if (pressed) ZarSprings.AddButtonPress else ZarSprings.AddButtonRelease),
+        label = "Add button press",
+    )
+    // Only this button loses its ripple; keep Material's click, focus, semantics and shadow behavior.
+    CompositionLocalProvider(LocalRippleConfiguration provides null) {
+        FloatingActionButton(
+            onClick = {
+                haptics.performHapticFeedback(HapticFeedbackType.ContextClick)
+                onClick()
             },
-        ) { measurables, constraints ->
-            val plus = measurables[0].measure(Constraints())
-            val text = measurables[1].measure(Constraints())
-            val circle = ZarDimens.AddButtonSize.roundToPx()
-            val textStart = (PILL_START + PILL_PLUS_SIZE + PILL_GAP).dp.roundToPx()
-            val pill = textStart + text.width + PILL_END.dp.roundToPx()
-            val amount = stretch()
-            layout(constraints.constrainWidth(lerp(circle.toFloat(), pill.toFloat(), amount).roundToInt()), circle) {
-                // The plus is scaled about its centre: this lands its visible 18dp at the pill's 16dp start padding.
-                val inPill = (PILL_START - (PLUS_SIZE - PILL_PLUS_SIZE) / 2).dp.toPx()
-                val x = lerp((circle - plus.width) / 2f, inPill, amount.coerceIn(0f, 1f))
-                plus.placeRelative(x.roundToInt(), (circle - plus.height) / 2)
-                text.placeRelative(textStart, (circle - text.height) / 2)
+            interactionSource = press,
+            modifier = modifier
+                .drawBehind {
+                    if (focused) {
+                        val ring = 4.dp.toPx()
+                        drawRoundRect(
+                            colors.borderSelected,
+                            topLeft = Offset(-ring, -ring),
+                            size = Size(size.width + 2 * ring, size.height + 2 * ring),
+                            cornerRadius = CornerRadius(size.minDimension / 2 + ring),
+                            style = Stroke(2.dp.toPx()),
+                        )
+                    }
+                }
+                .graphicsLayer { scaleX = pressScale; scaleY = pressScale }
+                .height(ZarDimens.AddButtonSize)
+                .testTag(tag)
+                .semantics { contentDescription = description },
+            shape = CircleShape,
+            containerColor = colors.accentPrimary,
+            contentColor = colors.textOnInverse,
+            elevation = FloatingActionButtonDefaults.elevation(4.dp, 4.dp, 4.dp, 4.dp),
+        ) {
+            Layout(
+                modifier = Modifier.testTag("$tag-content"),
+                content = {
+                    PlusIcon(
+                        tint = colors.textOnInverse,
+                        modifier = Modifier.graphicsLayer {
+                            rotationZ = rotation()
+                            val scale = lerp(1f, PILL_PLUS_SIZE / PLUS_SIZE, stretch().coerceIn(0f, 1f))
+                            scaleX = scale
+                            scaleY = scale
+                        },
+                    )
+                    Text(
+                        label,
+                        style = ZarType.labelButton,
+                        color = colors.textOnInverse,
+                        maxLines = 1,
+                        softWrap = false,
+                        modifier = Modifier
+                            .clearAndSetSemantics {}
+                            .graphicsLayer { alpha = ((stretch() - LABEL_FADE_START) / (1f - LABEL_FADE_START)).coerceIn(0f, 1f) },
+                    )
+                },
+            ) { measurables, constraints ->
+                val plus = measurables[0].measure(Constraints())
+                val text = measurables[1].measure(Constraints())
+                val circle = ZarDimens.AddButtonSize.roundToPx()
+                val textStart = (PILL_START + PILL_PLUS_SIZE + PILL_GAP).dp.roundToPx()
+                val pill = textStart + text.width + PILL_END.dp.roundToPx()
+                val amount = stretch()
+                layout(constraints.constrainWidth(lerp(circle.toFloat(), pill.toFloat(), amount).roundToInt()), circle) {
+                    // The plus is scaled about its centre: this lands its visible 18dp at the pill's 16dp start padding.
+                    val inPill = (PILL_START - (PLUS_SIZE - PILL_PLUS_SIZE) / 2).dp.toPx()
+                    val x = lerp((circle - plus.width) / 2f, inPill, amount.coerceIn(0f, 1f))
+                    plus.placeRelative(x.roundToInt(), (circle - plus.height) / 2)
+                    text.placeRelative(textStart, (circle - text.height) / 2)
+                }
             }
         }
     }

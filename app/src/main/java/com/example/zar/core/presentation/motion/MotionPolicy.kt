@@ -43,6 +43,10 @@ object ZarSprings {
     /** The Add button stretching into "New plan" and back: soft and a little under-damped, so it wobbles like jelly. */
     val AddButtonStretch = SpringToken(dampingRatio = 0.58f, stiffness = 220f)
 
+    /** Quick compression while Add is held, followed by a soft recovery with a slight overshoot. */
+    val AddButtonPress = SpringToken(dampingRatio = 1f, stiffness = 2_500f)
+    val AddButtonRelease = SpringToken(dampingRatio = 0.5f, stiffness = 450f)
+
     /** Release of a custom sheet only; never add it around a Material sheet's own spring. */
     val SheetSettle = SpringToken(dampingRatio = 0.9f, stiffness = 450f)
 

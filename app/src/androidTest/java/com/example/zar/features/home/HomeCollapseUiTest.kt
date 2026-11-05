@@ -72,16 +72,15 @@ class HomeCollapseUiTest {
     fun linesFadeAwayAsTheCardScrollsAndComeBackOnReverseScroll() {
         show(full)
         compose.onNodeWithTag("received-amount").assertIsDisplayed()
-        compose.onNodeWithTag("month-label").assertIsDisplayed()
+        compose.onNodeWithTag("home-month-selector").assertIsDisplayed()
 
         scrollBy(700f)
         compose.onNodeWithTag("received-amount").assertDoesNotExist()
-        compose.onNodeWithTag("hide-amounts-toggle").assertDoesNotExist()
-        compose.onNodeWithTag("month-previous").assertDoesNotExist()
+        compose.onNodeWithTag("home-month-selector").assertDoesNotExist()
 
         scrollBy(-700f)
         compose.onNodeWithTag("received-amount").assertIsDisplayed()
-        compose.onNodeWithTag("hide-amounts-toggle").assertIsDisplayed()
+        compose.onNodeWithTag("home-month-selector").assertIsDisplayed()
     }
 
     @Test

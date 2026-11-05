@@ -176,6 +176,8 @@ fun ZarNavHost(
                             onOpenBills = { navController.navigate(BillsRoute) },
                             onOpenBill = { id -> navController.navigate(BillRoute(id)) },
                             onOpenSpending = { month -> navController.navigate(SpendingRoute(month.toString())) },
+                            onOpenAccounts = { navController.navigate(AccountsRoute) },
+                            onOpenAccount = { id -> navController.navigate(AccountRoute(id)) },
                         )
                         TopLevelDestination.Activity -> ActivityScreen(
                             onNavigate = onNavigate,

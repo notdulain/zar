@@ -1,23 +1,35 @@
 package com.example.zar.core.presentation.components
 
 import androidx.compose.foundation.ScrollState
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.windowInsetsTopHeight
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.onPlaced
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import com.example.zar.core.presentation.motion.LocalZarMotion
 import kotlin.math.max
 import kotlin.math.min
@@ -78,19 +90,23 @@ object HomeCollapse {
 /** Where a collapsing card's lines rest, measured once so each can fade by its own distance from the status bar. */
 @Stable
 class CollapseLine {
-    var restTopPx: Float = 0f
+    var restTopPx by mutableFloatStateOf(0f)
 }
 
 @Stable
 class HomeCollapseSpec(
-    val scroll: ScrollState,
-    val cardHeightPx: Float,
+    private val scrollPx: () -> Float,
+    initialCardHeightPx: Float,
     val statusPx: Float,
     val marginPx: Float,
     val spatial: Boolean,
 ) {
-    fun p(): Float = HomeCollapse.progress(scroll.value.toFloat(), cardHeightPx, statusPx)
-    fun lineAlpha(line: CollapseLine): Float = HomeCollapse.lineAlpha(scroll.value.toFloat(), line.restTopPx, statusPx, marginPx)
+    /** The card's real height once measured, so a card that grows with large text collapses over its own length. */
+    var cardHeightPx by mutableFloatStateOf(initialCardHeightPx)
+
+    fun scroll(): Float = scrollPx()
+    fun p(): Float = HomeCollapse.progress(scroll(), cardHeightPx, statusPx)
+    fun lineAlpha(line: CollapseLine): Float = HomeCollapse.lineAlpha(scroll(), line.restTopPx, statusPx, marginPx)
 }
 
 @Composable
@@ -99,22 +115,39 @@ fun rememberHomeCollapse(scroll: ScrollState, cardHeight: Dp, fadeMargin: Dp): H
     val statusPx = WindowInsets.statusBars.getTop(density).toFloat()
     val spatial = LocalZarMotion.current.allowsSpatialMotion
     return remember(scroll, density, statusPx, spatial, cardHeight, fadeMargin) {
-        HomeCollapseSpec(scroll, with(density) { cardHeight.toPx() }, statusPx, with(density) { fadeMargin.toPx() }, spatial)
+        HomeCollapseSpec({ scroll.value.toFloat() }, with(density) { cardHeight.toPx() }, statusPx, with(density) { fadeMargin.toPx() }, spatial)
     }
 }
 
+/** The same collapse for a card that is the first item of a lazy list, driven by how far that item has scrolled up. */
+@Composable
+fun rememberHomeCollapse(list: LazyListState, cardHeight: Dp, fadeMargin: Dp): HomeCollapseSpec {
+    val density = LocalDensity.current
+    val statusPx = WindowInsets.statusBars.getTop(density).toFloat()
+    val spatial = LocalZarMotion.current.allowsSpatialMotion
+    return remember(list, density, statusPx, spatial, cardHeight, fadeMargin) {
+        val offset = list.heroDisplacement()
+        // A hero that has left the list reports a saturated value; bound it so the layers never see an absurd offset.
+        HomeCollapseSpec({ offset.displacementPx().coerceAtMost(MAX_LAZY_SCROLL_PX) }, with(density) { cardHeight.toPx() }, statusPx, with(density) { fadeMargin.toPx() }, spatial)
+    }
+}
+
+private const val MAX_LAZY_SCROLL_PX = 20_000f
+
 /** Translates by [rate] of the scroll in the layer phase; nothing at all under reduced motion (spatial zero). */
 fun Modifier.collapseShift(spec: HomeCollapseSpec, rate: Float): Modifier =
-    graphicsLayer { translationY = if (spec.spatial) rate * max(spec.scroll.value.toFloat(), 0f) else 0f }
+    graphicsLayer { translationY = if (spec.spatial) rate * max(spec.scroll(), 0f) else 0f }
 
 /**
  * One line of the text group: it fades by its own distance from the status bar, and stops taking taps and reading out
  * to accessibility once it has faded. [line] records where the line rests inside the card.
+ * [topInset] includes padding before this modifier that is outside its reported parent position.
  */
-fun Modifier.collapseLine(spec: HomeCollapseSpec, line: CollapseLine): Modifier = composed {
+fun Modifier.collapseLine(spec: HomeCollapseSpec, line: CollapseLine, topInset: Dp = 0.dp): Modifier = composed {
+    val insetPx = with(LocalDensity.current) { topInset.toPx() }
     val inert by remember(spec, line) { derivedStateOf { spec.lineAlpha(line) < HomeCollapse.INERT_BELOW } }
     this
-        .onPlaced { line.restTopPx = it.positionInParent().y }
+        .onGloballyPositioned { line.restTopPx = it.positionInParent().y + insetPx }
         .graphicsLayer { alpha = spec.lineAlpha(line) }
         .then(
             if (inert) {
@@ -134,3 +167,33 @@ fun Modifier.collapseLine(spec: HomeCollapseSpec, line: CollapseLine): Modifier 
 /** The chart group fades over the middle of the collapse; it has no controls to disable. */
 fun Modifier.collapseChartFade(spec: HomeCollapseSpec): Modifier =
     graphicsLayer { alpha = HomeCollapse.chartAlpha(spec.p()) }
+
+/** Reports the card's real height to [spec]. Put it on the card's outermost node. */
+fun Modifier.collapseMeasure(spec: HomeCollapseSpec): Modifier =
+    onSizeChanged { spec.cardHeightPx = it.height.toFloat() }
+
+/** Clips to the card's shape, whose bottom corners flatten as the card collapses into the status bar. */
+fun Modifier.collapseClip(spec: HomeCollapseSpec, fullRadiusPx: Float): Modifier = graphicsLayer {
+    clip = true
+    val r = HomeCollapse.cornerRadius(spec.p(), fullRadiusPx)
+    shape = RoundedCornerShape(topStart = 0f, topEnd = 0f, bottomEnd = r, bottomStart = r)
+}
+
+/** The darkening laid over a collapsing card's gradient. Put it between the gradient and the text. */
+@Composable
+fun CollapseOverlay(spec: HomeCollapseSpec, modifier: Modifier = Modifier) {
+    Box(modifier.graphicsLayer { alpha = HomeCollapse.overlayAlpha(spec.p()) }.background(CollapseBand))
+}
+
+/** The pinned band that takes over the status-bar area once the card has collapsed into it. */
+@Composable
+fun CollapseStatusBand(spec: HomeCollapseSpec, tag: String, modifier: Modifier = Modifier) {
+    Box(
+        modifier.fillMaxWidth().windowInsetsTopHeight(WindowInsets.statusBars)
+            .graphicsLayer { alpha = HomeCollapse.bandAlpha(spec.p()) }
+            .background(CollapseBand)
+            .testTag(tag),
+    )
+}
+
+private val CollapseBand = Color(0xFF05070B)
