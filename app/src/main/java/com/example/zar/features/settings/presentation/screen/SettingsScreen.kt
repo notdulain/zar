@@ -42,7 +42,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -61,7 +63,11 @@ import com.example.zar.core.presentation.theme.ZarDimens
 import com.example.zar.core.presentation.theme.ZarShapes
 import com.example.zar.core.presentation.theme.ZarTheme
 import com.example.zar.core.presentation.theme.ZarType
+import com.example.zar.features.auth.domain.model.AuthError
+import com.example.zar.features.auth.presentation.screen.errorText
 import com.example.zar.features.settings.domain.model.AppearanceMode
+import com.example.zar.features.settings.presentation.viewmodel.PasswordResetPhase
+import com.example.zar.features.settings.presentation.viewmodel.PasswordResetUi
 import com.example.zar.features.settings.presentation.viewmodel.SettingsUiState
 import com.example.zar.features.settings.presentation.viewmodel.SettingsViewModel
 import com.example.zar.features.transactions.presentation.activity.screen.DarkStatusBarIcons
@@ -87,6 +93,9 @@ fun SettingsScreen(
         onReduceMotionChange = viewModel::onReduceMotionChange,
         onRetryDisplayPreference = viewModel::retryDisplayPreference,
         onDismissDisplayPreferenceError = viewModel::dismissDisplayPreferenceError,
+        onResetPassword = viewModel::onResetPasswordClick,
+        onConfirmPasswordReset = viewModel::confirmPasswordReset,
+        onDismissPasswordReset = viewModel::dismissPasswordReset,
     )
 }
 
@@ -103,6 +112,9 @@ internal fun SettingsContent(
     onReduceMotionChange: (Boolean) -> Unit = {},
     onRetryDisplayPreference: () -> Unit = {},
     onDismissDisplayPreferenceError: () -> Unit = {},
+    onResetPassword: () -> Unit = {},
+    onConfirmPasswordReset: () -> Unit = {},
+    onDismissPasswordReset: () -> Unit = {},
 ) {
     val colors = ZarTheme.colors
     DarkStatusBarIcons()
@@ -137,12 +149,21 @@ internal fun SettingsContent(
                 uiState.email?.let { email ->
                     SettingsRow(stringResource(R.string.settings_signed_in_as), email, Modifier.testTag("settings-email"))
                     ZarDivider()
+                    ActionRow(
+                        label = stringResource(R.string.settings_password),
+                        value = stringResource(R.string.settings_password_value),
+                        onClick = onResetPassword,
+                        testTag = "reset-password-row",
+                    )
+                    ZarDivider()
                 }
                 SettingsRow(stringResource(R.string.settings_currency), uiState.currencyCode, Modifier.testTag("settings-currency"))
                 ZarDivider()
-                AppearanceRow(
+                ActionRow(
+                    label = stringResource(R.string.settings_appearance),
                     value = uiState.appearance.label(),
                     onClick = { showAppearance = true },
+                    testTag = "appearance-row",
                 )
             }
             ZarCard(Modifier.fillMaxWidth().riseIn(1, play), contentPadding = PaddingValues(horizontal = 20.dp, vertical = 14.dp)) {
@@ -194,6 +215,9 @@ internal fun SettingsContent(
             },
         )
     }
+    uiState.passwordReset?.let { reset ->
+        ResetPasswordSheet(reset, onSend = onConfirmPasswordReset, onDismiss = onDismissPasswordReset)
+    }
     if (uiState.showUnsyncedWarning) {
         SignOutUnsyncedSheet(onCancel = onDismissWarning, onConfirm = onConfirmSignOut)
     }
@@ -206,23 +230,23 @@ private fun AppearanceMode.label(): String = when (this) {
 }
 
 /**
- * Z155/Z158: the "Appearance" row after Currency. It shows the saved choice and a caret that opens the picker; the
- * label and value are one selectable node for a screen reader.
+ * Z155/Z158: a tappable settings row (Appearance, Password). It shows the current value and a caret; the label and value
+ * are one selectable node for a screen reader.
  */
 @Composable
-private fun AppearanceRow(value: String, onClick: () -> Unit) {
+private fun ActionRow(label: String, value: String, onClick: () -> Unit, testTag: String) {
     Row(
         Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(8.dp))
             .clickable(role = Role.Button, onClick = onClick)
             .padding(vertical = 16.dp)
-            .testTag("appearance-row")
+            .testTag(testTag)
             .semantics(mergeDescendants = true) {},
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(stringResource(R.string.settings_appearance), style = ZarType.bodyS, color = ZarTheme.colors.textSecondary)
+        Text(label, style = ZarType.bodyS, color = ZarTheme.colors.textSecondary)
         Text(
             value,
             Modifier.weight(1f),
@@ -340,6 +364,85 @@ private fun AppearanceSaveFailedRow(current: String, onRetry: () -> Unit) {
                 .testTag("appearance-save-retry"),
         )
     }
+}
+
+/**
+ * The reset-password sheet. It names the address the link goes to and sends only on the explicit button. While sending the
+ * button is disabled and Back / the cross are ignored; a failed send comes back to the same sheet with a retry.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+internal fun ResetPasswordSheet(reset: PasswordResetUi, onSend: () -> Unit, onDismiss: () -> Unit) {
+    val colors = ZarTheme.colors
+    val sending = reset.phase == PasswordResetPhase.Sending
+    val sent = reset.phase == PasswordResetPhase.Sent
+    ZarModalSheet(onDismissRequest = onDismiss, canDismiss = !sending) { dismiss ->
+        Column(
+            Modifier
+                .navigationBarsPadding()
+                .padding(horizontal = ZarDimens.SheetGutter)
+                .padding(bottom = 14.dp)
+                .testTag("reset-password-sheet"),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            SheetHeader(
+                stringResource(if (sent) R.string.settings_reset_sent_title else R.string.settings_reset_title),
+                onClose = dismiss,
+            )
+            Text(
+                stringResource(if (sent) R.string.settings_reset_sent_body else R.string.settings_reset_body, reset.email),
+                style = ZarType.bodyS,
+                color = colors.textSecondary,
+                modifier = Modifier.semantics { if (sent) liveRegion = LiveRegionMode.Polite }.testTag("reset-password-body"),
+            )
+            reset.error?.let { error ->
+                Text(
+                    resetErrorText(error),
+                    Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(colors.subtle)
+                        .padding(14.dp)
+                        .semantics { liveRegion = LiveRegionMode.Polite }
+                        .testTag("reset-password-error"),
+                    style = ZarType.bodyS,
+                    color = colors.textPrimary,
+                )
+            }
+            if (sent) {
+                ZarButton(stringResource(R.string.settings_reset_done), dismiss, Modifier.fillMaxWidth().testTag("reset-password-done"))
+            } else {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    ZarButton(
+                        stringResource(R.string.action_cancel),
+                        dismiss,
+                        Modifier.weight(1f).testTag("reset-password-cancel"),
+                        style = ZarButtonStyle.Soft,
+                        enabled = !sending,
+                    )
+                    ZarButton(
+                        stringResource(
+                            when {
+                                sending -> R.string.settings_reset_sending
+                                reset.error != null -> R.string.settings_reset_retry
+                                else -> R.string.settings_reset_send
+                            },
+                        ),
+                        onSend,
+                        Modifier.weight(1.4f).testTag("reset-password-send"),
+                        enabled = !sending,
+                    )
+                }
+            }
+        }
+    }
+}
+
+/** A reset email has no password to get wrong, so "incorrect credentials" means the account can't receive one. */
+@Composable
+private fun resetErrorText(error: AuthError): String = when (error) {
+    is AuthError.WrongCredentials -> stringResource(R.string.settings_reset_error_account)
+    else -> errorText(error)
 }
 
 /** Z88: the sign-out warning. Cancel, the cross and a swipe down all close it; "Sign out anyway" signs out. */

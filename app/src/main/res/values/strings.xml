@@ -128,6 +128,17 @@
     <string name="settings_reduce_motion_detail">Turns off sliding and bouncing effects.</string>
     <string name="settings_where_title">Where your settings live</string>
     <string name="settings_where_body">Accounts and entries sync to your Zar account. The settings above stay on this phone.</string>
+    <string name="settings_password">Password</string>
+    <string name="settings_password_value">Reset by email</string>
+    <string name="settings_reset_title">Reset password</string>
+    <string name="settings_reset_body">We\'ll email a reset link to %1$s. Open it to choose a new password. Your current password keeps working until then, and you stay signed in here.</string>
+    <string name="settings_reset_send">Send reset link</string>
+    <string name="settings_reset_sending">Sending…</string>
+    <string name="settings_reset_retry">Try again</string>
+    <string name="settings_reset_sent_title">Check your inbox</string>
+    <string name="settings_reset_sent_body">We sent a reset link to %1$s. It can take a few minutes. Look in spam if you don\'t see it.</string>
+    <string name="settings_reset_done">Done</string>
+    <string name="settings_reset_error_account">We couldn\'t send a link to this account. Try again later.</string>
     <string name="settings_sign_out">Sign out</string>
     <string name="sign_out_unsynced_title">Some changes haven’t synced</string>
     <string name="sign_out_unsynced_body">Your latest changes are only on this phone. If you sign out now they will be lost. Connect to the internet and wait a moment, or sign out anyway.</string>
