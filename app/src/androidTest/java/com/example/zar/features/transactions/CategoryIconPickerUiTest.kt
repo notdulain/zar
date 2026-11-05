@@ -37,6 +37,7 @@ class CategoryIconPickerUiTest {
     private val picked = mutableListOf<CategoryIcon>()
 
     private fun capture(name: String) {
+        androidx.test.espresso.Espresso.closeSoftKeyboard()
         compose.waitForIdle(); SystemClock.sleep(500)
         val inst = InstrumentationRegistry.getInstrumentation()
         val bitmap = checkNotNull(inst.uiAutomation.takeScreenshot())

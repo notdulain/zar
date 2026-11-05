@@ -1,6 +1,11 @@
 package com.example.zar.features.transactions
 
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.click
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -60,6 +65,20 @@ class AddSheetHeightUiTest {
         compose.waitForIdle()
         val expenseTop = top("manual-kind-expense")
         com.example.zar.core.presentation.evidence.PrScreenshots.capture("add-expense")
+        compose.onNodeWithTag("manual-date").performScrollTo().performClick()
+        compose.onNodeWithTag("date-month-title").assertIsDisplayed()
+        compose.waitForIdle()
+        com.example.zar.core.presentation.evidence.PrScreenshots.capture("date-picker")
+        compose.onNodeWithTag("date-month-title").performClick()
+        compose.onNodeWithTag("date-month-grid").assertIsDisplayed()
+        compose.waitForIdle()
+        com.example.zar.core.presentation.evidence.PrScreenshots.capture("date-month-chooser")
+        compose.onNodeWithText("Cancel").performClick()
+        compose.onNodeWithTag("manual-time").performScrollTo().performClick()
+        compose.onNodeWithTag("time-dial").performTouchInput { click(center + Offset(width * 0.4f, 0f)) }
+        compose.waitForIdle()
+        com.example.zar.core.presentation.evidence.PrScreenshots.capture("time-picker-17-minutes")
+        compose.onNodeWithText("Cancel").performClick()
         // The longest field is reachable by scrolling, so a fixed sheet never hides it.
         compose.onNodeWithTag("manual-description").performScrollTo()
 
