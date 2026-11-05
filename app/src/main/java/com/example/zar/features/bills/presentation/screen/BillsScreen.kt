@@ -1,5 +1,11 @@
 package com.example.zar.features.bills.presentation.screen
 
+import com.example.zar.core.presentation.motion.rememberRiseInOnFirstVisit
+import com.example.zar.core.presentation.motion.riseIn
+import com.example.zar.core.presentation.motion.ZarMotion
+import com.example.zar.core.presentation.motion.LocalZarMotion
+import com.example.zar.core.presentation.components.heroParallax
+import com.example.zar.core.presentation.components.heroDisplacement
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -106,6 +112,15 @@ internal fun BillsContent(
     var heroHeightPx by remember { mutableIntStateOf(0) }
     val topInset = with(LocalDensity.current) { WindowInsets.statusBars.asPaddingValues().calculateTopPadding().roundToPx() }
 
+    // While the page scrolls, the hero's words drift up a little slower than the page and fade, as on Home.
+    val heroOffset = scroll.heroDisplacement()
+    val motion = LocalZarMotion.current
+    val heroContent = Modifier
+        .heroParallax(heroOffset, ZarMotion.PARALLAX_TEXT, ZarMotion.ParallaxTextCap)
+        .graphicsLayer {
+            if (motion.allowsSpatialMotion && heroHeightPx > 0) alpha = (1f - scroll.value / (heroHeightPx * 0.7f)).coerceIn(0f, 1f)
+        }
+
     Box(Modifier.fillMaxSize().background(colors.canvas)) {
         Column(Modifier.fillMaxSize().verticalScroll(scroll)) {
             val list = uiState.list
@@ -115,6 +130,7 @@ internal fun BillsContent(
                 onBack = onBack,
                 onNeedsLook = { scope.launch { scroll.animateScrollTo(needsLookY) } },
                 modifier = Modifier.onSizeChanged { heroHeightPx = it.height },
+                contentModifier = heroContent,
             )
             when {
                 uiState.isLoading -> Box(Modifier.fillMaxWidth().padding(top = 72.dp), Alignment.Center) {
@@ -168,7 +184,15 @@ private fun StatusBarFade(scroll: ScrollState, heroHeightPx: Int) {
 }
 
 @Composable
-private fun Hero(list: BillList?, loadFailed: Boolean, onBack: () -> Unit, onNeedsLook: () -> Unit, modifier: Modifier = Modifier) {
+private fun Hero(
+    list: BillList?,
+    loadFailed: Boolean,
+    onBack: () -> Unit,
+    onNeedsLook: () -> Unit,
+    modifier: Modifier = Modifier,
+    /** Moves the sentence and status link together, e.g. a slower drift and fade while the page scrolls. */
+    contentModifier: Modifier = Modifier,
+) {
     val statusBar = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     Box(
         modifier.fillMaxWidth().heightIn(min = HeroHeight)
@@ -187,7 +211,7 @@ private fun Hero(list: BillList?, loadFailed: Boolean, onBack: () -> Unit, onNee
         if (list != null && !loadFailed) {
             val (lead, follow) = heroSentence(list)
             // Keep the Figma spacing at normal text size; let the hero grow when text wraps.
-            Column(Modifier.fillMaxWidth().padding(top = 152.dp, bottom = 27.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Column(contentModifier.fillMaxWidth().padding(top = 152.dp, bottom = 27.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 Box(Modifier.fillMaxWidth().padding(horizontal = 32.dp).heightIn(min = 120.dp), contentAlignment = Alignment.TopCenter) {
                     Text(
                         text = buildAnnotatedString {
@@ -263,6 +287,9 @@ private fun Sections(
     suggestions: @Composable () -> Unit,
 ) {
     val colors = ZarTheme.colors
+    // Each section's card rises in, one after another, on the first visit only.
+    val play = rememberRiseInOnFirstVisit(loaded = true)
+    var order = 0
     Column(modifier.padding(top = 18.dp)) {
         if (list.needsLook.isNotEmpty()) {
             BillSectionHeader(
@@ -271,18 +298,18 @@ private fun Sections(
                 action = if (list.paidThisMonth.isNotEmpty()) stringResource(R.string.bills_jump_paid) else null,
                 onAction = onJumpToPaid,
             )
-            BillRows(list.needsLook, Modifier.padding(top = 9.dp).testTag("bills-needs-look")) { item -> NeedsLookRow(item, onOpenBill, onOpenDueDate) }
+            BillRows(list.needsLook, Modifier.padding(top = 9.dp).riseIn(order++, play).testTag("bills-needs-look")) { item -> NeedsLookRow(item, onOpenBill, onOpenDueDate) }
             Gap()
         }
         suggestions()
         if (list.thisWeek.isNotEmpty()) {
             BillSectionHeader(stringResource(R.string.bills_section_this_week), value = BillFormat.totals(list.thisWeekTotal))
-            BillRows(list.thisWeek, Modifier.padding(top = 9.dp).testTag("bills-this-week")) { DueBillRow(it, accountNames, onOpenBill) }
+            BillRows(list.thisWeek, Modifier.padding(top = 9.dp).riseIn(order++, play).testTag("bills-this-week")) { DueBillRow(it, accountNames, onOpenBill) }
             Gap()
         }
         if (list.later.isNotEmpty()) {
             BillSectionHeader(stringResource(R.string.bills_section_later))
-            BillRows(list.later, Modifier.padding(top = 9.dp).testTag("bills-later")) { DueBillRow(it, accountNames, onOpenBill) }
+            BillRows(list.later, Modifier.padding(top = 9.dp).riseIn(order++, play).testTag("bills-later")) { DueBillRow(it, accountNames, onOpenBill) }
             Gap()
         }
         if (list.paidThisMonth.isNotEmpty()) {
@@ -290,7 +317,7 @@ private fun Sections(
                 stringResource(R.string.bills_section_paid),
                 Modifier.onGloballyPositioned { onPaidPlaced(it.positionInParent().y.toInt()) },
             )
-            BillRows(list.paidThisMonth, Modifier.padding(top = 9.dp).testTag("bills-paid")) { row ->
+            BillRows(list.paidThisMonth, Modifier.padding(top = 9.dp).riseIn(order++, play).testTag("bills-paid")) { row ->
                 val bill = row.summary.bill
                 BillRow(
                     icon = BillFormat.icon(bill.name),
@@ -305,7 +332,7 @@ private fun Sections(
         }
         if (list.otherRunning.isNotEmpty()) {
             BillSectionHeader(stringResource(R.string.bills_section_running))
-            BillRows(list.otherRunning, Modifier.padding(top = 9.dp).testTag("bills-other-running")) { summary ->
+            BillRows(list.otherRunning, Modifier.padding(top = 9.dp).riseIn(order++, play).testTag("bills-other-running")) { summary ->
                 val next = summary.next
                 val cancellation = summary.bill.cancellation
                 BillRow(

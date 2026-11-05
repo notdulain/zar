@@ -106,7 +106,7 @@ internal fun CryptoHero(
             if (status != null) {
                 Row(Modifier.padding(top = 18.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                     StatusDot(CryptoGold)
-                    Text(status, style = ZarType.bodyCaption.copy(lineHeight = 15.sp), color = onDark.copy(alpha = 0.9f), modifier = Modifier.testTag("crypto-status"))
+                    Text(status, style = ZarType.bodyCaption, color = onDark.copy(alpha = 0.9f), modifier = Modifier.testTag("crypto-status"))
                 }
             }
         }
@@ -137,7 +137,7 @@ internal fun CryptoRow(
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
             Text(title, style = ZarType.labelButton.copy(lineHeight = 19.sp), color = colors.textPrimary, maxLines = 2, overflow = TextOverflow.Ellipsis)
             lines.forEach { (text, color) ->
-                Text(text, style = ZarType.bodyCaption.copy(lineHeight = 15.sp), color = color ?: colors.textSecondary)
+                Text(text, style = ZarType.bodyCaption, color = color ?: colors.textSecondary)
             }
         }
         if (end != null) {
@@ -193,5 +193,5 @@ internal fun AmountInput(
 /** Red Body/Caption error under a field. */
 @Composable
 internal fun FieldError(text: String?, modifier: Modifier = Modifier) {
-    if (text != null) Text(text, style = ZarType.bodyCaption.copy(lineHeight = 15.sp), color = ZarTheme.colors.danger, modifier = modifier)
+    if (text != null) Text(text, style = ZarType.bodyCaption, color = ZarTheme.colors.danger, modifier = modifier)
 }

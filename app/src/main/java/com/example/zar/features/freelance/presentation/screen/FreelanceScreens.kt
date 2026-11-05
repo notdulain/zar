@@ -1,5 +1,8 @@
 package com.example.zar.features.freelance.presentation.screen
 
+import androidx.compose.foundation.lazy.itemsIndexed
+import com.example.zar.core.presentation.motion.rememberRiseInForLazyList
+import com.example.zar.core.presentation.motion.riseIn
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
@@ -117,6 +120,8 @@ fun FreelanceScreen(
     val listState = rememberLazyListState()
     val heroOffset = listState.heroDisplacement()
     val topInset = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+    // The alerts row and the first projects rise in one after another on the first visit only.
+    val play = rememberRiseInForLazyList(loaded = !uiState.isLoading)
     Box(Modifier.fillMaxSize().background(colors.canvas)) {
         LazyColumn(
             state = listState,
@@ -133,12 +138,12 @@ fun FreelanceScreen(
                 }
                 uiState.loadFailed -> item { FreelanceNote(stringResource(R.string.freelance_load_failed)) }
                 else -> {
-                    item { OverdueAlertsRow(enabled = overdueAlerts, onChange = viewModel::setOverdueAlerts) }
+                    item { Box(Modifier.riseIn(0, play)) { OverdueAlertsRow(enabled = overdueAlerts, onChange = viewModel::setOverdueAlerts) } }
                     if (uiState.projects.isEmpty()) {
                         item { FreelanceNote(stringResource(R.string.freelance_empty), Modifier.testTag("freelance-empty")) }
                     }
-                    items(uiState.projects, key = { it.project.id.value }) { summary ->
-                        ProjectCard(summary, onClick = { onOpenProject(summary.project.id.value) })
+                    itemsIndexed(uiState.projects, key = { _, it -> it.project.id.value }) { index, summary ->
+                        ProjectCard(summary, onClick = { onOpenProject(summary.project.id.value) }, Modifier.riseIn(index + 1, play))
                     }
                 }
             }
@@ -214,10 +219,10 @@ private fun OwedHero(outstanding: Outstanding?, noProjects: Boolean, topInset: D
 }
 
 @Composable
-private fun ProjectCard(summary: ProjectSummary, onClick: () -> Unit) {
+private fun ProjectCard(summary: ProjectSummary, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val colors = ZarTheme.colors
     val project = summary.project
-    ZarCard(Modifier.padding(horizontal = 10.dp).fillMaxWidth(), onClick = onClick, radius = ZarDimens.RowCardRadius, contentPadding = PaddingValues(horizontal = 16.dp, vertical = 14.dp)) {
+    ZarCard(modifier.padding(horizontal = 10.dp).fillMaxWidth(), onClick = onClick, radius = ZarDimens.RowCardRadius, contentPadding = PaddingValues(horizontal = 16.dp, vertical = 14.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(project.name, style = ZarType.labelButton, color = colors.textPrimary)

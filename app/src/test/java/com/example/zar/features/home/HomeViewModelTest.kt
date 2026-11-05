@@ -83,6 +83,23 @@ class HomeViewModelTest {
     }
 
     @Test
+    fun monthQueriesKeepTheDashboardVisibleAndRapidChangesUseTheLatestMonth() = runTest {
+        val vm = viewModel()
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.uiState.collect {} }
+        val shown = vm.uiState.value
+        val gate = kotlinx.coroutines.CompletableDeferred<Unit>()
+        ledger.source = flow { gate.await(); emit(emptyList()) }
+
+        vm.showPreviousMonth()
+        assertEquals(shown, vm.uiState.value)
+        vm.showPreviousMonth()
+        assertEquals(shown, vm.uiState.value)
+        gate.complete(Unit)
+        assertEquals(thisMonth.minusMonths(2), vm.uiState.value.month)
+        assertTrue(vm.uiState.value.content is HomeContent.Ready)
+    }
+
+    @Test
     fun loadFailureShowsErrorAndRetryRecovers() = runTest {
         ledger.source = flow { throw IOException("offline cache unavailable") }
         val vm = viewModel()

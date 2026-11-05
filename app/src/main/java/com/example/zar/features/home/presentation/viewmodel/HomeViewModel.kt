@@ -86,7 +86,7 @@ class HomeViewModel @Inject constructor(
         .flatMapLatest { selected ->
             observeOverview(selected)
                 .map<HomeOverview, HomeContent> { HomeContent.Ready(it) }
-                .onStart { emit(HomeContent.Loading) }
+                // The initial state supplies Loading; later month queries keep the current dashboard visible.
                 .catch { emit(HomeContent.Error) }
                 .map { HomeUiState(selected, selected < currentMonth(), it) }
         }

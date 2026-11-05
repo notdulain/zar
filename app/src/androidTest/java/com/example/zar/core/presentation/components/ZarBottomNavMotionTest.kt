@@ -19,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
@@ -69,6 +70,18 @@ class ZarBottomNavMotionTest {
     private val full = MotionPolicy(reduceMotionSetting = false, systemAnimationsEnabled = true)
     private val reduced = MotionPolicy(reduceMotionSetting = true, systemAnimationsEnabled = true)
     private val instant = MotionPolicy(reduceMotionSetting = false, systemAnimationsEnabled = false)
+
+    @Test
+    fun pressingATabDrawsNoRipple() {
+        show(full)
+        frame(30)
+        val resting = compose.onRoot().captureToImage().asAndroidBitmap()
+        compose.onNodeWithTag("nav-more").performTouchInput { down(center) }
+        frame(30)
+        val pressed = compose.onRoot().captureToImage().asAndroidBitmap()
+        compose.onNodeWithTag("nav-more").performTouchInput { up() }
+        assertTrue("a held press changes nothing on screen", resting.sameAs(pressed))
+    }
 
     @Test
     fun firstPlacementInvalidatesTheDrawThatObservedNoCapsule() {

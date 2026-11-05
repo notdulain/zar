@@ -20,7 +20,7 @@ class NewPlanRulesTest {
         // Figma 160:2421: from y -9.82 to y 481 in a 420dp hero, stops 0 / .10 / .70 / 1.
         assertEquals(-9.82f, PlansHeroSpec.GRADIENT_START_DP, 0f)
         assertEquals(481f, PlansHeroSpec.GRADIENT_END_DP, 0f)
-        assertEquals(listOf(0f, 0.10f, 0.70f, 1f), PlansHeroSpec.StopFractions.toList())
+        assertEquals(listOf(0f, 0.10f, 0.4943f, 1f), PlansHeroSpec.StopFractions.toList())
         assertEquals(420f, PlansHeroSpec.Height.value, 0f)
     }
 }

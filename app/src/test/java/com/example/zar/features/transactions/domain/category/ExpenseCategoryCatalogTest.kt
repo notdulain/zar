@@ -113,4 +113,59 @@ class ExpenseCategoryCatalogTest {
         assertTrue(id.length <= 64)
         assertTrue(ExpenseCategory.entries.none { CustomCategoryIds.isCustom(it.id) })
     }
+
+    // --- Deleted (archived) categories ---
+
+    private fun deleted(id: String, name: String, at: Long = 1_000) = custom(id, name, at).copy(archived = true)
+
+    @Test
+    fun aDeletedCategoryLeavesEveryPickerButStillNamesOldEntries() {
+        val catalog = ExpenseCategoryCatalog(listOf(custom("custom-a", "Alpha"), deleted("custom-p", "Pets", 2_000)))
+        assertEquals(listOf("custom-a"), catalog.customs.map { it.id })
+        assertTrue(catalog.choices.none { it.id == "custom-p" })
+        assertEquals("Pets", (catalog.label("custom-p") as CategoryLabel.Custom).name)
+        assertEquals("custom-p", catalog.canonicalId("custom-p"))
+        assertEquals(listOf("Pets"), catalog.searchTerms("custom-p"))
+    }
+
+    @Test
+    fun aDeletedNameCanBeUsedAgainAndTheNewCategoryIsTheLiveOne() {
+        val old = deleted("custom-old", "Pets", 1_000)
+        val fresh = custom("custom-new", "Pets", 2_000)
+        val catalog = ExpenseCategoryCatalog(listOf(old, fresh))
+        assertTrue("a deleted name is free", !ExpenseCategoryCatalog(listOf(old)).hasName(CategoryNameRules.keyOf("Pets")))
+        assertEquals(listOf("custom-new"), catalog.customs.map { it.id })
+        // Entries recorded under the deleted category read as the live one with the same name.
+        assertEquals("custom-new", catalog.canonicalId("custom-old"))
+        assertTrue("the live category is not reported as a conflict", catalog.conflicts.isEmpty())
+    }
+
+    @Test
+    fun deletingEverythingLeavesTheBuiltIns() {
+        val catalog = ExpenseCategoryCatalog(listOf(deleted("custom-a", "Alpha")))
+        assertEquals(ExpenseCategoryCatalog.BUILT_IN_ONLY.choices, catalog.choices)
+    }
+
+    // --- Removed (hidden) built-ins ---
+
+    @Test
+    fun aHiddenBuiltInLeavesThePickersButStillNamesOldEntries() {
+        val catalog = ExpenseCategoryCatalog(hiddenBuiltIns = setOf("groceries"))
+        assertTrue(catalog.choices.none { it.id == "groceries" })
+        assertEquals(ExpenseCategory.entries.size - 1, catalog.choices.size)
+        assertEquals(CategoryLabel.BuiltIn(ExpenseCategory.GROCERIES), catalog.label("groceries"))
+        assertEquals(ExpenseCategory.GROCERIES, catalog.find("groceries"))
+    }
+
+    @Test
+    fun typingAHiddenBuiltInsNameIsNotADuplicateAndFindsItToRestore() {
+        val key = CategoryNameRules.keyOf("Groceries")
+        val shown = ExpenseCategoryCatalog()
+        assertTrue(shown.hasName(key))
+        assertNull(shown.hiddenBuiltInNamed(key))
+        val hidden = ExpenseCategoryCatalog(hiddenBuiltIns = setOf("groceries"))
+        assertTrue(!hidden.hasName(key))
+        assertEquals(ExpenseCategory.GROCERIES, hidden.hiddenBuiltInNamed(key))
+        assertNull(hidden.hiddenBuiltInNamed(CategoryNameRules.keyOf("Pets")))
+    }
 }

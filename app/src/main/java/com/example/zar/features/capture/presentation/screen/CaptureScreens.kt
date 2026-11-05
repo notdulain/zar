@@ -1,5 +1,7 @@
 package com.example.zar.features.capture.presentation.screen
 
+import com.example.zar.core.presentation.motion.rememberRiseInOnFirstVisit
+import com.example.zar.core.presentation.motion.riseIn
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
@@ -111,8 +113,10 @@ internal fun CaptureContent(
     onRead: () -> Unit,
     autoCapture: @Composable () -> Unit = {},
 ) {
+    // The status and paste cards rise in one after another on the first visit only.
+    val play = rememberRiseInOnFirstVisit(loaded = true)
     CatchUpScaffold(stringResource(R.string.capture_title), null, onBack, stringResource(R.string.action_back), Modifier.imePadding()) {
-        ZarCard(Modifier.fillMaxWidth()) {
+        ZarCard(Modifier.fillMaxWidth().riseIn(0, play)) {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 ZarEyebrow(stringResource(R.string.capture_health_label))
                 Text(state.health?.lastCapturedAt?.let { stringResource(R.string.capture_health_last, CAPTURED_AT.format(it)) }
@@ -122,7 +126,7 @@ internal fun CaptureContent(
             }
         }
         autoCapture()
-        ZarCard(Modifier.fillMaxWidth()) {
+        ZarCard(Modifier.fillMaxWidth().riseIn(1, play)) {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 ZarEyebrow(stringResource(R.string.capture_paste_label))
                 if (state.cameFromShare) Detail(stringResource(R.string.capture_from_share))

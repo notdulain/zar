@@ -422,8 +422,25 @@ class HomeScreenUiTest {
         compose.onNodeWithTag("home-goal-name", useUnmergedTree = true).performScrollTo().assertTextContains("Japan trip")
         compose.onNodeWithTag("home-goal-amounts", useUnmergedTree = true).assertTextContains("LKR 1,000 backed of LKR 4,000")
         compose.onNodeWithTag("home-goal-detail", useUnmergedTree = true).assertTextContains("25% backed", substring = true)
+        compose.onNodeWithText("GOAL", useUnmergedTree = true).assertDoesNotExist()
         compose.onNodeWithTag("home-goal").performSemanticsAction(SemanticsActions.OnClick)
         assertEquals(GoalId("trip"), opened)
+    }
+
+    @Test
+    fun seeBreakdownHasRoomBelowTheSplitBar() {
+        compose.setContent {
+            ZarTheme {
+                HomeScreenContent(
+                    state = HomeUiState(month, true, HomeContent.Ready(emptyOverview())),
+                    onPreviousMonth = {}, onNextMonth = {}, onRetry = {}, onNavigate = {}, onAddOption = {},
+                )
+            }
+        }
+        compose.onNodeWithTag("spent-card").performScrollTo()
+        val bar = compose.onNodeWithTag("spent-split-bar", useUnmergedTree = true).getUnclippedBoundsInRoot()
+        val action = compose.onNodeWithText("See breakdown →", useUnmergedTree = true).getUnclippedBoundsInRoot()
+        assertEquals(16f, (action.top - bar.bottom).value, 1f)
     }
 
     @Test

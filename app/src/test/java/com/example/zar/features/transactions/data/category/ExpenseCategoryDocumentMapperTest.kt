@@ -1,6 +1,7 @@
 package com.example.zar.features.transactions.data.category
 
 import com.example.zar.features.transactions.domain.category.CategoryNameRules
+import com.example.zar.features.transactions.domain.manual.model.CategoryIcon
 import com.example.zar.features.transactions.domain.manual.model.CustomExpenseCategory
 import java.time.Instant
 import org.junit.Assert.assertEquals
@@ -51,5 +52,49 @@ class ExpenseCategoryDocumentMapperTest {
         assertNull(ExpenseCategoryDocumentMapper.fromMap(good + ("source" to "BUILT_IN")))
         assertNull(ExpenseCategoryDocumentMapper.fromMap(good - "createdAt"))
         assertNull(ExpenseCategoryDocumentMapper.fromMap(good + ("name" to 4)))
+    }
+
+    @Test
+    fun defaultIconIsLeftOutSoOlderRulesStillAcceptTheWrite() {
+        assertEquals(false, "icon" in ExpenseCategoryDocumentMapper.toMap(pets))
+    }
+
+    @Test
+    fun aChosenIconIsWrittenByKeyAndRoundTrips() {
+        val withIcon = pets.copy(icon = CategoryIcon.PIGGY_BANK)
+        assertEquals("piggy_bank", ExpenseCategoryDocumentMapper.toMap(withIcon)["icon"])
+        assertEquals(withIcon, ExpenseCategoryDocumentMapper.fromMap(ExpenseCategoryDocumentMapper.toMap(withIcon)))
+    }
+
+    @Test
+    fun missingOrUnknownIconReadsAsTheDefault() {
+        val good = ExpenseCategoryDocumentMapper.toMap(pets)
+        assertEquals(CategoryIcon.DEFAULT, ExpenseCategoryDocumentMapper.fromMap(good)?.icon)
+        assertEquals(CategoryIcon.DEFAULT, ExpenseCategoryDocumentMapper.fromMap(good + ("icon" to "from-the-future"))?.icon)
+    }
+
+    @Test
+    fun iconKeysAreUniqueAndStable() {
+        assertEquals(CategoryIcon.entries.size, CategoryIcon.entries.map { it.key }.toSet().size)
+        CategoryIcon.entries.forEach { assertEquals(it, CategoryIcon.fromKey(it.key)) }
+    }
+
+    @Test
+    fun anArchivedCategoryWritesAndReadsBackAsArchived() {
+        val gone = pets.copy(archived = true)
+        assertEquals(true, ExpenseCategoryDocumentMapper.toMap(gone)["archived"])
+        assertEquals(gone, ExpenseCategoryDocumentMapper.fromMap(ExpenseCategoryDocumentMapper.toMap(gone)))
+        assertEquals(false, "archived" in ExpenseCategoryDocumentMapper.toMap(pets))
+        assertEquals(false, ExpenseCategoryDocumentMapper.fromMap(ExpenseCategoryDocumentMapper.toMap(pets))?.archived)
+    }
+
+    @Test
+    fun aHiddenBuiltInDocumentRoundTripsAndOtherDocumentsAreNotMistakenForOne() {
+        val map = HiddenBuiltInDocumentMapper.toMap("groceries", 1_790_000_000_000)
+        assertEquals(setOf("id", "source", "createdAt"), map.keys)
+        assertEquals("groceries", HiddenBuiltInDocumentMapper.idOf(map))
+        assertNull(HiddenBuiltInDocumentMapper.idOf(ExpenseCategoryDocumentMapper.toMap(pets)))
+        assertNull("only real built-in IDs count", HiddenBuiltInDocumentMapper.idOf(map + ("id" to "made-up")))
+        assertNull(ExpenseCategoryDocumentMapper.fromMap(map))
     }
 }

@@ -73,10 +73,13 @@ rules_version = '2';
 //   categoryIds (list of up to 8 category ids), weekStart (MONDAY..SUNDAY), updatedAt (int)
 //   The allowance reads the ledger but never writes to it.
 //
-// expenseCategories/{categoryId} create, no-change update, no delete (custom expense categories)
+// expenseCategories/{categoryId} create, no-change update or archive; delete only for a hidden-built-in marker
+//   (custom expense categories, plus markers for built-ins the person removed from their lists)
 //   id (== doc id, 'custom-' + 8-56 letters, digits or hyphens: built-in and income ids can never match),
 //   name (1-80 stored characters, trimmed, no control or line-break characters; the app limits it to 40 code points),
-//   nameKey (1-160, lower case, trimmed: the comparison key), source ('CUSTOM'), createdAt (int).
+//   nameKey (1-160, lower case, trimmed: the comparison key), source ('CUSTOM'), createdAt (int),
+//   icon? (optional; one of the app's CategoryIcon keys, absent means the generic receipt icon),
+//   archived? (optional, only ever true: the person deleted it. It stays stored so old entries keep their name).
 //   A category never changes or goes away, so an expense's categoryId keeps resolving. A replayed create is an
 //   update with identical data and is allowed; the rules never look the category up from a transaction.
 //
@@ -229,14 +232,29 @@ service cloud.firestore {
         && isMillis(d.updatedAt);
     }
 
+    // A built-in category the person removed from their lists. Keyed by the built-in's own ID; it is only a marker,
+    // so entries that used the built-in keep resolving, and deleting the marker brings the built-in back.
+    function isValidHiddenBuiltIn(categoryId) {
+      let d = data();
+      return hasOnlyAllowedFields(['id', 'source', 'createdAt'])
+        && hasRequiredFields(['id', 'source', 'createdAt'])
+        && d.id == categoryId
+        && categoryId in ['coffee-dining', 'groceries', 'transport', 'bills', 'rent', 'season-ticket', 'subscriptions', 'other']
+        && d.source == 'HIDDEN_BUILT_IN'
+        && isMillis(d.createdAt);
+    }
+
     // A user's own expense category. IDs must start with custom-, so a client can never claim a built-in or
     // income category ID. Name length is bounded here; the 40 code-point limit and duplicate check are the app's.
     // The rules can only bound what is stored: Unicode normalisation (NFKC) and the exact comparison key are
     // computed by the app (CategoryNameRules), so nameKey is only checked to be a plausible normalised form.
     function isValidExpenseCategory(categoryId) {
       let d = data();
-      return hasOnlyAllowedFields(['id', 'name', 'nameKey', 'source', 'createdAt'])
+      return hasOnlyAllowedFields(['id', 'name', 'nameKey', 'source', 'createdAt', 'icon', 'archived'])
         && hasRequiredFields(['id', 'name', 'nameKey', 'source', 'createdAt'])
+        && (!('archived' in d) || d.archived == true)
+        && (!('icon' in d) || d.icon in ['receipt', 'fork_knife', 'coffee', 'basket', 'groceries', 'car', 'bank',
+            'house', 'barbell', 'television', 'phone', 'wifi', 'lightning', 'piggy_bank', 'briefcase', 'wallet'])
         && d.id == categoryId
         && categoryId.matches('^custom-[A-Za-z0-9-]{8,56}$')
         && d.source == 'CUSTOM'
@@ -666,10 +684,16 @@ service cloud.firestore {
 
       match /expenseCategories/{categoryId} {
         allow read: if isOwner(userId);
-        allow create: if isOwner(userId) && isValidExpenseCategory(categoryId);
-        // Only an identical replay of the create may "update": categories are never renamed or edited.
-        allow update: if isOwner(userId) && isValidExpenseCategory(categoryId) && data() == resource.data;
-        allow delete: if false;
+        allow create: if isOwner(userId) && (isValidExpenseCategory(categoryId) || isValidHiddenBuiltIn(categoryId));
+        // Categories are never renamed or edited. An update may only replay the create, or delete the category by
+        // setting archived to true (it stays stored, so entries that used it keep resolving). It is never undone.
+        allow update: if isOwner(userId)
+          && ((isValidExpenseCategory(categoryId)
+              && (data() == resource.data
+                || (data().archived == true && data().diff(resource.data).affectedKeys().hasOnly(['archived']))))
+            || (isValidHiddenBuiltIn(categoryId) && data() == resource.data));
+        // Only a hidden-built-in marker can be deleted (restoring the built-in); a real category never is.
+        allow delete: if isOwner(userId) && resource.data.source == 'HIDDEN_BUILT_IN';
       }
 
       match /drafts/{draftId} {

@@ -1,7 +1,13 @@
 package com.example.zar.features.home.presentation.screen
 
+import com.example.zar.core.presentation.motion.rememberRiseInOnFirstVisit
+import com.example.zar.core.presentation.motion.riseIn
+
+import com.example.zar.features.accounts.presentation.viewmodel.AccountsViewModel
+import com.example.zar.features.accounts.presentation.viewmodel.AccountsUiState
 import com.example.zar.core.presentation.privacy.AmountPrivacyViewModel
 import com.example.zar.core.presentation.privacy.AmountMask
+import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.animateIntOffsetAsState
 import androidx.compose.animation.core.spring
@@ -146,8 +152,12 @@ fun HomeScreen(
     onOpenSpending: (YearMonth) -> Unit,
     viewModel: HomeViewModel = hiltViewModel(),
     privacyViewModel: AmountPrivacyViewModel = hiltViewModel(),
+    accountsViewModel: AccountsViewModel = hiltViewModel(),
+    onOpenAccounts: () -> Unit = {},
+    onOpenAccount: (String) -> Unit = {},
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val accounts by accountsViewModel.uiState.collectAsStateWithLifecycle()
     HomeScreenContent(
         state = state,
         onPreviousMonth = viewModel::showPreviousMonth,
@@ -165,6 +175,9 @@ fun HomeScreen(
             onNavigate(TopLevelDestination.Plans)
         },
         onToggleAmounts = privacyViewModel::toggle,
+        accounts = accounts,
+        onOpenAccounts = onOpenAccounts,
+        onOpenAccount = onOpenAccount,
     )
 }
 
@@ -183,6 +196,9 @@ internal fun HomeScreenContent(
     onOpenSpending: (YearMonth) -> Unit = {},
     onOpenGoal: (GoalId) -> Unit = {},
     onToggleAmounts: () -> Unit = {},
+    accounts: AccountsUiState = AccountsUiState(),
+    onOpenAccounts: () -> Unit = {},
+    onOpenAccount: (String) -> Unit = {},
 ) {
     ZarScreenScaffold(
         destination = TopLevelDestination.Home,
@@ -191,6 +207,8 @@ internal fun HomeScreenContent(
     ) { padding ->
         // The hero reads this same state for its bounded parallax; nothing else about the scroll changes.
         val scrollState = rememberScrollState()
+        // The cards under the hero rise in once, the first time Home has data; changing month or tab shows them in place.
+        val play = rememberRiseInOnFirstVisit(loaded = state.content is HomeContent.Ready)
         val layoutDirection = androidx.compose.ui.platform.LocalLayoutDirection.current
         Box(Modifier.fillMaxSize()) {
         Column(
@@ -236,6 +254,10 @@ internal fun HomeScreenContent(
                     onOpenGoal = onOpenGoal,
                     onToggleAmounts = onToggleAmounts,
                     scrollState = scrollState,
+                    play = play,
+                    accounts = accounts,
+                    onOpenAccounts = onOpenAccounts,
+                    onOpenAccount = onOpenAccount,
                 )
             }
             Spacer(Modifier.height(padding.calculateBottomPadding()))
@@ -288,6 +310,10 @@ private fun OverviewBlock(
     onOpenGoal: (GoalId) -> Unit,
     onToggleAmounts: () -> Unit,
     scrollState: ScrollState,
+    play: Boolean = false,
+    accounts: AccountsUiState,
+    onOpenAccounts: () -> Unit,
+    onOpenAccount: (String) -> Unit,
 ) {
     ReceivedHero(overview, canGoForward, onPreviousMonth, onNextMonth, onToggleAmounts, scrollState)
 
@@ -295,16 +321,16 @@ private fun OverviewBlock(
         Modifier.fillMaxWidth().padding(horizontal = 9.dp).padding(top = 12.dp, bottom = 28.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        QuickNavigation(onNavigate)
+        Box(Modifier.fillMaxWidth().riseIn(0, play)) { QuickNavigation(onNavigate) }
         if (overview.hasIncompleteData) {
-            ReviewPrompt(overview, onClick = onOpenReview)
+            Box(Modifier.fillMaxWidth().riseIn(1, play)) { ReviewPrompt(overview, onClick = onOpenReview) }
         }
-        SpendingCard(overview, onClick = { onOpenSpending(overview.month) })
-        GoalCard(goal, onOpenGoal = onOpenGoal, onOpenPlans = { onNavigate(TopLevelDestination.Plans) }, onRetry = onRetry)
-        RecentActivity(overview.recent)
-        ClientsOweRow(commitments, onClick = onOpenFreelance, onRetry = onRetry)
+        Box(Modifier.fillMaxWidth().riseIn(2, play)) { SpendingCard(overview, onClick = { onOpenSpending(overview.month) }) }
+        Box(Modifier.fillMaxWidth().riseIn(3, play)) { GoalCard(goal, onOpenGoal = onOpenGoal, onOpenPlans = { onNavigate(TopLevelDestination.Plans) }, onRetry = onRetry) }
+        Box(Modifier.fillMaxWidth().riseIn(4, play)) { RecentActivity(overview.recent) }
+        HomeAccountsCard(accounts, onOpenAccounts, onOpenAccount)
         // Both cards measure to the taller one, so long or empty content in either never leaves them mismatched.
-        Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min).riseIn(5, play), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             NextBillCard(
                 commitments = commitments,
                 onOpenBill = onOpenBill,
@@ -319,6 +345,7 @@ private fun OverviewBlock(
                 modifier = Modifier.weight(1f).fillMaxHeight(),
             )
         }
+        ClientsOweRow(commitments, onClick = onOpenFreelance, onRetry = onRetry)
     }
 }
 
@@ -379,14 +406,15 @@ private fun ReceivedHero(
                 }
                 Spacer(Modifier.height(2.dp))
                 Box(Modifier.collapseLine(spec, amountLine)) {
-                    Text(
-                        overview.summary.received.amount.formatWithCode(),
-                        style = ZarType.amountL,
-                        color = colors.textOnInverse,
-                        modifier = Modifier.testTag("received-amount"),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
+                    Crossfade(
+                        targetState = overview.summary.received.amount.formatWithCode(),
+                        animationSpec = LocalZarMotion.current.fade(180), label = "received-month-amount",
+                    ) { amount ->
+                        Text(
+                            amount, style = ZarType.amountL, color = colors.textOnInverse,
+                            modifier = Modifier.testTag("received-amount"), maxLines = 1, overflow = TextOverflow.Ellipsis,
+                        )
+                    }
                 }
                 Spacer(Modifier.height(8.dp))
                 Box(Modifier.collapseLine(spec, statusLine)) { HeroStatus(overview) }
@@ -397,11 +425,16 @@ private fun ReceivedHero(
                 val donut = chartMode == 1 && !AmountMask.isHidden
                 Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = if (donut) Alignment.Center else Alignment.BottomCenter) {
                     val chartModifier = Modifier.fillMaxWidth().height(if (donut) 150.dp else 165.dp).padding(horizontal = 18.dp)
-                    when {
-                        AmountMask.isHidden -> HiddenChart(chartModifier)
-                        chartMode == 0 -> ReceivedBarChart(overview, chartModifier)
-                        chartMode == 1 -> SpendingDonutChart(overview, chartModifier)
-                        else -> ReceivedLineChart(overview, chartModifier)
+                    Crossfade(
+                        targetState = overview,
+                        animationSpec = LocalZarMotion.current.fade(180), label = "received-month-chart",
+                    ) { chartOverview ->
+                        when {
+                            AmountMask.isHidden -> HiddenChart(chartModifier)
+                            chartMode == 0 -> ReceivedBarChart(chartOverview, chartModifier)
+                            chartMode == 1 -> SpendingDonutChart(chartOverview, chartModifier)
+                            else -> ReceivedLineChart(chartOverview, chartModifier)
+                        }
                     }
                 }
                 Spacer(Modifier.height(7.dp))
@@ -439,7 +472,7 @@ private fun ReceivedHero(
         Box(
             Modifier.align(Alignment.TopEnd).padding(top = 54.dp, end = 22.dp)
                 .collapseShift(spec, HomeCollapse.TEXT_RATE)
-                .collapseLine(spec, monthLine),
+                .collapseLine(spec, monthLine, topInset = 54.dp),
         ) {
             var expanded by remember { mutableStateOf(false) }
             val changeRange = stringResource(R.string.activity_change_range)
@@ -451,13 +484,24 @@ private fun ReceivedHero(
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                val format = if (overview.month.year == ZarTime.today().year) ShortMonthFormat
-                    else DateTimeFormatter.ofPattern("MMM yy", Locale.ENGLISH)
-                Text(overview.month.format(format).uppercase(), modifier = Modifier.testTag("home-month-label"), style = ZarType.label.copy(lineHeight = 14.sp), color = Color.White)
+                Crossfade(
+                    targetState = overview.month,
+                    animationSpec = LocalZarMotion.current.fade(180), label = "home-selected-month",
+                ) { month ->
+                    val format = if (month.year == ZarTime.today().year) ShortMonthFormat
+                        else DateTimeFormatter.ofPattern("MMM yy", Locale.ENGLISH)
+                    Text(month.format(format).uppercase(), modifier = Modifier.testTag("home-month-label"),
+                        style = ZarType.label.copy(lineHeight = 14.sp), color = Color.White)
+                }
                 Icon(painterResource(R.drawable.ic_ph_caret_down), contentDescription = null,
                     modifier = Modifier.size(12.dp), tint = Color.White)
             }
-            DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            DropdownMenu(
+                expanded = expanded, onDismissRequest = { expanded = false },
+                shape = RoundedCornerShape(20.dp),
+                containerColor = ZarTheme.colors.canvas,
+                tonalElevation = 0.dp,
+            ) {
                 Box(Modifier.width(280.dp)) {
                     MonthPicker(overview.month, canGoForward, onPreviousMonth, onNextMonth, onDark = false)
                 }
@@ -665,33 +709,17 @@ private fun MonthPicker(
     onNext: () -> Unit,
     onDark: Boolean,
 ) {
-    val color = if (onDark) Color.White else ZarTheme.colors.textPrimary
-    val previous = stringResource(R.string.home_previous_month)
-    val next = stringResource(R.string.home_next_month)
-    Row(
-        Modifier.fillMaxWidth().height(40.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.Center,
-    ) {
-        IconButton(onClick = onPrevious, modifier = Modifier.size(48.dp).testTag("month-previous").semantics { contentDescription = previous }) {
-            Text("‹", style = ZarType.headingSheet, color = color)
-        }
-        Text(
-            month.format(MonthFormat),
-            modifier = Modifier.width(130.dp).testTag("month-label"),
-            textAlign = TextAlign.Center,
-            style = ZarType.labelAction,
-            color = color,
-            maxLines = 1,
-        )
-        IconButton(
-            onClick = onNext,
-            enabled = canGoForward,
-            modifier = Modifier.size(48.dp).testTag("month-next").semantics { contentDescription = next },
-        ) {
-            Text("›", style = ZarType.headingSheet, color = color.copy(alpha = if (canGoForward) 1f else 0.35f))
-        }
-    }
+    var committedMonth by remember { mutableStateOf(month) }
+    com.example.zar.core.presentation.components.ZarMonthPicker(
+        month = month,
+        latestMonth = if (canGoForward) YearMonth.from(ZarTime.today()) else month,
+        onMonthSelected = { target ->
+            val distance = java.time.temporal.ChronoUnit.MONTHS.between(committedMonth, target).toInt()
+            committedMonth = target
+            repeat(kotlin.math.abs(distance)) { if (distance < 0) onPrevious() else onNext() }
+        },
+        onDark = onDark,
+    )
 }
 
 @Composable
@@ -875,6 +903,7 @@ private fun SpendingCard(overview: HomeOverview, onClick: () -> Unit) {
             committed = summary.committed.amount.minorUnits.toFloat(),
             discretionary = summary.discretionary.amount.minorUnits.toFloat(),
             unknown = summary.unknown.amount.minorUnits.toFloat(),
+            modifier = Modifier.testTag("spent-split-bar"),
         )
         if (overview.hasIncompleteData) {
             Text(
@@ -883,9 +912,10 @@ private fun SpendingCard(overview: HomeOverview, onClick: () -> Unit) {
                 color = colors.textSecondary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.testTag("unknown-warning"),
+                modifier = Modifier.padding(top = 8.dp).testTag("unknown-warning"),
             )
         }
+        Spacer(Modifier.height(16.dp))
         Text(
             stringResource(R.string.home_see_breakdown),
             style = ZarType.labelAction,
@@ -936,8 +966,6 @@ private fun GoalCard(
         onClick = onClick,
         contentPadding = androidx.compose.foundation.layout.PaddingValues(19.dp),
     ) {
-        Text(stringResource(R.string.home_goal).uppercase(), style = ZarType.label, color = colors.textTertiary)
-        Spacer(Modifier.height(6.dp))
         when (goal) {
             HomeGoalContent.Loading -> {
                 Text(stringResource(R.string.home_goal_loading), style = ZarType.bodyM, color = colors.textSecondary, modifier = Modifier.testTag("home-goal-loading"))
@@ -971,7 +999,7 @@ private fun GoalCard(
                 Box(Modifier.fillMaxWidth().height(5.dp).background(colors.borderHairline, RoundedCornerShape(3.dp))) {
                     if (fraction > 0f) Box(Modifier.fillMaxWidth(fraction).height(5.dp).background(colors.textSelected, RoundedCornerShape(3.dp)))
                 }
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(16.dp))
                 val detail = listOfNotNull(
                     when {
                         hidden -> stringResource(R.string.home_goal_hidden)

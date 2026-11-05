@@ -1,5 +1,7 @@
 package com.example.zar.features.accounts.presentation.screen
 
+import com.example.zar.core.presentation.motion.rememberRiseInOnFirstVisit
+import com.example.zar.core.presentation.motion.riseIn
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.PaddingValues
@@ -114,13 +116,16 @@ private fun Message(text: String) {
 
 @Composable
 private fun AccountSections(overview: AccountsOverview, onOpenAccount: (String) -> Unit) {
+    // Each section rises in, one after another, on the first visit only.
+    val play = rememberRiseInOnFirstVisit(loaded = true)
+    var order = 0
     val money = overview.balances.filter { it.account.type != AccountType.CRYPTO }
     val crypto = overview.balances.filter { it.account.type == AccountType.CRYPTO }
     Column(Modifier.padding(top = 18.dp)) {
-        if (money.isNotEmpty()) Section(stringResource(R.string.accounts_section_money), money, onOpenAccount)
-        if (crypto.isNotEmpty()) Section(stringResource(R.string.accounts_section_crypto), crypto, onOpenAccount, Modifier.padding(top = 18.dp))
+        if (money.isNotEmpty()) Section(stringResource(R.string.accounts_section_money), money, onOpenAccount, Modifier.riseIn(order++, play))
+        if (crypto.isNotEmpty()) Section(stringResource(R.string.accounts_section_crypto), crypto, onOpenAccount, Modifier.padding(top = 18.dp).riseIn(order++, play))
         if (overview.archived.isNotEmpty()) {
-            Section(stringResource(R.string.accounts_section_archived), overview.archived, onOpenAccount, Modifier.padding(top = 18.dp))
+            Section(stringResource(R.string.accounts_section_archived), overview.archived, onOpenAccount, Modifier.padding(top = 18.dp).riseIn(order++, play))
         }
         Text(
             buildString {
@@ -129,7 +134,7 @@ private fun AccountSections(overview: AccountsOverview, onOpenAccount: (String) 
             },
             style = ZarType.bodyS,
             color = ZarTheme.colors.textSecondary,
-            modifier = Modifier.padding(start = 22.dp, end = 22.dp, top = 14.dp),
+            modifier = Modifier.padding(start = 22.dp, end = 22.dp, top = 14.dp).riseIn(order, play),
         )
     }
 }
