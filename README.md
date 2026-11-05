@@ -119,4 +119,6 @@ OpenSpec plans remain git-ignored. UI PRs include screenshots captured from the 
 
 Home, Plans and trust feature submission material: [U10 report section](docs/U10-home-plans-trust-report.md) and [three-minute demo walkthrough](docs/U10-demo.md).
 
+Kavindu Silva live demo account: [synthetic data and walkthrough](docs/demo-kavindu-account.md), with [running-app screenshots](docs/evidence/kavindu-live-demo/README.md).
+
 Keep received money separate from expected payments. Transfers are not income or spending. Feature freeze: 22 October 2026. Submission: 30 October 2026.
